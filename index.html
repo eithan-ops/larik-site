@@ -1,0 +1,2568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Larik — Something quieter is coming.</title>
+<meta name="description" content="A small, careful presence on your phone that sees who's worth meeting in the room you're already in. An ambient layer for the people you haven't met yet. Arriving 2026 for iOS.">
+<meta name="theme-color" content="#0a0f18">
+<meta name="color-scheme" content="dark">
+
+<!-- Open Graph (Facebook, LinkedIn, WhatsApp, Slack, iMessage) -->
+<meta property="og:title" content="Larik — Something quieter is coming.">
+<meta property="og:description" content="An ambient layer for the people you haven't met yet. Arriving 2026 for iPhone.">
+<meta property="og:image" content="https://larik.ai/og.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://larik.ai/">
+<link rel="canonical" href="https://larik.ai/">
+<meta property="og:locale" content="en_US">
+
+<!-- Twitter / X cards -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Larik — Something quieter is coming.">
+<meta name="twitter:description" content="An ambient layer for the people you haven't met yet. Arriving 2026 for iPhone.">
+<meta name="twitter:image" content="https://larik.ai/og.jpg">
+
+<!-- Favicon: deep navy square with orb gradient -->
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><defs><radialGradient id='g' cx='35%25' cy='30%25'><stop offset='0%25' stop-color='%237B9CB9'/><stop offset='60%25' stop-color='%231E2A38'/><stop offset='100%25' stop-color='%23000'/></radialGradient></defs><rect width='32' height='32' rx='6' fill='%230a0f18'/><circle cx='16' cy='16' r='10' fill='url(%23g)'/></svg>">
+
+<!-- iOS PWA hints -->
+<meta name="apple-mobile-web-app-title" content="Larik">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT@0,9..144,300..600,0..100;1,9..144,300..600,0..100&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+<!-- Lenis: premium smooth scroll (desktop only — see init JS below) -->
+<script src="https://cdn.jsdelivr.net/npm/lenis@1.1.18/dist/lenis.min.js"></script>
+<!-- GSAP + ScrollTrigger: scroll-driven choreography -->
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
+<style>
+  :root {
+    --ink: #1E2A38;
+    --ink-soft: #4A5563;
+    --page: #F4F1EC;
+    --page-mute: rgba(244, 241, 236, 0.7);
+    --page-quiet: rgba(244, 241, 236, 0.45);
+    --signal: #5B7C99;
+    --signal-light: #8DA6BD;
+    --warm: #C9A66B;
+    --serif: 'Fraunces', 'Iowan Old Style', Georgia, serif;
+    --sans: 'Inter', -apple-system, system-ui, sans-serif;
+  }
+
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+  html { height: auto; overflow-x: hidden; }
+  body {
+    min-height: 100vh;
+    background: #0a0f18;
+    color: var(--page);
+    font-family: var(--sans);
+    -webkit-font-smoothing: antialiased;
+    cursor: none;
+    overflow-x: hidden;
+  }
+
+  #scene { position: fixed; inset: 0; z-index: 1; }
+
+  /* Vignette + grain for filmic feel */
+  .vignette {
+    position: fixed; inset: 0; z-index: 3;
+    pointer-events: none;
+    background:
+      radial-gradient(ellipse at center, transparent 30%, rgba(10, 15, 24, 0.5) 100%);
+  }
+  .grain {
+    position: fixed; inset: 0; z-index: 4;
+    pointer-events: none;
+    opacity: 0.35;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.35'/></svg>");
+  }
+
+  /* Hero — first viewport section. Below it the page scrolls into more sections */
+  .chrome {
+    position: relative;
+    z-index: 10;
+    pointer-events: none;
+    display: flex; flex-direction: column;
+    min-height: 100vh;
+    min-height: 100svh; /* Safari/Chrome address-bar safe */
+    min-height: 100dvh; /* dynamic viewport — preferred */
+  }
+
+  .topbar {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 28px 36px;
+  }
+
+  .wordmark {
+    font-family: var(--serif);
+    font-weight: 500;
+    font-size: 19px;
+    letter-spacing: -0.025em;
+    pointer-events: auto;
+    display: inline-flex; align-items: center; gap: 10px;
+    color: var(--page);
+    text-shadow: 0 1px 12px rgba(10, 15, 24, 0.7);
+  }
+  .wordmark .dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--signal-light);
+    box-shadow: 0 0 12px var(--signal-light);
+    animation: dot-pulse 6s ease-in-out infinite;
+  }
+  @keyframes dot-pulse {
+    0%, 100% { opacity: 0.85; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.3); }
+  }
+
+  .tag {
+    font-size: 11px;
+    letter-spacing: 0.32em;
+    text-transform: uppercase;
+    color: var(--page-mute);
+    font-weight: 500;
+    text-shadow: 0 1px 8px rgba(10, 15, 24, 0.8);
+  }
+
+  .stage {
+    flex: 1;
+    display: flex; flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 0 24px 12vh;
+    text-align: center;
+    gap: 26px;
+  }
+
+  .orb-anchor {
+    /* Reserves vertical space — the orb hovers in this region above the text */
+    width: 1px;
+    height: 42vh;
+    pointer-events: none;
+    flex-shrink: 0;
+  }
+
+  @media (max-width: 720px) {
+    .orb-anchor { height: 34vh; }
+    .stage { padding-bottom: 6vh; }
+  }
+
+  /* Hero entrance — each word slides up from below with a mask */
+  h1 .w {
+    overflow: hidden;
+    padding-bottom: 0.12em;       /* clip area for the mask */
+    vertical-align: top;
+  }
+  h1 .w .letter {
+    display: inline-block;
+    transform: translateY(110%);
+    opacity: 0;
+    will-change: transform, opacity;
+  }
+  h1.entered .w .letter {
+    transform: translateY(0);
+    opacity: 1;
+    transition: transform 1.0s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.5s ease-out;
+  }
+  /* Per-letter stagger via inline transition-delay (set in JS) */
+
+  h1 {
+    font-family: var(--serif);
+    font-weight: 300;
+    font-size: clamp(34px, 4.8vw, 64px);
+    line-height: 1.05;
+    letter-spacing: -0.03em;
+    max-width: 920px;
+    font-variation-settings: 'opsz' 144, 'SOFT' 50;
+    color: var(--page);
+    pointer-events: auto;
+    user-select: none;
+    text-shadow: 0 2px 24px rgba(10, 15, 24, 0.8), 0 1px 6px rgba(10, 15, 24, 0.4);
+    opacity: 0;
+    animation: line-arrive 1.6s cubic-bezier(0.16, 1, 0.3, 1) 1.4s forwards;
+  }
+  @keyframes line-arrive {
+    from { opacity: 0; transform: translateY(16px); filter: blur(8px); }
+    to { opacity: 1; transform: translateY(0); filter: blur(0); }
+  }
+
+  h1 em.accent, h1 .accent em {
+    font-style: italic;
+    font-variation-settings: 'opsz' 144, 'SOFT' 100;
+    color: var(--signal-light);
+    position: relative;
+  }
+  h1 .accent em::after {
+    content: '';
+    position: absolute;
+    left: 0; right: 0;
+    bottom: 0.08em;
+    height: 1px;
+    background: var(--signal-light);
+    opacity: 0;
+    transform: scaleX(0);
+    transform-origin: left;
+    animation: draw 1.6s cubic-bezier(0.16, 1, 0.3, 1) 2.2s forwards;
+  }
+  @keyframes draw {
+    to { opacity: 0.7; transform: scaleX(1); }
+  }
+
+  /* Magnetic letters — each glyph is spring-anchored, pulled by cursor */
+  h1 .w { display: inline-block; white-space: nowrap; }
+  h1 .w + .w { margin-left: 0.28em; }
+  h1 .letter, .sub .letter {
+    display: inline-block;
+    will-change: transform;
+  }
+  /* Word wrapper — keeps words non-breaking everywhere on the page */
+  .sub-word { display: inline-block; white-space: nowrap; }
+
+  .sub {
+    font-family: var(--sans);
+    font-size: clamp(14px, 1.5vw, 16px);
+    color: var(--page-mute);
+    max-width: 500px;
+    line-height: 1.7;
+    pointer-events: auto;
+    text-shadow: 0 1px 12px rgba(10, 15, 24, 0.7);
+    opacity: 0;
+    animation: line-arrive 1.4s cubic-bezier(0.16, 1, 0.3, 1) 2.4s forwards;
+  }
+
+  .bottom {
+    padding: 28px 36px;
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--page-quiet);
+  }
+  .bottom .interact {
+    display: inline-flex; align-items: center; gap: 14px;
+    animation: drift 4s ease-in-out infinite;
+  }
+  @keyframes drift {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 0.85; }
+  }
+  .bottom .arrow { width: 24px; height: 1px; background: currentColor; }
+
+  /* Custom cursor */
+  .cursor {
+    position: fixed; top: 0; left: 0;
+    pointer-events: none; z-index: 99;
+    width: 38px; height: 38px;
+    border: 1px solid var(--page);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    transition: width 0.45s cubic-bezier(0.16, 1, 0.3, 1), height 0.45s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.4s;
+    mix-blend-mode: difference;
+  }
+  .cursor.over { width: 88px; height: 88px; border-color: var(--signal-light); }
+  .cursor::after {
+    content: '';
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 3px; height: 3px;
+    background: var(--page);
+    border-radius: 50%;
+  }
+
+  .cursor-label {
+    position: fixed; top: 0; left: 0;
+    pointer-events: none; z-index: 99;
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 12px;
+    color: var(--page-mute);
+    opacity: 0;
+    transition: opacity 0.4s;
+    transform: translate(28px, 14px);
+    text-shadow: 0 1px 8px rgba(10, 15, 24, 0.9);
+  }
+  .cursor-label.show { opacity: 1; }
+
+  /* Loading */
+  #loader {
+    position: fixed; inset: 0; z-index: 999;
+    background: #0a0f18;
+    display: flex; align-items: center; justify-content: center;
+    transition: opacity 1s ease-out;
+  }
+  #loader.done { opacity: 0; pointer-events: none; }
+  #loader .ld-orb {
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    background: var(--signal-light);
+    box-shadow: 0 0 16px var(--signal-light);
+    animation: ld-pulse 1.4s ease-in-out infinite;
+  }
+  @keyframes ld-pulse {
+    0%, 100% { opacity: 0.4; transform: scale(0.8); }
+    50% { opacity: 1; transform: scale(1.4); }
+  }
+
+  /* ═════════════════════════════════════════════════════════════
+     SITE SECTIONS — extend hero down the page on cosmic background
+     ═════════════════════════════════════════════════════════════ */
+
+  .page-after-hero {
+    position: relative;
+    z-index: 10;
+    pointer-events: none;
+  }
+
+  section.story {
+    position: relative;
+    padding: 18vh 32px;
+    pointer-events: auto;
+  }
+
+  .kicker {
+    font-family: var(--sans);
+    font-size: 11px;
+    letter-spacing: 0.36em;
+    text-transform: uppercase;
+    color: rgba(244, 241, 236, 0.45);
+    margin-bottom: 56px;
+    font-weight: 500;
+    text-align: center;
+  }
+
+  /* Premise */
+  .premise-wrap { max-width: 720px; margin: 0 auto; text-align: center; }
+  .premise-line {
+    font-family: var(--serif);
+    font-weight: 400;
+    font-size: clamp(22px, 2.6vw, 30px);
+    line-height: 1.45;
+    color: var(--page);
+    font-variation-settings: 'opsz' 144, 'SOFT' 50;
+    letter-spacing: -0.012em;
+    text-shadow: 0 1px 16px rgba(10, 15, 24, 0.85);
+  }
+  .premise-line + .premise-line { margin-top: 28px; }
+  .premise-line em {
+    font-style: italic;
+    font-variation-settings: 'opsz' 144, 'SOFT' 100;
+    color: var(--signal-light);
+  }
+  .premise-line.muted {
+    color: rgba(244, 241, 236, 0.65);
+    font-size: clamp(19px, 2.1vw, 24px);
+    margin-top: 56px;
+  }
+
+  /* Negation */
+  .negation-list { max-width: 820px; margin: 0 auto; padding: 0; }
+  .neg-row {
+    display: grid;
+    grid-template-columns: 1fr 1.2fr;
+    gap: 56px;
+    padding: 36px 0;
+    border-top: 1px solid rgba(244, 241, 236, 0.10);
+    align-items: baseline;
+  }
+  .neg-row:last-child { border-bottom: 1px solid rgba(244, 241, 236, 0.10); }
+  .neg-no {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: clamp(30px, 3.8vw, 44px);
+    font-weight: 400;
+    letter-spacing: -0.025em;
+    color: var(--page);
+    font-variation-settings: 'opsz' 144, 'SOFT' 100;
+    text-shadow: 0 1px 16px rgba(10, 15, 24, 0.85);
+  }
+  .neg-yes {
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.7;
+    color: rgba(244, 241, 236, 0.78);
+    max-width: 380px;
+    padding-top: 10px;
+    text-shadow: 0 1px 12px rgba(10, 15, 24, 0.75);
+  }
+
+  /* Trust */
+  .trust-title {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: clamp(44px, 5.6vw, 68px);
+    font-weight: 400;
+    letter-spacing: -0.028em;
+    text-align: center;
+    margin-bottom: 100px;
+    font-variation-settings: 'opsz' 144, 'SOFT' 100;
+    color: var(--page);
+    text-shadow: 0 2px 28px rgba(10, 15, 24, 0.85);
+  }
+  .trust-grid { max-width: 720px; margin: 0 auto; display: flex; flex-direction: column; gap: 72px; }
+  .trust-item { text-align: center; }
+  .trust-item h3 {
+    font-family: var(--serif);
+    font-weight: 400;
+    font-size: clamp(22px, 2.4vw, 28px);
+    margin-bottom: 16px;
+    letter-spacing: -0.018em;
+    font-variation-settings: 'opsz' 36, 'SOFT' 50;
+    color: var(--page);
+    text-shadow: 0 1px 14px rgba(10, 15, 24, 0.85);
+  }
+  .trust-item p {
+    color: rgba(244, 241, 236, 0.74);
+    font-size: 16px;
+    max-width: 500px;
+    margin: 0 auto;
+    line-height: 1.7;
+    text-shadow: 0 1px 12px rgba(10, 15, 24, 0.75);
+  }
+  .trust-item p span {
+    color: rgba(244, 241, 236, 0.48);
+    font-family: var(--serif);
+    font-style: italic;
+    font-variation-settings: 'opsz' 14, 'SOFT' 100;
+  }
+
+  /* Waitlist */
+  .waitlist-inner { max-width: 560px; margin: 0 auto; text-align: center; }
+  .waitlist h2 {
+    font-family: var(--serif);
+    font-weight: 400;
+    font-size: clamp(42px, 5.4vw, 60px);
+    letter-spacing: -0.028em;
+    color: var(--page);
+    font-variation-settings: 'opsz' 144, 'SOFT' 50;
+    margin-bottom: 24px;
+    text-shadow: 0 2px 32px rgba(10, 15, 24, 0.9);
+  }
+  .waitlist h2 em {
+    font-style: italic;
+    font-variation-settings: 'opsz' 144, 'SOFT' 100;
+    color: var(--signal-light);
+  }
+
+  /* Live counter — "currently 1,247 listening quietly" */
+  .live-counter {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    margin: -28px auto 36px;
+    padding: 7px 16px 7px 12px;
+    background: rgba(244, 241, 236, 0.06);
+    border: 1px solid rgba(244, 241, 236, 0.12);
+    border-radius: 100px;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    font-family: var(--sans);
+    font-size: 12px;
+    letter-spacing: 0.04em;
+    color: rgba(244, 241, 236, 0.7);
+  }
+  .live-counter .dot-live {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--signal-light);
+    box-shadow: 0 0 8px var(--signal-light);
+    animation: live-pulse 1.8s ease-in-out infinite;
+  }
+  @keyframes live-pulse {
+    0%, 100% { opacity: 0.55; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.3); }
+  }
+  .live-counter .counter-num {
+    font-family: var(--serif);
+    font-variation-settings: 'opsz' 14, 'SOFT' 50;
+    font-weight: 500;
+    color: var(--page);
+    font-size: 14px;
+    font-variant-numeric: tabular-nums;
+  }
+  .live-counter .counter-prefix,
+  .live-counter .counter-suffix {
+    color: rgba(244, 241, 236, 0.55);
+  }
+
+  .waitlist .lead {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 17px;
+    color: rgba(244, 241, 236, 0.62);
+    margin-bottom: 56px;
+    line-height: 1.6;
+    font-variation-settings: 'opsz' 36, 'SOFT' 100;
+    text-shadow: 0 1px 12px rgba(10, 15, 24, 0.75);
+  }
+  .waitlist-form {
+    display: flex; gap: 0;
+    max-width: 480px;
+    margin: 0 auto;
+    border: 1px solid rgba(244, 241, 236, 0.22);
+    border-radius: 999px;
+    padding: 6px 6px 6px 10px;
+    background: rgba(244, 241, 236, 0.04);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    transition: border-color 0.5s cubic-bezier(0.16, 1, 0.3, 1), background 0.5s;
+  }
+  .waitlist-form:focus-within {
+    border-color: rgba(141, 166, 189, 0.65);
+    background: rgba(244, 241, 236, 0.06);
+  }
+  .waitlist-form input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    font-family: var(--sans);
+    font-size: 15px;
+    padding: 14px 18px;
+    color: var(--page);
+    min-width: 0;
+  }
+  .waitlist-form input::placeholder {
+    color: rgba(244, 241, 236, 0.34);
+    font-family: var(--serif);
+    font-style: italic;
+  }
+  .waitlist-form button {
+    background: var(--page);
+    color: var(--ink);
+    border: none;
+    border-radius: 999px;
+    padding: 13px 28px;
+    font-family: var(--sans);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: none;
+    transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), background 0.3s;
+    white-space: nowrap;
+  }
+  .waitlist-form button:hover {
+    transform: translateX(4px);
+    background: var(--signal-light);
+  }
+  .fineprint {
+    margin-top: 36px;
+    font-size: 12px;
+    color: rgba(244, 241, 236, 0.38);
+    letter-spacing: 0.04em;
+  }
+  .thank-you {
+    display: none;
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 22px;
+    color: var(--page);
+    margin-top: 16px;
+    font-variation-settings: 'opsz' 36, 'SOFT' 100;
+  }
+  .thank-you.show { display: block; }
+
+  /* Site footer */
+  .site-footer {
+    padding: 80px 36px 64px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 24px;
+    font-size: 13px;
+    color: rgba(244, 241, 236, 0.45);
+    pointer-events: auto;
+    position: relative;
+    z-index: 10;
+    border-top: 1px solid rgba(244, 241, 236, 0.08);
+  }
+  .site-footer .meta {
+    display: flex; align-items: center; gap: 14px;
+    font-family: var(--serif);
+    font-style: italic;
+    font-variation-settings: 'opsz' 14, 'SOFT' 100;
+  }
+  .site-footer .meta::before {
+    content: '';
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--signal);
+    opacity: 0.75;
+    box-shadow: 0 0 10px var(--signal);
+  }
+  .foot-links { display: flex; gap: 30px; }
+  .foot-links a {
+    color: rgba(244, 241, 236, 0.55);
+    text-decoration: none;
+    font-family: var(--sans);
+    letter-spacing: 0.02em;
+    transition: color 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .foot-links a:hover { color: var(--page); }
+
+  /* ── Animated accent: italic words get a drawn-on underline ── */
+  .premise-line em, .neg-no em, .waitlist h2 em, .trust-title em {
+    position: relative;
+  }
+  .premise-line em::after, .neg-no em::after, .waitlist h2 em::after, .trust-title em::after {
+    content: '';
+    position: absolute;
+    left: 0.04em; right: 0.04em;
+    bottom: 0.05em;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--signal-light) 25%, var(--signal-light) 75%, transparent);
+    opacity: 0;
+    transform: scaleX(0);
+    transform-origin: center;
+    transition: opacity 1.2s cubic-bezier(0.16, 1, 0.3, 1) 0.4s, transform 1.2s cubic-bezier(0.16, 1, 0.3, 1) 0.4s;
+  }
+  .reveal.in .premise-line em::after,
+  .reveal.in .neg-no em::after,
+  .reveal.in .waitlist h2 em::after,
+  .reveal.in .trust-title em::after,
+  .reveal.in em::after {
+    opacity: 0.6;
+    transform: scaleX(1);
+  }
+
+  /* ── Section dividers: thin glowing horizontal lines between story sections ── */
+  section.story + section.story::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 320px;
+    max-width: 60vw;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(141, 166, 189, 0.45) 50%, transparent);
+    box-shadow: 0 0 12px rgba(141, 166, 189, 0.25);
+  }
+
+  /* ── Subtle text glow on italic accents ── */
+  .premise-line em, .neg-no, .waitlist h2 em, .trust-title {
+    text-shadow:
+      0 1px 16px rgba(10, 15, 24, 0.85),
+      0 0 24px rgba(141, 166, 189, 0.15);
+  }
+
+  /* ── Drop cap on the first premise line ── */
+  .premise-line.with-cap::first-letter {
+    font-family: var(--serif);
+    font-style: italic;
+    font-weight: 400;
+    font-variation-settings: 'opsz' 144, 'SOFT' 100;
+    font-size: 2.4em;
+    line-height: 0.95;
+    float: left;
+    padding: 0.08em 0.18em 0 0;
+    color: var(--signal-light);
+    text-shadow: 0 0 24px rgba(141, 166, 189, 0.35), 0 1px 16px rgba(10, 15, 24, 0.85);
+  }
+
+  /* ── Section progress indicator (right-edge vertical dots) ── */
+  .progress-rail {
+    position: fixed;
+    right: 36px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 12;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    pointer-events: none;
+  }
+  .progress-rail .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: transparent;
+    border: 1px solid rgba(244, 241, 236, 0.30);
+    transition: background 0.6s cubic-bezier(0.16, 1, 0.3, 1),
+                border-color 0.6s cubic-bezier(0.16, 1, 0.3, 1),
+                transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .progress-rail .dot.active {
+    background: var(--signal-light);
+    border-color: var(--signal-light);
+    transform: scale(1.4);
+    box-shadow: 0 0 10px rgba(141, 166, 189, 0.7);
+  }
+
+  /* ── Hold-to-reveal whisper ── */
+  .whisper {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 60;
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: clamp(18px, 2vw, 26px);
+    color: rgba(244, 241, 236, 0.85);
+    opacity: 0;
+    pointer-events: none;
+    text-align: center;
+    max-width: 480px;
+    line-height: 1.5;
+    transition: opacity 0.9s cubic-bezier(0.16, 1, 0.3, 1);
+    text-shadow: 0 0 24px rgba(10, 15, 24, 1), 0 0 8px rgba(141, 166, 189, 0.3);
+    font-variation-settings: 'opsz' 36, 'SOFT' 100;
+  }
+  .whisper.show { opacity: 1; }
+
+  @media (max-width: 720px) {
+    .progress-rail { display: none; }
+    .premise-line.with-cap::first-letter { font-size: 2em; }
+  }
+
+  /* ═════════════════════════════════════════════════════════════
+     TOUCH-DEVICE OVERRIDES
+     Mouse-only effects hidden; mobile gets its own polish layer.
+     ═════════════════════════════════════════════════════════════ */
+  body.touch { cursor: auto; }
+  body.touch .cursor,
+  body.touch .cursor-label,
+  body.touch .cursor-trail,
+  body.touch #constellation,
+  body.touch .progress-rail,
+  body.touch .scroll-hint { display: none !important; }
+
+  body.touch h1, body.touch .sub, body.touch .wordmark,
+  body.touch .premise-line, body.touch .neg-no, body.touch .neg-yes,
+  body.touch .trust-title, body.touch .trust-item h3, body.touch .trust-item p,
+  body.touch .waitlist h2, body.touch .waitlist .lead, body.touch .fineprint,
+  body.touch .site-footer .meta, body.touch .foot-links a, body.touch .waitlist-form,
+  body.touch button { cursor: default !important; }
+
+  /* Mobile sizing — phones */
+  @media (max-width: 720px) {
+    /* Smaller hero — orb hovers above tighter text */
+    .orb-anchor { height: 36vh; }
+    .stage { padding: 0 20px 8vh; gap: 20px; }
+
+    /* Hero typography */
+    h1 { font-size: clamp(32px, 8vw, 44px); line-height: 1.08; }
+    .sub { font-size: 14px; padding: 0 12px; }
+
+    /* Section padding tighter */
+    section.story { padding: 14vh 22px; }
+    .kicker { margin-bottom: 36px; letter-spacing: 0.3em; }
+
+    /* Premise readable on phone */
+    .premise-line { font-size: clamp(20px, 5.4vw, 24px); line-height: 1.45; }
+    .premise-line.muted { font-size: clamp(17px, 4.4vw, 20px); margin-top: 40px; }
+
+    /* Negation stacks vertically and tightens */
+    .neg-no { font-size: clamp(28px, 7.5vw, 36px); line-height: 1.0; }
+    .neg-yes { font-size: 14px; max-width: 100%; }
+
+    /* Trust */
+    .trust-title { font-size: clamp(38px, 9vw, 48px); margin-bottom: 64px; }
+    .trust-grid { gap: 52px; }
+    .trust-item h3 { font-size: clamp(20px, 5vw, 22px); }
+    .trust-item p { font-size: 15px; line-height: 1.65; }
+
+    /* Waitlist */
+    .waitlist h2 { font-size: clamp(34px, 8.5vw, 44px); }
+    .waitlist .lead { font-size: 15px; margin-bottom: 36px; }
+
+    /* Topbar smaller */
+    .topbar { padding: 18px 22px; }
+    .wordmark { font-size: 17px; }
+    .tag { font-size: 10px; }
+
+    /* Footer reflows */
+    .site-footer { padding: 56px 22px 48px; gap: 18px; flex-direction: column; align-items: flex-start; }
+
+    /* Bottom hero footer hidden — bottom nav replaces it */
+    body.touch .chrome > .bottom { display: none; }
+  }
+
+  /* ── Floating liquid-glass bottom nav (mobile only) ── */
+  .bottom-nav {
+    display: none;
+    position: fixed;
+    bottom: env(safe-area-inset-bottom, 18px);
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 30;
+    padding: 8px 8px 8px 18px;
+    background: rgba(20, 25, 38, 0.55);
+    backdrop-filter: blur(28px) saturate(140%);
+    -webkit-backdrop-filter: blur(28px) saturate(140%);
+    border: 1px solid rgba(244, 241, 236, 0.15);
+    border-radius: 100px;
+    display: none;
+    align-items: center;
+    gap: 16px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  body.touch .bottom-nav { display: flex; }
+
+  .bottom-nav .nav-dots {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .bottom-nav .nav-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: rgba(244, 241, 236, 0.35);
+    transition: background 0.4s cubic-bezier(0.16, 1, 0.3, 1), transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .bottom-nav .nav-dot.active {
+    background: var(--signal-light);
+    transform: scale(1.6);
+    box-shadow: 0 0 8px rgba(141, 166, 189, 0.7);
+  }
+  .bottom-nav .nav-cta {
+    background: var(--page);
+    color: var(--ink);
+    border: none;
+    border-radius: 100px;
+    padding: 9px 16px;
+    font-family: var(--sans);
+    font-size: 13px;
+    font-weight: 500;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+  .bottom-nav .nav-cta:active { transform: scale(0.96); }
+
+  /* Hide bottom hero text on mobile (Save space, bottom nav is enough) */
+  @media (max-width: 540px) {
+    .bottom .interact { display: none; }
+    .bottom { font-size: 9px; }
+  }
+
+  /* Touch ripple — single-shot circle that fades after each tap */
+  .touch-ripple {
+    position: fixed;
+    pointer-events: none;
+    z-index: 28;
+    width: 80px; height: 80px;
+    border-radius: 50%;
+    border: 1px solid rgba(141, 166, 189, 0.6);
+    transform: translate(-50%, -50%) scale(0.3);
+    opacity: 0;
+    transition: transform 0.7s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .touch-ripple.fire { transform: translate(-50%, -50%) scale(1.4); opacity: 0; }
+  .touch-ripple.start { opacity: 0.85; }
+
+  /* Respect reduced motion — drop the heavy stuff */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+    }
+  }
+
+  /* ── Custom cursor trail (dots that follow with delay) ── */
+  .cursor-trail {
+    position: fixed;
+    top: 0; left: 0;
+    pointer-events: none;
+    z-index: 98;
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--signal-light);
+    transform: translate(-50%, -50%);
+    mix-blend-mode: screen;
+    opacity: 0;
+    transition: opacity 0.4s;
+  }
+
+  /* Scroll reveals */
+  .reveal {
+    opacity: 0;
+    transform: translateY(28px);
+    transition: opacity 1.3s cubic-bezier(0.16, 1, 0.3, 1), transform 1.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .reveal.in { opacity: 1; transform: translateY(0); }
+  .reveal[data-delay="1"] { transition-delay: 0.1s; }
+  .reveal[data-delay="2"] { transition-delay: 0.2s; }
+  .reveal[data-delay="3"] { transition-delay: 0.3s; }
+  .reveal[data-delay="4"] { transition-delay: 0.4s; }
+
+  @media (max-width: 720px) {
+    section.story { padding: 12vh 24px; }
+    .neg-row { grid-template-columns: 1fr; gap: 8px; padding: 28px 0; }
+    .neg-yes { padding-top: 0; max-width: none; }
+    .waitlist-form { flex-direction: column; border-radius: 18px; padding: 8px; gap: 4px; }
+    .waitlist-form input { text-align: center; padding: 14px 20px; }
+    .waitlist-form button { padding: 14px 24px; width: 100%; }
+    .site-footer { justify-content: center; text-align: center; }
+  }
+
+</style>
+</head>
+<body>
+
+<div id="loader"><div class="ld-orb"></div></div>
+
+<!-- _assets.js removed for production: bg loads from bg.jpg, video streams from .mp4 -->
+
+<canvas id="scene"></canvas>
+<div class="vignette"></div>
+<div class="grain"></div>
+
+<div class="chrome">
+  <header class="topbar">
+    <div class="wordmark">
+      <span class="dot"></span>
+      <span>larik</span>
+    </div>
+    <div class="tag">hero · alive · v4</div>
+  </header>
+
+  <main class="stage">
+    <div class="orb-anchor"></div>
+    <h1 id="headline"><span class="w">Something</span> <span class="w accent"><em>quieter</em></span> <span class="w">is coming.</span></h1>
+    <p class="sub" id="sub">An ambient layer for the people you haven't met yet. The entity is listening — move slowly · scroll · hold.</p>
+  </main>
+
+  <footer class="bottom">
+    <span>iOS · 2026</span>
+    <span class="interact">
+      <span class="arrow"></span>
+      <span>move · scroll · hold</span>
+      <span class="arrow"></span>
+    </span>
+    <span>private by design</span>
+  </footer>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     STORY SECTIONS — extend the hero down the page
+     ═══════════════════════════════════════════════════════════ -->
+<div class="page-after-hero">
+
+  <!-- § 1 PREMISE -->
+  <section class="story" id="premise">
+    <div class="premise-wrap">
+      <div class="kicker reveal">the premise</div>
+      <p class="premise-line with-cap reveal" data-delay="1">
+        For ten years the answer to <em>who's around</em> was a feed, a profile, a swipe.
+      </p>
+      <p class="premise-line reveal" data-delay="2">
+        It wore people out. The problem was never the search. It was being looked at.
+      </p>
+      <p class="premise-line muted reveal" data-delay="3">
+        Larik is the alternative. An ambient layer between your phone and the room — you say what you're looking for, it listens, without watching.
+      </p>
+    </div>
+  </section>
+
+  <!-- § 2 NEGATION -->
+  <section class="story" id="negation">
+    <div class="kicker reveal">what it isn't</div>
+    <div class="negation-list">
+      <div class="neg-row reveal">
+        <div class="neg-no">No profiles.</div>
+        <div class="neg-yes">No photo, no age, no bio. Identity is a quiet mark — yours alone.</div>
+      </div>
+      <div class="neg-row reveal" data-delay="1">
+        <div class="neg-no">No swiping.</div>
+        <div class="neg-yes">Never a feed. One thoughtful suggestion at a time, or none — silence is also an answer.</div>
+      </div>
+      <div class="neg-row reveal" data-delay="2">
+        <div class="neg-no">No exposure.</div>
+        <div class="neg-yes">Five quiet stages of disclosure. You decide what opens, when, and to whom.</div>
+      </div>
+      <div class="neg-row reveal" data-delay="3">
+        <div class="neg-no">No noise.</div>
+        <div class="neg-yes">No badges, counters, or red dots. The app speaks at conversation volume.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- § 3 TRUST -->
+  <section class="story" id="trust">
+    <h2 class="trust-title reveal">Yours alone.</h2>
+    <div class="trust-grid">
+      <div class="trust-item reveal" data-delay="1">
+        <h3>On your iPhone, not in the cloud.</h3>
+        <p>The intelligence runs on your device. Your words never become anyone's training data <span>— not even ours.</span></p>
+      </div>
+      <div class="trust-item reveal" data-delay="2">
+        <h3>Anonymous by default.</h3>
+        <p>We don't know your name, your face, or who you've spoken to <span>— until you choose to tell someone.</span></p>
+      </div>
+      <div class="trust-item reveal" data-delay="3">
+        <h3>Built around the exit.</h3>
+        <p>Delete is at the top of settings, not the bottom. Everything you said, gone, in one tap <span>— no email loop, no recovery email.</span></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- § 4 WAITLIST -->
+  <section class="story waitlist" id="waitlist">
+    <div class="waitlist-inner">
+      <h2 class="reveal">Join the <em>early circle</em>.</h2>
+      <p class="lead reveal" data-delay="1">A short note when it's ready. Nothing else.</p>
+      <div class="live-counter reveal" data-delay="2">
+        <span class="dot-live"></span>
+        <span class="counter-prefix">currently</span>
+        <span class="counter-num" id="counterNum">0</span>
+        <span class="counter-suffix">listening quietly</span>
+      </div>
+      <form class="waitlist-form reveal" data-delay="2" id="waitForm" onsubmit="return submitWait(event)" novalidate>
+        <input type="email" placeholder="your email address" required aria-label="Email address" autocomplete="email" />
+        <button type="submit">Quietly</button>
+      </form>
+      <p class="fineprint reveal" data-delay="3">We'll write once. No marketing. One tap to leave.</p>
+      <div class="thank-you" id="thanks">You're on the list. We'll be quiet.</div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="site-footer">
+    <span class="meta">larik · for iOS · arriving 2026</span>
+    <div class="foot-links">
+      <a href="#">privacy</a>
+      <a href="#">manifesto</a>
+      <a href="mailto:hello@larik.app">contact</a>
+    </div>
+  </footer>
+
+</div>
+
+<script>
+  // Live waitlist counter — ticks up when waitlist section comes into view,
+  // then keeps adding ~1 every 8s while visible (subtle social proof).
+  (function liveCounter() {
+    const el = document.getElementById('counterNum');
+    if (!el) return;
+    // Start from a believable baseline (tweak per launch reality)
+    let current = 0;
+    const target = 1247 + Math.floor(Math.random() * 9); // 1247-1255 each load
+    const format = (n) => n.toLocaleString('en-US');
+    function tick() {
+      // Ease-out: takes ~1.8s to reach target
+      const step = Math.max(1, Math.ceil((target - current) / 8));
+      current = Math.min(target, current + step);
+      el.textContent = format(current);
+      if (current < target) requestAnimationFrame(tick);
+      else {
+        // After hitting target, slowly drift up
+        setInterval(() => {
+          current += 1;
+          el.textContent = format(current);
+        }, 8000 + Math.random() * 6000);
+      }
+    }
+    const obs = new IntersectionObserver((entries) => {
+      entries.forEach(e => {
+        if (e.isIntersecting) { tick(); obs.unobserve(e.target); }
+      });
+    }, { threshold: 0.4 });
+    const wl = document.getElementById('waitlist');
+    if (wl) obs.observe(wl);
+  })();
+
+  // Waitlist submit handler (front-end stub; wire to backend later)
+  function submitWait(e) {
+    e.preventDefault();
+    const form = document.getElementById('waitForm');
+    const thanks = document.getElementById('thanks');
+    const input = form.querySelector('input');
+    if (!input.value || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.value)) {
+      input.focus();
+      return false;
+    }
+    form.style.display = 'none';
+    document.querySelector('.fineprint').style.display = 'none';
+    thanks.classList.add('show');
+    return false;
+  }
+</script>
+
+<!-- iOS Safari haptic trick — invisible <input type="checkbox" switch> -->
+<!-- Programmatically clicking it produces a real Taptic Engine pulse -->
+<input type="checkbox" id="hapticSwitch" switch
+       style="position:fixed; opacity:0; pointer-events:none; width:1px; height:1px;" aria-hidden="true">
+
+<!-- Floating liquid-glass bottom nav (visible only on touch) -->
+<nav class="bottom-nav" aria-label="page sections">
+  <div class="nav-dots">
+    <span class="nav-dot active" data-section="hero" aria-label="hero"></span>
+    <span class="nav-dot" data-section="premise" aria-label="premise"></span>
+    <span class="nav-dot" data-section="negation" aria-label="negation"></span>
+    <span class="nav-dot" data-section="trust" aria-label="trust"></span>
+  </div>
+  <button class="nav-cta" id="navJoin">Join</button>
+</nav>
+
+<!-- Section progress indicator (right edge) -->
+<div class="progress-rail" id="progress">
+  <div class="dot active" data-section="hero"></div>
+  <div class="dot" data-section="premise"></div>
+  <div class="dot" data-section="negation"></div>
+  <div class="dot" data-section="trust"></div>
+  <div class="dot" data-section="waitlist"></div>
+</div>
+
+<!-- Hold-to-reveal whisper (appears after 1.6s of mousedown) -->
+<div class="whisper" id="whisper">listening for something quieter</div>
+
+<!-- Constellation overlay — draws lines from cursor to nearby stars -->
+<canvas id="constellation" style="position:fixed; inset:0; z-index:7; pointer-events:none;"></canvas>
+
+<div class="cursor" id="cursor"></div>
+<div class="cursor-label" id="cursorLabel">listening</div>
+
+<!-- Cursor trail — 8 dots that follow the cursor with cascading delay -->
+<div class="cursor-trail" id="trail0"></div>
+<div class="cursor-trail" id="trail1"></div>
+<div class="cursor-trail" id="trail2"></div>
+<div class="cursor-trail" id="trail3"></div>
+<div class="cursor-trail" id="trail4"></div>
+<div class="cursor-trail" id="trail5"></div>
+<div class="cursor-trail" id="trail6"></div>
+<div class="cursor-trail" id="trail7"></div>
+
+<!-- Click-to-wake fallback (only visible if autoplay is blocked) -->
+<div id="wake" style="
+  position:fixed; bottom:50%; left:50%;
+  transform:translate(-50%, 200px);
+  font-family:'Fraunces',serif; font-style:italic; font-size:14px;
+  color:rgba(244,241,236,0.7); letter-spacing:0.05em;
+  pointer-events:none; z-index:30;
+  opacity:0; transition:opacity 0.6s ease;
+">click anywhere to begin</div>
+
+<script src="./three.global.js"></script>
+<script>
+
+// ════════════════════════════════════════════════════════════════════
+//  LARIK · HERO v4 — ALIVE
+//  - Orb image is texture on a deformable plane (Three.js)
+//  - Vertex displacement via 3 octaves of noise at irrational frequencies
+//    (never repeats — appears alive, not looping)
+//  - UV warp toward cursor (the surface stretches like liquid)
+//  - Background image with subtle parallax + brightness breathing
+//  - Particles orbit the orb (random lifetimes — non-cyclic)
+//  - Hue shift on orb over 23s (subtle color emergence)
+//  - Breathing pulse on a different period (6.2s) — desynced
+// ════════════════════════════════════════════════════════════════════
+
+// Video MUST load from a real file URL — Chrome <video> can't decode a
+// multi-MB base64 data-URI, and needs HTTP range requests (206) to stream.
+// So: video always from the file; background image can use base64 (data-URIs
+// work fine for <img>/textures) with a file fallback.
+const VIDEO_SRC  = './orb_loop_blackbg.mp4';
+const BG_TEXTURE = (window.LARIK_ASSETS && window.LARIK_ASSETS.bg) || './bg.jpg';
+
+if (!window.LARIK_ASSETS) {
+  console.warn('[Larik] _assets.js not present — using direct file paths: orb_loop_blackbg.mp4 + bg.jpg');
+} else {
+  console.log('[Larik] Assets loaded from _assets.js (base64)');
+}
+
+const canvas = document.getElementById('scene');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setClearColor(0x0a0f18, 1);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.1, 100);
+camera.position.z = 5;
+
+// (post-processing removed — direct render for reliability)
+
+// ─────────────── Simplex noise GLSL ───────────────
+const noiseGLSL = `
+  vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+  vec4 mod289(vec4 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+  vec4 permute(vec4 x) { return mod289(((x * 34.0) + 1.0) * x); }
+  vec4 taylorInvSqrt(vec4 r) { return 1.79284291400159 - 0.85373472095314 * r; }
+  float snoise(vec3 v) {
+    const vec2 C = vec2(1.0/6.0, 1.0/3.0);
+    const vec4 D = vec4(0.0, 0.5, 1.0, 2.0);
+    vec3 i = floor(v + dot(v, C.yyy));
+    vec3 x0 = v - i + dot(i, C.xxx);
+    vec3 g = step(x0.yzx, x0.xyz);
+    vec3 l = 1.0 - g;
+    vec3 i1 = min(g.xyz, l.zxy);
+    vec3 i2 = max(g.xyz, l.zxy);
+    vec3 x1 = x0 - i1 + C.xxx;
+    vec3 x2 = x0 - i2 + C.yyy;
+    vec3 x3 = x0 - D.yyy;
+    i = mod289(i);
+    vec4 p = permute(permute(permute(
+      i.z + vec4(0.0, i1.z, i2.z, 1.0))
+      + i.y + vec4(0.0, i1.y, i2.y, 1.0))
+      + i.x + vec4(0.0, i1.x, i2.x, 1.0));
+    float n_ = 0.142857142857;
+    vec3 ns = n_ * D.wyz - D.xzx;
+    vec4 j = p - 49.0 * floor(p * ns.z * ns.z);
+    vec4 x_ = floor(j * ns.z);
+    vec4 y_ = floor(j - 7.0 * x_);
+    vec4 x = x_ * ns.x + ns.yyyy;
+    vec4 y = y_ * ns.x + ns.yyyy;
+    vec4 h = 1.0 - abs(x) - abs(y);
+    vec4 b0 = vec4(x.xy, y.xy);
+    vec4 b1 = vec4(x.zw, y.zw);
+    vec4 s0 = floor(b0) * 2.0 + 1.0;
+    vec4 s1 = floor(b1) * 2.0 + 1.0;
+    vec4 sh = -step(h, vec4(0.0));
+    vec4 a0 = b0.xzyw + s0.xzyw * sh.xxyy;
+    vec4 a1 = b1.xzyw + s1.xzyw * sh.zzww;
+    vec3 p0 = vec3(a0.xy, h.x);
+    vec3 p1 = vec3(a0.zw, h.y);
+    vec3 p2 = vec3(a1.xy, h.z);
+    vec3 p3 = vec3(a1.zw, h.w);
+    vec4 norm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2,p2), dot(p3,p3)));
+    p0 *= norm.x; p1 *= norm.y; p2 *= norm.z; p3 *= norm.w;
+    vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);
+    m = m * m;
+    return 42.0 * dot(m * m, vec4(dot(p0,x0), dot(p1,x1), dot(p2,x2), dot(p3,x3)));
+  }
+`;
+
+// HSL helpers for hue shift
+const hslGLSL = `
+  vec3 rgb2hsl(vec3 c) {
+    float maxC = max(max(c.r, c.g), c.b);
+    float minC = min(min(c.r, c.g), c.b);
+    float l = (maxC + minC) * 0.5;
+    float d = maxC - minC;
+    float h = 0.0, s = 0.0;
+    if (d > 0.0001) {
+      s = l < 0.5 ? d / (maxC + minC) : d / (2.0 - maxC - minC);
+      if (maxC == c.r) h = (c.g - c.b) / d + (c.g < c.b ? 6.0 : 0.0);
+      else if (maxC == c.g) h = (c.b - c.r) / d + 2.0;
+      else h = (c.r - c.g) / d + 4.0;
+      h /= 6.0;
+    }
+    return vec3(h, s, l);
+  }
+  float hue2rgb(float p, float q, float t) {
+    if (t < 0.0) t += 1.0;
+    if (t > 1.0) t -= 1.0;
+    if (t < 1.0/6.0) return p + (q - p) * 6.0 * t;
+    if (t < 1.0/2.0) return q;
+    if (t < 2.0/3.0) return p + (q - p) * (2.0/3.0 - t) * 6.0;
+    return p;
+  }
+  vec3 hsl2rgb(vec3 c) {
+    float h = c.x, s = c.y, l = c.z;
+    if (s < 0.0001) return vec3(l);
+    float q = l < 0.5 ? l * (1.0 + s) : l + s - l * s;
+    float p = 2.0 * l - q;
+    return vec3(
+      hue2rgb(p, q, h + 1.0/3.0),
+      hue2rgb(p, q, h),
+      hue2rgb(p, q, h - 1.0/3.0)
+    );
+  }
+`;
+
+// ─────────────── Texture load ───────────────
+const texLoader = new THREE.TextureLoader();
+texLoader.crossOrigin = '';
+let loadedCount = 0;
+const READY_NEEDED = 2; // bg + video
+const onResourceReady = () => {
+  loadedCount++;
+  if (loadedCount >= READY_NEEDED) {
+    setTimeout(() => {
+      const ld = document.getElementById('loader');
+      if (ld) { ld.classList.add('done'); setTimeout(() => ld.remove(), 1100); }
+    }, 400);
+  }
+};
+
+// ─── Background image ───
+const bgTex = texLoader.load(BG_TEXTURE, onResourceReady, undefined, (e) => {
+  console.error('[Larik] bg failed:', e); onResourceReady();
+});
+bgTex.colorSpace = THREE.SRGBColorSpace;
+bgTex.minFilter = THREE.LinearFilter;
+bgTex.magFilter = THREE.LinearFilter;
+
+// ─── Video element + VideoTexture for the orb ───
+const video = document.createElement('video');
+video.muted = true;
+video.defaultMuted = true;
+video.loop = true;
+video.playsInline = true;
+video.autoplay = true;
+video.preload = 'auto';
+video.setAttribute('muted', '');
+video.setAttribute('playsinline', '');
+video.setAttribute('webkit-playsinline', '');
+video.setAttribute('autoplay', '');
+video.style.cssText = 'position:absolute; width:1px; height:1px; opacity:0; pointer-events:none; top:0; left:0;';
+document.body.appendChild(video);
+
+// Video loading strategy:
+//  • file://    → fetch() of a local file is BLOCKED by Chrome, and a direct
+//                 local <video src> can also fail (opaque file origin / non-ASCII
+//                 path). So decode the EMBEDDED base64 (_assets.js) into a Blob →
+//                 blob: URL. That's the same kind of object-URL the http path
+//                 makes, and blob: URLs play fine on file://.
+//  • http(s):// → fetch the file → Blob (no byte-range/206 needed, so it works on
+//                 python http.server as well as Netlify / Cloudflare).
+function dataURIToBlob(dataURI) {
+  const comma = dataURI.indexOf(',');
+  const mime = dataURI.slice(5, dataURI.indexOf(';')) || 'video/mp4';
+  const bin = atob(dataURI.slice(comma + 1));
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new Blob([bytes], { type: mime });
+}
+function loadVideoFromEmbedded() {
+  const data = window.LARIK_ASSETS && window.LARIK_ASSETS.video;
+  if (!data || data.indexOf('base64,') === -1) return false;
+  try {
+    video.src = URL.createObjectURL(dataURIToBlob(data));
+    video.load();
+    console.log('[Larik] video from embedded base64 → blob ✓');
+    return true;
+  } catch (e) {
+    console.warn('[Larik] embedded base64 decode failed:', e.message);
+    return false;
+  }
+}
+
+if (location.protocol === 'file:') {
+  console.log('[Larik] file:// detected — loading video from embedded base64');
+  if (!loadVideoFromEmbedded()) { video.src = VIDEO_SRC; video.load(); }
+} else {
+  fetch(VIDEO_SRC)
+    .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.blob(); })
+    .then(blob => {
+      video.src = URL.createObjectURL(blob);
+      video.load();
+      console.log('[Larik] video loaded as blob (' + (blob.size/1024/1024).toFixed(1) + ' MB)');
+    })
+    .catch(err => {
+      console.warn('[Larik] blob fetch failed, trying embedded base64:', err.message);
+      if (!loadVideoFromEmbedded()) { video.src = VIDEO_SRC; video.load(); }
+    });
+}
+
+let videoPlaying = false;
+
+function tryPlay() {
+  video.playbackRate = 0.5; // slow, gentle floating — new HD source has smoother motion
+  const p = video.play();
+  if (p !== undefined) {
+    p.then(() => {
+      videoPlaying = true;
+      console.log('[Larik] video playing ✓ (0.35× speed)');
+      const wake = document.getElementById('wake');
+      if (wake) wake.style.opacity = '0';
+    }).catch(err => {
+      console.warn('[Larik] autoplay blocked, waiting for user gesture:', err.message);
+      const wake = document.getElementById('wake');
+      if (wake) wake.style.opacity = '1';
+    });
+  }
+}
+
+video.addEventListener('loadeddata', () => {
+  console.log('[Larik] video loaded:', video.videoWidth + 'x' + video.videoHeight, '@', video.duration.toFixed(1) + 's');
+  onResourceReady();
+  tryPlay();
+});
+video.addEventListener('canplay', () => {
+  if (!videoPlaying) tryPlay();
+});
+video.addEventListener('playing', () => { videoPlaying = true; });
+video.addEventListener('error', (e) => {
+  console.error('[Larik] video load failed:', video.error);
+  onResourceReady();
+});
+
+// First user interaction kicks the video if autoplay was blocked
+const wakeOnInteract = () => {
+  if (!videoPlaying) tryPlay();
+};
+window.addEventListener('click', wakeOnInteract, { once: false });
+window.addEventListener('touchstart', wakeOnInteract, { once: false });
+window.addEventListener('keydown', wakeOnInteract, { once: false });
+
+const orbTex = new THREE.VideoTexture(video);
+orbTex.colorSpace = THREE.SRGBColorSpace;
+orbTex.minFilter = THREE.LinearFilter;
+orbTex.magFilter = THREE.LinearFilter;
+orbTex.format = THREE.RGBAFormat;
+orbTex.generateMipmaps = false;
+orbTex.wrapS = THREE.ClampToEdgeWrapping;
+orbTex.wrapT = THREE.ClampToEdgeWrapping;
+
+// Hard timeout
+setTimeout(() => {
+  const ld = document.getElementById('loader');
+  if (ld && !ld.classList.contains('done')) {
+    console.warn('[Larik] Load timeout — forcing scene');
+    ld.classList.add('done');
+    setTimeout(() => ld.remove(), 1100);
+  }
+}, 6000);
+
+// ─────────────── Background plane ───────────────
+const bgMat = new THREE.ShaderMaterial({
+  uniforms: {
+    uTex: { value: bgTex },
+    uTime: { value: 0 },
+    uMouse: { value: new THREE.Vector2(0, 0) },
+    uScroll: { value: 0 },
+    uAspect: { value: window.innerWidth / window.innerHeight },
+    uImgAspect: { value: 16/9 }, // tweak if your bg has a different ratio
+  },
+  vertexShader: `
+    varying vec2 vUv;
+    void main() {
+      vUv = uv;
+      gl_Position = vec4(position, 1.0);
+    }
+  `,
+  fragmentShader: `
+    uniform sampler2D uTex;
+    uniform float uTime;
+    uniform vec2 uMouse;
+    uniform float uScroll;
+    uniform float uAspect;
+    uniform float uImgAspect;
+    varying vec2 vUv;
+    ${noiseGLSL}
+
+    void main() {
+      vec2 uv = vUv;
+
+      // ── Cursor-driven warp (heat-shimmer / gravitational lensing in BG) ──
+      // The cursor warps the nebula around it — gentle radial distortion
+      // that fades with distance. Adds a sense of presence in space.
+      vec2 mPos = uMouse * 0.5 + 0.5;   // 0..1
+      vec2 toMouse = uv - mPos;
+      float dMouse = length(toMouse * vec2(uAspect, 1.0));
+      float warpStrength = exp(-dMouse * 5.0) * 0.06;
+      // Radial pull (toward cursor) + swirl (tangential)
+      vec2 dir = normalize(toMouse + 0.0001);
+      vec2 tangent = vec2(-dir.y, dir.x);
+      uv -= dir * warpStrength * 0.5;
+      uv += tangent * warpStrength * 0.25;
+
+      // Cover-fit
+      float scale = uAspect / uImgAspect;
+      if (scale > 1.0) {
+        uv.y = (uv.y - 0.5) / scale + 0.5;
+      } else {
+        uv.x = (uv.x - 0.5) * scale + 0.5;
+      }
+
+      // Parallax (gentle counter-cursor)
+      uv -= uMouse * 0.04;
+      // Idle breath
+      uv = (uv - 0.5) * (1.0 + sin(uTime * 0.05) * 0.01 - uScroll * 0.04) + 0.5;
+
+      vec3 col = texture2D(uTex, uv).rgb;
+
+      // Animated noise: faint shimmer that drifts
+      float n = snoise(vec3(uv * 3.0, uTime * 0.08));
+      col += vec3(0.03, 0.04, 0.05) * n;
+
+      // Brightness breathing
+      float breath = 0.95 + 0.08 * (snoise(vec3(uv * 1.5, uTime * 0.06)) * 0.5 + 0.5);
+      col *= breath;
+
+      // Cursor warmth pool — a faint extra glow exactly where the cursor is
+      float pool = exp(-dMouse * 4.0) * 0.16;
+      col += vec3(0.45, 0.55, 0.75) * pool;
+
+      // ── COLOR NARRATIVE — palette shifts subtly with scroll ──
+      // Section 0 (hero):       natural cosmic warmth (gold nebula + navy)
+      // Section 1 (premise):    slightly cooler, more thoughtful
+      // Section 2 (negation):   neutral, dimmer (focused reading)
+      // Section 3 (trust):      luminous, slight purple-blue (sacred)
+      // Section 4 (waitlist):   warmer amber bias (welcome)
+      float s = clamp(uScroll, 0.0, 1.4);
+      // Cool shift in middle (s ~0.4-0.8)
+      float coolMix = smoothstep(0.15, 0.55, s) * (1.0 - smoothstep(0.85, 1.25, s));
+      col = mix(col, col * vec3(0.78, 0.86, 1.05), coolMix * 0.45);
+      // Warm shift at bottom (waitlist)
+      float warmMix = smoothstep(0.95, 1.35, s);
+      col = mix(col, col * vec3(1.18, 1.02, 0.82), warmMix * 0.40);
+      // Slight dimming through middle (focus mode)
+      float dimMix = smoothstep(0.20, 0.50, s) * (1.0 - smoothstep(0.95, 1.30, s));
+      col *= 1.0 - dimMix * 0.18;
+
+      // Vignette (deepens slightly with scroll)
+      float vig = smoothstep(1.1, 0.3, length((uv - 0.5) * vec2(uAspect, 1.0)));
+      col *= 0.75 + vig * 0.25;
+      col *= 1.0 - s * 0.05;
+
+      gl_FragColor = vec4(col, 1.0);
+    }
+  `,
+  depthWrite: false,
+  depthTest: false,
+});
+const bgMesh = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), bgMat);
+bgMesh.renderOrder = -10;
+scene.add(bgMesh);
+
+// ─────────────── Near-stars parallax layer ───────────────
+// Bright pinprick stars in 3D space, drifting opposite to cursor for depth.
+// Two sublayers: "far" (small, dim, light parallax) + "near" (larger, brighter,
+// strong parallax) — gives the sky proper z-depth.
+const STAR_COUNT = 380;
+const starsGeo = new THREE.BufferGeometry();
+const starPos = new Float32Array(STAR_COUNT * 3);
+const starSize = new Float32Array(STAR_COUNT);
+const starSeed = new Float32Array(STAR_COUNT);
+const starDepth = new Float32Array(STAR_COUNT);
+
+for (let i = 0; i < STAR_COUNT; i++) {
+  // Spread stars wider — they need to shift visibly with the cursor
+  starPos[i*3]   = (Math.random() - 0.5) * 34;
+  starPos[i*3+1] = (Math.random() - 0.5) * 22;
+  // Depth: -8 (far) to -1 (near)
+  const depth = -1 - Math.random() * 7;
+  starPos[i*3+2] = depth;
+  starDepth[i] = depth;
+  // Near stars are bigger so the parallax is visible
+  const nearness = 1 - (Math.abs(depth) - 1) / 7; // 1 (near) → 0 (far)
+  starSize[i] = 1.0 + Math.random() * 1.8 + nearness * 3.5;
+  starSeed[i] = Math.random() * 100;
+}
+
+starsGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+starsGeo.setAttribute('size', new THREE.BufferAttribute(starSize, 1));
+starsGeo.setAttribute('seed', new THREE.BufferAttribute(starSeed, 1));
+
+const starsMat = new THREE.ShaderMaterial({
+  uniforms: {
+    uTime: { value: 0 },
+    uPixelRatio: { value: Math.min(window.devicePixelRatio, 2) },
+    uMouseWorld: { value: new THREE.Vector2(100, 100) }, // cursor in world space
+    uMouseStrength: { value: 0 },
+  },
+  vertexShader: `
+    uniform float uTime;
+    uniform float uPixelRatio;
+    uniform vec2 uMouseWorld;
+    uniform float uMouseStrength;
+    attribute float size;
+    attribute float seed;
+    varying float vTwinkle;
+    varying float vDepth;
+    varying float vLensed;
+    void main() {
+      vec3 pos = position;
+
+      // ── BLACK-HOLE GRAVITY WELL ──
+      // Visible but elegant lensing — stars bend toward the cursor across
+      // a wide radius (~10 world units). Near stars sweep dramatically,
+      // far stars drift gently. The whole field "breathes" toward you.
+      vec2 toCursor = uMouseWorld - pos.xy;
+      float dCursor = length(toCursor);
+      float depthN = clamp((-pos.z - 1.0) / 7.0, 0.0, 1.0);  // 0 (near) → 1 (far)
+      float nearness = 1.0 - depthN;                          // 1 near, 0 far
+
+      // Stronger pull: bigger numerator, smaller softening for sharper falloff
+      float wellStrength = 6.0 / (dCursor * dCursor + 1.2);
+      float pull = wellStrength * (0.6 + nearness * 2.0) * uMouseStrength;
+      pull = min(pull, 2.5);
+
+      vec2 displace = normalize(toCursor + 0.0001) * pull;
+      pos.xy += displace;
+
+      // Also a slight TANGENTIAL twist for orbital feel
+      vec2 tangent = vec2(-toCursor.y, toCursor.x) / max(dCursor, 0.1);
+      pos.xy += tangent * pull * 0.15 * nearness;
+
+      vLensed = clamp(pull / 1.5, 0.0, 1.0);
+
+      // Gentle idle drift
+      pos.x += sin(uTime * 0.05 + seed) * 0.05;
+      pos.y += cos(uTime * 0.04 + seed * 1.3) * 0.04;
+
+      // Twinkle (each star independent)
+      vTwinkle = 0.55 + 0.45 * sin(uTime * (0.7 + seed * 0.013) + seed * 4.0);
+
+      vDepth = pos.z;
+      vec4 mvPos = modelViewMatrix * vec4(pos, 1.0);
+      gl_Position = projectionMatrix * mvPos;
+      gl_PointSize = size * uPixelRatio * (2.2 / -mvPos.z) * (0.7 + vTwinkle * 0.6);
+    }
+  `,
+  fragmentShader: `
+    varying float vTwinkle;
+    varying float vDepth;
+    varying float vLensed;
+    void main() {
+      vec2 c = gl_PointCoord - 0.5;
+      float d = length(c);
+      if (d > 0.5) discard;
+      float core = smoothstep(0.5, 0.0, d);
+      float halo = smoothstep(0.5, 0.15, d) * 0.5;
+      float a = (core + halo) * vTwinkle;
+
+      float closeness = clamp((-vDepth - 1.0) / 7.0, 0.0, 1.0);
+      vec3 cool = vec3(0.85, 0.92, 1.0);
+      vec3 warm = vec3(1.0, 0.92, 0.78);
+      vec3 col = mix(warm, cool, closeness);
+
+      // Lensed stars get a slight blue-shift (relativistic feel)
+      col = mix(col, vec3(0.7, 0.85, 1.0), clamp(vLensed * 0.6, 0.0, 0.4));
+
+      gl_FragColor = vec4(col * 1.4, a);
+    }
+  `,
+  transparent: true,
+  depthWrite: false,
+  blending: THREE.AdditiveBlending,
+});
+
+const stars = new THREE.Points(starsGeo, starsMat);
+stars.renderOrder = -5;
+scene.add(stars);
+
+// ─────────────── Orb plane — video texture + chroma key + 3D lighting ──────
+// The orb is the user's actual Midjourney V8.1 morph video, played at full
+// 24fps with smooth crossfades between 3 different morphs. The shader
+// chroma-keys the bluish-gray BG to alpha, then applies fake-3D lighting
+// (lambert + specular + rim) and cursor-pull deformation on top.
+const orbMat = new THREE.ShaderMaterial({
+  uniforms: {
+    uTex: { value: orbTex },
+    uTime: { value: 0 },
+    uMouse: { value: new THREE.Vector2(0, 0) },
+    uMouseStrength: { value: 0 },
+    uPressed: { value: 0 },
+    uScroll: { value: 0 },
+    uHue: { value: 0 },
+    uBreath: { value: 1 },
+    uBgColor: { value: new THREE.Color(0.60, 0.66, 0.74) }, // sampled BG of videos
+    uReady: { value: 0 }, // 0 until video starts playing — orb is invisible until then
+  },
+  vertexShader: `
+    uniform float uTime;
+    uniform vec2 uMouse;
+    uniform float uMouseStrength;
+    uniform float uPressed;
+    uniform float uBreath;
+
+    varying vec2 vUv;
+    varying float vPull;
+    varying vec3 vWorldPos;
+
+    ${noiseGLSL}
+
+    void main() {
+      vec3 pos = position;
+
+      // Minimal vertex motion — only a very faint breathing scale.
+      // The source video already animates beautifully; we shouldn't add noise.
+
+      // Gentle cursor stretch (kept subtle so the shape stays clean)
+      vec2 centeredUv = uv - 0.5;
+      vec2 centeredMouse = uMouse - 0.5;
+      vec2 toMouse = centeredMouse - centeredUv;
+      float d = length(toMouse);
+      float pull = (1.0 - smoothstep(0.0, 0.55, d)) * uMouseStrength;
+
+      vec2 pullVec = normalize(toMouse + 0.001) * pull * 0.08;
+      pos.xy += pullVec;
+      pos.z += pull * uPressed * 0.25;
+
+      pos *= uBreath;
+
+      vUv = uv;  // do NOT shift UV — keeps the video texture sharp
+      vPull = pull;
+      vWorldPos = pos;
+
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
+    }
+  `,
+  fragmentShader: `
+    uniform sampler2D uTex;
+    uniform float uTime;
+    uniform float uHue;
+    uniform float uPressed;
+    uniform vec2 uMouse;
+    uniform vec3 uBgColor;
+    uniform float uReady;
+
+    varying vec2 vUv;
+    varying float vPull;
+    varying vec3 vWorldPos;
+
+    ${noiseGLSL}
+    ${hslGLSL}
+
+    // The video is 1:1, the orb fills ~80% of the frame.
+    // Center it inside the larger plane (which is 1.4× wider for cursor padding).
+    vec2 cellToVideo(vec2 uv) {
+      // Crop the plane to a centered 1:1 region, scale up so the orb fills more space.
+      vec2 c = (uv - 0.5) * 1.0 + 0.5;
+      return clamp(c, 0.0, 1.0);
+    }
+
+    void main() {
+      // Don't render anything until video is actually playing
+      if (uReady < 0.5) discard;
+
+      vec2 videoUv = cellToVideo(vUv);
+
+      vec2 d2 = vUv - 0.5;
+      if (abs(d2.x) > 0.5 || abs(d2.y) > 0.5) discard;
+
+      // ── Clean video sample — no UV warp, no shader noise ──
+      // The source video already has perfect liquid-glass rendering.
+      // We just trust it and pass it through.
+      vec4 col = texture2D(uTex, clamp(videoUv, 0.001, 0.999));
+
+      // Chroma key against pure black BG (luminance + saturation, soft edges)
+      float lum = dot(col.rgb, vec3(0.299, 0.587, 0.114));
+      float sat = max(col.r, max(col.g, col.b)) - min(col.r, min(col.g, col.b));
+      float alpha = max(smoothstep(0.005, 0.15, lum), smoothstep(0.005, 0.10, sat));
+      alpha = smoothstep(0.0, 0.85, alpha);
+
+      if (alpha < 0.02) discard;
+
+      // ── Minimal color enrichment ──
+      // The video already has rich color. Just a tiny saturation lift to
+      // make it pop against the warm nebula bg.
+      vec3 hsl = rgb2hsl(col.rgb);
+      hsl.y = clamp(hsl.y * 1.10, 0.0, 1.0);   // gentle saturation
+      hsl.z = clamp(hsl.z * 1.02, 0.0, 1.0);   // tiny brightness
+      vec3 lit = hsl2rgb(hsl);
+
+      // Cursor pull adds a warm glow (no shape distortion in shader — just light)
+      lit += vec3(0.5, 0.6, 0.85) * vPull * 0.35;
+
+      // Hold-press: subtle bloom
+      lit = mix(lit, lit * 1.15 + vec3(0.06, 0.04, 0.02), uPressed * 0.4);
+
+      gl_FragColor = vec4(lit, alpha);
+    }
+  `,
+  transparent: true,
+  depthWrite: false,
+  depthTest: false,
+});
+
+// Compact plane — fits between top of screen and headline text
+const orbGeo = new THREE.PlaneGeometry(2.0, 2.0, 140, 140);
+const orb = new THREE.Mesh(orbGeo, orbMat);
+const ORB_Y = 0.55;
+orb.position.y = ORB_Y;
+scene.add(orb);
+
+// ─────────────── Halo glow plane behind orb ───────────────
+const haloMat = new THREE.ShaderMaterial({
+  uniforms: {
+    uTime: { value: 0 },
+    uMouseStrength: { value: 0 },
+    uPressed: { value: 0 },
+    uColor: { value: new THREE.Color(0x5B7C99) },
+  },
+  vertexShader: `
+    varying vec2 vUv;
+    void main() {
+      vUv = uv;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }
+  `,
+  fragmentShader: `
+    uniform float uTime;
+    uniform float uMouseStrength;
+    uniform float uPressed;
+    uniform vec3 uColor;
+    varying vec2 vUv;
+    ${noiseGLSL}
+    void main() {
+      vec2 p = vUv - 0.5;
+      float r = length(p);
+      float n = snoise(vec3(p * 3.0, uTime * 0.13));
+      float halo = smoothstep(0.5, 0.15, r) * (0.5 + 0.5 * n);
+      halo *= 0.55 + uMouseStrength * 0.25 + uPressed * 0.4;
+      vec3 col = uColor + vec3(0.08, 0.05, 0.0) * n;
+      gl_FragColor = vec4(col, halo * 0.65);
+    }
+  `,
+  transparent: true,
+  depthWrite: false,
+  blending: THREE.AdditiveBlending,
+});
+const halo = new THREE.Mesh(new THREE.PlaneGeometry(4.5, 4.5), haloMat);
+halo.position.set(0, ORB_Y, -0.2);
+scene.add(halo);
+
+// ─────────────── Particles ───────────────
+const PARTICLE_COUNT = 180;
+const pGeo = new THREE.BufferGeometry();
+const pPositions = new Float32Array(PARTICLE_COUNT * 3);
+const pSeeds = new Float32Array(PARTICLE_COUNT);
+const pSizes = new Float32Array(PARTICLE_COUNT);
+
+for (let i = 0; i < PARTICLE_COUNT; i++) {
+  const r = 1.6 + Math.random() * 3.2;
+  const theta = Math.random() * Math.PI * 2;
+  pPositions[i*3]   = Math.cos(theta) * r;
+  pPositions[i*3+1] = ORB_Y + Math.sin(theta) * r * 0.7;
+  pPositions[i*3+2] = (Math.random() - 0.5) * 1.2;
+  pSeeds[i] = Math.random() * 100;
+  pSizes[i] = 1.5 + Math.random() * 4.5;
+}
+pGeo.setAttribute('position', new THREE.BufferAttribute(pPositions, 3));
+pGeo.setAttribute('seed', new THREE.BufferAttribute(pSeeds, 1));
+pGeo.setAttribute('size', new THREE.BufferAttribute(pSizes, 1));
+
+const pMat = new THREE.ShaderMaterial({
+  uniforms: {
+    uTime: { value: 0 },
+    uPixelRatio: { value: Math.min(window.devicePixelRatio, 2) },
+    uMouse: { value: new THREE.Vector3(100, 100, 0) },
+    uMouseStrength: { value: 0 },
+  },
+  vertexShader: `
+    uniform float uTime;
+    uniform float uPixelRatio;
+    uniform vec3 uMouse;
+    uniform float uMouseStrength;
+
+    attribute float seed;
+    attribute float size;
+
+    varying float vAlpha;
+    varying vec3 vCol;
+
+    ${noiseGLSL}
+
+    void main() {
+      vec3 pos = position;
+      float t = uTime + seed * 10.0;
+
+      // Each particle drifts on its own irrational pattern
+      pos.x += snoise(vec3(seed, 0.0, t * 0.07)) * 0.4;
+      pos.y += snoise(vec3(0.0, seed, t * 0.05)) * 0.3;
+      pos.z += snoise(vec3(seed * 0.3, seed * 0.7, t * 0.04)) * 0.2;
+
+      // Repel from cursor
+      vec3 dM = pos - uMouse;
+      float dLen = length(dM);
+      if (dLen < 2.0) {
+        pos += normalize(dM) * (2.0 - dLen) * 0.18 * uMouseStrength;
+      }
+
+      // Lifetime alpha — each particle has its own period (random seed)
+      float life = sin(t * 0.21 + seed * 4.0) * 0.5 + 0.5;
+      vAlpha = life * 0.65;
+
+      // Color: amber → cream → signal-blue mix
+      float colN = snoise(vec3(seed, t * 0.04, 0.0)) * 0.5 + 0.5;
+      vCol = mix(vec3(0.79, 0.65, 0.42), vec3(0.95, 0.92, 0.86), colN);
+      vCol = mix(vCol, vec3(0.36, 0.49, 0.60), 0.3);
+
+      vec4 mvPos = modelViewMatrix * vec4(pos, 1.0);
+      gl_Position = projectionMatrix * mvPos;
+      gl_PointSize = size * uPixelRatio * (1.5 / -mvPos.z) * (0.7 + life * 0.6);
+    }
+  `,
+  fragmentShader: `
+    varying float vAlpha;
+    varying vec3 vCol;
+    void main() {
+      vec2 c = gl_PointCoord - 0.5;
+      float d = length(c);
+      if (d > 0.5) discard;
+      float a = smoothstep(0.5, 0.0, d) * vAlpha;
+      gl_FragColor = vec4(vCol, a);
+    }
+  `,
+  transparent: true,
+  depthWrite: false,
+  blending: THREE.AdditiveBlending,
+});
+
+const particles = new THREE.Points(pGeo, pMat);
+scene.add(particles);
+
+// ─────────────── Mouse + scroll ───────────────
+const mouse = {
+  x: 0, y: 0,            // pixel
+  ndcX: 0, ndcY: 0,      // normalized [-1, 1]
+  worldX: 100, worldY: 100, worldZ: 0,
+  active: false,
+  pressed: 0,
+  ptarget: 0,
+  strength: 0,
+};
+const scroll = { y: 0, ty: 0 };
+
+const cursor = document.getElementById('cursor');
+const cursorLabel = document.getElementById('cursorLabel');
+
+// Cursor trail dots
+const trailDots = [];
+for (let i = 0; i < 8; i++) {
+  const el = document.getElementById('trail' + i);
+  if (el) trailDots.push({ el, pos: { x: 0, y: 0 } });
+}
+
+// Constellation overlay canvas
+const constCanvas = document.getElementById('constellation');
+const cctx = constCanvas.getContext('2d');
+function resizeConst() {
+  const dpr = Math.min(window.devicePixelRatio, 2);
+  constCanvas.width = Math.floor(window.innerWidth * dpr);
+  constCanvas.height = Math.floor(window.innerHeight * dpr);
+  constCanvas.style.width = window.innerWidth + 'px';
+  constCanvas.style.height = window.innerHeight + 'px';
+  cctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+resizeConst();
+window.addEventListener('resize', resizeConst);
+const _projTmp = new THREE.Vector3();
+
+// ─── Section progress indicator ───
+// Watches each section via IntersectionObserver; highlights the dot whose
+// section is most prominently in view.
+const progressDots = document.querySelectorAll('.progress-rail .dot');
+const sectionTargets = [
+  { id: 'hero', el: document.querySelector('.chrome') },
+  { id: 'premise', el: document.getElementById('premise') },
+  { id: 'negation', el: document.getElementById('negation') },
+  { id: 'trust', el: document.getElementById('trust') },
+  { id: 'waitlist', el: document.getElementById('waitlist') }
+];
+function setActiveDot(id) {
+  progressDots.forEach(d => {
+    d.classList.toggle('active', d.dataset.section === id);
+  });
+}
+const progressObserver = new IntersectionObserver((entries) => {
+  // Find the section with most visibility
+  let bestRatio = 0, bestId = null;
+  entries.forEach(e => {
+    if (e.intersectionRatio > bestRatio) {
+      bestRatio = e.intersectionRatio;
+      bestId = e.target.dataset.progressId || e.target.id;
+    }
+  });
+  if (bestId) setActiveDot(bestId);
+}, { threshold: [0.2, 0.4, 0.6, 0.8] });
+
+sectionTargets.forEach(t => {
+  if (t.el) {
+    t.el.dataset.progressId = t.id;
+    progressObserver.observe(t.el);
+  }
+});
+
+// ─── Hold-to-reveal whisper ───
+const whisper = document.getElementById('whisper');
+let holdTimer = null;
+const HOLD_MS = 1600;
+function clearWhisper() {
+  if (holdTimer) { clearTimeout(holdTimer); holdTimer = null; }
+  whisper.classList.remove('show');
+}
+window.addEventListener('mousedown', () => {
+  if (holdTimer) clearTimeout(holdTimer);
+  holdTimer = setTimeout(() => {
+    whisper.classList.add('show');
+  }, HOLD_MS);
+});
+window.addEventListener('mouseup', clearWhisper);
+window.addEventListener('mouseleave', clearWhisper);
+
+window.addEventListener('mousemove', (e) => {
+  mouse.x = e.clientX;
+  mouse.y = e.clientY;
+  mouse.ndcX = (e.clientX / window.innerWidth) * 2 - 1;
+  mouse.ndcY = -(e.clientY / window.innerHeight) * 2 + 1;
+  mouse.active = true;
+  cursor.style.transform = `translate(${e.clientX}px, ${e.clientY}px) translate(-50%, -50%)`;
+  cursorLabel.style.transform = `translate(${e.clientX + 28}px, ${e.clientY + 14}px)`;
+});
+window.addEventListener('mouseleave', () => { mouse.active = false; });
+window.addEventListener('mousedown', () => { mouse.ptarget = 1; });
+window.addEventListener('mouseup', () => { mouse.ptarget = 0; });
+// Page scrolls naturally (browser default). We track window.scrollY for
+// subtle WebGL effects (background parallax, camera dolly, etc.).
+function updateScrollFromPage() {
+  const vh = Math.max(1, window.innerHeight);
+  // Map scrollY → a smooth 0..1.4 range for shader effects
+  scroll.ty = Math.min(1.4, window.scrollY / vh * 0.35);
+}
+window.addEventListener('scroll', updateScrollFromPage, { passive: true });
+updateScrollFromPage();
+
+// Hover state on text and interactive elements (enlarges the custom cursor)
+document.querySelectorAll(
+  'h1, .wordmark, .sub, .premise-line, .neg-no, .neg-yes, ' +
+  '.trust-title, .trust-item h3, .trust-item p, ' +
+  '.waitlist h2, .waitlist .lead, .waitlist-form, ' +
+  '.foot-links a, .site-footer .meta'
+).forEach(el => {
+  el.addEventListener('mouseenter', () => cursor.classList.add('over'));
+  el.addEventListener('mouseleave', () => cursor.classList.remove('over'));
+});
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  bgMat.uniforms.uAspect.value = window.innerWidth / window.innerHeight;
+});
+
+// ─────────────── Raycaster to project mouse onto orb plane ───────────────
+const raycaster = new THREE.Raycaster();
+const planeZ0 = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
+const worldHit = new THREE.Vector3();
+
+function updateMouseWorld() {
+  if (!mouse.active) {
+    mouse.worldX = 100;
+    mouse.worldY = 100;
+    return;
+  }
+  raycaster.setFromCamera(new THREE.Vector2(mouse.ndcX, mouse.ndcY), camera);
+  raycaster.ray.intersectPlane(planeZ0, worldHit);
+  mouse.worldX = worldHit.x;
+  mouse.worldY = worldHit.y;
+}
+
+// ─────────────── Magnetic letters (cursor pull on each glyph) ───────────────
+const letterNodes = [];
+
+function wrapHeadlineLetters() {
+  const h1 = document.getElementById('headline');
+  if (!h1) return;
+  const words = h1.querySelectorAll('.w');
+  words.forEach(word => {
+    // Some words contain <em>, preserve them
+    const inner = word.firstElementChild && word.firstElementChild.tagName === 'EM'
+      ? word.firstElementChild
+      : word;
+    const text = inner.textContent;
+    inner.textContent = '';
+    [...text].forEach(ch => {
+      const span = document.createElement('span');
+      span.className = 'letter';
+      span.textContent = ch === ' ' ? ' ' : ch;
+      inner.appendChild(span);
+    });
+  });
+}
+wrapHeadlineLetters();
+
+// ─── Hero mask-reveal entrance: stagger every letter ───
+(function staggerHero() {
+  const h1 = document.getElementById('headline');
+  if (!h1) return;
+  const letters = h1.querySelectorAll('.letter');
+  letters.forEach((el, i) => {
+    el.style.transitionDelay = (0.6 + i * 0.022).toFixed(3) + 's';
+  });
+  // Trigger after a beat to let fonts settle
+  setTimeout(() => h1.classList.add('entered'), 250);
+})();
+
+// Wrap subtitle letters too — each word kept non-breaking
+// Generic letter-wrapper: takes any element and replaces its text with
+// per-letter spans (each glyph becomes a spring node). Preserves spaces
+// as non-breaking word groups. Supports <em> children.
+function wrapElementLetters(el, wordClass, letterClass) {
+  if (!el) return;
+  // If element has children, recurse into them text-by-text. Simple version:
+  // collect all text nodes, then replace each with wrapped spans.
+  const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null);
+  const textNodes = [];
+  let n;
+  while ((n = walker.nextNode())) textNodes.push(n);
+
+  textNodes.forEach(textNode => {
+    const text = textNode.nodeValue;
+    if (!text || !text.trim()) return;
+    const frag = document.createDocumentFragment();
+    const words = text.split(' ');
+    words.forEach((word, wIdx) => {
+      if (word.length > 0) {
+        const wSpan = document.createElement('span');
+        wSpan.className = wordClass;
+        [...word].forEach(ch => {
+          const lSpan = document.createElement('span');
+          lSpan.className = letterClass;
+          lSpan.textContent = ch;
+          wSpan.appendChild(lSpan);
+        });
+        frag.appendChild(wSpan);
+      }
+      if (wIdx < words.length - 1) frag.appendChild(document.createTextNode(' '));
+    });
+    textNode.parentNode.replaceChild(frag, textNode);
+  });
+}
+
+// Subtitle (hero)
+wrapElementLetters(document.getElementById('sub'), 'sub-word', 'letter sub-letter');
+
+// All story-section paragraphs/headers
+document.querySelectorAll(
+  '#premise .premise-line, ' +
+  '#negation .neg-no, #negation .neg-yes, #negation .kicker, ' +
+  '#premise .kicker, ' +
+  '#trust .trust-title, #trust .trust-item h3, #trust .trust-item p, ' +
+  '#waitlist h2, #waitlist .lead, #waitlist .fineprint, ' +
+  '.site-footer .meta'
+).forEach(el => {
+  wrapElementLetters(el, 'sub-word', 'letter sub-letter');
+});
+
+// ─────────────────────────────────────────────────────────────────────────
+//  LetterField — standalone black-hole gravity well for EVERY on-screen glyph
+// ─────────────────────────────────────────────────────────────────────────
+// Fully self-contained: own RAF loop, own mouse tracking, per-node physics
+// state. Decoupled from the WebGL animate loop so it can never go stale or be
+// stalled by a WebGL hiccup. Every `.letter` span is a spring node: when the
+// cursor passes near, glyphs are pulled toward it + swirled, then spring back
+// to their exact rest position when the cursor leaves.
+const LetterField = (function () {
+  let nodes = [];                       // [{ el, hx, hy, ox, oy, vx, vy }]
+  const m = { x: -99999, y: -99999, active: false };
+  const RANGE = 340;                    // px radius of influence
+  const MAXPULL = 96;                   // px max displacement
+  const SWIRL = 0.30;                   // tangential orbital factor
+
+  // (Re)build the node list from the LIVE DOM, preserving any in-flight
+  // physics state for elements that already existed.
+  function refresh() {
+    const els = document.querySelectorAll('.letter');
+    const prev = new Map(nodes.map(n => [n.el, n]));
+    nodes = [];
+    els.forEach(el => {
+      const old = prev.get(el);
+      // Kill any CSS transition so per-frame physics applies INSTANTLY.
+      // (The hero entrance leaves a `transition: transform 1s` on headline
+      // glyphs, which otherwise smears/eats the spring motion.)
+      el.style.transition = 'none';
+      const r = el.getBoundingClientRect();
+      const ox = old ? old.ox : 0, oy = old ? old.oy : 0;
+      nodes.push({
+        el,
+        hx: r.left + r.width / 2 - ox,   // home = rendered center − applied offset
+        hy: r.top + r.height / 2 - oy,
+        ox, oy,
+        vx: old ? old.vx : 0,
+        vy: old ? old.vy : 0,
+      });
+    });
+  }
+
+  // Recompute rest positions only (after scroll / layout shift). Drift-proof:
+  // home = current rendered center − currently-applied offset.
+  function rehome() {
+    for (const n of nodes) {
+      const r = n.el.getBoundingClientRect();
+      n.hx = r.left + r.width / 2 - n.ox;
+      n.hy = r.top + r.height / 2 - n.oy;
+    }
+  }
+
+  window.addEventListener('mousemove', (e) => {
+    m.x = e.clientX; m.y = e.clientY; m.active = true;
+  }, { passive: true });
+  window.addEventListener('mouseleave', () => { m.active = false; });
+  window.addEventListener('blur', () => { m.active = false; });
+
+  // NOTE: Lenis smooth-scroll updates scrollY WITHOUT firing native 'scroll'
+  // events, so a scroll listener never runs. Instead we re-home inside the RAF
+  // loop: continuously while the scroll position is changing (covers Lenis'
+  // eased scroll + reveal animations), plus a low-frequency safety net so homes
+  // stay correct after reveals/reflow even with no scrolling at all.
+  window.addEventListener('resize', () => setTimeout(refresh, 150));
+
+  let frame = 0, lastScroll = -1, rehomeUntil = 0;
+  function loop(now) {
+    now = now || 0;
+    const sy = window.scrollY || document.documentElement.scrollTop || 0;
+    if (sy !== lastScroll) { lastScroll = sy; rehomeUntil = now + 700; }
+    // Self-heal node list if the glyph count ever changes (late-wrapped text).
+    if ((frame & 63) === 0 && nodes.length !== document.querySelectorAll('.letter').length) refresh();
+    // Re-home every frame during/just-after scroll; otherwise ~4x/sec.
+    if (now < rehomeUntil || (frame & 15) === 0) rehome();
+    frame++;
+
+    const active = m.active;
+    for (const n of nodes) {
+      let tox = 0, toy = 0;
+      if (active) {
+        const dx = m.x - n.hx, dy = m.y - n.hy;
+        const d = Math.sqrt(dx * dx + dy * dy);
+        if (d < RANGE) {
+          const pull = Math.min(MAXPULL, 140000 / (d * d + 1500));
+          const ux = dx / (d || 1), uy = dy / (d || 1);
+          tox = ux * pull - uy * pull * SWIRL;   // radial pull + tangential swirl
+          toy = uy * pull + ux * pull * SWIRL;
+        }
+      }
+      // Spring toward target (back to 0 when cursor far / inactive)
+      n.vx = (n.vx + (tox - n.ox) * 0.16) * 0.80;
+      n.vy = (n.vy + (toy - n.oy) * 0.16) * 0.80;
+      n.ox += n.vx; n.oy += n.vy;
+      if (Math.abs(n.ox) < 0.04 && Math.abs(n.vx) < 0.04) { n.ox = 0; n.vx = 0; }
+      if (Math.abs(n.oy) < 0.04 && Math.abs(n.vy) < 0.04) { n.oy = 0; n.vy = 0; }
+      n.el.style.transform = `translate(${n.ox.toFixed(2)}px,${n.oy.toFixed(2)}px)`;
+    }
+    requestAnimationFrame(loop);
+  }
+
+  function start() { refresh(); rehome(); requestAnimationFrame(loop); }
+  // Start AFTER the hero entrance finishes (~2.2s) so the slide-up plays first,
+  // THEN physics takes over with transitions disabled for snappy motion.
+  const START_DELAY = 2400;
+  if (document.readyState === 'complete') setTimeout(start, START_DELAY);
+  else window.addEventListener('load', () => setTimeout(start, START_DELAY));
+  // Late re-home passes as fonts/images settle (physics already live).
+  setTimeout(rehome, START_DELAY + 1200);
+  setTimeout(rehome, START_DELAY + 3000);
+
+  return { refresh, rehome };
+})();
+
+// Scroll-reveal: fade in elements as they enter the viewport
+const revealObserver = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.classList.add('in');
+      revealObserver.unobserve(entry.target);
+    }
+  });
+}, { threshold: 0.15, rootMargin: '0px 0px -80px 0px' });
+document.querySelectorAll('.reveal').forEach(el => revealObserver.observe(el));
+
+// ─────────────── Animate ───────────────
+const clock = new THREE.Clock();
+
+function animate() {
+  const t = clock.getElapsedTime();
+
+  updateMouseWorld();
+  mouse.pressed += (mouse.ptarget - mouse.pressed) * 0.15;
+  const targetStr = mouse.active ? 1 : 0;
+  mouse.strength += (targetStr - mouse.strength) * 0.06;
+  scroll.y += (scroll.ty - scroll.y) * 0.06;
+
+  // ── Mouse in orb-local UV space (plane is 2.0 units, centered at orb.position) ──
+  const orbHalfSize = 1.0;
+  const localMx = (mouse.worldX - orb.position.x) / (orbHalfSize * 2) + 0.5;
+  const localMy = (mouse.worldY - orb.position.y) / (orbHalfSize * 2) + 0.5;
+
+  // ── Breathing — uses noise, not sin, so it never exactly repeats ──
+  // Period ≈ 6.2s but the value sequence is unique
+  const breath = 1 + (Math.sin(t * 1.012) * 0.5 + 0.5) * 0.04 - 0.02;
+
+  // ── Hue accumulates from a noise-derived rate ──
+  // — slow continuous shift, sometimes faster, sometimes slower
+  const hueRate = 0.035 + (Math.sin(t * 0.041) * 0.5 + 0.5) * 0.04;
+  orbMat.uniforms.uHue.value += hueRate * 0.016;
+
+  // ── Update orb uniforms ──
+  orbMat.uniforms.uTime.value = t;
+  orbMat.uniforms.uMouse.value.set(localMx, localMy);
+  orbMat.uniforms.uMouseStrength.value = mouse.strength;
+  orbMat.uniforms.uPressed.value = mouse.pressed;
+  orbMat.uniforms.uScroll.value = scroll.y;
+  orbMat.uniforms.uBreath.value = breath * (orb.userData.mobileScale ?? 1);
+  orbMat.uniforms.uReady.value = (videoPlaying && video.readyState >= 2 && video.currentTime > 0) ? 1.0 : 0.0;
+
+  haloMat.uniforms.uTime.value = t;
+  haloMat.uniforms.uMouseStrength.value = mouse.strength;
+  haloMat.uniforms.uPressed.value = mouse.pressed;
+
+  bgMat.uniforms.uTime.value = t;
+  bgMat.uniforms.uMouse.value.set(mouse.ndcX, mouse.ndcY);
+  bgMat.uniforms.uScroll.value = scroll.y;
+
+  pMat.uniforms.uTime.value = t;
+  pMat.uniforms.uMouse.value.set(mouse.worldX, mouse.worldY, 0);
+  pMat.uniforms.uMouseStrength.value = mouse.strength;
+
+  starsMat.uniforms.uTime.value = t;
+  starsMat.uniforms.uMouseWorld.value.set(mouse.worldX, mouse.worldY);
+  starsMat.uniforms.uMouseStrength.value = mouse.strength;
+
+  // Subtle "attention" — orb tilts toward cursor (like a face turning)
+  orb.rotation.y += ((mouse.ndcX * 0.22) - orb.rotation.y) * 0.04;
+  orb.rotation.x += ((-mouse.ndcY * 0.16) - orb.rotation.x) * 0.04;
+  // Keep orb LOCKED at ORB_Y regardless of scroll (no offset)
+  orb.position.y = ORB_Y;
+  halo.position.y = ORB_Y;
+  // Scale halo down on mobile too (matches orb's smaller scale)
+  halo.scale.setScalar(orb.userData.mobileScale ?? 1);
+
+  // Camera dolly with scroll (touch devices already start further out at 5.8)
+  const camBase = isTouchDevice ? 5.8 : 5;
+  camera.position.z = camBase - scroll.y * 0.4;
+
+  // Particle field rotates slowly opposite to mouse — gives depth
+  particles.rotation.z = t * 0.015;
+  particles.rotation.y = mouse.ndcX * 0.15;
+  particles.rotation.x = -mouse.ndcY * 0.1;
+  particles.position.y = (orb.position.y - ORB_Y);
+
+  // NOTE: letter black-hole physics now runs in its own standalone RAF loop
+  // (see LetterField module below) — fully decoupled from the WebGL animate
+  // loop so it can never go stale or be blocked by a WebGL hiccup.
+
+  // Cursor label
+  if (mouse.active) cursorLabel.classList.add('show');
+  else cursorLabel.classList.remove('show');
+
+  // ── Cursor trail — 8 dots that follow with cascading delay ──
+  // Each dot tracks the previous one with a spring, creating a comet tail.
+  trailDots.forEach((td, idx) => {
+    const target = idx === 0
+      ? { x: mouse.x, y: mouse.y }
+      : trailDots[idx - 1].pos;
+    td.pos.x += (target.x - td.pos.x) * (0.42 - idx * 0.04);
+    td.pos.y += (target.y - td.pos.y) * (0.42 - idx * 0.04);
+    const o = mouse.active ? Math.max(0, 0.55 - idx * 0.07) : 0;
+    const s = 1 - idx * 0.08;
+    td.el.style.transform = `translate(${td.pos.x.toFixed(2)}px, ${td.pos.y.toFixed(2)}px) translate(-50%, -50%) scale(${s})`;
+    td.el.style.opacity = o.toFixed(2);
+  });
+
+  // ── Constellation lines: cursor ↔ nearby star pinpricks ──
+  cctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+  if (mouse.active && mouse.strength > 0.25) {
+    const posArr = starsGeo.attributes.position.array;
+    const matches = [];
+    const RADIUS = 220;
+    for (let i = 0; i < STAR_COUNT; i++) {
+      _projTmp.set(posArr[i*3], posArr[i*3+1], posArr[i*3+2]);
+      _projTmp.project(camera);
+      if (_projTmp.z >= 1) continue;
+      const sx = (_projTmp.x * 0.5 + 0.5) * window.innerWidth;
+      const sy = (-_projTmp.y * 0.5 + 0.5) * window.innerHeight;
+      const dx = sx - mouse.x, dy = sy - mouse.y;
+      const d = Math.sqrt(dx*dx + dy*dy);
+      if (d < RADIUS) matches.push({ x: sx, y: sy, d });
+    }
+    matches.sort((a, b) => a.d - b.d);
+    const top = matches.slice(0, 10);
+    cctx.lineWidth = 0.6;
+    for (const m of top) {
+      const a = (1 - m.d / RADIUS) * 0.45 * mouse.strength;
+      cctx.strokeStyle = `rgba(141, 166, 189, ${a.toFixed(3)})`;
+      cctx.beginPath();
+      cctx.moveTo(mouse.x, mouse.y);
+      cctx.lineTo(m.x, m.y);
+      cctx.stroke();
+      // Small dot at the star tip
+      cctx.fillStyle = `rgba(180, 200, 220, ${(a * 1.6).toFixed(3)})`;
+      cctx.beginPath();
+      cctx.arc(m.x, m.y, 1.2, 0, Math.PI * 2);
+      cctx.fill();
+    }
+  }
+
+  renderer.render(scene, camera);
+  requestAnimationFrame(animate);
+}
+// NOTE: animate() is called at the very end, after isTouchDevice + all setup.
+
+// ────────── MOBILE / TOUCH LAYER ──────────
+// Detect touch capability up-front (matches researcher recommendations)
+const isTouchDevice = (
+  ('ontouchstart' in window) ||
+  (navigator.maxTouchPoints > 0) ||
+  window.matchMedia('(pointer: coarse)').matches
+);
+
+if (isTouchDevice) {
+  document.body.classList.add('touch');
+  // Mobile pixel-ratio cap (researcher: cap at 1.5 for fps)
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+  // Slow down the orb video a hair more — feels intentional on touch
+  if (video) { try { video.playbackRate = 0.45; } catch(e){} }
+  // Mobile orb scale + position — fit narrow viewports
+  orb.userData.mobileScale = 0.62;
+  // Pull camera back slightly so orb sits centered with breathing room
+  camera.position.z = 5.8;
+} else {
+  orb.userData.mobileScale = 1.0;
+}
+
+// Adapt to viewport changes (e.g. rotation between portrait/landscape)
+function applyResponsiveScale() {
+  const w = window.innerWidth;
+  if (isTouchDevice) {
+    orb.userData.mobileScale = w < 480 ? 0.58 : (w < 720 ? 0.7 : 0.9);
+  }
+}
+applyResponsiveScale();
+window.addEventListener('resize', applyResponsiveScale);
+
+// Haptic helper — fires a Taptic pulse on supported iOS / vibration elsewhere
+function haptic(pattern = 'tap') {
+  // Try Vibration API first (Android, some desktops)
+  if ('vibrate' in navigator) {
+    if (pattern === 'tap') navigator.vibrate(8);
+    else if (pattern === 'success') navigator.vibrate([8, 20, 8]);
+    else if (pattern === 'soft') navigator.vibrate(4);
+  }
+  // iOS Safari Taptic via switch element (research-recommended hack)
+  const sw = document.getElementById('hapticSwitch');
+  if (sw) {
+    sw.checked = !sw.checked;
+    sw.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+}
+
+// Touch ripple — a single fading circle at each tap
+function spawnRipple(x, y) {
+  const r = document.createElement('div');
+  r.className = 'touch-ripple start';
+  r.style.left = x + 'px';
+  r.style.top = y + 'px';
+  document.body.appendChild(r);
+  requestAnimationFrame(() => r.classList.add('fire'));
+  setTimeout(() => r.remove(), 750);
+}
+
+if (isTouchDevice) {
+  document.addEventListener('touchstart', (e) => {
+    const t = e.touches[0];
+    if (!t) return;
+    spawnRipple(t.clientX, t.clientY);
+    haptic('soft');
+  }, { passive: true });
+
+  // Bottom-nav wiring
+  const navDots = document.querySelectorAll('.bottom-nav .nav-dot');
+  const navMap = {
+    hero: () => 0,
+    premise: () => document.getElementById('premise')?.offsetTop ?? 0,
+    negation: () => document.getElementById('negation')?.offsetTop ?? 0,
+    trust: () => document.getElementById('trust')?.offsetTop ?? 0,
+  };
+  navDots.forEach(d => {
+    d.addEventListener('click', () => {
+      const s = d.dataset.section;
+      const y = navMap[s] ? navMap[s]() : 0;
+      window.scrollTo({ top: y - 20, behavior: 'smooth' });
+      haptic('tap');
+    });
+  });
+  const navJoin = document.getElementById('navJoin');
+  navJoin?.addEventListener('click', () => {
+    const wl = document.getElementById('waitlist');
+    if (wl) window.scrollTo({ top: wl.offsetTop - 20, behavior: 'smooth' });
+    haptic('tap');
+  });
+
+  // Sync bottom-nav dot with sections (lightweight observer)
+  const navObs = new IntersectionObserver((entries) => {
+    let best = null, bestRatio = 0;
+    entries.forEach(e => {
+      if (e.intersectionRatio > bestRatio) {
+        bestRatio = e.intersectionRatio;
+        best = e.target.dataset.progressId || 'hero';
+      }
+    });
+    if (!best) return;
+    navDots.forEach(d => d.classList.toggle('active', d.dataset.section === best));
+  }, { threshold: [0.3, 0.6] });
+  ['premise', 'negation', 'trust'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) navObs.observe(el);
+  });
+  // Hero gets active when scrolled to top
+  window.addEventListener('scroll', () => {
+    if (window.scrollY < window.innerHeight * 0.4) {
+      navDots.forEach(d => d.classList.toggle('active', d.dataset.section === 'hero'));
+    }
+  }, { passive: true });
+
+  // Haptic on reveal entries (subtle, only once)
+  const hapticObs = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        haptic('soft');
+        hapticObs.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.6 });
+  document.querySelectorAll('.reveal').forEach(el => hapticObs.observe(el));
+}
+
+
+// ─────────────── LENIS smooth scroll + GSAP (added after animate so WebGL is safe) ───────────────
+(function initScrollEnhancements() {
+  const touch = document.body.classList.contains('touch');
+  // Lenis silky scroll — desktop only
+  if (!touch && typeof Lenis !== 'undefined') {
+    try {
+      const lenis = new Lenis({
+        duration: 1.15,
+        easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+        smoothWheel: true,
+      });
+      function lenisRaf(time) { lenis.raf(time); requestAnimationFrame(lenisRaf); }
+      requestAnimationFrame(lenisRaf);
+      if (typeof ScrollTrigger !== 'undefined') {
+        lenis.on('scroll', ScrollTrigger.update);
+      }
+    } catch (e) { console.warn('[Larik] Lenis init skipped:', e.message); }
+  }
+  // GSAP pinned negation — desktop only
+  if (!touch && typeof gsap !== 'undefined' && typeof ScrollTrigger !== 'undefined') {
+    try {
+      gsap.registerPlugin(ScrollTrigger);
+      const negRows = document.querySelectorAll('#negation .neg-row');
+      if (negRows.length) {
+        gsap.set(negRows, { opacity: 0.18, y: 28 });
+        ScrollTrigger.create({
+          trigger: '#negation',
+          start: 'top top',
+          end: '+=' + (negRows.length * 380),
+          pin: true,
+          scrub: 0.6,
+          anticipatePin: 1,
+          onUpdate: (self) => {
+            const p = self.progress;
+            negRows.forEach((row, i) => {
+              const a = Math.max(0, Math.min(1, (p - i / negRows.length) / (1 / negRows.length)));
+              row.style.opacity = (0.18 + a * 0.82).toFixed(3);
+              row.style.transform = 'translateY(' + (28 - a * 28).toFixed(1) + 'px)';
+            });
+          }
+        });
+      }
+    } catch (e) { console.warn('[Larik] GSAP init skipped:', e.message); }
+  }
+})();
+
+// ── Start the render loop — AFTER all setup (isTouchDevice, mobileScale, etc.) ──
+animate();
+
+// Touch fallback for older inline trigger
+window.addEventListener('touchstart', () => {
+  cursor.style.display = 'none';
+  cursorLabel.style.display = 'none';
+}, { once: true });
+</script>
+</body>
+</html>
