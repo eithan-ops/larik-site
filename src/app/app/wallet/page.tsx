@@ -65,10 +65,7 @@ export default function Wallet() {
       </div>
 
       <div className="card" style={{ fontSize: 12.5, color: "var(--muted)", lineHeight: 1.7 }}>
-        🕶️ <b style={{ color: "#7dd8ff" }}>פרטיות:</b> אנונימי לגמרי — כינוי ואווטר בלבד. הפרטים האישיים מתחברים{" "}
-        <b style={{ color: "var(--text)" }}>רק ברגע המשיכה</b>, אצל ספק אימות חיצוני. אלינו הם לא מגיעים.
-        <br /><br />
-        🧾 <b style={{ color: "var(--text)" }}>שקיפות:</b> 8% לפלטפורמה, 92% אליכם. תמיד. · 🛡️ כל עסקה נסרקת ע&quot;י AI נגד הונאות.
+        🕶️ אנונימי — פרטים אישיים רק ברגע משיכה, אצל ספק חיצוני. · 🛡️ מוגן AI נגד הונאות.
       </div>
     </main>
   );

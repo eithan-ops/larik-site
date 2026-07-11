@@ -2,10 +2,27 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "LARIK · לאריק — כסף עם חברים",
+  metadataBase: new URL("https://larik-site.vercel.app"),
+  title: "LARIK — חברים שווים כסף",
   description:
-    "קאשבק על כל קנייה, ועמלה כשחברים קונים דרכך. אנונימי, שקוף, 92% חוזר אליכם.",
+    "קאשבק על כל קנייה. רווח מכל קנייה של החברים שלך — והשושלת שלהם. לנצח. אנונימי וחינם.",
   manifest: "/manifest.json",
+  openGraph: {
+    title: "LARIK — חברים שווים כסף 💸",
+    description:
+      "קאשבק על כל קנייה + רווח מכל קנייה של מי שתצרף. לנצח. אנונימי וחינם.",
+    url: "https://larik-site.vercel.app",
+    siteName: "LARIK",
+    images: [{ url: "/og.png", width: 1200, height: 630 }],
+    locale: "he_IL",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "LARIK — חברים שווים כסף 💸",
+    description: "קאשבק על כל קנייה + רווח מהשושלת שלך. לנצח.",
+    images: ["/og.png"],
+  },
 };
 
 export const viewport: Viewport = {

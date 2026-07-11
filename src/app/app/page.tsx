@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useLarik } from "@/lib/store";
 import CountUp from "@/components/CountUp";
 import Celebrate from "@/components/Celebrate";
-import { ShareSheet, MatchSheet } from "@/components/Sheets";
+import { ShareSheet, MatchSheet, InviteSheet } from "@/components/Sheets";
 import type { SplitResult } from "@/lib/split";
 
 const DEALS = [
@@ -18,6 +18,7 @@ export default function Deals() {
   const [aiLoading, setAiLoading] = useState(false);
   const [q, setQ] = useState("");
   const [share, setShare] = useState<string | null>(null);
+  const [invite, setInvite] = useState(false);
   const [match, setMatch] = useState<string | null>(null);
   const [celebrate, setCelebrate] = useState<SplitResult | null>(null);
 
@@ -47,17 +48,24 @@ export default function Deals() {
         </div>
         <span className="chip">🔥 <b>5</b></span>
       </div>
-      <div style={{ display: "flex", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
-        <span className="chip privacy">🕶️ אנונימי — בלי פרטים מזהים</span>
-        <span className="chip">💚 92% חוזר אליכם</span>
-      </div>
-
       <div className="hero">
-        <div className="sub">הרווחת החודש (אתה + הגלקסיה שלך)</div>
+        <div className="sub">הרווחת החודש</div>
         <div className="big money"><CountUp agorot={state.monthly} /></div>
         <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-          <span className="chip">סה&quot;כ מאז שהצטרפת: <b className="money">₪ {(state.lifetime / 100).toFixed(0)}</b></span>
+          <span className="chip">סה&quot;כ: <b className="money">₪ {(state.lifetime / 100).toFixed(0)}</b></span>
+          <span className="chip privacy">🕶️ אנונימי</span>
         </div>
+      </div>
+
+      <div className="card" style={{ borderColor: "var(--gold)", background: "linear-gradient(135deg,#1d1830,#15171f)" }}>
+        <b style={{ fontSize: 15 }}>👑 השושלת שלך = הכנסה לנצח</b>
+        <p className="sub" style={{ margin: "6px 0 10px" }}>
+          כל קנייה של מי שתצרף — ושל מי שהם יצרפו — מכניסה לך.
+        </p>
+        <button className="btn gold-btn" style={{ background: "linear-gradient(135deg,#ffb62e,#ffd76a)", color: "#3a2a00", boxShadow: "0 8px 24px rgba(255,182,46,.25)" }}
+          onClick={() => setInvite(true)}>
+          🚀 צרף חברים עכשיו
+        </button>
       </div>
 
       <div className="card" style={{ padding: "10px 12px", display: "flex", gap: 8, alignItems: "center", borderColor: "#3a2f6b" }}>
@@ -109,6 +117,7 @@ export default function Deals() {
       <div className="quest"><div className="qi">🧊</div><div style={{ flex: 1 }}><b style={{ fontSize: 14 }}>הרצף שלך מוגן</b><div className="sub" style={{ fontSize: 11 }}>נשארה הקפאה אחת השבוע</div></div><span className="chip">🔥5</span></div>
 
       {share && <ShareSheet deal={share} onClose={() => setShare(null)} />}
+      {invite && <InviteSheet onClose={() => setInvite(false)} />}
       {match && (
         <MatchSheet deal={match} onClose={() => setMatch(null)}
           onSend={() => { setMatch(null); showToast("נשלח לנועם עם הודעה שה-AI ניסח 💬"); }} />

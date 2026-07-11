@@ -35,25 +35,23 @@ export default function Onboarding() {
   return (
     <main>
       <div className="logo-big">LARIK</div>
-      <p className="sub" style={{ textAlign: "center", marginBottom: 30 }}>
-        כסף עם חברים. קאשבק על כל קנייה,<br />ועמלה כשחברים קונים דרכך.
+      <p style={{ textAlign: "center", fontSize: 20, fontWeight: 800, marginBottom: 26 }}>
+        חברים שווים כסף. 💸
       </p>
-      <div className="card">
-        <h2 style={{ marginTop: 0 }}>נכנסים בלי להזדהות 🕶️</h2>
-        <p className="sub" style={{ marginBottom: 12 }}>
-          בלי שם, בלי טלפון, בלי אנשי קשר. רק כינוי.
-          פרטים אישיים? רק אם תרצה למשוך מזומן — ואז מול ספק אימות חיצוני, לא מולנו.
-        </p>
-        <input className="input" placeholder="בחר כינוי (למשל eitan_k)" value={nick} onChange={(e) => setNick(e.target.value)} maxLength={18} />
-        <input className="input" placeholder="קוד הזמנה מחבר (לא חובה בפיילוט)" value={invite} onChange={(e) => setInvite(e.target.value)} maxLength={12} />
-        <button className="btn" onClick={joinNow}>יאללה, תראה לי את הכסף 💸</button>
+
+      <div className="card" style={{ fontSize: 15, lineHeight: 2.1 }}>
+        🛍️ קנית — קיבלת כסף חזרה<br />
+        📤 חבר קנה דרכך — הרווחת בגדול<br />
+        👑 השושלת שלך קונה — אתה מרוויח. <b className="money">לנצח.</b>
       </div>
-      <div className="card" style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.7 }}>
-        <b style={{ color: "var(--text)" }}>איך זה עובד?</b><br />
-        🛍️ קונים דרך לאריק — מקבלים קאשבק אמיתי.<br />
-        📤 משתפים דיל וחבר קונה — מקבלים 60% מהעמלה.<br />
-        🪐 החברים שהזמנתם קונים — אתם מקבלים 16%, ומהחברים שלהם 8%, וכן הלאה לנצח.<br />
-        🧾 אנחנו לוקחים 8% בלבד. תמיד. שקוף.
+
+      <div className="card">
+        <input className="input" placeholder="בחר כינוי" value={nick} onChange={(e) => setNick(e.target.value)} maxLength={18} />
+        <input className="input" placeholder="קוד הזמנה (אם יש)" value={invite} onChange={(e) => setInvite(e.target.value)} maxLength={12} />
+        <button className="btn" onClick={joinNow}>מתחילים 🚀</button>
+        <p className="sub" style={{ textAlign: "center", marginTop: 10, fontSize: 12 }}>
+          🕶️ בלי שם. בלי טלפון. אנונימי.
+        </p>
       </div>
     </main>
   );

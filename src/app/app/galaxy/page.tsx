@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import GalaxyCanvas from "@/components/GalaxyCanvas";
-import { ShareSheet } from "@/components/Sheets";
+import { InviteSheet } from "@/components/Sheets";
 import { useLarik, fmtIls } from "@/lib/store";
 
 export default function Galaxy() {
@@ -51,8 +51,8 @@ export default function Galaxy() {
         <div className="lrow"><b>3</b><div className="lbar" style={{ width: "25%" }} /><b>4%</b><b className="money">₪11</b></div>
         <div className="lrow" style={{ border: "none", color: "var(--muted)" }}><b>4+</b><div className="lbar" style={{ width: "12%", opacity: 0.5 }} /><b>2%→∞</b><b>₪0</b></div>
       </div>
-      <button className="btn social" onClick={() => setShare(true)}>🚀 הוסף כוכב לגלקסיה</button>
-      {share && <ShareSheet deal="הצטרפות ללאריק" onClose={() => setShare(false)} />}
+      <button className="btn social" onClick={() => setShare(true)}>🚀 הוסף כוכב — תרוויח ממנו לנצח</button>
+      {share && <InviteSheet onClose={() => setShare(false)} />}
     </main>
   );
 }
