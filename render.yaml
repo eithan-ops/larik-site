@@ -1,0 +1,8 @@
+services:
+  - type: web
+    name: larik
+    runtime: node
+    plan: free
+    buildCommand: cd client && npm install && npm run build && cd ../server && npm install
+    startCommand: cd server && npm start
+    healthCheckPath: /api/health
