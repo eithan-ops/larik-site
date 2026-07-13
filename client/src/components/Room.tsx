@@ -125,6 +125,7 @@ export default function Room({ code }: { code: string }) {
         <div className="sub">סרקו להצטרפות</div>
         <QRCodeView url={`${location.origin}/r/${code}`} />
         <div className="code-big">{code}</div>
+        <ShareRow code={code} />
       </div>
 
       <div className="players-grid" style={{ marginBottom: 14 }}>
@@ -146,6 +147,33 @@ export default function Room({ code }: { code: string }) {
         </p>
       )}
     </main>
+  );
+}
+
+/* שיתוף מהיר — הדרך הקלה להכניס חברים בלי להקליד כלום */
+function ShareRow({ code }: { code: string }) {
+  const joinUrl = `${location.origin}/r/${code}`;
+  const text = `🎮 בואו לשחק LARIK!\nנכנסים לחדר שלי בלחיצה:\n${joinUrl}`;
+
+  async function shareNative() {
+    try {
+      await navigator.share({ title: "LARIK", text: "🎮 בואו לשחק LARIK! מצטרפים בלחיצה:", url: joinUrl });
+    } catch { /* המשתמש ביטל */ }
+  }
+
+  return (
+    <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+      <a className="btn wa" style={{ flex: 1, textDecoration: "none" }}
+        href={`https://wa.me/?text=${encodeURIComponent(text)}`} target="_blank" rel="noreferrer">
+        שתפו בוואטסאפ
+      </a>
+      {"share" in navigator && (
+        <button className="btn ghost" style={{ flex: "0 0 auto", width: "auto", padding: "17px 18px" }}
+          onClick={shareNative} aria-label="שיתוף">
+          ⤴️
+        </button>
+      )}
+    </div>
   );
 }
 

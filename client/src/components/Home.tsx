@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { navigate } from "../App";
 import { createRoom } from "../lib/connection";
+import QRScanner from "./QRScanner";
 
 export default function Home() {
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
+  const [scanning, setScanning] = useState(false);
 
   async function host() {
     setBusy(true);
@@ -17,8 +19,17 @@ export default function Home() {
     setBusy(false);
   }
 
+  function onScan(text: string) {
+    setScanning(false);
+    // תומך גם בקישור מלא (https://.../r/ABCD) וגם בקוד גולמי
+    const m = text.match(/\/r\/([a-zA-Z]{4})/) || text.match(/^([a-zA-Z]{4})$/);
+    if (m) navigate(`/r/${m[1].toUpperCase()}`);
+  }
+
   return (
     <main style={{ justifyContent: "center", gap: 8 }}>
+      {scanning && <QRScanner onScan={onScan} onClose={() => setScanning(false)} />}
+
       <div className="logo-big">LARIK</div>
       <p className="sub" style={{ textAlign: "center", marginBottom: 30, fontSize: 16 }}>
         משחקי חברה. הטלפון של כל אחד — אביזר במשחק. 🎮
@@ -26,6 +37,10 @@ export default function Home() {
 
       <button className="btn" onClick={host} disabled={busy}>
         {busy ? "פותח חדר..." : "🎉 פתח חדר חדש"}
+      </button>
+
+      <button className="btn social" style={{ marginTop: 8 }} onClick={() => setScanning(true)}>
+        📷 סרוק QR של המארח
       </button>
 
       <div className="sub" style={{ textAlign: "center", margin: "18px 0 10px" }}>או הצטרף עם קוד:</div>
