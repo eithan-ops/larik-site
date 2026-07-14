@@ -109,10 +109,20 @@ export default function Room({ code }: { code: string }) {
 
   if (room.phase === "game" && room.gameId) {
     const View = GAME_VIEWS[room.gameId];
-    if (View) return <View room={room} me={me} conn={conn} hub={hub} />;
+    if (View) return (
+      <>
+        {isHost && (
+          <button className="exit-fab" onClick={() => conn.send({ t: "back_to_lobby" })}>
+            ✕ סיום משחק
+          </button>
+        )}
+        <View room={room} me={me} conn={conn} hub={hub} />
+      </>
+    );
   }
 
   /* ---------- לובי ---------- */
+  const connectedCount = room.players.filter((p) => p.connected).length;
   return (
     <main>
       {toast && <div className="toast">{toast}</div>}
@@ -121,12 +131,29 @@ export default function Room({ code }: { code: string }) {
         <span className="chip">{status === "open" ? "🟢 מחובר" : "🟡 מתחבר..."}</span>
       </div>
 
-      <div className="card" style={{ textAlign: "center" }}>
-        <div className="sub">סרקו להצטרפות</div>
-        <QRCodeView url={`${location.origin}/r/${code}`} />
-        <div className="code-big">{code}</div>
-        <ShareRow code={code} />
+      <div className="joined-banner popin">
+        <span className="tick">✅</span>
+        <div style={{ flex: 1 }}>
+          <b>{emoji} {name.trim() || "שחקן"} — אתה בפנים!</b>
+          <div className="sub" style={{ fontSize: 12.5 }}>
+            חדר {code} · {connectedCount} {connectedCount === 1 ? "מחובר" : "מחוברים"}
+            {isHost ? " · אתה המארח 👑" : ""}
+          </div>
+        </div>
       </div>
+
+      {isHost ? (
+        <div className="card" style={{ textAlign: "center" }}>
+          <div className="sub">החברים סורקים כדי להצטרף</div>
+          <QRCodeView url={`${location.origin}/r/${code}`} />
+          <div className="code-big">{code}</div>
+          <ShareRow code={code} />
+        </div>
+      ) : (
+        <div className="card" style={{ padding: 12 }}>
+          <ShareRow code={code} />
+        </div>
+      )}
 
       <div className="players-grid" style={{ marginBottom: 14 }}>
         {room.players.map((p) => (

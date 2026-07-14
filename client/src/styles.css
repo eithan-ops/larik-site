@@ -69,6 +69,47 @@ input{font-family:inherit}
 .btn.wa{background:linear-gradient(135deg,#25D366,#4ae584);color:#052012;font-size:15.5px}
 .btn.wa::before{content:"💬"}
 
+/* מטר הפצצות */
+.bomb-arena{position:fixed;inset:0;display:flex;flex-direction:column;z-index:10;transition:background .4s;overflow:hidden;max-width:480px;margin:0 auto;padding:14px 14px 4px}
+.bomb-hud{display:flex;justify-content:space-between;align-items:center}
+.bomb-zone{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;overflow-y:auto;padding:6px 0}
+.bomb-card{display:flex;flex-direction:column;align-items:center;background:var(--card);border:2px solid var(--line);border-radius:22px;padding:12px 16px;touch-action:none;min-width:210px}
+.bomb-card.sel{border-color:var(--gold);box-shadow:0 0 22px rgba(255,206,60,.35)}
+.bomb-card.danger{border-color:#ff4d4d;box-shadow:0 0 26px rgba(255,77,77,.4)}
+.fuse-ring{position:relative;width:128px;height:128px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+.fuse-ring::after{content:"";position:absolute;inset:7px;border-radius:50%;background:var(--card)}
+.fuse-ring img{position:relative;z-index:2;width:96px;height:96px;object-fit:contain;user-select:none;-webkit-user-drag:none}
+.fuse-ring span{position:relative;z-index:2}
+.fuse-sec{position:absolute;bottom:-4px;z-index:3;font-size:15px;background:#000a;border-radius:99px;padding:1px 10px}
+.wobble{animation:wobble .6s infinite}
+@keyframes wobble{25%{transform:rotate(-7deg) scale(1.02)}75%{transform:rotate(7deg) scale(.98)}}
+.rub-bar{width:85%;height:8px;background:var(--card2);border-radius:99px;margin-top:8px;overflow:hidden}
+.rub-bar div{height:100%;background:linear-gradient(90deg,var(--social),var(--pink));border-radius:99px;transition:width .1s}
+.duo-hold{margin-top:8px;padding:13px;font-size:15px;background:linear-gradient(135deg,#2dd4bf,#6ae8d8);color:#052723}
+.duo-hold.holding{transform:scale(.96);box-shadow:0 0 24px rgba(45,212,191,.5)}
+.duo-dots{display:inline-flex;gap:6px;margin-right:8px}
+.duo-dots i{width:10px;height:10px;border-radius:50%;background:#0527234d;display:inline-block}
+.duo-dots i.on{background:#052723;box-shadow:0 0 8px #fff}
+.throw-row{display:flex;gap:8px;overflow-x:auto;padding:8px 2px;justify-content:safe center}
+.throw-chip{display:flex;flex-direction:column;align-items:center;gap:2px;background:var(--card);border:2px solid var(--line);border-radius:16px;padding:8px 12px;min-width:72px;color:var(--text);position:relative;flex:0 0 auto}
+.throw-chip .nm{font-size:11.5px;font-weight:700;max-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.throw-chip.ready{border-color:var(--gold);animation:pulse 1s infinite}
+.throw-chip.loaded{border-color:#ff4d4d}
+.loadbadge{font-size:9px;position:absolute;top:-7px;left:-4px}
+.flashfx{position:fixed;inset:0;z-index:50;pointer-events:none;animation:flashout .6s forwards}
+.flashfx.boom{background:radial-gradient(circle,#ff6b3599,#ff1f1f66)}
+.flashfx.defuse{background:radial-gradient(circle,#00e67655,transparent)}
+@keyframes flashout{0%{opacity:1}100%{opacity:0}}
+.shake-hard{animation:shakehard .5s}
+@keyframes shakehard{10%{transform:translate(-8px,4px)}30%{transform:translate(7px,-6px)}50%{transform:translate(-6px,-3px)}70%{transform:translate(5px,5px)}90%{transform:translate(-3px,2px)}}
+
+/* כפתור יציאה ממשחק (מארח) */
+.exit-fab{position:fixed;top:12px;left:12px;z-index:70;background:#000a;border:1.5px solid var(--line);color:var(--text);border-radius:99px;padding:8px 14px;font-size:13px;font-weight:700;backdrop-filter:blur(6px)}
+
+/* חיווי "אתה בפנים" בלובי */
+.joined-banner{display:flex;align-items:center;gap:10px;background:linear-gradient(135deg,rgba(0,230,118,.16),rgba(0,230,118,.05));border:1.5px solid var(--money);border-radius:18px;padding:12px 14px;margin-bottom:12px}
+.joined-banner .tick{font-size:26px}
+
 /* סורק QR */
 .scan-overlay{position:fixed;inset:0;background:#000;z-index:50;display:flex;flex-direction:column;align-items:center;justify-content:center}
 .scan-video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.9}

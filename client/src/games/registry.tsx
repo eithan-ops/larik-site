@@ -7,6 +7,7 @@ import type { RoomSnapshot, GameServerMsg } from "../../../shared/protocol";
 import type { Connection } from "../lib/connection";
 import ForeheadView from "./forehead";
 import PodsView from "./pods";
+import BombsView from "./bombs";
 
 export type GameListener = (d: GameServerMsg, at: number) => void;
 
@@ -31,4 +32,5 @@ export interface GameViewProps {
 export const GAME_VIEWS: Record<string, ComponentType<GameViewProps>> = {
   forehead: ForeheadView,
   pods: PodsView,
+  bombs: BombsView,
 };

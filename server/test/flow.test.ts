@@ -123,11 +123,56 @@ async function testClockMath() {
   check(`שגיאת אומדן = מחצית הא-סימטריה בלבד (${err}ms)`, err === Math.abs(downLatency - upLatency) / 2);
 }
 
+async function testBombs() {
+  console.log("\n— מטר הפצצות —");
+  const { transport, allGame } = makeTransport();
+  const { createBombs } = await import("../src/games/bombs");
+  const room = new Room("BOMB", transport, { bombs: createBombs });
+  const P = ["b1", "b2", "b3"];
+  P.forEach((p, i) => room.join(p, "חבלן" + i, "💣"));
+
+  room.onMessage("b1", { t: "select_game", gameId: "bombs", config: { difficulty: "chill" } });
+  room.onMessage("b1", { t: "start_game" });
+
+  check("bm_start הגיע לכולם", P.every((p) => allGame(p, "bm_start").length === 1));
+
+  await sleep(3800); // ספירת פתיחה + הפצצה הראשונה
+  const spawn = allGame("b1", "bm_spawn").at(-1);
+  check("פצצה ראשונה נחתה (cue מתוזמן)", spawn?.t === "cue" && spawn.at > 0);
+  if (spawn) {
+    const holder = spawn.d.holder as string;
+    check("המחזיק הוא שחקן בחדר", P.includes(holder));
+    check("יש פתיל עתידי", spawn.at + spawn.d.fuseMs > room.now());
+    // המחזיק מעביר לשחקן אחר
+    const to = P.find((p) => p !== holder)!;
+    if (spawn.d.type === "sticky") room.onMessage(holder, { t: "game", d: { a: "bm_unstuck", bombId: spawn.d.bombId } });
+    if (spawn.d.type !== "duo") {
+      room.onMessage(holder, { t: "game", d: { a: "bm_pass", bombId: spawn.d.bombId, to } });
+      const pass = allGame("b1", "bm_pass").at(-1);
+      check("העברה שודרה כ-cue", pass?.d.to === to && pass?.d.from === holder);
+      check("זר לא יכול להעביר", (() => {
+        room.onMessage(holder, { t: "game", d: { a: "bm_pass", bombId: spawn.d.bombId, to: holder } });
+        return allGame("b1", "bm_pass").at(-1)?.d.to === to;
+      })());
+    } else {
+      // תאומה: שני המחזיקים לוחצים יחד → נטרול
+      const partner = spawn.d.partner as string;
+      room.onMessage(holder, { t: "game", d: { a: "bm_hold", bombId: spawn.d.bombId, down: true } });
+      room.onMessage(partner, { t: "game", d: { a: "bm_hold", bombId: spawn.d.bombId, down: true } });
+      await sleep(900);
+      check("תאומה נוטרלה בהחזקה כפולה", allGame("b1", "bm_defused").length === 1);
+    }
+  }
+  const snap = room.snapshot();
+  check("המשחק עדיין רץ (לא נגמר בטעות)", snap.phase === "game");
+}
+
 (async () => {
   console.log("LARIK Games — בדיקות זרימה");
   await testClockMath();
   await testForehead();
   await testPods();
+  await testBombs();
   if (failed) { console.error(`\n${failed} בדיקות נכשלו`); process.exit(1); }
   console.log("\nהכול עבר ✓");
   process.exit(0);

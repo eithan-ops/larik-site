@@ -84,8 +84,26 @@ export type PodsServerMsg =
   | { a: "pd_eliminated"; pid: string }
   | { a: "pd_score"; scores: Record<string, number>; avgMs?: Record<string, number> };
 
-export type GameClientMsg = ForeheadClientMsg | PodsClientMsg;
-export type GameServerMsg = ForeheadServerMsg | PodsServerMsg;
+// מטר הפצצות
+export type BombType = "classic" | "sticky" | "chain" | "duo";
+
+export type BombsClientMsg =
+  | { a: "bm_pass"; bombId: number; to: string } // העברת פצצה לשחקן אחר
+  | { a: "bm_unstuck"; bombId: number } // הדביקה שופשפה והשתחררה
+  | { a: "bm_hold"; bombId: number; down: boolean }; // תאומה: מחזיק/עזב
+
+export type BombsServerMsg =
+  | { a: "bm_start"; lives: number }
+  | { a: "bm_spawn"; bombId: number; type: BombType; holder: string; fuseMs: number; partner?: string } // cue — explodeAt = at + fuseMs
+  | { a: "bm_pass"; bombId: number; from: string; to: string } // cue
+  | { a: "bm_unstuck"; bombId: number }
+  | { a: "bm_hold"; bombId: number; pid: string; down: boolean }
+  | { a: "bm_defused"; bombId: number; by: string[] } // cue
+  | { a: "bm_explode"; bombId: number; holder: string } // cue — בום אצל כולם באותה מילישנייה
+  | { a: "bm_lives"; lives: number };
+
+export type GameClientMsg = ForeheadClientMsg | PodsClientMsg | BombsClientMsg;
+export type GameServerMsg = ForeheadServerMsg | PodsServerMsg | BombsServerMsg;
 
 /* ---- קטלוג ---- */
 export interface GameMeta {
@@ -99,6 +117,24 @@ export interface GameMeta {
 }
 
 export const CATALOG: GameMeta[] = [
+  {
+    id: "bombs",
+    name: "מטר הפצצות",
+    icon: "💣",
+    tagline: "כולנו צוות אחד. הפצצות נגד כולנו.",
+    minPlayers: 2,
+    maxPlayers: 10,
+    configOptions: [
+      {
+        key: "difficulty",
+        label: "קצב",
+        values: [
+          { v: "chill", label: "רגוע 🙂" },
+          { v: "wild", label: "מטורף 🔥" },
+        ],
+      },
+    ],
+  },
   {
     id: "forehead",
     name: "על המצח",

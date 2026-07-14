@@ -13,6 +13,7 @@ import { randomUUID } from "crypto";
 import { RoomManager, Transport } from "./engine";
 import { createForehead } from "./games/forehead";
 import { createPods } from "./games/pods";
+import { createBombs } from "./games/bombs";
 import type { ClientMsg } from "../../shared/protocol";
 
 const PORT = Number(process.env.PORT || 8787);
@@ -31,6 +32,7 @@ const transport: Transport = {
 const manager = new RoomManager(transport, {
   forehead: createForehead,
   pods: createPods,
+  bombs: createBombs,
 });
 setInterval(() => manager.cleanup(), 60_000);
 
