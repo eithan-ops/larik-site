@@ -173,10 +173,31 @@ export type TriviaServerMsg =
   | { a: "tv_answered"; count: number; total: number }
   | { a: "tv_reveal"; qId: number; correct: number; tally: number[]; scores: Record<string, number>; gained: Record<string, number> };
 
+// מי הכי? (Who's Most Likely)
+export type WhoMostClientMsg =
+  | { a: "wm_add"; text: string } // מארח מוסיף שאלה
+  | { a: "wm_remove"; idx: number }
+  | { a: "wm_publish" } // מארח → מעבר לשלב מענה
+  | { a: "wm_vote"; qIdx: number; target: string } // הצבעה חשאית
+  | { a: "wm_done" } // סיימתי לענות
+  | { a: "wm_start" } // מארח → מעבר לשלב גילוי
+  | { a: "wm_reveal" } // מארח → גלה את השאלה הנוכחית
+  | { a: "wm_next" }; // מארח → שאלה הבאה
+
+export type WhoMostServerMsg =
+  | { a: "wm_phase"; phase: "write" | "answer" | "reveal" }
+  | { a: "wm_questions"; questions: string[] } // רשימת השאלות (עריכה + מענה)
+  | { a: "wm_progress"; done: number; total: number }
+  | { a: "wm_reveal_q"; idx: number; total: number; text: string } // הצג שאלה בשלב גילוי
+  | { a: "wm_result"; idx: number; winners: string[]; tally: Record<string, number>; voters: number }
+  | { a: "wm_lit"; pids: string[] }; // cue — הטלפונים של הנבחרים נדלקים
+
 export type GameClientMsg = ForeheadClientMsg | PodsClientMsg | BombsClientMsg
-  | ColorRulesClientMsg | SimonClientMsg | DeathTouchClientMsg | DemonsClientMsg | AliasClientMsg | TriviaClientMsg;
+  | ColorRulesClientMsg | SimonClientMsg | DeathTouchClientMsg | DemonsClientMsg | AliasClientMsg | TriviaClientMsg
+  | WhoMostClientMsg;
 export type GameServerMsg = ForeheadServerMsg | PodsServerMsg | BombsServerMsg
-  | ColorRulesServerMsg | SimonServerMsg | DeathTouchServerMsg | DemonsServerMsg | AliasServerMsg | TriviaServerMsg;
+  | ColorRulesServerMsg | SimonServerMsg | DeathTouchServerMsg | DemonsServerMsg | AliasServerMsg | TriviaServerMsg
+  | WhoMostServerMsg;
 
 /* ---- קטלוג ---- */
 export interface GameMeta {
@@ -190,6 +211,14 @@ export interface GameMeta {
 }
 
 export const CATALOG: GameMeta[] = [
+  {
+    id: "whomost",
+    name: "מי הכי?",
+    icon: "🫵",
+    tagline: "המארח שואל. מי הכי מתאים? הטלפון של הנבחר נדלק.",
+    minPlayers: 3,
+    maxPlayers: 15,
+  },
   {
     id: "colorrules",
     name: "חוקי הצבע",

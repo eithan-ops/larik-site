@@ -14,6 +14,7 @@ import DeathTouchView from "./deathtouch";
 import DemonsView from "./demons";
 import AliasView from "./alias";
 import TriviaView from "./trivia";
+import WhoMostView from "./whomost";
 
 export type GameListener = (d: GameServerMsg, at: number) => void;
 
@@ -45,4 +46,5 @@ export const GAME_VIEWS: Record<string, ComponentType<GameViewProps>> = {
   demons: DemonsView,
   alias: AliasView,
   trivia: TriviaView,
+  whomost: WhoMostView,
 };

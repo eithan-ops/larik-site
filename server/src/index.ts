@@ -20,6 +20,7 @@ import { createDeathTouch } from "./games/deathtouch";
 import { createDemons } from "./games/demons";
 import { createAlias } from "./games/alias";
 import { createTrivia } from "./games/trivia";
+import { createWhoMost } from "./games/whomost";
 import type { ClientMsg } from "../../shared/protocol";
 
 const PORT = Number(process.env.PORT || 8787);
@@ -45,6 +46,7 @@ const manager = new RoomManager(transport, {
   demons: createDemons,
   alias: createAlias,
   trivia: createTrivia,
+  whomost: createWhoMost,
 });
 setInterval(() => manager.cleanup(), 60_000);
 
@@ -66,6 +68,7 @@ const http = createServer((req, res) => {
   if (url.pathname === "/api/health") {
     res.writeHead(200); res.end("ok"); return;
   }
+  // הגשת קבצי הלקוח (SPA fallback ל-index.html)
   if (existsSync(CLIENT_DIST)) {
     let file = join(CLIENT_DIST, url.pathname);
     if (!existsSync(file) || statSync(file).isDirectory()) file = join(CLIENT_DIST, "index.html");
@@ -76,6 +79,7 @@ const http = createServer((req, res) => {
   res.writeHead(404); res.end("client not built — run: cd client && npm run build");
 });
 
+/* ---------- WebSocket ---------- */
 const wss = new WebSocketServer({ server: http, path: "/ws" });
 
 wss.on("connection", (ws, req) => {
