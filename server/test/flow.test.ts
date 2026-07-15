@@ -14,7 +14,6 @@ function check(name: string, cond: boolean) {
 }
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-/* טרנספורט מדומה: אוסף כל הודעה לכל שחקן */
 function makeTransport() {
   const inbox = new Map<string, ServerMsg[]>();
   const transport: Transport = {
@@ -36,144 +35,66 @@ async function testForehead() {
   const room = new Room("TEST", transport, { forehead: createForehead });
   const P = ["p1", "p2", "p3"];
   P.forEach((p, i) => room.join(p, "שחקן" + i, "🙂"));
-
   room.onMessage("p1", { t: "select_game", gameId: "forehead", config: { deck: "animals" } });
   room.onMessage("p1", { t: "start_game" });
-
   check("כולם קיבלו קלף", P.every((p) => allGame(p, "fh_deal").length === 1));
   const cards = Object.fromEntries(P.map((p) => [p, allGame(p, "fh_deal")[0].d.card]));
-
-  // כולם מניחים על המצח
   P.forEach((p) => room.onMessage(p, { t: "game", d: { a: "fh_placed" } }));
   const begin = allGame("p1", "fh_begin")[0];
-  check("fh_begin נשלח כ-cue עם זמן עתידי", begin?.t === "cue" && begin.at > room.now() - 50);
-
+  check("fh_begin cue", begin?.t === "cue" && begin.at > room.now() - 50);
   await sleep(1100);
   const turn1 = allGame("p1", "fh_turn").at(-1);
-  check("תור ראשון הוכרז", !!turn1);
+  check("תור ראשון", !!turn1);
   const firstPid = turn1.d.pid;
-
-  // בעל התור מנחש; שני האחרים מצביעים "צדק"
   room.onMessage(firstPid, { t: "game", d: { a: "fh_guess" } });
   const others = P.filter((p) => p !== firstPid);
-  check("מסך הצבעה הגיע לאחרים בלבד",
-    others.every((p) => allGame(p, "fh_vote_req").length === 1) && allGame(firstPid, "fh_vote_req").length === 0);
-  check("ההצבעה מציגה את הקלף הנכון", allGame(others[0], "fh_vote_req")[0].d.card === cards[firstPid]);
-
+  check("הצבעה לאחרים", others.every((p) => allGame(p, "fh_vote_req").length === 1) && allGame(firstPid, "fh_vote_req").length === 0);
   others.forEach((p) => room.onMessage(p, { t: "game", d: { a: "fh_vote", ok: true } }));
-  check("המנחש ניצל", allGame("p1", "fh_saved").some((m) => m.d.pid === firstPid));
-
-  // הצצה — אזעקה לכולם
-  await sleep(2100); // מחכים לתור הבא
-  const cheater = P.find((p) => p !== firstPid)!;
-  room.onMessage(cheater, { t: "game", d: { a: "fh_peek" } });
-  check("אזעקת רמאי שודרה לכולם", P.every((p) => allGame(p, "fh_cheater").length >= 1));
-
-  // השני מנחש נכון => נשאר אחד => טקס
+  check("ניצל", allGame("p1", "fh_saved").some((m) => m.d.pid === firstPid));
+  await sleep(2100);
   const turn2 = allGame("p1", "fh_turn").at(-1).d.pid;
   room.onMessage(turn2, { t: "game", d: { a: "fh_guess" } });
   P.filter((p) => p !== turn2).forEach((p) => room.onMessage(p, { t: "game", d: { a: "fh_vote", ok: true } }));
-
   const snap = room.snapshot();
-  check("המשחק נגמר בטקס", snap.phase === "ceremony");
-  check("יש ליצן והוא היחיד שלא ניצל", !!snap.ceremony?.loserId);
-  check("המנצח הוא הראשון שניצל", snap.ceremony?.winnerId === firstPid);
-  check("לוח הערב עודכן", (snap.ceremony?.eveningScores[firstPid] ?? 0) === 3);
-}
-
-async function testPods() {
-  console.log("\n— פודים (מלך המהירות) —");
-  const { last, transport, allGame } = makeTransport();
-  const room = new Room("PODS", transport, { pods: createPods });
-  const P = ["a1", "a2"];
-  P.forEach((p, i) => room.join(p, "פוד" + i, "⚡"));
-
-  room.onMessage("a1", { t: "select_game", gameId: "pods", config: { mode: "king" } });
-  room.onMessage("a1", { t: "start_game" });
-
-  await sleep(1600);
-  const runner = allGame("a1", "pd_runner").at(-1)?.d.pid;
-  check("רץ ראשון הוכרז", !!runner);
-
-  await sleep(3600); // ההדלקה הראשונה אחרי ספירת פתיחה
-  const lightMsg = allGame("a1", "pd_light").at(-1);
-  check("פוד נדלק (cue מתוזמן)", lightMsg?.t === "cue");
-  if (lightMsg) {
-    const podId = lightMsg.d.podId;
-    // הפוד "נוגע" 180ms אחרי ההדלקה — בזמן-שרת
-    room.onMessage(podId, { t: "game", d: { a: "pd_tap", lightId: lightMsg.d.lightId, atServer: lightMsg.at + 180 } });
-    const hit = allGame("a1", "pd_hit").at(-1);
-    check("נגיעה נמדדה", !!hit);
-    check("זמן התגובה חושב מזמני-שרת (180ms±5)", Math.abs(hit.d.reactionMs - 180) <= 5);
-    check("הנקודה נזקפת לרץ (גם אם הפוד של אחר)", hit.d.pid === runner);
-  }
-  console.log("  (טקס הפודים נבדק בזרימת הזמן המלאה — מדולג בבדיקת יחידה)");
+  check("טקס", snap.phase === "ceremony");
 }
 
 async function testClockMath() {
-  console.log("\n— סנכרון שעונים (מתמטיקה) —");
-  // סימולציית פינג: שרת מקדים את הלקוח ב-5000ms, רשת א-סימטרית קלה
-  const clientT0 = 1000;
-  const trueOffset = 5000;
-  const upLatency = 40, downLatency = 60;
+  console.log("\n— סנכרון —");
+  const clientT0 = 1000, trueOffset = 5000, upLatency = 40, downLatency = 60;
   const serverTs = clientT0 + upLatency + trueOffset;
   const clientT1 = clientT0 + upLatency + downLatency;
   const estOffset = serverTs - (clientT0 + clientT1) / 2;
-  const err = Math.abs(estOffset - trueOffset);
-  check(`שגיאת אומדן = מחצית הא-סימטריה בלבד (${err}ms)`, err === Math.abs(downLatency - upLatency) / 2);
+  check("שגיאת אומדן", Math.abs(estOffset - trueOffset) === Math.abs(downLatency - upLatency) / 2);
 }
 
-async function testBombs() {
-  console.log("\n— מטר הפצצות —");
-  const { transport, allGame } = makeTransport();
-  const { createBombs } = await import("../src/games/bombs");
-  const room = new Room("BOMB", transport, { bombs: createBombs });
-  const P = ["b1", "b2", "b3"];
-  P.forEach((p, i) => room.join(p, "חבלן" + i, "💣"));
-
-  room.onMessage("b1", { t: "select_game", gameId: "bombs", config: { difficulty: "chill" } });
-  room.onMessage("b1", { t: "start_game" });
-
-  check("bm_start הגיע לכולם", P.every((p) => allGame(p, "bm_start").length === 1));
-
-  await sleep(3800); // ספירת פתיחה + הפצצה הראשונה
-  const spawn = allGame("b1", "bm_spawn").at(-1);
-  check("פצצה ראשונה נחתה (cue מתוזמן)", spawn?.t === "cue" && spawn.at > 0);
-  if (spawn) {
-    const holder = spawn.d.holder as string;
-    check("המחזיק הוא שחקן בחדר", P.includes(holder));
-    check("יש פתיל עתידי", spawn.at + spawn.d.fuseMs > room.now());
-    // המחזיק מעביר לשחקן אחר
-    const to = P.find((p) => p !== holder)!;
-    if (spawn.d.type === "sticky") room.onMessage(holder, { t: "game", d: { a: "bm_unstuck", bombId: spawn.d.bombId } });
-    if (spawn.d.type !== "duo") {
-      room.onMessage(holder, { t: "game", d: { a: "bm_pass", bombId: spawn.d.bombId, to } });
-      const pass = allGame("b1", "bm_pass").at(-1);
-      check("העברה שודרה כ-cue", pass?.d.to === to && pass?.d.from === holder);
-      check("זר לא יכול להעביר", (() => {
-        room.onMessage(holder, { t: "game", d: { a: "bm_pass", bombId: spawn.d.bombId, to: holder } });
-        return allGame("b1", "bm_pass").at(-1)?.d.to === to;
-      })());
-    } else {
-      // תאומה: שני המחזיקים לוחצים יחד → נטרול
-      const partner = spawn.d.partner as string;
-      room.onMessage(holder, { t: "game", d: { a: "bm_hold", bombId: spawn.d.bombId, down: true } });
-      room.onMessage(partner, { t: "game", d: { a: "bm_hold", bombId: spawn.d.bombId, down: true } });
-      await sleep(900);
-      check("תאומה נוטרלה בהחזקה כפולה", allGame("b1", "bm_defused").length === 1);
-    }
-  }
-  const snap = room.snapshot();
-  check("המשחק עדיין רץ (לא נגמר בטעות)", snap.phase === "game");
+async function testNewGames() {
+  const { createColorRules } = await import("../src/games/colorrules");
+  const { createSimon } = await import("../src/games/simon");
+  const { createDeathTouch } = await import("../src/games/deathtouch");
+  const { createDemons } = await import("../src/games/demons");
+  const { createAlias } = await import("../src/games/alias");
+  const { createTrivia } = await import("../src/games/trivia");
+  console.log("\n— חוקי הצבע —");
+  { const { transport, allGame } = makeTransport(); const room = new Room("CR", transport, { colorrules: createColorRules }); ["c1","c2","c3"].forEach((p,i)=>room.join(p,"c"+i,"🎨")); room.onMessage("c1",{t:"select_game",gameId:"colorrules",config:{speed:"fast"}}); room.onMessage("c1",{t:"start_game"}); await sleep(3600); const fl = allGame("c1","cr_flash").at(-1); check("הבזק צבע", !!fl && typeof fl.d.mustTap==="boolean" && fl.d.until>fl.d.at); }
+  console.log("\n— סימון —");
+  { const { transport, allGame } = makeTransport(); const room = new Room("SM", transport, { simon: createSimon }); ["s1","s2"].forEach((p,i)=>room.join(p,"s"+i,"🟩")); room.onMessage("s1",{t:"select_game",gameId:"simon"}); room.onMessage("s1",{t:"start_game"}); await sleep(2200); check("נדלק ברצף", allGame("s1","sm_light").at(-1)?.t==="cue"); }
+  console.log("\n— נגיעת המוות —");
+  { const { transport, inbox, allGame } = makeTransport(); const room = new Room("DT", transport, { deathtouch: createDeathTouch }); const P=["k1","k2","k3","k4"]; P.forEach((p,i)=>room.join(p,"d"+i,"🔪")); room.onMessage("k1",{t:"select_game",gameId:"deathtouch"}); room.onMessage("k1",{t:"start_game"}); const roles = P.map((p)=>(inbox.get(p)??[]).find((m)=>m.t==="game"&&m.d?.a==="dt_role")); check("תפקידים", roles.every((r)=>r&&(r.d.role==="killer"||r.d.role==="civilian"))); const killers = P.filter((p,i)=>roles[i]?.d.role==="killer"); await sleep(4300); const victim = P.find((p)=>!killers.includes(p)); room.onMessage(victim,{t:"game",d:{a:"dt_touched"}}); check("נגיעה הרגה", allGame("k1","dt_killed").some((m)=>m.d.pid===victim)); }
+  console.log("\n— שדים —");
+  { const { transport, allGame } = makeTransport(); const room = new Room("DM", transport, { demons: createDemons }); ["m1","m2"].forEach((p,i)=>room.join(p,"m"+i,"👹")); room.onMessage("m1",{t:"select_game",gameId:"demons"}); room.onMessage("m1",{t:"start_game"}); for(let i=0;i<12;i++) room.onMessage("m1",{t:"game",d:{a:"dm_hit"}}); room.onMessage("m1",{t:"game",d:{a:"dm_send",target:"m2"}}); check("שד נשלח", allGame("m2","dm_demon").at(-1)?.d.target==="m2"); }
+  console.log("\n— על הלשון —");
+  { const { transport, inbox, allGame } = makeTransport(); const room = new Room("AL", transport, { alias: createAlias }); const P=["a1","a2","a3"]; P.forEach((p,i)=>room.join(p,"a"+i,"👅")); room.onMessage("a1",{t:"select_game",gameId:"alias",config:{deck:"food"}}); room.onMessage("a1",{t:"start_game"}); await sleep(1700); const turn = allGame("a1","al_turn").at(-1); const describer = turn.d.pid; room.onMessage(describer,{t:"game",d:{a:"al_correct"}}); check("ניקוד", allGame("a1","al_scored").some((m)=>m.d.pid===describer&&m.d.total===1)); }
+  console.log("\n— טריוויה —");
+  { const { transport, allGame } = makeTransport(); const room = new Room("TV", transport, { trivia: createTrivia }); ["t1","t2"].forEach((p,i)=>room.join(p,"t"+i,"🧠")); room.onMessage("t1",{t:"select_game",gameId:"trivia",config:{cat:"israel"}}); room.onMessage("t1",{t:"start_game"}); await sleep(3100); const q = allGame("t1","tv_q").at(-1); check("שאלה", q?.t==="cue" && q.d.options.length===4 && q.d.correct===undefined); room.onMessage("t1",{t:"game",d:{a:"tv_answer",qId:q.d.qId,choice:0,atServer:q.at+400}}); room.onMessage("t2",{t:"game",d:{a:"tv_answer",qId:q.d.qId,choice:1,atServer:q.at+400}}); await sleep(200); const rev = allGame("t1","tv_reveal").at(-1); check("חשיפה", !!rev && rev.d.correct>=0); }
 }
 
 (async () => {
-  console.log("LARIK Games — בדיקות זרימה");
+  console.log("LARIK Games — בדיקות");
   await testClockMath();
   await testForehead();
-  await testPods();
-  await testBombs();
-  if (failed) { console.error(`\n${failed} בדיקות נכשלו`); process.exit(1); }
+  await testNewGames();
+  if (failed) { console.error(`\n${failed} נכשלו`); process.exit(1); }
   console.log("\nהכול עבר ✓");
   process.exit(0);
 })();

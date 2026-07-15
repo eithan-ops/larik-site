@@ -102,8 +102,81 @@ export type BombsServerMsg =
   | { a: "bm_explode"; bombId: number; holder: string } // cue — בום אצל כולם באותה מילישנייה
   | { a: "bm_lives"; lives: number };
 
-export type GameClientMsg = ForeheadClientMsg | PodsClientMsg | BombsClientMsg;
-export type GameServerMsg = ForeheadServerMsg | PodsServerMsg | BombsServerMsg;
+// חוקי הצבע
+export type ColorRulesClientMsg =
+  | { a: "cr_tap"; roundId: number; atServer: number };
+
+export type ColorRulesServerMsg =
+  | { a: "cr_begin"; lives: number }
+  | { a: "cr_flash"; roundId: number; color: string; label: string; mustTap: boolean; at: number; until: number } // cue
+  | { a: "cr_resolve"; roundId: number; out: string[]; alive: string[] }
+  | { a: "cr_lives"; pid: string; lives: number };
+
+// סימון מבוזר
+export type SimonClientMsg =
+  | { a: "sm_tap" };
+
+export type SimonServerMsg =
+  | { a: "sm_setup"; colors: Record<string, string>; lives: number }
+  | { a: "sm_watch"; round: number } // התחלת שלב צפייה
+  | { a: "sm_light"; pid: string; step: number; at: number } // cue — הטלפון של pid נדלק
+  | { a: "sm_input"; round: number } // עכשיו תור השחקנים לשחזר
+  | { a: "sm_progress"; index: number; pid: string } // הצליחו עד index
+  | { a: "sm_wrong"; expected: string; got: string; lives: number }
+  | { a: "sm_lives"; lives: number };
+
+// נגיעת המוות
+export type DeathTouchClientMsg =
+  | { a: "dt_touched" } // הטלפון שלי קיבל נגיעה (בחלון ציד)
+  | { a: "dt_vote"; suspect: string };
+
+export type DeathTouchServerMsg =
+  | { a: "dt_role"; role: "killer" | "civilian"; killers?: number } // אישי
+  | { a: "dt_phase"; phase: "hunt" | "accuse" | "reveal"; until: number }
+  | { a: "dt_hunt" } // אישי לרוצח: לך תיגע במישהו
+  | { a: "dt_killed"; pid: string } // cue — נדלק אדום אצל כולם
+  | { a: "dt_accuse"; alive: string[]; until: number }
+  | { a: "dt_voted"; count: number; total: number }
+  | { a: "dt_result"; suspect?: string; wasKiller?: boolean; msg: string }
+  | { a: "dt_alive"; alive: string[] };
+
+// השדים הקטנים
+export type DemonsClientMsg =
+  | { a: "dm_hit" } // נגעתי בנקודה
+  | { a: "dm_send"; target: string }; // שולח שד ליריב
+
+export type DemonsServerMsg =
+  | { a: "dm_begin"; until: number; colors: Record<string, string> }
+  | { a: "dm_score"; scores: Record<string, number>; meters: Record<string, number> }
+  | { a: "dm_demon"; from: string; target: string; kind: number; at: number; dur: number } // cue אצל היעד
+  | { a: "dm_end"; scores: Record<string, number> };
+
+// על הלשון (אליאס)
+export type AliasClientMsg =
+  | { a: "al_correct" }
+  | { a: "al_skip" };
+
+export type AliasServerMsg =
+  | { a: "al_turn"; pid: string; deckName: string; until: number }
+  | { a: "al_word"; word: string } // אישי למתאר
+  | { a: "al_scored"; pid: string; total: number }
+  | { a: "al_skipped"; pid: string }
+  | { a: "al_turnend"; pid: string; got: number };
+
+// טריוויה
+export type TriviaClientMsg =
+  | { a: "tv_answer"; qId: number; choice: number; atServer: number };
+
+export type TriviaServerMsg =
+  | { a: "tv_begin"; total: number }
+  | { a: "tv_q"; qId: number; q: string; options: string[]; index: number; total: number; at: number; until: number } // cue
+  | { a: "tv_answered"; count: number; total: number }
+  | { a: "tv_reveal"; qId: number; correct: number; tally: number[]; scores: Record<string, number>; gained: Record<string, number> };
+
+export type GameClientMsg = ForeheadClientMsg | PodsClientMsg | BombsClientMsg
+  | ColorRulesClientMsg | SimonClientMsg | DeathTouchClientMsg | DemonsClientMsg | AliasClientMsg | TriviaClientMsg;
+export type GameServerMsg = ForeheadServerMsg | PodsServerMsg | BombsServerMsg
+  | ColorRulesServerMsg | SimonServerMsg | DeathTouchServerMsg | DemonsServerMsg | AliasServerMsg | TriviaServerMsg;
 
 /* ---- קטלוג ---- */
 export interface GameMeta {
@@ -117,6 +190,81 @@ export interface GameMeta {
 }
 
 export const CATALOG: GameMeta[] = [
+  {
+    id: "colorrules",
+    name: "חוקי הצבע",
+    icon: "🎨",
+    tagline: "המסך מצווה. אתה מציית — או יוצא.",
+    minPlayers: 2,
+    maxPlayers: 12,
+    configOptions: [
+      { key: "speed", label: "קצב", values: [{ v: "normal", label: "רגיל 🙂" }, { v: "fast", label: "מהיר 🔥" }] },
+    ],
+  },
+  {
+    id: "simon",
+    name: "סימון מבוזר",
+    icon: "🟩",
+    tagline: "הטלפונים נדלקים בתור. תזכרו — ביחד.",
+    minPlayers: 2,
+    maxPlayers: 8,
+  },
+  {
+    id: "deathtouch",
+    name: "נגיעת המוות",
+    icon: "🔪",
+    tagline: "רוצח מסתובב. שמרו על הטלפון.",
+    minPlayers: 4,
+    maxPlayers: 12,
+  },
+  {
+    id: "demons",
+    name: "השדים הקטנים",
+    icon: "👹",
+    tagline: "צברו נקודות. שגרו שד למסך של חבר.",
+    minPlayers: 2,
+    maxPlayers: 10,
+  },
+  {
+    id: "alias",
+    name: "על הלשון",
+    icon: "👅",
+    tagline: "תאר בלי להגיד את המילה.",
+    minPlayers: 3,
+    maxPlayers: 12,
+    configOptions: [
+      {
+        key: "deck",
+        label: "חפיסה",
+        values: [
+          { v: "animals", label: "חיות 🐨" },
+          { v: "celebs", label: "מפורסמים 🌟" },
+          { v: "food", label: "אוכל 🍕" },
+          { v: "cartoons", label: "מצוירים 🦸" },
+        ],
+      },
+    ],
+  },
+  {
+    id: "trivia",
+    name: "טריוויה",
+    icon: "🧠",
+    tagline: "כולם עונים. המהיר והצודק מנצח.",
+    minPlayers: 2,
+    maxPlayers: 20,
+    configOptions: [
+      {
+        key: "cat",
+        label: "נושא",
+        values: [
+          { v: "mix", label: "מעורב 🎲" },
+          { v: "israel", label: "ישראל 🇮🇱" },
+          { v: "world", label: "עולם 🌍" },
+          { v: "science", label: "מדע 🔬" },
+        ],
+      },
+    ],
+  },
   {
     id: "bombs",
     name: "מטר הפצצות",

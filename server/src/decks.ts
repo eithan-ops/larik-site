@@ -43,3 +43,45 @@ export const DECKS: Record<string, Deck> = {
     ],
   },
 };
+
+/* ---------- טריוויה ---------- */
+export interface TriviaQ { q: string; options: string[]; correct: number; cat: "israel" | "world" | "science" }
+
+export const TRIVIA: TriviaQ[] = [
+  { q: "מהי עיר הבירה של ישראל?", options: ["תל אביב", "ירושלים", "חיפה", "באר שבע"], correct: 1, cat: "israel" },
+  { q: "מי היה ראש הממשלה הראשון של ישראל?", options: ["מנחם בגין", "גולדה מאיר", "דוד בן גוריון", "יצחק רבין"], correct: 2, cat: "israel" },
+  { q: "כמה כוכבים יש על דגל ישראל?", options: ["אחד", "שניים", "אף אחד (מגן דוד)", "שישה"], correct: 2, cat: "israel" },
+  { q: "מהו הים הנמוך בעולם שנמצא בישראל?", options: ["הים התיכון", "ים סוף", "ים כנרת", "ים המלח"], correct: 3, cat: "israel" },
+  { q: "איזה חג חוגגים באכילת סופגניות?", options: ["פורים", "חנוכה", "פסח", "שבועות"], correct: 1, cat: "israel" },
+  { q: "מהי המטבע של מדינת ישראל?", options: ["דולר", "שקל", "לירה", "יורו"], correct: 1, cat: "israel" },
+  { q: "איזו עיר ישראלית מכונה 'עיר האמנים'?", options: ["צפת", "אילת", "נתניה", "רמלה"], correct: 0, cat: "israel" },
+  { q: "מי כתב את 'התקווה'?", options: ["ביאליק", "נפתלי הרץ אימבר", "רחל", "אלתרמן"], correct: 1, cat: "israel" },
+  { q: "כמה שבטים היו לעם ישראל?", options: ["10", "12", "7", "14"], correct: 1, cat: "israel" },
+  { q: "איזה נמל תעופה בינלאומי משרת את ישראל?", options: ["בן גוריון", "רמון", "שדה דב", "עטרות"], correct: 0, cat: "israel" },
+  { q: "מהי עיר הבירה של צרפת?", options: ["לונדון", "פריז", "רומא", "מדריד"], correct: 1, cat: "world" },
+  { q: "איזו יבשת היא הגדולה בעולם?", options: ["אפריקה", "אמריקה", "אסיה", "אירופה"], correct: 2, cat: "world" },
+  { q: "מהו הנהר הארוך בעולם?", options: ["אמזונס", "נילוס", "מיסיסיפי", "ינגצה"], correct: 1, cat: "world" },
+  { q: "כמה יבשות יש בעולם?", options: ["5", "6", "7", "8"], correct: 2, cat: "world" },
+  { q: "איזו מדינה בנתה את חומת הסין?", options: ["יפן", "סין", "הודו", "מונגוליה"], correct: 1, cat: "world" },
+  { q: "מהי המדינה הגדולה בעולם בשטח?", options: ["קנדה", "סין", "ארה\"ב", "רוסיה"], correct: 3, cat: "world" },
+  { q: "היכן נמצא מגדל אייפל?", options: ["רומא", "פריז", "לונדון", "ברלין"], correct: 1, cat: "world" },
+  { q: "איזה אוקיינוס הוא הגדול בעולם?", options: ["אטלנטי", "הודי", "השקט", "הארקטי"], correct: 2, cat: "world" },
+  { q: "מהי שפת האם המדוברת ביותר בעולם?", options: ["אנגלית", "ספרדית", "מנדרינית", "הינדי"], correct: 2, cat: "world" },
+  { q: "באיזו מדינה נמצאות הפירמידות של גיזה?", options: ["מקסיקו", "מצרים", "פרו", "עיראק"], correct: 1, cat: "world" },
+  { q: "כמה כוכבי לכת יש במערכת השמש?", options: ["7", "8", "9", "10"], correct: 1, cat: "science" },
+  { q: "מהו הכוכב הקרוב ביותר לכדור הארץ?", options: ["הירח", "השמש", "מאדים", "נוגה"], correct: 1, cat: "science" },
+  { q: "מהו הגז שאנחנו נושמים ומכניסים לגוף?", options: ["פחמן דו-חמצני", "חנקן", "חמצן", "הליום"], correct: 2, cat: "science" },
+  { q: "כמה עצמות יש בגוף האדם הבוגר?", options: ["106", "206", "306", "150"], correct: 1, cat: "science" },
+  { q: "מהו האיבר הגדול בגוף האדם?", options: ["הכבד", "העור", "המוח", "הריאות"], correct: 1, cat: "science" },
+  { q: "מהי מהירות האור בקירוב?", options: ["300 אלף קמ\"ש", "300 אלף קמ' לשנייה", "3 מיליון קמ' לשנייה", "1000 קמ' לשנייה"], correct: 1, cat: "science" },
+  { q: "מאיזה יסוד עשוי היהלום?", options: ["ברזל", "זהב", "פחמן", "סיליקון"], correct: 2, cat: "science" },
+  { q: "מי גילה את כוח הכבידה?", options: ["איינשטיין", "ניוטון", "גלילאו", "אדיסון"], correct: 1, cat: "science" },
+  { q: "מהו כוכב הלכת הגדול במערכת השמש?", options: ["שבתאי", "מאדים", "צדק", "נפטון"], correct: 2, cat: "science" },
+  { q: "כמה לבבות יש לתמנון?", options: ["1", "2", "3", "8"], correct: 2, cat: "science" },
+];
+
+export function pickTrivia(cat: string, n: number): TriviaQ[] {
+  const pool = cat === "mix" ? [...TRIVIA] : TRIVIA.filter((t) => t.cat === cat);
+  const shuffled = [...pool].sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, Math.min(n, shuffled.length));
+}

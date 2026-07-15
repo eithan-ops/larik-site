@@ -8,6 +8,12 @@ import type { Connection } from "../lib/connection";
 import ForeheadView from "./forehead";
 import PodsView from "./pods";
 import BombsView from "./bombs";
+import ColorRulesView from "./colorrules";
+import SimonView from "./simon";
+import DeathTouchView from "./deathtouch";
+import DemonsView from "./demons";
+import AliasView from "./alias";
+import TriviaView from "./trivia";
 
 export type GameListener = (d: GameServerMsg, at: number) => void;
 
@@ -33,4 +39,10 @@ export const GAME_VIEWS: Record<string, ComponentType<GameViewProps>> = {
   forehead: ForeheadView,
   pods: PodsView,
   bombs: BombsView,
+  colorrules: ColorRulesView,
+  simon: SimonView,
+  deathtouch: DeathTouchView,
+  demons: DemonsView,
+  alias: AliasView,
+  trivia: TriviaView,
 };
