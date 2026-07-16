@@ -2,7 +2,7 @@ import { useEffect, useMemo } from "react";
 import type { RoomSnapshot } from "../../../shared/protocol";
 import { Sfx, vibrate } from "../lib/audio";
 
-const COLORS = ["#00E676", "#b26bff", "#ffce3c", "#ff4d9d", "#5c8aff"];
+const COLORS = ["#8b5cf6", "#ec4899", "#ffc93c", "#34e89e", "#5c8aff"];
 
 /** טקס הסיום האחיד — המנצח מוזהב, הליצן מוכרז אצל כולם */
 export default function Ceremony({ room, me, isHost, onBackToLobby }: {
@@ -29,10 +29,10 @@ export default function Ceremony({ room, me, isHost, onBackToLobby }: {
     })), [iLost]);
 
   const bg = iWon
-    ? "radial-gradient(circle at 50% 30%, #4a3b00, #0B0C11)"
+    ? "radial-gradient(circle at 50% 30%, #4a3b00, #0c0817)"
     : iLost
-      ? "radial-gradient(circle at 50% 30%, #4a0b0b, #0B0C11)"
-      : "var(--bg)";
+      ? "radial-gradient(circle at 50% 30%, #4a0b0b, #0c0817)"
+      : "radial-gradient(circle at 50% 30%, #1d1435, #0c0817)";
 
   const ranking = [...room.players]
     .filter((p) => c.eveningScores[p.id] !== undefined)

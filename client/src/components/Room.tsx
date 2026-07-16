@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import type { RoomSnapshot } from "../../../shared/protocol";
 import { CATALOG } from "../../../shared/protocol";
 import { Connection, defaultServerUrl } from "../lib/connection";
@@ -6,7 +6,7 @@ import { unlockAudio, Sfx, vibrate } from "../lib/audio";
 import { armPhone } from "../lib/sensors";
 import QRCodeView from "./QRCodeView";
 import Ceremony from "./Ceremony";
-import { GAME_VIEWS, GameHub } from "../games/registry";
+import { GAME_VIEWS, GAME_COLORS, GameHub } from "../games/registry";
 
 const EMOJIS = ["😎", "🦄", "🐸", "🔥", "🍕", "👾", "🐙", "🌈", "🦁", "🍩", "🚀"];
 
@@ -57,12 +57,14 @@ export default function Room({ code }: { code: string }) {
   if (stage === "name") {
     return (
       <main style={{ justifyContent: "center" }}>
-        <h1 className="brand" style={{ textAlign: "center", marginBottom: 4 }}>LARIK</h1>
+        <div className="logo-big" style={{ fontSize: 34, marginBottom: 2 }}>LARIK</div>
+        <div className="sub" style={{ textAlign: "center", marginBottom: 2 }}>חדר</div>
         <div className="code-big" style={{ marginBottom: 20 }}>{code}</div>
-        <div className="card">
+        <div className="card popin" style={{ padding: 18 }}>
+          <div className="sub" style={{ textAlign: "center", marginBottom: 10 }}>איך קוראים לך הערב?</div>
           <input className="input" placeholder="הכינוי שלך" value={name} maxLength={14}
             onChange={(e) => setName(e.target.value)} />
-          <div className="opt-row" style={{ justifyContent: "center", margin: "12px 0" }}>
+          <div className="opt-row" style={{ justifyContent: "center", margin: "14px 0" }}>
             {EMOJIS.map((e) => (
               <button key={e} className={"opt" + (emoji === e ? " sel" : "")}
                 style={{ fontSize: 22, padding: "6px 10px" }}
@@ -80,9 +82,9 @@ export default function Room({ code }: { code: string }) {
   if (stage === "arm") {
     return (
       <main style={{ justifyContent: "center", textAlign: "center" }}>
-        <div style={{ fontSize: 80 }} className="pulse">🔫</div>
-        <h1 style={{ margin: "10px 0" }}>חמש את הטלפון</h1>
-        <p className="sub" style={{ marginBottom: 24 }}>
+        <div style={{ fontSize: 84 }} className="pulse">🔫</div>
+        <h1 style={{ margin: "12px 0 8px" }}>חמש את הטלפון</h1>
+        <p className="sub" style={{ marginBottom: 26 }}>
           לחיצה אחת מפעילה את הרמקול, החיישנים והקסם.<br />
           (אייפון ישאל אישור לחיישני תנועה — תאשרו!)
         </p>
@@ -216,14 +218,18 @@ function HostCatalog({ room, onSelect, onStart }: {
 
   return (
     <div>
-      <h2 style={{ marginBottom: 8 }}>בחר משחק 👑</h2>
+      <h2 className="section-title">🎮 בחר משחק</h2>
       {CATALOG.map((g) => (
         <button key={g.id} className={"gamecard" + (room.gameId === g.id ? " sel" : "")}
+          style={{ "--gc": GAME_COLORS[g.id] ?? "#8b5cf6" } as CSSProperties}
           onClick={() => onSelect(g.id, config)}>
           <span className="ic">{g.icon}</span>
           <span style={{ flex: 1 }}>
             <b>{g.name}</b>
-            <div className="sub">{g.tagline} · {g.minPlayers}–{g.maxPlayers} שחקנים</div>
+            <div className="sub">{g.tagline}</div>
+            <div className="sub" style={{ fontSize: 11.5, opacity: 0.8, marginTop: 2 }}>
+              👥 {g.minPlayers}–{g.maxPlayers} שחקנים
+            </div>
           </span>
         </button>
       ))}

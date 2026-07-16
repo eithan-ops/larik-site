@@ -1,80 +1,201 @@
+/* ============================================================
+   LARIK — שפה עיצובית v2 "ניאון מסיבה"
+   סגול-לילה עמוק · ורוד חם · זהב · גלואים
+   כל שמות המחלקות נשמרו — המשחקים יורשים אוטומטית.
+   ============================================================ */
 :root{
-  --bg:#0B0C11; --card:#15171f; --card2:#1d2030;
-  --money:#00E676; --social:#b26bff; --pink:#ff4d9d; --gold:#ffce3c;
-  --text:#f4f6ff; --muted:#8b93b5; --line:#252a3d;
+  --bg:#0c0817; --bg2:#120c22;
+  --card:#181128; --card2:#221739;
+  --line:#2e2249; --line2:#3d2f63;
+  --brand1:#8b5cf6; --brand2:#ec4899; /* סגול→ורוד */
+  --money:#34e89e; --social:#a78bfa; --pink:#ff4d9d; --gold:#ffc93c;
+  --blue:#5c8aff; --red:#ff5c5c;
+  --text:#f6f4ff; --muted:#9d94c4;
+  --shadow-brand:0 10px 30px rgba(139,92,246,.35);
+  --shadow-pink:0 10px 30px rgba(236,72,153,.3);
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none}
-html{background:#04050a}
-body{font-family:'Rubik','Segoe UI',-apple-system,Arial,sans-serif;background:var(--bg);color:var(--text);max-width:480px;margin:0 auto;min-height:100dvh}
+html{background:#060411}
+body{
+  font-family:'Rubik','Segoe UI',-apple-system,Arial,sans-serif;
+  background:var(--bg);color:var(--text);
+  max-width:480px;margin:0 auto;min-height:100dvh;
+  position:relative;
+}
+/* אווירה: שני כתמי ניאון רכים ברקע — תמיד, בכל מסך */
+body::before,body::after{
+  content:"";position:fixed;z-index:0;pointer-events:none;
+  width:60vmax;height:60vmax;border-radius:50%;filter:blur(90px);opacity:.16;
+}
+body::before{background:#8b5cf6;top:-22vmax;right:-18vmax;animation:drift1 14s ease-in-out infinite alternate}
+body::after{background:#ec4899;bottom:-25vmax;left:-20vmax;animation:drift2 17s ease-in-out infinite alternate}
+@keyframes drift1{to{transform:translate(-8vmax,6vmax) scale(1.15)}}
+@keyframes drift2{to{transform:translate(9vmax,-7vmax) scale(1.1)}}
+@media (prefers-reduced-motion:reduce){body::before,body::after{animation:none}}
+
 #root,main{min-height:100dvh}
-main{padding:20px 18px;display:flex;flex-direction:column}
-h1{font-size:26px;font-weight:800}
-h2{font-size:17px;font-weight:700}
+#root>*{position:relative;z-index:1}
+main{padding:22px 18px calc(22px + env(safe-area-inset-bottom));display:flex;flex-direction:column;position:relative;z-index:1}
+h1{font-size:27px;font-weight:800;letter-spacing:-.3px}
+h2{font-size:17.5px;font-weight:800}
 button{font-family:inherit;cursor:pointer}
 input{font-family:inherit}
-.sub{color:var(--muted);font-size:13.5px;line-height:1.6}
-.brand{font-weight:900;letter-spacing:.5px;background:linear-gradient(90deg,var(--money),#7dffb8);-webkit-background-clip:text;background-clip:text;color:transparent}
-.logo-big{font-size:52px;font-weight:900;text-align:center;background:linear-gradient(135deg,var(--money),#7dffb8);-webkit-background-clip:text;background-clip:text;color:transparent}
+.sub{color:var(--muted);font-size:13.5px;line-height:1.65}
 
-.card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:16px;margin-bottom:12px}
-.btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;border:none;border-radius:18px;padding:17px;font-size:17px;font-weight:800;color:#052012;background:linear-gradient(135deg,var(--money),#5cffa9);box-shadow:0 8px 24px rgba(0,230,118,.25);transition:transform .12s cubic-bezier(.34,1.56,.64,1)}
-.btn:active{transform:scale(.95)}
-.btn:disabled{opacity:.4}
-.btn.social{background:linear-gradient(135deg,var(--social),var(--pink));color:#fff}
-.btn.ghost{background:var(--card2);color:var(--text);box-shadow:none;border:1px solid var(--line)}
-.btn.gold{background:linear-gradient(135deg,#ffb62e,#ffd76a);color:#3a2a00}
-.btn.danger{background:linear-gradient(135deg,#ff4d4d,#ff8a8a);color:#3a0000}
+/* ---------- מותג ---------- */
+.brand{
+  font-weight:900;letter-spacing:1px;
+  background:linear-gradient(100deg,#c4b5fd 0%,var(--brand1) 35%,var(--brand2) 70%,#ffb46b 100%);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+}
+.logo-big{
+  font-size:56px;font-weight:900;text-align:center;letter-spacing:2px;line-height:1.1;
+  background:linear-gradient(100deg,#c4b5fd 0%,var(--brand1) 30%,var(--brand2) 65%,#ffb46b 100%);
+  background-size:200% 100%;
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+  animation:shimmer 5s ease-in-out infinite;
+  filter:drop-shadow(0 4px 26px rgba(139,92,246,.45));
+}
+@keyframes shimmer{0%,100%{background-position:0% 0}50%{background-position:100% 0}}
 
-.input{width:100%;background:var(--card2);border:1.5px solid var(--line);border-radius:14px;padding:14px;color:var(--text);font-size:17px;outline:none;text-align:center}
-.input:focus{border-color:var(--social)}
+/* ---------- קלפים ---------- */
+.card{
+  background:linear-gradient(160deg,var(--card),var(--bg2));
+  border:1px solid var(--line);border-radius:22px;padding:16px;margin-bottom:12px;
+  box-shadow:0 6px 24px rgba(0,0,0,.35);
+}
 
-.chip{display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,.06);border:1px solid var(--line);border-radius:99px;padding:5px 12px;font-size:13px;font-weight:700}
+/* ---------- כפתורים ---------- */
+.btn{
+  display:flex;align-items:center;justify-content:center;gap:8px;width:100%;
+  border:none;border-radius:18px;padding:17px;font-size:17px;font-weight:800;color:#fff;
+  background:linear-gradient(135deg,var(--brand1),var(--brand2));
+  box-shadow:var(--shadow-brand),inset 0 1px 0 rgba(255,255,255,.25);
+  transition:transform .13s cubic-bezier(.34,1.56,.64,1),box-shadow .2s;
+  position:relative;overflow:hidden;
+}
+.btn::after{ /* ברק עדין שחוצה את הכפתור */
+  content:"";position:absolute;inset:0;
+  background:linear-gradient(105deg,transparent 40%,rgba(255,255,255,.18) 50%,transparent 60%);
+  background-size:250% 100%;background-position:150% 0;
+  animation:btnshine 4.5s ease-in-out infinite;
+}
+@keyframes btnshine{0%,70%{background-position:150% 0}95%,100%{background-position:-80% 0}}
+.btn:active{transform:scale(.94)}
+.btn:disabled{opacity:.38;box-shadow:none}
+.btn:disabled::after{animation:none}
+.btn.social{background:linear-gradient(135deg,#6366f1,var(--social));box-shadow:0 10px 28px rgba(99,102,241,.3)}
+.btn.ghost{background:var(--card2);color:var(--text);box-shadow:none;border:1px solid var(--line2)}
+.btn.ghost::after{display:none}
+.btn.gold{background:linear-gradient(135deg,#ffb62e,#ffd76a);color:#3a2a00;box-shadow:0 10px 30px rgba(255,182,46,.35)}
+.btn.danger{background:linear-gradient(135deg,#ff4d4d,#ff8a8a);color:#3a0000;box-shadow:0 10px 26px rgba(255,77,77,.3)}
 
-/* full-screen states (הטלפון כאביזר) */
+/* ---------- קלט ---------- */
+.input{
+  width:100%;background:var(--card2);border:1.5px solid var(--line2);border-radius:16px;
+  padding:14px;color:var(--text);font-size:17px;outline:none;text-align:center;
+  transition:border-color .15s,box-shadow .15s;
+}
+.input:focus{border-color:var(--brand1);box-shadow:0 0 0 4px rgba(139,92,246,.18)}
+.input::placeholder{color:#6b628f}
+
+.chip{
+  display:inline-flex;align-items:center;gap:5px;
+  background:rgba(255,255,255,.06);border:1px solid var(--line);border-radius:99px;
+  padding:5px 12px;font-size:13px;font-weight:700;backdrop-filter:blur(6px);
+}
+
+/* ---------- מסכים מלאים (הטלפון כאביזר) ---------- */
 .fullscreen{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:30px;z-index:10;transition:background .15s}
-.huge{font-size:min(26vw,120px);font-weight:900;line-height:1}
-.big{font-size:34px;font-weight:900}
+.huge{font-size:min(26vw,120px);font-weight:900;line-height:1;filter:drop-shadow(0 6px 24px rgba(0,0,0,.45))}
+.big{font-size:34px;font-weight:900;letter-spacing:-.4px}
 .pulse{animation:pulse 1.2s infinite}
-@keyframes pulse{50%{transform:scale(1.06)}}
+@keyframes pulse{50%{transform:scale(1.07)}}
 .shake{animation:shake .4s infinite}
 @keyframes shake{25%{transform:translateX(-6px) rotate(-2deg)}75%{transform:translateX(6px) rotate(2deg)}}
 .popin{animation:popin .5s cubic-bezier(.34,1.56,.64,1)}
 @keyframes popin{0%{transform:scale(.2);opacity:0}100%{transform:scale(1);opacity:1}}
+.float{animation:float 3.2s ease-in-out infinite}
+@keyframes float{50%{transform:translateY(-10px)}}
 
+/* ---------- שחקנים ---------- */
 .players-grid{display:flex;flex-wrap:wrap;gap:10px;justify-content:center}
-.pbadge{display:flex;flex-direction:column;align-items:center;gap:4px;background:var(--card);border:1.5px solid var(--line);border-radius:18px;padding:12px 14px;min-width:76px}
+.pbadge{
+  display:flex;flex-direction:column;align-items:center;gap:4px;
+  background:linear-gradient(160deg,var(--card),var(--bg2));
+  border:1.5px solid var(--line);border-radius:18px;padding:12px 14px;min-width:78px;
+  animation:popin .4s cubic-bezier(.34,1.56,.64,1);
+}
 .pbadge .em{font-size:30px}
 .pbadge .nm{font-size:12.5px;font-weight:700;max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.pbadge.armed{border-color:var(--money);box-shadow:0 0 14px rgba(0,230,118,.25)}
-.pbadge.off{opacity:.4}
+.pbadge.armed{border-color:var(--money);box-shadow:0 0 16px rgba(52,232,158,.3)}
+.pbadge.off{opacity:.35;filter:grayscale(.7)}
+.pbadge.host{border-color:var(--gold);box-shadow:0 0 14px rgba(255,201,60,.22)}
 .pbadge.host::after{content:"👑";font-size:12px}
 
-.qr-box{background:#fff;border-radius:20px;padding:14px;display:flex;justify-content:center;margin:10px auto}
-.code-big{font-size:38px;font-weight:900;letter-spacing:10px;text-align:center;color:var(--gold)}
+/* ---------- QR וקוד חדר ---------- */
+.qr-box{background:#fff;border-radius:22px;padding:14px;display:flex;justify-content:center;margin:10px auto;box-shadow:0 8px 30px rgba(255,255,255,.08)}
+.code-big{
+  font-size:40px;font-weight:900;letter-spacing:12px;text-align:center;
+  color:var(--gold);text-shadow:0 0 24px rgba(255,201,60,.45);
+  padding-left:12px; /* מפצה על הרווח שנוסף אחרי האות האחרונה (letter-spacing) */
+}
 
-.gamecard{display:flex;gap:12px;align-items:center;background:var(--card);border:1.5px solid var(--line);border-radius:18px;padding:14px;margin-bottom:10px;width:100%;text-align:right;color:var(--text)}
-.gamecard.sel{border-color:var(--money);box-shadow:0 0 16px rgba(0,230,118,.2)}
-.gamecard .ic{font-size:34px}
+/* ---------- קטלוג המשחקים ---------- */
+.gamecard{
+  --gc:#8b5cf6;
+  display:flex;gap:13px;align-items:center;
+  background:linear-gradient(160deg,var(--card),var(--bg2));
+  border:1.5px solid var(--line);border-radius:20px;padding:12px;margin-bottom:10px;
+  width:100%;text-align:right;color:var(--text);
+  transition:transform .13s cubic-bezier(.34,1.56,.64,1),border-color .15s,box-shadow .2s;
+}
+.gamecard:active{transform:scale(.97)}
+.gamecard .ic{
+  font-size:30px;flex:0 0 auto;width:58px;height:58px;border-radius:16px;
+  display:flex;align-items:center;justify-content:center;
+  background:color-mix(in srgb,var(--gc) 16%,transparent);
+  border:1px solid color-mix(in srgb,var(--gc) 34%,transparent);
+}
+.gamecard.sel{
+  border-color:var(--gc);
+  box-shadow:0 0 0 1px var(--gc),0 0 24px color-mix(in srgb,var(--gc) 38%,transparent);
+  background:linear-gradient(160deg,color-mix(in srgb,var(--gc) 12%,var(--card)),var(--bg2));
+}
+.gamecard.sel .ic{background:color-mix(in srgb,var(--gc) 28%,transparent)}
+.gamecard b{font-size:16.5px}
 
+/* ---------- קונפטי ---------- */
 .confetti{position:fixed;width:10px;height:10px;top:-14px;animation:fall linear forwards;z-index:5}
 @keyframes fall{to{transform:translateY(110vh) rotate(720deg)}}
 
+/* ---------- אפשרויות ---------- */
 .opt-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
-.opt{border:1.5px solid var(--line);background:var(--card2);color:var(--text);border-radius:99px;padding:8px 14px;font-size:14px;font-weight:700}
-.opt.sel{border-color:var(--gold);color:var(--gold)}
+.opt{
+  border:1.5px solid var(--line2);background:var(--card2);color:var(--text);
+  border-radius:99px;padding:8px 14px;font-size:14px;font-weight:700;
+  transition:transform .12s,border-color .15s;
+}
+.opt:active{transform:scale(.93)}
+.opt.sel{border-color:var(--gold);color:var(--gold);background:rgba(255,201,60,.08);box-shadow:0 0 12px rgba(255,201,60,.15)}
 
-.toast{position:fixed;top:16px;right:50%;transform:translateX(50%);background:var(--money);color:#052012;font-weight:800;padding:10px 18px;border-radius:99px;z-index:99;font-size:14px}
+.toast{
+  position:fixed;top:16px;right:50%;transform:translateX(50%);
+  background:linear-gradient(135deg,var(--brand1),var(--brand2));color:#fff;font-weight:800;
+  padding:10px 18px;border-radius:99px;z-index:99;font-size:14px;
+  box-shadow:var(--shadow-pink);animation:popin .35s cubic-bezier(.34,1.56,.64,1);
+}
 
-/* וואטסאפ */
-.btn.wa{background:linear-gradient(135deg,#25D366,#4ae584);color:#052012;font-size:15.5px}
+/* ---------- וואטסאפ ---------- */
+.btn.wa{background:linear-gradient(135deg,#1eb855,#25D366);color:#fff;font-size:15.5px;box-shadow:0 10px 26px rgba(37,211,102,.3)}
 .btn.wa::before{content:"💬"}
 
-/* מטר הפצצות */
+/* ---------- מטר הפצצות ---------- */
 .bomb-arena{position:fixed;inset:0;display:flex;flex-direction:column;z-index:10;transition:background .4s;overflow:hidden;max-width:480px;margin:0 auto;padding:14px 14px 4px}
 .bomb-hud{display:flex;justify-content:space-between;align-items:center}
 .bomb-zone{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;overflow-y:auto;padding:6px 0}
 .bomb-card{display:flex;flex-direction:column;align-items:center;background:var(--card);border:2px solid var(--line);border-radius:22px;padding:12px 16px;touch-action:none;min-width:210px}
-.bomb-card.sel{border-color:var(--gold);box-shadow:0 0 22px rgba(255,206,60,.35)}
+.bomb-card.sel{border-color:var(--gold);box-shadow:0 0 22px rgba(255,201,60,.35)}
 .bomb-card.danger{border-color:#ff4d4d;box-shadow:0 0 26px rgba(255,77,77,.4)}
 .fuse-ring{position:relative;width:128px;height:128px;border-radius:50%;display:flex;align-items:center;justify-content:center}
 .fuse-ring::after{content:"";position:absolute;inset:7px;border-radius:50%;background:var(--card)}
@@ -84,7 +205,7 @@ input{font-family:inherit}
 .wobble{animation:wobble .6s infinite}
 @keyframes wobble{25%{transform:rotate(-7deg) scale(1.02)}75%{transform:rotate(7deg) scale(.98)}}
 .rub-bar{width:85%;height:8px;background:var(--card2);border-radius:99px;margin-top:8px;overflow:hidden}
-.rub-bar div{height:100%;background:linear-gradient(90deg,var(--social),var(--pink));border-radius:99px;transition:width .1s}
+.rub-bar div{height:100%;background:linear-gradient(90deg,var(--brand1),var(--pink));border-radius:99px;transition:width .1s}
 .duo-hold{margin-top:8px;padding:13px;font-size:15px;background:linear-gradient(135deg,#2dd4bf,#6ae8d8);color:#052723}
 .duo-hold.holding{transform:scale(.96);box-shadow:0 0 24px rgba(45,212,191,.5)}
 .duo-dots{display:inline-flex;gap:6px;margin-right:8px}
@@ -98,21 +219,40 @@ input{font-family:inherit}
 .loadbadge{font-size:9px;position:absolute;top:-7px;left:-4px}
 .flashfx{position:fixed;inset:0;z-index:50;pointer-events:none;animation:flashout .6s forwards}
 .flashfx.boom{background:radial-gradient(circle,#ff6b3599,#ff1f1f66)}
-.flashfx.defuse{background:radial-gradient(circle,#00e67655,transparent)}
+.flashfx.defuse{background:radial-gradient(circle,#34e89e55,transparent)}
 @keyframes flashout{0%{opacity:1}100%{opacity:0}}
 .shake-hard{animation:shakehard .5s}
 @keyframes shakehard{10%{transform:translate(-8px,4px)}30%{transform:translate(7px,-6px)}50%{transform:translate(-6px,-3px)}70%{transform:translate(5px,5px)}90%{transform:translate(-3px,2px)}}
 
-/* כפתור יציאה ממשחק (מארח) */
-.exit-fab{position:fixed;top:12px;left:12px;z-index:70;background:#000a;border:1.5px solid var(--line);color:var(--text);border-radius:99px;padding:8px 14px;font-size:13px;font-weight:700;backdrop-filter:blur(6px)}
+/* ---------- כפתור יציאה ממשחק (מארח) ---------- */
+.exit-fab{position:fixed;top:12px;left:12px;z-index:70;background:#000a;border:1.5px solid var(--line2);color:var(--text);border-radius:99px;padding:8px 14px;font-size:13px;font-weight:700;backdrop-filter:blur(8px)}
 
-/* חיווי "אתה בפנים" בלובי */
-.joined-banner{display:flex;align-items:center;gap:10px;background:linear-gradient(135deg,rgba(0,230,118,.16),rgba(0,230,118,.05));border:1.5px solid var(--money);border-radius:18px;padding:12px 14px;margin-bottom:12px}
+/* ---------- חיווי "אתה בפנים" בלובי ---------- */
+.joined-banner{
+  display:flex;align-items:center;gap:10px;
+  background:linear-gradient(135deg,rgba(52,232,158,.14),rgba(52,232,158,.04));
+  border:1.5px solid rgba(52,232,158,.55);border-radius:18px;padding:12px 14px;margin-bottom:12px;
+  box-shadow:0 0 20px rgba(52,232,158,.12);
+}
 .joined-banner .tick{font-size:26px}
 
-/* סורק QR */
+/* ---------- סורק QR ---------- */
 .scan-overlay{position:fixed;inset:0;background:#000;z-index:50;display:flex;flex-direction:column;align-items:center;justify-content:center}
 .scan-video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.9}
-.scan-frame{position:relative;width:min(68vw,280px);aspect-ratio:1;border-radius:24px;border:3px solid var(--money);box-shadow:0 0 0 100vmax rgba(0,0,0,.55);animation:scanpulse 1.6s infinite}
-@keyframes scanpulse{50%{border-color:#7dffb8;transform:scale(1.02)}}
+.scan-frame{position:relative;width:min(68vw,280px);aspect-ratio:1;border-radius:24px;border:3px solid var(--brand2);box-shadow:0 0 0 100vmax rgba(0,0,0,.55);animation:scanpulse 1.6s infinite}
+@keyframes scanpulse{50%{border-color:var(--brand1);transform:scale(1.02)}}
 .scan-bottom{position:absolute;bottom:28px;left:20px;right:20px;z-index:2}
+
+/* ---------- מסך הבית ---------- */
+.hero{display:flex;flex-direction:column;align-items:center;text-align:center;margin-bottom:26px}
+.hero-emojis{display:flex;gap:14px;font-size:30px;margin-bottom:14px}
+.hero-emojis span{animation:float 3s ease-in-out infinite;display:inline-block;filter:drop-shadow(0 4px 12px rgba(0,0,0,.4))}
+.hero-emojis span:nth-child(2){animation-delay:.4s}
+.hero-emojis span:nth-child(3){animation-delay:.8s}
+.hero-emojis span:nth-child(4){animation-delay:1.2s}
+.hero-emojis span:nth-child(5){animation-delay:1.6s}
+.divider{display:flex;align-items:center;gap:12px;color:var(--muted);font-size:13px;margin:18px 0 10px}
+.divider::before,.divider::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,transparent,var(--line2),transparent)}
+
+/* ---------- כותרת סקשן ---------- */
+.section-title{display:flex;align-items:center;gap:8px;margin:6px 0 10px;font-size:17.5px;font-weight:800}

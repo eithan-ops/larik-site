@@ -30,10 +30,15 @@ export default function Home() {
     <main style={{ justifyContent: "center", gap: 8 }}>
       {scanning && <QRScanner onScan={onScan} onClose={() => setScanning(false)} />}
 
-      <div className="logo-big">LARIK</div>
-      <p className="sub" style={{ textAlign: "center", marginBottom: 30, fontSize: 16 }}>
-        משחקי חברה. הטלפון של כל אחד — אביזר במשחק. 🎮
-      </p>
+      <div className="hero">
+        <div className="hero-emojis" aria-hidden>
+          <span>🎉</span><span>💣</span><span>🫵</span><span>🧠</span><span>👹</span>
+        </div>
+        <div className="logo-big">LARIK</div>
+        <p className="sub" style={{ fontSize: 16, marginTop: 6 }}>
+          משחקי חברה. הטלפון של כל אחד — אביזר במשחק.
+        </p>
+      </div>
 
       <button className="btn" onClick={host} disabled={busy}>
         {busy ? "פותח חדר..." : "🎉 פתח חדר חדש"}
@@ -43,7 +48,7 @@ export default function Home() {
         📷 סרוק QR של המארח
       </button>
 
-      <div className="sub" style={{ textAlign: "center", margin: "18px 0 10px" }}>או הצטרף עם קוד:</div>
+      <div className="divider">או הצטרף עם קוד</div>
       <input
         className="input"
         placeholder="ABCD"
@@ -57,9 +62,11 @@ export default function Home() {
         הצטרף 🚪
       </button>
 
-      <p className="sub" style={{ textAlign: "center", marginTop: 40, fontSize: 11.5 }}>
-        3–10 שחקנים · בלי התקנה · בלי הרשמה
-      </p>
+      <div style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 34, flexWrap: "wrap" }}>
+        <span className="chip">👥 3–10 שחקנים</span>
+        <span className="chip">⚡ בלי התקנה</span>
+        <span className="chip">🔒 בלי הרשמה</span>
+      </div>
     </main>
   );
 }

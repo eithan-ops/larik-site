@@ -36,6 +36,20 @@ export interface GameViewProps {
   hub: GameHub;
 }
 
+/** צבע מזהה לכל משחק — לקטלוג, לכרטיסים ולהדגשות */
+export const GAME_COLORS: Record<string, string> = {
+  whomost: "#ffc93c",
+  colorrules: "#ec4899",
+  simon: "#34e89e",
+  deathtouch: "#ff5c5c",
+  demons: "#a78bfa",
+  alias: "#ff7854",
+  trivia: "#5c8aff",
+  bombs: "#ffb62e",
+  forehead: "#2dd4bf",
+  pods: "#8b5cf6",
+};
+
 export const GAME_VIEWS: Record<string, ComponentType<GameViewProps>> = {
   forehead: ForeheadView,
   pods: PodsView,
