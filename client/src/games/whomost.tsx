@@ -184,6 +184,13 @@ export default function WhoMostView({ room, me, conn, hub }: GameViewProps) {
         <p style={{ color: "#3a2a00", fontWeight: 800, marginTop: 10, fontSize: 18 }}>
           {n > 0 ? `${n} מתוך ${result?.voters} בחרו בך` : "נבחרת!"}
         </p>
+        {/* גם כשהמארח עצמו נבחר — הוא חייב כפתור להמשיך, אחרת המשחק נתקע */}
+        {isHost && reveal && (
+          <button className="btn" style={{ marginTop: 26, maxWidth: 320, background: "#2b1a4d", boxShadow: "0 8px 24px rgba(0,0,0,.3)" }}
+            onPointerDown={() => conn.sendGame({ a: "wm_next" })}>
+            {reveal.idx + 1 >= reveal.total ? "🏆 סיום וטקס" : "➡️ השאלה הבאה"}
+          </button>
+        )}
       </main>
     );
   }

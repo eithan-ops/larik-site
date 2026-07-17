@@ -8,7 +8,7 @@ const COLORS = ["#00E676", "#b26bff", "#ff4d9d", "#ffce3c", "#5c8aff", "#2dd4bf"
 const LIVES = 3;
 
 export function createSimon(ctx: GameCtx): GameInstance {
-  const players = ctx.connectedPlayers().map((p) => p.id);
+  let players = ctx.connectedPlayers().map((p) => p.id);
   const colorOf: Record<string, string> = {};
   players.forEach((p, i) => (colorOf[p] = COLORS[i % COLORS.length]));
   let lives = LIVES;
@@ -22,12 +22,18 @@ export function createSimon(ctx: GameCtx): GameInstance {
     if (over) return;
     round += 1;
     seq.push(players[Math.floor(Math.random() * players.length)]);
+    replay(900);
+  }
+
+  /** משדר מחדש את הרצף כולו ואז פותח קלט — משמש גם אחרי טעות וגם אחרי עזיבת שחקן */
+  function replay(lead = 700) {
+    if (over) return;
     inputIdx = 0;
     phase = "watch";
     ctx.broadcast({ a: "sm_watch", round });
     const stepGap = Math.max(550, 1000 - round * 30);
-    seq.forEach((pid, i) => { ctx.cue(900 + i * stepGap, { a: "sm_light", pid, step: i, at: 0 } as never); });
-    ctx.timer(900 + seq.length * stepGap + 400, () => { if (over) return; phase = "input"; ctx.broadcast({ a: "sm_input", round }); });
+    seq.forEach((pid, i) => { ctx.cue(lead + i * stepGap, { a: "sm_light", pid, step: i, at: 0 } as never); });
+    ctx.timer(lead + seq.length * stepGap + 400, () => { if (over) return; phase = "input"; ctx.broadcast({ a: "sm_input", round }); });
   }
 
   function finish(won: boolean) {
@@ -43,6 +49,7 @@ export function createSimon(ctx: GameCtx): GameInstance {
     onMessage(pid: string, d: GameClientMsg) {
       const m = d as SimonClientMsg;
       if (m.a !== "sm_tap" || phase !== "input" || over) return;
+      if (!players.includes(pid)) return; // מצטרף מאוחר/רפאים — נגיעה שלו לא מורידה חיים לקבוצה
       const expected = seq[inputIdx];
       if (pid === expected) {
         inputIdx += 1;
@@ -53,15 +60,18 @@ export function createSimon(ctx: GameCtx): GameInstance {
         ctx.broadcast({ a: "sm_wrong", expected, got: pid, lives: Math.max(0, lives) });
         if (lives <= 0) return finish(false);
         phase = "idle"; inputIdx = 0;
-        ctx.timer(1600, () => {
-          if (over) return;
-          phase = "watch";
-          ctx.broadcast({ a: "sm_watch", round });
-          const stepGap = Math.max(550, 1000 - round * 30);
-          seq.forEach((p2, i) => ctx.cue(700 + i * stepGap, { a: "sm_light", pid: p2, step: i, at: 0 } as never));
-          ctx.timer(700 + seq.length * stepGap + 400, () => { if (!over) { phase = "input"; ctx.broadcast({ a: "sm_input", round }); } });
-        });
+        ctx.timer(1600, () => replay(700));
       }
+    },
+    onLeave(pid: string) {
+      if (over || !players.includes(pid)) return;
+      players = players.filter((p) => p !== pid);
+      if (players.length < 2) return finish(false); // אין קבוצה — מסיימים בכבוד
+      const before = seq.length;
+      seq = seq.filter((p) => p !== pid); // הצעדים שלו יוצאים מהרצף — אי אפשר לגעת בטלפון שנעלם
+      if (seq.length === 0) { phase = "idle"; ctx.timer(1500, nextRound); return; }
+      // אם הרצף השתנה או שאנחנו באמצע קלט — מראים את הרצף המעודכן מחדש
+      if (seq.length !== before || phase === "input") { phase = "idle"; ctx.timer(1500, () => replay(700)); }
     },
     dispose() { over = true; },
   };

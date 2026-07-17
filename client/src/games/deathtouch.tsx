@@ -88,7 +88,7 @@ export default function DeathTouchView({ room, me, conn, hub }: GameViewProps) {
         <div style={{ fontSize: 80 }}>{role === "killer" ? "🔪" : role === "civilian" ? "😇" : "🎭"}</div>
         <div className="big" style={{ marginTop: 10, color: role === "killer" ? "#ff6b6b" : "#7dffb8" }}>{msg || "מחלק תפקידים..."}</div>
         <p className="sub" style={{ marginTop: 14, textAlign: "center", padding: "0 24px" }}>
-          {role === "killer" ? "בחלון הציד — הושט יד וגע במסך של קורבן. אל שיתפסו אותך!" : "בחלון הציד — הנח את הטלפון, ידיים למעלה, ותשמור על עצמך."}
+          {role === "killer" ? "בחלון הציד — הושט יד וגע במסך של קורבן. שלא יתפסו אותך!" : "בחלון הציד — הנח את הטלפון, ידיים למעלה, ותשמור על עצמך."}
         </p>
         <p className="sub" style={{ marginTop: 20, fontSize: 12 }}>המשחק מתחיל עוד רגע...</p>
       </main>

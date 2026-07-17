@@ -14,7 +14,6 @@ import type { WhoMostClientMsg, GameClientMsg } from "../../../shared/protocol";
 const MAX_Q = 20;
 
 export function createWhoMost(ctx: GameCtx): GameInstance {
-  const hostId = ctx.players().find((p) => p.isHost)?.id ?? ctx.players()[0]?.id ?? "";
   let phase: "write" | "answer" | "reveal" = "write";
   const questions: string[] = [];
   const votes: Map<number, Map<string, string>> = new Map(); // qIdx -> (voter -> target)
@@ -22,7 +21,8 @@ export function createWhoMost(ctx: GameCtx): GameInstance {
   let revealIdx = -1;
   let over = false;
 
-  const isHost = (pid: string) => pid === hostId;
+  // בודקים מול המארח *הנוכחי* של החדר — כך שאם המארח מתנתק והכתר עובר, המשחק ממשיך
+  const isHost = (pid: string) => ctx.players().find((p) => p.id === pid)?.isHost === true;
   const connectedCount = () => ctx.connectedPlayers().length;
 
   function tallyFor(idx: number): { tally: Record<string, number>; winners: string[]; voters: number } {

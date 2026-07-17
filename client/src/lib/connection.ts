@@ -33,6 +33,8 @@ export class Connection {
   private pingTimer?: number;
   playerId = "";
   synced = false;
+  private everWelcomed = false; // מתחברים מחדש אוטומטית רק לחדר שבאמת נכנסנו אליו
+  private closedByUs = false;
 
   private serverUrl: string;
   private roomCode: string;
@@ -66,6 +68,7 @@ export class Connection {
       const msg: ServerMsg = JSON.parse(ev.data);
       switch (msg.t) {
         case "welcome":
+          this.everWelcomed = true;
           this.playerId = msg.playerId;
           sessionStorage.setItem(`larik-pid-${this.roomCode}`, msg.playerId);
           this.events.onWelcome(msg.playerId, msg.room);
@@ -94,7 +97,8 @@ export class Connection {
     this.ws.onclose = () => {
       this.events.onStatus("closed");
       clearInterval(this.pingTimer);
-      // ניסיון חיבור מחדש עדין
+      // ניסיון חיבור מחדש עדין — אבל לא אחרי close() מכוון ולא לחדר שמעולם לא קיבל אותנו
+      if (this.closedByUs || !this.everWelcomed) return;
       setTimeout(() => {
         if (document.visibilityState === "visible") this.connect(name, emoji);
       }, 1500);
@@ -118,6 +122,7 @@ export class Connection {
   }
 
   close() {
+    this.closedByUs = true;
     clearInterval(this.pingTimer);
     this.ws?.close();
   }

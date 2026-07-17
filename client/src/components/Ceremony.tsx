@@ -58,13 +58,20 @@ export default function Ceremony({ room, me, isHost, onBackToLobby }: {
           <div className="huge shake">🤡</div>
           <div className="big" style={{ color: "#ff8a8a" }}>הליצן של הסיבוב</div>
         </>
-      ) : (
+      ) : winner ? (
         <>
-          <div className="huge popin">{winner?.emoji ?? "🏆"}</div>
-          <div className="big">{winner?.name} ניצח!</div>
+          <div className="huge popin">{winner.emoji}</div>
+          <div className="big">{winner.name} ניצח!</div>
           {loser && <p className="sub" style={{ marginTop: 8, fontSize: 16 }}>
             הליצן של הסיבוב: <b style={{ color: "#ff8a8a" }}>{loser.emoji} {loser.name}</b> 🤡
           </p>}
+        </>
+      ) : (
+        /* משחק שיתופי — אין מנצח יחיד, כולם ביחד */
+        <>
+          <div className="huge popin">🙌</div>
+          <div className="big" style={{ fontSize: 26, padding: "0 10px" }}>{c.title}</div>
+          <p className="sub" style={{ marginTop: 8, fontSize: 16 }}>שיחקתם כצוות — כל הכבוד!</p>
         </>
       )}
 

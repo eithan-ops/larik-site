@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { navigate } from "../App";
 import type { RoomSnapshot } from "../../../shared/protocol";
 import { CATALOG } from "../../../shared/protocol";
 import { Connection, defaultServerUrl } from "../lib/connection";
@@ -20,7 +21,9 @@ export default function Room({ code }: { code: string }) {
   const [me, setMe] = useState("");
   const [status, setStatus] = useState("");
   const [toast, setToast] = useState("");
+  const [fatal, setFatal] = useState("");
   const connRef = useRef<Connection | null>(null);
+  const roomRef = useRef<RoomSnapshot | null>(null);
   const hub = useMemo(() => new GameHub(), []);
 
   function showToast(m: string) {
@@ -38,11 +41,12 @@ export default function Room({ code }: { code: string }) {
     localStorage.setItem("larik-emoji", emoji);
 
     const conn = new Connection(defaultServerUrl(), code, {
-      onWelcome: (pid, r) => { setMe(pid); setRoom(r); },
-      onRoom: (r) => setRoom(r),
+      onWelcome: (pid, r) => { setMe(pid); setRoom(r); roomRef.current = r; },
+      onRoom: (r) => { setRoom(r); roomRef.current = r; },
       onGame: (d) => hub.emit(d, 0),
       onCue: (d, at) => hub.emit(d, at),
-      onError: (m) => showToast(m),
+      // שגיאה לפני שנכנסנו לחדר (קוד שגוי / חדר שנסגר) = מסך שגיאה עם דרך חזרה, לא ספינר נצחי
+      onError: (m) => { if (!roomRef.current) setFatal(m || "החדר לא נמצא"); else showToast(m); },
       onStatus: (s) => setStatus(s),
     });
     connRef.current = conn;
@@ -94,6 +98,18 @@ export default function Room({ code }: { code: string }) {
   }
 
   /* ---------- בתוך החדר ---------- */
+  if (fatal && !room) {
+    return (
+      <main style={{ justifyContent: "center", textAlign: "center" }}>
+        <div style={{ fontSize: 64 }}>🕳️</div>
+        <h1 style={{ margin: "12px 0 6px" }}>אופס!</h1>
+        <p className="sub" style={{ marginBottom: 24 }}>{fatal}</p>
+        <button className="btn" style={{ maxWidth: 300, margin: "0 auto" }} onClick={() => navigate("/")}>
+          🏠 לדף הבית
+        </button>
+      </main>
+    );
+  }
   if (!room) {
     return <main style={{ justifyContent: "center", textAlign: "center" }}>
       <div className="pulse" style={{ fontSize: 60 }}>🪐</div>
