@@ -14,19 +14,26 @@ export function createDemons(ctx: GameCtx): GameInstance {
   players.forEach((p, i) => (colorOf[p] = COLORS[i % COLORS.length]));
   const scores: Record<string, number> = Object.fromEntries(players.map((p) => [p, 0]));
   const meters: Record<string, number> = Object.fromEntries(players.map((p) => [p, 0]));
+  let endsAt = 0;
   let over = false;
 
   function finish() {
     if (over) return;
     over = true;
     const ranked = [...players].sort((a, b) => scores[b] - scores[a]);
+    const top = scores[ranked[0]] ?? 0;
+    const winnerIds = ranked.filter((p) => (scores[p] ?? 0) === top);
+    const low = scores[ranked[ranked.length - 1]] ?? 0;
+    const lowIds = ranked.filter((p) => (scores[p] ?? 0) === low);
+    const loser = lowIds.length === 1 && low < top ? lowIds[0] : undefined;
     ctx.broadcast({ a: "dm_end", scores: { ...scores } });
-    ctx.timer(200, () => ctx.end({ title: "השדים הקטנים 👹", winnerId: ranked[0], loserId: ranked.length > 1 ? ranked[ranked.length - 1] : undefined, scores: { ...scores } }));
+    ctx.timer(200, () => ctx.end({ title: "השדים הקטנים 👹", winnerId: winnerIds[0], winnerIds, loserId: loser, scores: { ...scores } }));
   }
 
   return {
     onStart() {
       const until = ctx.now() + GAME_MS + 3000;
+      endsAt = until;
       ctx.broadcast({ a: "dm_begin", until, colors: { ...colorOf } });
       const tick = () => { if (over) return; ctx.broadcast({ a: "dm_score", scores: { ...scores }, meters: { ...meters } }); ctx.timer(700, tick); };
       ctx.timer(3000, tick);
@@ -43,6 +50,11 @@ export function createDemons(ctx: GameCtx): GameInstance {
         const kind = Math.floor(Math.random() * 4);
         ctx.cue(300, { a: "dm_demon", from: pid, target: m.target, kind, at: 0, dur: 3500 } as never);
       }
+    },
+    onRejoin(pid: string) {
+      if (over) return;
+      ctx.sendTo(pid, { a: "dm_begin", until: endsAt, colors: { ...colorOf } });
+      ctx.sendTo(pid, { a: "dm_score", scores: { ...scores }, meters: { ...meters } });
     },
     onLeave() {},
     dispose() { over = true; },

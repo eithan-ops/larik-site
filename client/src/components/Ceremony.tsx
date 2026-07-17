@@ -9,9 +9,11 @@ export default function Ceremony({ room, me, isHost, onBackToLobby }: {
   room: RoomSnapshot; me: string; isHost: boolean; onBackToLobby: () => void;
 }) {
   const c = room.ceremony!;
-  const iWon = me === c.winnerId;
+  const winnerIds = c.winnerIds ?? (c.winnerId ? [c.winnerId] : []);
+  const iWon = winnerIds.includes(me);
   const iLost = me === c.loserId;
   const winner = room.players.find((p) => p.id === c.winnerId);
+  const winners = winnerIds.map((id) => room.players.find((p) => p.id === id)).filter(Boolean);
   const loser = room.players.find((p) => p.id === c.loserId);
 
   useEffect(() => {
@@ -51,7 +53,12 @@ export default function Ceremony({ room, me, isHost, onBackToLobby }: {
       {iWon ? (
         <>
           <div className="huge popin">👑</div>
-          <div className="big" style={{ color: "var(--gold)" }}>ניצחת!</div>
+          <div className="big" style={{ color: "var(--gold)" }}>{winnerIds.length > 1 ? "תיקו — ניצחתם ביחד!" : "ניצחת!"}</div>
+          {winnerIds.length > 1 && (
+            <p className="sub" style={{ marginTop: 8, fontSize: 16 }}>
+              {winners.map((w) => `${w!.emoji} ${w!.name}`).join(" · ")}
+            </p>
+          )}
         </>
       ) : iLost ? (
         <>
@@ -60,8 +67,12 @@ export default function Ceremony({ room, me, isHost, onBackToLobby }: {
         </>
       ) : winner ? (
         <>
-          <div className="huge popin">{winner.emoji}</div>
-          <div className="big">{winner.name} ניצח!</div>
+          <div className="huge popin">{winnerIds.length > 1 ? "🤝" : winner.emoji}</div>
+          <div className="big">
+            {winnerIds.length > 1
+              ? `תיקו! ${winners.map((w) => w!.name).join(" ו")} ניצחו`
+              : `${winner.name} ניצח!`}
+          </div>
           {loser && <p className="sub" style={{ marginTop: 8, fontSize: 16 }}>
             הליצן של הסיבוב: <b style={{ color: "#ff8a8a" }}>{loser.emoji} {loser.name}</b> 🤡
           </p>}

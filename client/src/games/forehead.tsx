@@ -52,8 +52,8 @@ export default function ForeheadView({ room, me, conn, hub }: GameViewProps) {
       case "fh_saved":
         setSaved((s) => [...s, m.pid]);
         setVoteReq(null);
-        if (m.pid === me) { setPhase("playing"); Sfx.fanfare(); vibrate([80, 50, 80]); flashMsg(`צדקת! ${m.card} 🎉`, "#00E676"); }
-        else { Sfx.pop(); flashMsg(`${nameOf(m.pid)} ניצל! (${m.card})`, "#7dffb8"); }
+        if (m.pid === me) { setPhase("playing"); Sfx.fanfare(); vibrate([80, 50, 80]); flashMsg(`צדקת! ${m.card} 🎉`, "#34e89e"); }
+        else { Sfx.pop(); flashMsg(`${nameOf(m.pid)} ניצל! (${m.card})`, "#8ff5cc"); }
         return;
       case "fh_wrong":
         setVoteReq(null);
@@ -172,7 +172,7 @@ export default function ForeheadView({ room, me, conn, hub }: GameViewProps) {
   // ניצלתי — צופה
   if (iAmSaved) {
     return (
-      <main className="fullscreen" style={{ background: "radial-gradient(circle at 50% 20%, #1d4030, #0B0C11)" }}>
+      <main className="fullscreen" style={{ background: "radial-gradient(circle at 50% 20%, #1d4030, #0c0817)" }}>
         <div style={{ fontSize: 60 }}>😎</div>
         <div className="big" style={{ color: "var(--money)" }}>ניצלת!</div>
         <p className="sub" style={{ marginTop: 8 }}>עכשיו תיהנה לראות את השאר מתייבשים.<br />תורו של {nameOf(turnPid)}.</p>
@@ -183,7 +183,7 @@ export default function ForeheadView({ room, me, conn, hub }: GameViewProps) {
   // משחק פעיל — הטלפון על המצח
   return (
     <main className="fullscreen" style={{
-      background: myTurn ? "radial-gradient(circle at 50% 20%, #0f3320, #0B0C11)" : "var(--bg)",
+      background: myTurn ? "radial-gradient(circle at 50% 20%, #0f3320, #0c0817)" : "var(--bg)",
       border: myTurn ? "4px solid var(--money)" : "none",
     }}>
       {turnPid && !showCard && timerChip}

@@ -177,7 +177,7 @@ export default function WhoMostView({ room, me, conn, hub }: GameViewProps) {
     return (
       <main className="fullscreen" style={{ background: "linear-gradient(160deg,#ffce3c,#ff9d3c)" }}>
         {Array.from({ length: 24 }).map((_, i) => (
-          <span key={i} className="confetti" style={{ left: `${(i * 4.1) % 100}%`, background: ["#fff", "#ff4d9d", "#5c8aff", "#00E676"][i % 4], animationDuration: `${1.2 + (i % 5) * 0.25}s` }} />
+          <span key={i} className="confetti" style={{ left: `${(i * 4.1) % 100}%`, background: ["#fff", "#ff4d9d", "#5c8aff", "#34e89e"][i % 4], animationDuration: `${1.2 + (i % 5) * 0.25}s` }} />
         ))}
         <div style={{ fontSize: 90 }} className="popin">👑</div>
         <div className="big" style={{ color: "#3a2a00", fontSize: 34 }}>זה אתה!</div>
@@ -197,7 +197,7 @@ export default function WhoMostView({ room, me, conn, hub }: GameViewProps) {
 
   if (reveal) {
     return (
-      <main className="fullscreen" style={{ background: "#0b0c11", justifyContent: "space-between", padding: "24px 18px" }}>
+      <main className="fullscreen" style={{ background: "var(--bg)", justifyContent: "space-between", padding: "24px 18px" }}>
         <span className="chip">{reveal.idx + 1}/{reveal.total}</span>
         <div style={{ textAlign: "center" }}>
           <div style={{ fontSize: 40 }}>🫵</div>

@@ -15,6 +15,7 @@ export function createDeathTouch(ctx: GameCtx): GameInstance {
   let alive = [...all];
   const votes = new Map<string, string>();
   let phase: "idle" | "hunt" | "accuse" = "idle";
+  let phaseUntil = 0;
   let killedThisHunt = false;
   let over = false;
 
@@ -42,7 +43,8 @@ export function createDeathTouch(ctx: GameCtx): GameInstance {
     if (over) return;
     phase = "hunt";
     killedThisHunt = false;
-    ctx.broadcast({ a: "dt_phase", phase: "hunt", until: ctx.now() + HUNT_MS });
+    phaseUntil = ctx.now() + HUNT_MS;
+    ctx.broadcast({ a: "dt_phase", phase: "hunt", until: phaseUntil });
     for (const k of aliveKillers()) ctx.sendTo(k, { a: "dt_hunt" });
     ctx.timer(HUNT_MS, () => { if (phase === "hunt") startAccuse(); });
   }
@@ -53,6 +55,7 @@ export function createDeathTouch(ctx: GameCtx): GameInstance {
     phase = "accuse";
     votes.clear();
     const until = ctx.now() + ACCUSE_MS;
+    phaseUntil = until;
     ctx.broadcast({ a: "dt_phase", phase: "accuse", until });
     ctx.broadcast({ a: "dt_accuse", alive: [...alive], until });
     ctx.timer(ACCUSE_MS, resolveAccuse);
@@ -99,7 +102,24 @@ export function createDeathTouch(ctx: GameCtx): GameInstance {
         if (votes.size >= alive.length) resolveAccuse();
       }
     },
-    onLeave(pid: string) { alive = alive.filter((p) => p !== pid); if (!over) checkEnd(); },
+    onRejoin(pid: string) {
+      if (!all.includes(pid)) return;
+      ctx.sendTo(pid, { a: "dt_role", role: killers.has(pid) ? "killer" : "civilian", killers: killerCount });
+      ctx.sendTo(pid, { a: "dt_alive", alive: [...alive] });
+      if (phase === "hunt") {
+        ctx.sendTo(pid, { a: "dt_phase", phase: "hunt", until: phaseUntil });
+        if (killers.has(pid) && alive.includes(pid)) ctx.sendTo(pid, { a: "dt_hunt" });
+      } else if (phase === "accuse") {
+        ctx.sendTo(pid, { a: "dt_phase", phase: "accuse", until: phaseUntil });
+        ctx.sendTo(pid, { a: "dt_accuse", alive: [...alive], until: phaseUntil });
+      }
+    },
+    onLeave(pid: string, permanent?: boolean) {
+      // ניתוק רגעי (reload) לא הורג — הטיימרים ממשיכים בלעדיו והוא חוזר עם onRejoin
+      if (!permanent) return;
+      alive = alive.filter((p) => p !== pid);
+      if (!over) checkEnd();
+    },
     dispose() { over = true; },
   };
 }

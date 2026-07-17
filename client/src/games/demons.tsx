@@ -98,8 +98,9 @@ export default function DemonsView({ room, me, conn, hub }: GameViewProps) {
   }
 
   return (
-    <main className="fullscreen" style={{ background: "#0b0c11", justifyContent: "flex-start", paddingTop: 12 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", width: "100%", padding: "0 16px", alignItems: "center" }}>
+    <main className="fullscreen" style={{ background: "var(--bg)", justifyContent: "flex-start", paddingTop: 12 }}>
+      {/* padding שמאלי משאיר מקום לכפתור היציאה הצף */}
+      <div style={{ display: "flex", justifyContent: "space-between", width: "100%", alignItems: "center", paddingLeft: 96, paddingRight: 16 }}>
         <span className="chip">⏱️ {secs}s</span>
         <span className="chip" style={{ color: "var(--money)" }}>נקודות: {myScore}</span>
       </div>
@@ -121,7 +122,7 @@ export default function DemonsView({ room, me, conn, hub }: GameViewProps) {
             onPointerDown={() => hitDot(dot.id)}
             style={{
               position: "absolute", left: `${dot.x}%`, top: `${dot.y}%`, width: 62, height: 62, borderRadius: "50%",
-              border: "none", background: "radial-gradient(circle at 35% 30%, #7dffb8, #00c853)", boxShadow: "0 0 22px #00e67699",
+              border: "none", background: "radial-gradient(circle at 35% 30%, #8ff5cc, #34e89e)", boxShadow: "0 0 22px #34e89e99",
               fontSize: 26, animation: "popin .2s",
             }}>⭐</button>
         ))}

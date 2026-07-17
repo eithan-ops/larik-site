@@ -16,6 +16,8 @@ export interface Transport {
 export interface GameEndResult {
   title: string;
   winnerId?: string;
+  /** תיקו: כל המנצחים — כולם מקבלים +3 בלוח הערב */
+  winnerIds?: string[];
   loserId?: string;
   scores?: Record<string, number>;
 }
@@ -38,7 +40,10 @@ export interface GameCtx {
 export interface GameInstance {
   onStart(): void;
   onMessage(pid: string, d: GameClientMsg): void;
-  onLeave?(pid: string): void;
+  /** permanent=true רק בעזיבה מרצון; ניתוק רגעי (reload) מגיע עם false — לא להעניש */
+  onLeave?(pid: string, permanent?: boolean): void;
+  /** שחקן מהמשחק חזר אחרי reload/ניתוק — לשלוח לו מחדש את המצב שהוא צריך כדי להמשיך */
+  onRejoin?(pid: string): void;
   dispose(): void;
 }
 
@@ -84,6 +89,13 @@ export class Room {
     if (existing) {
       existing.connected = true;
       existing.name = name || existing.name;
+      // חוזר באמצע משחק שהוא חלק ממנו — המשחק ישדר לו מחדש את המצב
+      if (this.phase === "game" && this.gamePids.includes(pid)) {
+        this.transport.send(pid, { t: "welcome", playerId: pid, room: this.snapshot() });
+        this.broadcastRoom();
+        this.game?.onRejoin?.(pid);
+        return;
+      }
     } else {
       const isFirst = this.players.size === 0;
       this.players.set(pid, {
@@ -100,7 +112,7 @@ export class Room {
     const p = this.players.get(pid);
     if (!p) return;
     p.connected = false;
-    this.game?.onLeave?.(pid);
+    this.game?.onLeave?.(pid, false);
     // מארח שהתנתק — הבא בתור יורש
     if (pid === this.hostId) {
       const next = [...this.players.values()].find((x) => x.connected);
@@ -158,7 +170,7 @@ export class Room {
         // עזיבה מרצון — מוסרים לגמרי (בשונה מניתוק, שמשאיר "נרדם")
         const leaving = this.players.get(pid);
         if (!leaving) return;
-        this.game?.onLeave?.(pid);
+        this.game?.onLeave?.(pid, true);
         this.players.delete(pid);
         if (pid === this.hostId) {
           const next = [...this.players.values()].find((x) => x.connected);
@@ -202,15 +214,17 @@ export class Room {
   }
 
   private endGame(result: GameEndResult) {
-    // ניקוד ערב: מנצח +3, כולם חוץ מהליצן +1
+    const winners = result.winnerIds?.length ? result.winnerIds : result.winnerId ? [result.winnerId] : [];
+    // ניקוד ערב: כל מנצח (גם בתיקו) +3, כולם חוץ מהליצן +1
     for (const p of this.players.values()) {
       const base = this.eveningScores[p.id] ?? 0;
-      const gain = p.id === result.winnerId ? 3 : p.id === result.loserId ? 0 : 1;
+      const gain = winners.includes(p.id) ? 3 : p.id === result.loserId ? 0 : 1;
       this.eveningScores[p.id] = base + gain;
     }
     this.ceremony = {
       title: result.title,
-      winnerId: result.winnerId,
+      winnerId: winners[0],
+      winnerIds: winners.length ? winners : undefined,
       loserId: result.loserId,
       scores: result.scores,
       eveningScores: { ...this.eveningScores },

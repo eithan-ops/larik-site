@@ -7,7 +7,7 @@ import type { GameViewProps } from "./registry";
 import { Sfx, vibrate } from "../lib/audio";
 
 interface Q { qId: number; q: string; options: string[]; index: number; total: number; at: number; until: number }
-const OPT_COLORS = ["#ff4d9d", "#5c8aff", "#ffce3c", "#00E676"];
+const OPT_COLORS = ["#ff4d9d", "#5c8aff", "#ffce3c", "#34e89e"];
 const ANSWER_MS = 12_000;
 
 export default function TriviaView({ room, me, conn, hub }: GameViewProps) {
@@ -68,7 +68,8 @@ export default function TriviaView({ room, me, conn, hub }: GameViewProps) {
 
   return (
     <main style={{ minHeight: "100dvh", padding: 16, display: "flex", flexDirection: "column" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      {/* paddingLeft משאיר מקום לכפתור היציאה הצף */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingLeft: 96 }}>
         <span className="chip">{q.index + 1}/{q.total}</span>
         {!reveal ? <span className="chip" style={{ color: secs <= 4 ? "#ff8a8a" : undefined }}>⏱️ {secs}s</span>
           : <span className="chip">ענו {answered}</span>}
@@ -85,13 +86,13 @@ export default function TriviaView({ room, me, conn, hub }: GameViewProps) {
             <button key={i} onPointerDown={() => answer(i)} disabled={chosen !== null || !!reveal}
               style={{
                 border: isMine ? "3px solid #fff" : "none", borderRadius: 16, padding: "20px 10px", fontSize: 16, fontWeight: 800,
-                color: "#0b0c11", background: OPT_COLORS[i], opacity: dim ? 0.35 : 1, minHeight: 74,
-                boxShadow: isCorrect ? "0 0 24px #00e676" : "none", transition: "opacity .2s",
+                color: "#0c0817", background: OPT_COLORS[i], opacity: dim ? 0.35 : 1, minHeight: 74,
+                boxShadow: isCorrect ? "0 0 24px #34e89e" : "none", transition: "opacity .2s",
                 position: "relative",
               }}>
               {opt}
               {isCorrect && <span style={{ position: "absolute", top: 4, left: 6, fontSize: 18 }}>✓</span>}
-              {reveal && <span style={{ position: "absolute", bottom: 2, right: 8, fontSize: 12, color: "#0b0c11aa" }}>{reveal.tally[i]}</span>}
+              {reveal && <span style={{ position: "absolute", bottom: 2, right: 8, fontSize: 12, color: "#0c0817aa" }}>{reveal.tally[i]}</span>}
             </button>
           );
         })}

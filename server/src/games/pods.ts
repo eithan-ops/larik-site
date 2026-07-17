@@ -144,7 +144,21 @@ export function createPods(ctx: GameCtx): GameInstance {
       const m = d as PodsClientMsg;
       if (m.a === "pd_tap") handleTap(pid, m);
     },
-    onLeave(pid: string) {
+    onRejoin(pid: string) {
+      if (disposed) return;
+      if (mode === "survival") {
+        ctx.sendTo(pid, { a: "pd_mode", mode, colors: { ...colorOf } });
+        for (const p of players) if (!alive.includes(p)) ctx.sendTo(pid, { a: "pd_eliminated", pid: p });
+      } else {
+        ctx.sendTo(pid, { a: "pd_mode", mode });
+        if (runnerIdx >= 0 && runnerIdx < players.length) {
+          ctx.sendTo(pid, { a: "pd_runner", pid: players[runnerIdx], until: runEndsAt });
+        }
+      }
+      ctx.sendTo(pid, { a: "pd_score", scores: { ...scores }, avgMs: avgReactions() });
+    },
+    onLeave(pid: string, permanent?: boolean) {
+      if (!permanent) return; // ניתוק רגעי — הפוד יחזור; החלון ממילא מדיח מי שלא נוגע
       alive = alive.filter((p) => p !== pid);
     },
     dispose() { disposed = true; },

@@ -67,13 +67,12 @@ export default function ColorRulesView({ room, me, conn, hub }: GameViewProps) {
 
   if (flash) {
     const remain = Math.max(0, flash.until - conn.serverNow());
-    const light = flash.color === "#f4f6ff";
     return (
       <main className="fullscreen" style={{ background: flash.color, transition: "none" }} onPointerDown={tap}>
-        <div className="huge" style={{ color: light ? "#0b0c11" : "#0b0c11", fontSize: "min(16vw,74px)", textAlign: "center", padding: "0 16px" }}>
+        <div className="huge" style={{ color: "#0c0817", fontSize: "min(16vw,74px)", textAlign: "center", padding: "0 16px" }}>
           {flash.label}
         </div>
-        <div style={{ position: "absolute", bottom: 40, fontSize: 20, fontWeight: 900, color: "#0b0c11cc" }}>
+        <div style={{ position: "absolute", bottom: 40, fontSize: 20, fontWeight: 900, color: "#0c0817cc" }}>
           {(remain / 1000).toFixed(1)}
         </div>
         {tappedRound === flash.roundId && (
@@ -84,7 +83,7 @@ export default function ColorRulesView({ room, me, conn, hub }: GameViewProps) {
   }
 
   return (
-    <main className="fullscreen" style={{ background: "#0b0c11" }}>
+    <main className="fullscreen" style={{ background: "var(--bg)" }}>
       <div style={{ fontSize: 50 }} className="pulse">🎨</div>
       <div className="big" style={{ marginTop: 10 }}>חוקי הצבע</div>
       <p className="sub" style={{ marginTop: 8 }}>{msg}</p>

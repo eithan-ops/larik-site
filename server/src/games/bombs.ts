@@ -137,6 +137,12 @@ export function createBombs(ctx: GameCtx): GameInstance {
       ctx.timer(2800, loop); // ספירת פתיחה אצל הלקוחות
     },
 
+    onRejoin(pid: string) {
+      if (over) return;
+      // מצב בסיס — פצצות חדשות ממילא מגיעות כל כמה שניות
+      ctx.sendTo(pid, { a: "bm_start", lives });
+    },
+
     onMessage(pid: string, d: GameClientMsg) {
       if (over) return;
       const m = d as BombsClientMsg;

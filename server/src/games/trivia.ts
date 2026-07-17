@@ -57,7 +57,13 @@ export function createTrivia(ctx: GameCtx): GameInstance {
     if (over) return;
     over = true;
     const ranked = [...players].sort((a, b) => scores[b] - scores[a]);
-    ctx.end({ title: "טריוויה 🧠", winnerId: ranked[0], loserId: ranked.length > 1 ? ranked[ranked.length - 1] : undefined, scores: { ...scores } });
+    // תיקו בפסגה = כולם מנצחים; ליצן רק אם הוא אחרון *יחיד*
+    const top = scores[ranked[0]] ?? 0;
+    const winnerIds = ranked.filter((p) => (scores[p] ?? 0) === top);
+    const low = scores[ranked[ranked.length - 1]] ?? 0;
+    const lowIds = ranked.filter((p) => (scores[p] ?? 0) === low);
+    const loser = lowIds.length === 1 && low < top ? lowIds[0] : undefined;
+    ctx.end({ title: "טריוויה 🧠", winnerId: winnerIds[0], winnerIds, loserId: loser, scores: { ...scores } });
   }
 
   return {

@@ -14,7 +14,9 @@ const EMOJIS = ["😎", "🦄", "🐸", "🔥", "🍕", "👾", "🐙", "🌈", 
 type Stage = "name" | "arm" | "in";
 
 export default function Room({ code }: { code: string }) {
-  const [stage, setStage] = useState<Stage>("name");
+  // חוזר לחדר מוכר (reload)? מדלגים על מסך הכינוי — נשאר רק "חמש" (חובה בשביל האודיו)
+  const isRejoin = !!sessionStorage.getItem(`larik-pid-${code}`) && !!localStorage.getItem("larik-name");
+  const [stage, setStage] = useState<Stage>(isRejoin ? "arm" : "name");
   const [name, setName] = useState(localStorage.getItem("larik-name") || "");
   const [emoji, setEmoji] = useState(localStorage.getItem("larik-emoji") || "😎");
   const [room, setRoom] = useState<RoomSnapshot | null>(null);
@@ -56,6 +58,10 @@ export default function Room({ code }: { code: string }) {
   }
 
   useEffect(() => () => connRef.current?.close(), []);
+
+  // בין משחקים מנקים הודעות שמורות — שלא יזלגו למשחק הבא
+  const phase = room?.phase;
+  useEffect(() => { if (phase !== "game") hub.reset(); }, [phase, hub]);
 
   /* ---------- מסכי כניסה ---------- */
   if (stage === "name") {

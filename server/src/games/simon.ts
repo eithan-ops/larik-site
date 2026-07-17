@@ -63,6 +63,12 @@ export function createSimon(ctx: GameCtx): GameInstance {
         ctx.timer(1600, () => replay(700));
       }
     },
+    onRejoin(pid: string) {
+      if (over || !players.includes(pid)) return;
+      ctx.sendTo(pid, { a: "sm_setup", colors: { ...colorOf }, lives });
+      if (phase === "input") ctx.sendTo(pid, { a: "sm_input", round });
+      else ctx.sendTo(pid, { a: "sm_watch", round });
+    },
     onLeave(pid: string) {
       if (over || !players.includes(pid)) return;
       players = players.filter((p) => p !== pid);

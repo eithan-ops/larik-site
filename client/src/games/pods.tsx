@@ -88,8 +88,8 @@ export default function PodsView({ room, me, conn, hub }: GameViewProps) {
   if (light) {
     return (
       <main className="fullscreen" style={{ background: light.color }} onPointerDown={tap}>
-        <div className="huge" style={{ color: "#0B0C11" }}>👆</div>
-        <div className="big" style={{ color: "#0B0C11" }}>גע!</div>
+        <div className="huge" style={{ color: "#0c0817" }}>👆</div>
+        <div className="big" style={{ color: "#0c0817" }}>גע!</div>
       </main>
     );
   }

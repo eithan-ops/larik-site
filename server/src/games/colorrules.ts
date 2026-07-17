@@ -79,7 +79,16 @@ export function createColorRules(ctx: GameCtx): GameInstance {
       const m = d as ColorRulesClientMsg;
       if (m.a === "cr_tap" && current && m.roundId === current.id && alive.includes(pid)) tapped.add(pid);
     },
-    onLeave(pid: string) { alive = alive.filter((p) => p !== pid); if (!over && alive.length <= 1) finish(); },
+    onRejoin(pid: string) {
+      ctx.sendTo(pid, { a: "cr_begin", lives: 3 });
+      ctx.sendTo(pid, { a: "cr_lives", pid, lives: Math.max(0, lives[pid] ?? 0) });
+    },
+    onLeave(pid: string, permanent?: boolean) {
+      // ניתוק רגעי: נשאר במשחק ומאבד חיים טבעית עד שיחזור; עזיבה אמיתית: יוצא מיד
+      if (!permanent) return;
+      alive = alive.filter((p) => p !== pid);
+      if (!over && alive.length <= 1) finish();
+    },
     dispose() { over = true; },
   };
 }

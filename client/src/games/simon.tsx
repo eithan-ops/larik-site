@@ -7,7 +7,7 @@ import type { GameViewProps } from "./registry";
 import { Sfx, vibrate } from "../lib/audio";
 
 export default function SimonView({ room, me, conn, hub }: GameViewProps) {
-  const [myColor, setMyColor] = useState("#00E676");
+  const [myColor, setMyColor] = useState("#34e89e");
   const [lives, setLives] = useState(3);
   const [phase, setPhase] = useState<"watch" | "input" | "idle">("idle");
   const [lit, setLit] = useState(false);
@@ -23,7 +23,7 @@ export default function SimonView({ room, me, conn, hub }: GameViewProps) {
   useEffect(() => hub.subscribe((d) => {
     const m = d as SimonServerMsg;
     switch (m.a) {
-      case "sm_setup": setMyColor(m.colors[me] ?? "#00E676"); setLives(m.lives); return;
+      case "sm_setup": setMyColor(m.colors[me] ?? "#34e89e"); setLives(m.lives); return;
       case "sm_watch": setPhase("watch"); setRound(m.round); setProgress(0); setMsg("צפו ברצף... 👀"); return;
       case "sm_light":
         if (m.pid === me) {
@@ -56,17 +56,17 @@ export default function SimonView({ room, me, conn, hub }: GameViewProps) {
   const active = phase === "input";
   return (
     <main className="fullscreen"
-      style={{ background: lit ? myColor : "#0b0c11", border: `8px solid ${myColor}`, transition: "background .08s" }}
+      style={{ background: lit ? myColor : "var(--bg)", border: `8px solid ${myColor}`, transition: "background .08s" }}
       onPointerDown={tap}>
       <div style={{ position: "absolute", top: 20, fontSize: 22 }}>
-        {Array.from({ length: 3 }, (_, i) => (i < lives ? "💚" : "🖤")).join("")}
+        {Array.from({ length: 3 }, (_, i) => (i < lives ? "❤️" : "🖤")).join("")}
       </div>
       <div style={{ fontSize: 54 }} className={active ? "pulse" : ""}>{active ? "👆" : "🟩"}</div>
-      <div className="big" style={{ marginTop: 10, color: lit ? "#0b0c11" : "#fff" }}>
+      <div className="big" style={{ marginTop: 10, color: lit ? "#0c0817" : "#fff" }}>
         {phase === "watch" ? "צפו" : phase === "input" ? "שחזרו!" : "סימון"}
       </div>
-      <p className="sub" style={{ marginTop: 10, color: lit ? "#0b0c11" : undefined, textAlign: "center", padding: "0 20px" }}>{msg}</p>
-      {round > 0 && <p className="sub" style={{ marginTop: 8, color: lit ? "#0b0c11" : undefined }}>אורך רצף: {round} · שוחזרו: {progress}</p>}
+      <p className="sub" style={{ marginTop: 10, color: lit ? "#0c0817" : undefined, textAlign: "center", padding: "0 20px" }}>{msg}</p>
+      {round > 0 && <p className="sub" style={{ marginTop: 8, color: lit ? "#0c0817" : undefined }}>אורך רצף: {round} · שוחזרו: {progress}</p>}
     </main>
   );
 }

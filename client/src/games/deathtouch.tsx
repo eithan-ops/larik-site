@@ -84,9 +84,9 @@ export default function DeathTouchView({ room, me, conn, hub }: GameViewProps) {
 
   if (phase === "role") {
     return (
-      <main className="fullscreen" style={{ background: role === "killer" ? "#1a0d0d" : "#0b0c11" }}>
+      <main className="fullscreen" style={{ background: role === "killer" ? "#1a0d0d" : "var(--bg)" }}>
         <div style={{ fontSize: 80 }}>{role === "killer" ? "🔪" : role === "civilian" ? "😇" : "🎭"}</div>
-        <div className="big" style={{ marginTop: 10, color: role === "killer" ? "#ff6b6b" : "#7dffb8" }}>{msg || "מחלק תפקידים..."}</div>
+        <div className="big" style={{ marginTop: 10, color: role === "killer" ? "#ff6b6b" : "#8ff5cc" }}>{msg || "מחלק תפקידים..."}</div>
         <p className="sub" style={{ marginTop: 14, textAlign: "center", padding: "0 24px" }}>
           {role === "killer" ? "בחלון הציד — הושט יד וגע במסך של קורבן. שלא יתפסו אותך!" : "בחלון הציד — הנח את הטלפון, ידיים למעלה, ותשמור על עצמך."}
         </p>
@@ -110,7 +110,7 @@ export default function DeathTouchView({ room, me, conn, hub }: GameViewProps) {
   if (phase === "hunt") {
     return (
       <main className="fullscreen"
-        style={{ background: amHunting ? "#2a0808" : "#0b0c11", border: amHunting ? "8px solid #ff4d4d" : "none" }}
+        style={{ background: amHunting ? "#2a0808" : "var(--bg)", border: amHunting ? "8px solid #ff4d4d" : "none" }}
         onPointerDown={huntTouch}>
         {toast && <div className="toast" style={{ background: "#ff4d4d", color: "#fff" }}>{toast}</div>}
         {amHunting ? (

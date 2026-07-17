@@ -28,6 +28,7 @@ export function createForehead(ctx: GameCtx): GameInstance {
   let voterPid = ""; // מי מנחש כרגע
   let turnTimer: NodeJS.Timeout | undefined;
   let rank = 0;
+  let stageUntil = 0; // דדליין השלב הנוכחי (תור/הצבעה) — ל-resync
 
   function dealCards() {
     players.forEach((pid, i) => {
@@ -49,6 +50,7 @@ export function createForehead(ctx: GameCtx): GameInstance {
     while (saved.has(order[turnIdx])) turnIdx = (turnIdx + 1) % order.length;
     const pid = order[turnIdx];
     const until = ctx.now() + TURN_MS;
+    stageUntil = until;
     ctx.broadcast({ a: "fh_turn", pid, until });
     clearTimeout(turnTimer!);
     turnTimer = ctx.timer(TURN_MS, nextTurn);
@@ -60,6 +62,7 @@ export function createForehead(ctx: GameCtx): GameInstance {
     votes.clear();
     clearTimeout(turnTimer!);
     const until = ctx.now() + VOTE_MS;
+    stageUntil = until;
     const card = cards.get(pid)!;
     // כולם חוץ מהמנחש מקבלים את מסך ההצבעה (הם רואים את הקלף שלו)
     for (const p of ctx.connectedPlayers()) {
@@ -136,6 +139,22 @@ export function createForehead(ctx: GameCtx): GameInstance {
           // הג'ירו תפס הצצה — אזעקה מסונכרנת אצל כולם
           if (stage === "playing" || stage === "voting") ctx.cue(400, { a: "fh_cheater", pid });
           return;
+      }
+    },
+
+    onRejoin(pid: string) {
+      const card = cards.get(pid);
+      if (!card) return;
+      ctx.sendTo(pid, { a: "fh_deal", card, deckName: DECKS[deckName].name });
+      // משחזרים את מי שכבר ניצל
+      for (const s of saved) ctx.sendTo(pid, { a: "fh_saved", pid: s, rank: 0, card: cards.get(s) ?? "" });
+      if (stage === "placing") {
+        ctx.sendTo(pid, { a: "fh_wait_placed", placed: [...placed], total: players.length });
+      } else if (stage === "playing") {
+        ctx.sendTo(pid, { a: "fh_begin" });
+        ctx.sendTo(pid, { a: "fh_turn", pid: order[turnIdx], until: stageUntil });
+      } else if (stage === "voting" && pid !== voterPid) {
+        ctx.sendTo(pid, { a: "fh_vote_req", pid: voterPid, card: cards.get(voterPid)!, until: stageUntil });
       }
     },
 

@@ -19,6 +19,7 @@ export function createWhoMost(ctx: GameCtx): GameInstance {
   const votes: Map<number, Map<string, string>> = new Map(); // qIdx -> (voter -> target)
   const done = new Set<string>();
   let revealIdx = -1;
+  let revealed = false; // האם התוצאה של השאלה הנוכחית כבר נחשפה
   let over = false;
 
   // בודקים מול המארח *הנוכחי* של החדר — כך שאם המארח מתנתק והכתר עובר, המשחק ממשיך
@@ -46,8 +47,9 @@ export function createWhoMost(ctx: GameCtx): GameInstance {
       for (const [pid, n] of Object.entries(tally)) total[pid] = (total[pid] ?? 0) + n;
     }
     const ranked = ctx.players().map((p) => p.id).sort((a, b) => (total[b] ?? 0) - (total[a] ?? 0));
-    const winner = (total[ranked[0]] ?? 0) > 0 ? ranked[0] : undefined;
-    ctx.end({ title: "מי הכי? 🫵 כוכב הערב!", winnerId: winner, scores: total });
+    const top = total[ranked[0]] ?? 0;
+    const winnerIds = top > 0 ? ranked.filter((p) => (total[p] ?? 0) === top) : [];
+    ctx.end({ title: "מי הכי? 🫵 כוכב הערב!", winnerId: winnerIds[0], winnerIds, scores: total });
   }
 
   return {
@@ -100,12 +102,14 @@ export function createWhoMost(ctx: GameCtx): GameInstance {
           if (!isHost(pid) || phase !== "answer") return;
           phase = "reveal";
           revealIdx = 0;
+          revealed = false;
           ctx.broadcast({ a: "wm_phase", phase: "reveal" });
           ctx.broadcast({ a: "wm_reveal_q", idx: 0, total: questions.length, text: questions[0] });
           return;
         case "wm_reveal": {
           if (!isHost(pid) || phase !== "reveal" || revealIdx < 0) return;
           const { tally, winners, voters } = tallyFor(revealIdx);
+          revealed = true;
           ctx.broadcast({ a: "wm_result", idx: revealIdx, winners, tally, voters });
           if (winners.length) ctx.cue(500, { a: "wm_lit", pids: winners });
           return;
@@ -113,12 +117,26 @@ export function createWhoMost(ctx: GameCtx): GameInstance {
         case "wm_next":
           if (!isHost(pid) || phase !== "reveal") return;
           revealIdx += 1;
+          revealed = false;
           if (revealIdx >= questions.length) return finish();
           ctx.broadcast({ a: "wm_reveal_q", idx: revealIdx, total: questions.length, text: questions[revealIdx] });
           return;
       }
     },
 
+    onRejoin(pid: string) {
+      ctx.sendTo(pid, { a: "wm_phase", phase });
+      ctx.sendTo(pid, { a: "wm_questions", questions: [...questions] });
+      if (phase === "answer") {
+        ctx.sendTo(pid, { a: "wm_progress", done: done.size, total: connectedCount() });
+      } else if (phase === "reveal" && revealIdx >= 0) {
+        ctx.sendTo(pid, { a: "wm_reveal_q", idx: revealIdx, total: questions.length, text: questions[revealIdx] });
+        if (revealed) {
+          const { tally, winners, voters } = tallyFor(revealIdx);
+          ctx.sendTo(pid, { a: "wm_result", idx: revealIdx, winners, tally, voters });
+        }
+      }
+    },
     onLeave() { /* המשחק ממשיך; המארח מוביל */ },
     dispose() { over = true; },
   };

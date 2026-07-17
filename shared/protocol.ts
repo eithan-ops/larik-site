@@ -17,6 +17,8 @@ export type RoomPhase = "lobby" | "game" | "ceremony";
 export interface CeremonyInfo {
   title: string;
   winnerId?: string;
+  /** תיקו אמיתי = כמה מנצחים; תמיד כולל את winnerId */
+  winnerIds?: string[];
   loserId?: string;
   scores?: Record<string, number>; // ניקוד המשחק שנגמר
   eveningScores: Record<string, number>; // לוח הערב המצטבר

@@ -7,14 +7,16 @@ export default function Home() {
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [scanning, setScanning] = useState(false);
+  const [err, setErr] = useState("");
 
   async function host() {
     setBusy(true);
+    setErr("");
     try {
       const c = await createRoom();
       navigate(`/r/${c}`);
     } catch {
-      alert("השרת לא זמין כרגע");
+      setErr("השרת מתעורר... נסו שוב עוד כמה שניות 😴");
     }
     setBusy(false);
   }
@@ -23,7 +25,8 @@ export default function Home() {
     setScanning(false);
     // תומך גם בקישור מלא (https://.../r/ABCD) וגם בקוד גולמי
     const m = text.match(/\/r\/([a-zA-Z]{4})/) || text.match(/^([a-zA-Z]{4})$/);
-    if (m) navigate(`/r/${m[1].toUpperCase()}`);
+    if (m) { setErr(""); navigate(`/r/${m[1].toUpperCase()}`); }
+    else setErr("זה לא QR של חדר LARIK 🤔 — סרקו את הקוד מהמסך של המארח");
   }
 
   return (
@@ -44,9 +47,15 @@ export default function Home() {
         {busy ? "פותח חדר..." : "🎉 פתח חדר חדש"}
       </button>
 
-      <button className="btn social" style={{ marginTop: 8 }} onClick={() => setScanning(true)}>
+      <button className="btn social" style={{ marginTop: 8 }} onClick={() => { setErr(""); setScanning(true); }}>
         📷 סרוק QR של המארח
       </button>
+
+      {err && (
+        <p className="sub popin" style={{ textAlign: "center", marginTop: 10, color: "#ff8a8a", fontWeight: 700 }}>
+          {err}
+        </p>
+      )}
 
       <div className="divider">או הצטרף עם קוד</div>
       <input

@@ -49,7 +49,7 @@ export default function AliasView({ room, me, conn, hub }: GameViewProps) {
 
   if (iAmDescriber) {
     return (
-      <main className="fullscreen" style={{ background: flash === "ok" ? "#0a2a16" : "#0b0c11", justifyContent: "space-between", padding: "20px 16px" }}>
+      <main className="fullscreen" style={{ background: flash === "ok" ? "#0a2a16" : "var(--bg)", justifyContent: "space-between", padding: "20px 16px" }}>
         <div style={{ textAlign: "center", marginTop: 6 }}>
           <span className="chip" style={{ color: danger ? "#ff8a8a" : undefined }}>⏱️ {secs}s</span>
           <span className="chip" style={{ marginRight: 8 }}>{deckName}</span>
@@ -68,7 +68,7 @@ export default function AliasView({ room, me, conn, hub }: GameViewProps) {
   }
 
   return (
-    <main className="fullscreen" style={{ background: "#0b0c11" }}>
+    <main className="fullscreen" style={{ background: "var(--bg)" }}>
       <div style={{ fontSize: 56 }} className="pulse">👅</div>
       <div className="big" style={{ marginTop: 8 }}>{describer ? `${nameOf(describer)} מתאר!` : "מתכוננים..."}</div>
       <p className="sub" style={{ marginTop: 10, textAlign: "center", padding: "0 24px" }}>
