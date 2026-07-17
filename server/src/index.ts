@@ -21,6 +21,7 @@ import { createDemons } from "./games/demons";
 import { createAlias } from "./games/alias";
 import { createTrivia } from "./games/trivia";
 import { createWhoMost } from "./games/whomost";
+import { createShow } from "./games/show";
 import type { ClientMsg } from "../../shared/protocol";
 
 const PORT = Number(process.env.PORT || 8787);
@@ -47,6 +48,7 @@ const manager = new RoomManager(transport, {
   alias: createAlias,
   trivia: createTrivia,
   whomost: createWhoMost,
+  show: createShow,
 });
 setInterval(() => manager.cleanup(), 60_000);
 
@@ -60,7 +62,11 @@ const MIME: Record<string, string> = {
 const http = createServer((req, res) => {
   const url = new URL(req.url || "/", "http://x");
   if (url.pathname === "/api/create-room") {
-    const room = manager.createRoom();
+    // ?code=ARIEL — קוד קבוע לאירועים (מודפס על כרטיסים); אם החדר כבר קיים מחזירים אותו
+    const wanted = (url.searchParams.get("code") || "").toUpperCase().replace(/[^A-Z]/g, "").slice(0, 10);
+    let room;
+    if (wanted.length >= 3) room = manager.get(wanted) ?? manager.createRoom(wanted);
+    else room = manager.createRoom();
     res.writeHead(200, { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" });
     res.end(JSON.stringify({ code: room.code }));
     return;

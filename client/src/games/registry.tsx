@@ -15,6 +15,7 @@ import DemonsView from "./demons";
 import AliasView from "./alias";
 import TriviaView from "./trivia";
 import WhoMostView from "./whomost";
+import ShowView from "./show";
 
 export type GameListener = (d: GameServerMsg, at: number) => void;
 
@@ -58,6 +59,7 @@ export const GAME_COLORS: Record<string, string> = {
   bombs: "#ffb62e",
   forehead: "#2dd4bf",
   pods: "#8b5cf6",
+  show: "#ffb46b",
 };
 
 export const GAME_VIEWS: Record<string, ComponentType<GameViewProps>> = {
@@ -71,4 +73,5 @@ export const GAME_VIEWS: Record<string, ComponentType<GameViewProps>> = {
   alias: AliasView,
   trivia: TriviaView,
   whomost: WhoMostView,
+  show: ShowView,
 };

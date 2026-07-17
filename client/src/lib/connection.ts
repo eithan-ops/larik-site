@@ -35,6 +35,8 @@ export class Connection {
   synced = false;
   private everWelcomed = false; // מתחברים מחדש אוטומטית רק לחדר שבאמת נכנסנו אליו
   private closedByUs = false;
+  /** cues שהגיעו לפני שהשעון סונכרן — בלי offset אי אפשר לתזמן אותם; משוחררים בפונג הראשון */
+  private pendingCues: Array<{ at: number; d: GameServerMsg }> = [];
 
   private serverUrl: string;
   private roomCode: string;
@@ -81,13 +83,19 @@ export class Connection {
             this.offset = msg.ts - (msg.t0 + t1) / 2;
             this.synced = true;
           }
+          // עכשיו כשיש שעון — משחררים cues שחיכו
+          if (this.pendingCues.length) {
+            const q = this.pendingCues;
+            this.pendingCues = [];
+            for (const c of q) this.scheduleCue(c.at, c.d);
+          }
           return;
         }
         case "room": this.events.onRoom(msg.room); return;
         case "game": this.events.onGame(msg.d); return;
         case "cue": {
-          const delay = Math.max(0, this.untilServer(msg.at));
-          window.setTimeout(() => this.events.onCue(msg.d, msg.at), delay);
+          if (!this.synced) { this.pendingCues.push({ at: msg.at, d: msg.d }); return; }
+          this.scheduleCue(msg.at, msg.d);
           return;
         }
         case "error": this.events.onError(msg.msg); return;
@@ -103,6 +111,11 @@ export class Connection {
         if (document.visibilityState === "visible") this.connect(name, emoji);
       }, 1500);
     };
+  }
+
+  private scheduleCue(at: number, d: GameServerMsg) {
+    const delay = Math.max(0, this.untilServer(at));
+    window.setTimeout(() => this.events.onCue(d, at), delay);
   }
 
   private syncClock() {

@@ -38,6 +38,8 @@ export interface GameCtx {
 }
 
 export interface GameInstance {
+  /** מותר להצטרף באמצע (מופע וכד') — מצטרף חדש נכנס מיד כמשתתף דרך onRejoin */
+  allowMidJoin?: boolean;
   onStart(): void;
   onMessage(pid: string, d: GameClientMsg): void;
   /** permanent=true רק בעזיבה מרצון; ניתוק רגעי (reload) מגיע עם false — לא להעניש */
@@ -103,6 +105,14 @@ export class Room {
         armed: false, connected: true, isHost: isFirst,
       });
       if (isFirst) this.hostId = pid;
+    }
+    // מצטרף חדש באמצע משחק שמתיר זאת (מופע) — נכנס מיד כמשתתף
+    if (this.phase === "game" && this.game?.allowMidJoin && !this.gamePids.includes(pid)) {
+      this.gamePids.push(pid);
+      this.transport.send(pid, { t: "welcome", playerId: pid, room: this.snapshot() });
+      this.broadcastRoom();
+      this.game.onRejoin?.(pid);
+      return;
     }
     this.transport.send(pid, { t: "welcome", playerId: pid, room: this.snapshot() });
     this.broadcastRoom();
@@ -280,11 +290,13 @@ export class RoomManager {
     this.gameFactories = gameFactories;
   }
 
-  createRoom(): Room {
-    let code = "";
-    do {
-      code = Array.from({ length: 4 }, () => CODE_CHARS[Math.floor(Math.random() * CODE_CHARS.length)]).join("");
-    } while (this.rooms.has(code));
+  createRoom(fixedCode?: string): Room {
+    let code = fixedCode ?? "";
+    if (!code) {
+      do {
+        code = Array.from({ length: 4 }, () => CODE_CHARS[Math.floor(Math.random() * CODE_CHARS.length)]).join("");
+      } while (this.rooms.has(code));
+    }
     const room = new Room(code, this.transport, this.gameFactories);
     this.rooms.set(code, room);
     return room;
