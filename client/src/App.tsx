@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import Home from "./components/Home";
 import Room from "./components/Room";
 import ShowGate from "./components/ShowGate";
+import Mapper from "./components/Mapper";
 
 /** ראוטר מינימלי: / (בית) · /r/CODE (חדר) · /show/CODE (כרטיס מופע 🎫) */
 export default function App() {
@@ -17,6 +18,7 @@ export default function App() {
   if (roomMatch) return <Room code={roomMatch[1].toUpperCase()} />;
   const showMatch = path.match(/^\/show\/([A-Za-z]{3,10})$/);
   if (showMatch) return <ShowGate code={showMatch[1].toUpperCase()} />;
+  if (path === "/mapper") return <Mapper />;
   return <Home />;
 }
 

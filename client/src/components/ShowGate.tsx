@@ -10,6 +10,7 @@ import { Connection, defaultServerUrl } from "../lib/connection";
 import { unlockAudio } from "../lib/audio";
 import { armPhone } from "../lib/sensors";
 import { GAME_VIEWS, GameHub } from "../games/registry";
+import { VENUES } from "../venues";
 
 type Stage = "gate" | "connecting" | "waiting" | "in";
 
@@ -17,10 +18,12 @@ export default function ShowGate({ code }: { code: string }) {
   const params = useMemo(() => new URLSearchParams(location.search), []);
   const seatR = Number(params.get("r"));
   const seatC = Number(params.get("c"));
+  const seatG = Number(params.get("g") || "1"); // גוש (1-based) — לאולמות ממופים
   const hasSeat = Number.isFinite(seatR) && Number.isFinite(seatC) && params.has("r");
   const isHost = params.get("host") === "1";
 
   const [stage, setStage] = useState<Stage>("gate");
+  const [venueId, setVenueId] = useState("");
   const [room, setRoom] = useState<RoomSnapshot | null>(null);
   const [me, setMe] = useState("");
   const [tries, setTries] = useState(0);
@@ -28,10 +31,10 @@ export default function ShowGate({ code }: { code: string }) {
   const retryRef = useRef<number | undefined>(undefined);
   const hub = useMemo(() => new GameHub(), []);
 
-  // שומרים את המושב — מסך המופע ישלח אותו לשרת
+  // שומרים את המושב — מסך המופע ישתמש בו (גוש,שורה,מושב)
   useEffect(() => {
-    if (hasSeat) sessionStorage.setItem(`larik-seat-${code}`, `${seatR},${seatC}`);
-  }, [code, hasSeat, seatR, seatC]);
+    if (hasSeat) sessionStorage.setItem(`larik-seat-${code}`, `${seatG},${seatR},${seatC}`);
+  }, [code, hasSeat, seatG, seatR, seatC]);
 
   async function begin() {
     unlockAudio();
@@ -120,16 +123,23 @@ export default function ShowGate({ code }: { code: string }) {
     return <View room={room} me={me} conn={conn} hub={hub} />;
   }
 
-  // המפיק בלובי — כפתור התחלה ישיר (בלי קטלוג)
+  // המפיק בלובי — בחירת אולם + כפתור התחלה ישיר (בלי קטלוג)
   if (me === room.hostId) {
     const connected = room.players.filter((p) => p.connected).length;
     return (
       <main style={{ justifyContent: "center", textAlign: "center" }}>
         <div style={{ fontSize: 60 }}>🎛️</div>
         <h1 style={{ margin: "12px 0 4px" }}>אירוע {code}</h1>
-        <p className="sub" style={{ marginBottom: 20 }}>{connected - 1} טלפונים ממתינים ✨</p>
+        <p className="sub" style={{ marginBottom: 16 }}>{Math.max(0, connected - 1)} טלפונים ממתינים ✨</p>
+        <div className="card" style={{ padding: 12, textAlign: "right", maxWidth: 340, margin: "0 auto 12px" }}>
+          <div className="sub" style={{ marginBottom: 6 }}>🏟️ אולם (למיקום מושבים אמיתי):</div>
+          <select className="input" style={{ textAlign: "right" }} value={venueId} onChange={(e) => setVenueId(e.target.value)}>
+            <option value="">רשת אוטומטית (בלי אולם)</option>
+            {VENUES.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
+          </select>
+        </div>
         <button className="btn gold" style={{ maxWidth: 320, margin: "0 auto" }}
-          onClick={() => { conn.send({ t: "select_game", gameId: "show", config: {} }); setTimeout(() => conn.send({ t: "start_game" }), 150); }}>
+          onClick={() => { conn.send({ t: "select_game", gameId: "show", config: { venue: venueId || undefined } }); setTimeout(() => conn.send({ t: "start_game" }), 150); }}>
           🚀 הדלק את המופע!
         </button>
       </main>

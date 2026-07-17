@@ -8,6 +8,7 @@ import { useEffect, useRef, useState } from "react";
 import type { ShowServerMsg, ShowFx } from "../../../shared/protocol";
 import type { GameViewProps } from "./registry";
 import { Sfx, vibrate } from "../lib/audio";
+import { getVenue, seatToXY } from "../venues";
 
 /* ---------- מנוע האפקטים: צבע = f(x, y, t) ---------- */
 interface FxState { fx: ShowFx; text?: string; bpm?: number; color?: string; at: number }
@@ -125,13 +126,22 @@ export default function ShowView({ room, me, conn, hub }: GameViewProps) {
   const rndRef = useRef(Array.from(me).reduce((a, ch) => (a * 31 + ch.charCodeAt(0)) % 997, 7) / 997);
   const screenRef = useRef<HTMLDivElement>(null);
 
-  // מושב מכרטיס (QR) — נשלח פעם אחת אחרי הכניסה
-  useEffect(() => {
+  // אולם ממופה? המיקום מחושב לוקאלית מהכרטיס (גוש/שורה/מושב) — בלי תלות בשרת
+  const venue = getVenue((room.gameConfig as { venue?: string } | undefined)?.venue);
+  const ticketSeat = (() => {
     const saved = sessionStorage.getItem(`larik-seat-${room.code}`);
-    if (saved && !isOperator) {
-      const [r, c] = saved.split(",").map(Number);
-      if (Number.isFinite(r) && Number.isFinite(c)) conn.sendGame({ a: "sh_seat", r, c });
-    }
+    if (!saved) return null;
+    const parts = saved.split(",").map(Number);
+    if (parts.length === 3) return { g: parts[0], r: parts[1], c: parts[2] };
+    if (parts.length === 2) return { g: 1, r: parts[0], c: parts[1] };
+    return null;
+  })();
+  const venueXY = venue && ticketSeat ? seatToXY(venue, ticketSeat.g - 1, ticketSeat.r, ticketSeat.c) : null;
+
+  // בלי אולם ממופה — המושב מהכרטיס נשלח לשרת לרשת האוטומטית
+  useEffect(() => {
+    if (!isOperator && ticketSeat && !venue) conn.sendGame({ a: "sh_seat", r: ticketSeat.r, c: ticketSeat.c });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conn, room.code, isOperator]);
 
   useEffect(() => hub.subscribe((d, at) => {
@@ -153,17 +163,20 @@ export default function ShowView({ room, me, conn, hub }: GameViewProps) {
     let raf = 0;
     const step = () => {
       const el = screenRef.current;
-      if (el && pos) {
-        const x = pos.maxC > 0 ? pos.c / pos.maxC : 0.5;
-        const y = pos.maxR > 0 ? 1 - pos.r / pos.maxR : 0.5; // שורה 0 = קדימה/למטה
-        const [r, g, b] = fxColor(fxRef.current, x, y, conn.serverNow(), rndRef.current);
-        el.style.background = `rgb(${r | 0},${g | 0},${b | 0})`;
+      if (el) {
+        let x = 0.5, y = 0.5, has = false;
+        if (venueXY) { x = venueXY.x; y = venueXY.y; has = true; } // אולם ממופה — מיקום אמיתי
+        else if (pos) { x = pos.maxC > 0 ? pos.c / pos.maxC : 0.5; y = pos.maxR > 0 ? 1 - pos.r / pos.maxR : 0.5; has = true; }
+        if (has) {
+          const [r, g, b] = fxColor(fxRef.current, x, y, conn.serverNow(), rndRef.current);
+          el.style.background = `rgb(${r | 0},${g | 0},${b | 0})`;
+        }
       }
       raf = requestAnimationFrame(step);
     };
     raf = requestAnimationFrame(step);
     return () => cancelAnimationFrame(raf);
-  }, [isOperator, pos, conn]);
+  }, [isOperator, pos, conn, venueXY?.x, venueXY?.y]);
 
   useEffect(() => { const tm = setTimeout(() => setHint(false), 6000); return () => clearTimeout(tm); }, []);
 
@@ -222,11 +235,15 @@ export default function ShowView({ room, me, conn, hub }: GameViewProps) {
           <p className="sub" style={{ marginTop: 6 }}>החזיקו את הטלפון גבוה — אתם חלק מהמופע ✨</p>
         </div>
       )}
-      {pos && !hint && (
+      {!hint && (venueXY && ticketSeat ? (
+        <span style={{ position: "fixed", bottom: 10, right: "50%", transform: "translateX(50%)", fontSize: 10, color: "#ffffff55", zIndex: 5 }}>
+          {venue!.sections[ticketSeat.g - 1]?.name ?? ""} · שורה {ticketSeat.r} · מושב {ticketSeat.c}
+        </span>
+      ) : pos ? (
         <span style={{ position: "fixed", bottom: 10, right: "50%", transform: "translateX(50%)", fontSize: 10, color: "#ffffff55", zIndex: 5 }}>
           {pos.r + 1}·{pos.c + 1}
         </span>
-      )}
+      ) : null)}
     </div>
   );
 }
