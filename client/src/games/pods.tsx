@@ -19,10 +19,18 @@ export default function PodsView({ room, me, conn, hub }: GameViewProps) {
   const [avg, setAvg] = useState<Record<string, number>>({});
   const [lastHit, setLastHit] = useState<{ pid: string; ms: number } | null>(null);
   const [dead, setDead] = useState<string[]>([]);
+  const [until, setUntil] = useState(0);
+  const [, setTick] = useState(0);
   const lightRef = useRef<Light | null>(null);
   lightRef.current = light;
 
   function nameOf(pid: string) { return room.players.find((p) => p.id === pid)?.name ?? ""; }
+
+  useEffect(() => {
+    const iv = setInterval(() => setTick((t) => t + 1), 250);
+    return () => clearInterval(iv);
+  }, []);
+  const turnSecs = until ? Math.max(0, Math.ceil((until - conn.serverNow()) / 1000)) : 0;
 
   useEffect(() => hub.subscribe((d, at) => {
     const m = d as PodsServerMsg;
@@ -33,6 +41,7 @@ export default function PodsView({ room, me, conn, hub }: GameViewProps) {
         return;
       case "pd_runner":
         setRunner(m.pid);
+        setUntil(m.until);
         setLastHit(null);
         if (m.pid === me) { Sfx.fanfare(); vibrate([80, 60, 80]); }
         else Sfx.ding();
@@ -100,6 +109,11 @@ export default function PodsView({ room, me, conn, hub }: GameViewProps) {
           <div className="big" style={{ marginTop: 8 }}>
             {iAmRunner ? "רוץ! הפודים שלך!" : runner ? `${nameOf(runner)} רץ!` : "פודים"}
           </div>
+          {runner && turnSecs > 0 && (
+            <span className="chip" style={{ marginTop: 10, fontSize: 16, color: turnSecs <= 8 ? "#ff8a8a" : undefined }}>
+              ⏱️ {turnSecs}s
+            </span>
+          )}
           {lastHit && (
             <p className="sub popin" style={{ fontSize: 22, marginTop: 10, color: "var(--money)", fontWeight: 900 }}>
               {(lastHit.ms / 1000).toFixed(2)} שנ' ⚡

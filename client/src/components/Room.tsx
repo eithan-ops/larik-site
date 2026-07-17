@@ -120,19 +120,47 @@ export default function Room({ code }: { code: string }) {
   const isHost = me === room.hostId;
   const conn = connRef.current!;
 
+  function leaveRoom() {
+    conn.send({ t: "leave" });
+    conn.close();
+    navigate("/");
+  }
+
   if (room.phase === "ceremony" && room.ceremony) {
-    return <Ceremony room={room} me={me} isHost={isHost}
-      onBackToLobby={() => conn.send({ t: "back_to_lobby" })} />;
+    return (
+      <>
+        {!isHost && <button className="exit-fab" onClick={leaveRoom}>🚪 יציאה</button>}
+        <Ceremony room={room} me={me} isHost={isHost}
+          onBackToLobby={() => conn.send({ t: "back_to_lobby" })} />
+      </>
+    );
   }
 
   if (room.phase === "game" && room.gameId) {
+    // הצטרפת אחרי שהמשחק התחיל? מחכים איתך בצד — בסיבוב הבא אתה בפנים
+    if (room.gamePids && !room.gamePids.includes(me)) {
+      return (
+        <main style={{ justifyContent: "center", textAlign: "center" }}>
+          <div className="pulse" style={{ fontSize: 64 }}>🍿</div>
+          <h1 style={{ margin: "14px 0 6px" }}>המשחק כבר באמצע</h1>
+          <p className="sub" style={{ marginBottom: 24 }}>
+            אתה בפנים! ברגע שהסיבוב הזה ייגמר —<br />תצטרף אוטומטית למשחק הבא.
+          </p>
+          <button className="btn ghost" style={{ maxWidth: 280, margin: "0 auto" }} onClick={leaveRoom}>
+            🚪 עזוב את החדר
+          </button>
+        </main>
+      );
+    }
     const View = GAME_VIEWS[room.gameId];
     if (View) return (
       <>
-        {isHost && (
+        {isHost ? (
           <button className="exit-fab" onClick={() => conn.send({ t: "back_to_lobby" })}>
             ✕ סיום משחק
           </button>
+        ) : (
+          <button className="exit-fab" onClick={leaveRoom}>🚪</button>
         )}
         <View room={room} me={me} conn={conn} hub={hub} />
       </>
@@ -191,6 +219,10 @@ export default function Room({ code }: { code: string }) {
           {room.players.find((p) => p.id === room.hostId)?.name} בוחר משחק... 👑
         </p>
       )}
+
+      <button className="btn ghost" style={{ marginTop: 18, opacity: 0.75 }} onClick={leaveRoom}>
+        🚪 עזוב את החדר
+      </button>
     </main>
   );
 }

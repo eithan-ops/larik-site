@@ -46,7 +46,7 @@ export default function WhoMostView({ room, me, conn, hub }: GameViewProps) {
 
   const nameOf = (pid: string) => room.players.find((p) => p.id === pid)?.name ?? "";
   const emojiOf = (pid: string) => room.players.find((p) => p.id === pid)?.emoji ?? "🙂";
-  const candidates = room.players.filter((p) => p.connected);
+  const candidates = room.players.filter((p) => p.connected && (room.gamePids?.includes(p.id) ?? true));
 
   useEffect(() => hub.subscribe((d) => {
     const m = d as WhoMostServerMsg;

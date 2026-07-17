@@ -135,7 +135,7 @@ export default function DemonsView({ room, me, conn, hub }: GameViewProps) {
         <div className="scan-overlay" style={{ background: "#000c", justifyContent: "center" }} onPointerDown={() => setPicking(false)}>
           <h2 style={{ marginBottom: 12 }}>למי לשלוח שד? 👹</h2>
           <div className="players-grid" style={{ padding: "0 20px" }}>
-            {room.players.filter((p) => p.id !== me && p.connected).map((p) => (
+            {room.players.filter((p) => p.id !== me && p.connected && (room.gamePids?.includes(p.id) ?? true)).map((p) => (
               <button key={p.id} className="pbadge" onPointerDown={(e) => { e.stopPropagation(); sendDemon(p.id); }}>
                 <span className="em">{p.emoji}</span>
                 <span className="nm">{p.name}</span>

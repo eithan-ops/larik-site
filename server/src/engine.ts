@@ -7,6 +7,7 @@
 import type {
   ClientMsg, ServerMsg, RoomSnapshot, PlayerInfo, GameServerMsg, GameClientMsg, CeremonyInfo,
 } from "../../shared/protocol";
+import { CATALOG } from "../../shared/protocol";
 
 export interface Transport {
   send(playerId: string, msg: ServerMsg): void;
@@ -22,6 +23,8 @@ export interface GameEndResult {
 export interface GameCtx {
   players(): PlayerInfo[];
   connectedPlayers(): PlayerInfo[];
+  /** משתתפי המשחק הרץ (מי שהיה מחובר בהתחלה) — מצטרפים מאוחרים אינם כאן */
+  participants(): PlayerInfo[];
   now(): number;
   sendTo(pid: string, d: GameServerMsg): void;
   broadcast(d: GameServerMsg): void;
@@ -54,6 +57,7 @@ export class Room {
   private ceremony?: CeremonyInfo;
   private eveningScores: Record<string, number> = {};
   private timers = new Set<NodeJS.Timeout>();
+  private gamePids: string[] = []; // משתתפי המשחק הרץ — ננעל ברגע ההתחלה
 
   private transport: Transport;
   private gameFactories: Record<string, GameFactory>;
@@ -129,8 +133,16 @@ export class Room {
         if (pid !== this.hostId || this.phase === "game" || !this.gameId) return;
         const factory = this.gameFactories[this.gameId];
         if (!factory) { this.transport.send(pid, { t: "error", msg: "משחק לא קיים" }); return; }
+        // אכיפת מינימום שחקנים גם בשרת — לא סומכים רק על הלקוח
+        const meta = CATALOG.find((g) => g.id === this.gameId);
+        const connected = [...this.players.values()].filter((x) => x.connected);
+        if (meta && connected.length < meta.minPlayers) {
+          this.transport.send(pid, { t: "error", msg: `צריך לפחות ${meta.minPlayers} שחקנים` });
+          return;
+        }
         this.phase = "game";
         this.ceremony = undefined;
+        this.gamePids = connected.map((x) => x.id);
         this.game = factory(this.makeCtx());
         this.broadcastRoom();
         this.game.onStart();
@@ -142,6 +154,20 @@ export class Room {
         this.phase = "lobby";
         this.broadcastRoom();
         return;
+      case "leave": {
+        // עזיבה מרצון — מוסרים לגמרי (בשונה מניתוק, שמשאיר "נרדם")
+        const leaving = this.players.get(pid);
+        if (!leaving) return;
+        this.game?.onLeave?.(pid);
+        this.players.delete(pid);
+        if (pid === this.hostId) {
+          const next = [...this.players.values()].find((x) => x.connected);
+          if (next) { this.hostId = next.id; next.isHost = true; }
+        }
+        this.gamePids = this.gamePids.filter((x) => x !== pid);
+        this.broadcastRoom();
+        return;
+      }
       case "game":
         if (this.phase === "game" && this.game) this.game.onMessage(pid, msg.d);
         return;
@@ -154,6 +180,7 @@ export class Room {
     return {
       players: () => [...this.players.values()],
       connectedPlayers: () => [...this.players.values()].filter((p) => p.connected),
+      participants: () => [...this.players.values()].filter((p) => this.gamePids.includes(p.id)),
       now: () => this.now(),
       sendTo: (pid, d) => this.transport.send(pid, { t: "game", d }),
       broadcast: (d) => this.broadcastGame(d),
@@ -220,6 +247,7 @@ export class Room {
       gameId: this.gameId,
       gameConfig: this.gameConfig,
       ceremony: this.ceremony,
+      gamePids: this.phase === "game" ? [...this.gamePids] : undefined,
     };
   }
 }

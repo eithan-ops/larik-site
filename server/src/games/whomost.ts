@@ -23,7 +23,8 @@ export function createWhoMost(ctx: GameCtx): GameInstance {
 
   // בודקים מול המארח *הנוכחי* של החדר — כך שאם המארח מתנתק והכתר עובר, המשחק ממשיך
   const isHost = (pid: string) => ctx.players().find((p) => p.id === pid)?.isHost === true;
-  const connectedCount = () => ctx.connectedPlayers().length;
+  // רק משתתפי המשחק נספרים ומצביעים — מצטרף באמצע לא נהיה יעד רפאים
+  const connectedCount = () => ctx.participants().filter((p) => p.connected).length;
 
   function tallyFor(idx: number): { tally: Record<string, number>; winners: string[]; voters: number } {
     const m = votes.get(idx) ?? new Map();
@@ -86,7 +87,7 @@ export function createWhoMost(ctx: GameCtx): GameInstance {
         case "wm_vote":
           if (phase !== "answer") return;
           if (m.qIdx < 0 || m.qIdx >= questions.length) return;
-          if (!ctx.connectedPlayers().some((p) => p.id === m.target)) return;
+          if (!ctx.participants().some((p) => p.id === m.target && p.connected)) return;
           if (!votes.has(m.qIdx)) votes.set(m.qIdx, new Map());
           votes.get(m.qIdx)!.set(pid, m.target);
           return;

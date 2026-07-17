@@ -30,6 +30,8 @@ export interface RoomSnapshot {
   gameId?: string;
   gameConfig?: unknown;
   ceremony?: CeremonyInfo;
+  /** מי משתתף במשחק הרץ כרגע — מי שהצטרף אחרי ההתחלה מחכה בצד */
+  gamePids?: string[];
 }
 
 /* ---- לקוח → שרת ---- */
@@ -40,6 +42,7 @@ export type ClientMsg =
   | { t: "select_game"; gameId: string; config?: unknown } // מארח בלבד
   | { t: "start_game" } // מארח בלבד
   | { t: "back_to_lobby" } // מארח בלבד
+  | { t: "leave" } // שחקן עוזב את החדר מרצונו (מוסר לגמרי מהרשימה)
   | { t: "game"; d: GameClientMsg }; // מועבר למודול המשחק
 
 /* ---- שרת → לקוח ---- */

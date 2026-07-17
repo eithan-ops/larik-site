@@ -43,6 +43,7 @@ export default function BombsView({ room, me, conn, hub }: GameViewProps) {
   const [started, setStarted] = useState(false);
   const [, setTick] = useState(0); // מנוע האנימציה של הפתילים
   const rubRef = useRef<Record<number, number>>({});
+  const lastPosRef = useRef<Record<number, { x: number; y: number }>>({});
   const lastBeepRef = useRef<Record<number, number>>({});
   const bombsRef = useRef<BombV[]>([]);
   bombsRef.current = bombs;
@@ -142,8 +143,12 @@ export default function BombsView({ room, me, conn, hub }: GameViewProps) {
   }
 
   function onRub(bombId: number, e: React.PointerEvent) {
-    if (e.buttons === 0) return;
-    const acc = (rubRef.current[bombId] ?? 0) + Math.abs(e.movementX) + Math.abs(e.movementY);
+    if (e.buttons === 0) { delete lastPosRef.current[bombId]; return; }
+    // דלתא ידנית מ-clientX/Y — ב-iOS ערכי movementX/Y הם תמיד 0 והמד לא היה מתמלא
+    const last = lastPosRef.current[bombId];
+    lastPosRef.current[bombId] = { x: e.clientX, y: e.clientY };
+    if (!last) return;
+    const acc = (rubRef.current[bombId] ?? 0) + Math.abs(e.clientX - last.x) + Math.abs(e.clientY - last.y);
     rubRef.current[bombId] = acc;
     if (acc >= RUB_TARGET) {
       conn.sendGame({ a: "bm_unstuck", bombId });
@@ -156,7 +161,7 @@ export default function BombsView({ room, me, conn, hub }: GameViewProps) {
 
   const now = conn.serverNow();
   const mine = bombs.filter((b) => b.holder === me || (b.type === "duo" && b.partner === me));
-  const others = room.players.filter((p) => p.id !== me && p.connected);
+  const others = room.players.filter((p) => p.id !== me && p.connected && (room.gamePids?.includes(p.id) ?? true));
   const loadOf = (pid: string) => bombs.filter((b) => b.holder === pid).length;
   const heat = mine.length >= 3 ? "#2a0b12" : mine.length === 2 ? "#1d0e14" : "#0b0e17";
 
