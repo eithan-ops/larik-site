@@ -197,19 +197,13 @@ export type WhoMostServerMsg =
   | { a: "wm_result"; idx: number; winners: string[]; tally: Record<string, number>; voters: number }
   | { a: "wm_lit"; pids: string[] }; // cue — הטלפונים של הנבחרים נדלקים
 
-/* ---- המתחזה 🎭 ---- */
+/* ---- המתחזה 🎭 — האפליקציה רק מחלקת תפקידים; המשחק עצמו בקול, סביב השולחן ---- */
 export type ImpostorClientMsg =
-  | { a: "im_said" }              // בעל התור סימן שאמר את המילה שלו
-  | { a: "im_vote"; target: string }
-  | { a: "im_guess"; word: string }; // ניחוש ההצלה של המתחזה
+  | { a: "im_next" }     // מארח: סיבוב חדש — מילה חדשה + מתחזה חדש
+  | { a: "im_expose" };  // מארח: חשוף את המתחזה
 export type ImpostorServerMsg =
-  | { a: "im_role"; word: string; knowsImpostor: boolean } // knowsImpostor=true רק במצב קלאסי אצל המתחזה (word ריק)
-  | { a: "im_turn"; pid: string; until: number; round: number; totalRounds: number; order: string[] }
-  | { a: "im_vote_open"; until: number; candidates: string[] }
-  | { a: "im_votes"; count: number; total: number }
-  | { a: "im_accused"; pid: string; wasImpostor: boolean; tally: Record<string, number> } // מי הודח בהצבעה
-  | { a: "im_lastguess"; pid: string; until: number } // המתחזה נתפס — הזדמנות אחרונה
-  | { a: "im_result"; impostorWon: boolean; impostorPid: string; word: string; decoy?: string; guess?: string };
+  | { a: "im_role"; word: string; isImpostor: boolean; round: number } // word ריק אצל המתחזה
+  | { a: "im_exposed"; impostorPid: string; word: string; round: number };
 
 /* ---- מופע 🕯️ — הקהל כמסך ---- */
 export type ShowFx = "off" | "candles" | "wave" | "pulse" | "text" | "heart" | "countdown" | "sparkle" | "sections" | "flash" | "color" | "tribal";
@@ -252,20 +246,9 @@ export const CATALOG: GameMeta[] = [
     id: "impostor",
     name: "המתחזה",
     icon: "🎭",
-    tagline: "לכולם אותה מילה. לאחד — לא. מצאו אותו.",
-    minPlayers: 4,
-    maxPlayers: 12,
-    configOptions: [
-      {
-        key: "mode",
-        label: "מצב",
-        values: [
-          { v: "similar", label: "מילה דומה 😏 (הוא לא יודע!)" },
-          { v: "classic", label: "קלאסי 🕶️ (הוא יודע)" },
-        ],
-      },
-      { key: "rounds", label: "סבבי רמזים", values: [{ v: "1", label: "סבב אחד" }, { v: "2", label: "שני סבבים" }] },
-    ],
+    tagline: "לכולם אותה מילה. לאחד — אין. מצאו אותו.",
+    minPlayers: 3,
+    maxPlayers: 15,
   },
   {
     id: "colorrules",
