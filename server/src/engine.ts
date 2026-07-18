@@ -65,6 +65,7 @@ export class Room {
   private eveningScores: Record<string, number> = {};
   private timers = new Set<NodeJS.Timeout>();
   private gamePids: string[] = []; // משתתפי המשחק הרץ — ננעל ברגע ההתחלה
+  private gotIt = new Set<string>(); // מי אישר "הבנתי" על המשחק שנבחר
 
   private transport: Transport;
   private gameFactories: Record<string, GameFactory>;
@@ -145,10 +146,18 @@ export class Room {
       case "arm":
         if (p) { p.armed = true; this.broadcastRoom(); }
         return;
-      case "select_game":
+      case "select_game": {
         if (pid !== this.hostId || this.phase === "game") return;
+        const changed = this.gameId !== msg.gameId;
         this.gameId = msg.gameId;
         this.gameConfig = msg.config;
+        if (changed) this.gotIt.clear(); // משחק חדש = כולם קוראים הסבר מחדש
+        this.broadcastRoom();
+        return;
+      }
+      case "got_it":
+        if (this.phase !== "lobby" || !this.gameId) return;
+        this.gotIt.add(pid);
         this.broadcastRoom();
         return;
       case "start_game": {
@@ -272,6 +281,7 @@ export class Room {
       gameConfig: this.gameConfig,
       ceremony: this.ceremony,
       gamePids: this.phase === "game" ? [...this.gamePids] : undefined,
+      gotIt: this.phase === "lobby" && this.gameId ? [...this.gotIt] : undefined,
     };
   }
 }

@@ -35,12 +35,29 @@ export default function Home() {
 
       <div className="hero">
         <div className="hero-emojis" aria-hidden>
-          <span>🎉</span><span>💣</span><span>🫵</span><span>🧠</span><span>👹</span>
+          <span>🎭</span><span>💣</span><span>🫵</span><span>🧠</span><span>🕯️</span>
         </div>
         <div className="logo-big">LARIK</div>
-        <p className="sub" style={{ fontSize: 16, marginTop: 6 }}>
-          משחקי חברה. הטלפון של כל אחד — אביזר במשחק.
+        <p style={{ fontSize: 19, fontWeight: 800, marginTop: 8 }}>ברוכים הבאים ללאריק 👋</p>
+        <p className="sub" style={{ fontSize: 15, marginTop: 6, maxWidth: 320 }}>
+          ערב משחקים שלם — בלי קופסה, בלי חלקים, בלי הורדות.
+          הטלפון של כל אחד הופך לאביזר במשחק.
         </p>
+      </div>
+
+      <div className="card" style={{ padding: "14px 16px", marginBottom: 4 }}>
+        <div style={{ display: "flex", gap: 10, alignItems: "flex-start", marginBottom: 10 }}>
+          <span style={{ fontSize: 20 }}>1️⃣</span>
+          <p className="sub" style={{ fontSize: 13.5 }}><b style={{ color: "var(--text)" }}>אחד פותח חדר</b> — ומקבל קוד ו-QR להראות לכולם.</p>
+        </div>
+        <div style={{ display: "flex", gap: 10, alignItems: "flex-start", marginBottom: 10 }}>
+          <span style={{ fontSize: 20 }}>2️⃣</span>
+          <p className="sub" style={{ fontSize: 13.5 }}><b style={{ color: "var(--text)" }}>החברים סורקים</b> עם המצלמה — ותוך 5 שניות כולם בפנים.</p>
+        </div>
+        <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+          <span style={{ fontSize: 20 }}>3️⃣</span>
+          <p className="sub" style={{ fontSize: 13.5 }}><b style={{ color: "var(--text)" }}>בוחרים משחק ומשחקים</b> — טריוויה, מתחזה, פצצות ועוד 9.</p>
+        </div>
       </div>
 
       <button className="btn" onClick={host} disabled={busy}>

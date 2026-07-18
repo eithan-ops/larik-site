@@ -9,7 +9,15 @@ import QRCodeView from "./QRCodeView";
 import Ceremony from "./Ceremony";
 import { GAME_VIEWS, GAME_COLORS, GameHub } from "../games/registry";
 
-const EMOJIS = ["😎", "🦄", "🐸", "🔥", "🍕", "👾", "🐙", "🌈", "🦁", "🍩", "🚀"];
+/** מזהה צבעוני שקט — במקום בחירת אווטר (הקהל מבוגר, לא צריך חיות) */
+const DOT_EMOJIS = ["🔵", "🟣", "🟢", "🟡", "🟠", "🔴", "🟤", "⚪", "🟦", "🟪", "🟩", "🟨"];
+function autoEmoji(): string {
+  const saved = localStorage.getItem("larik-emoji-auto");
+  if (saved) return saved;
+  const e = DOT_EMOJIS[Math.floor(Math.random() * DOT_EMOJIS.length)];
+  localStorage.setItem("larik-emoji-auto", e);
+  return e;
+}
 
 type Stage = "name" | "arm" | "in";
 
@@ -18,7 +26,7 @@ export default function Room({ code }: { code: string }) {
   const isRejoin = !!sessionStorage.getItem(`larik-pid-${code}`) && !!localStorage.getItem("larik-name");
   const [stage, setStage] = useState<Stage>(isRejoin ? "arm" : "name");
   const [name, setName] = useState(localStorage.getItem("larik-name") || "");
-  const [emoji, setEmoji] = useState(localStorage.getItem("larik-emoji") || "😎");
+  const [emoji] = useState(autoEmoji());
   const [room, setRoom] = useState<RoomSnapshot | null>(null);
   const [me, setMe] = useState("");
   const [status, setStatus] = useState("");
@@ -71,17 +79,14 @@ export default function Room({ code }: { code: string }) {
         <div className="sub" style={{ textAlign: "center", marginBottom: 2 }}>חדר</div>
         <div className="code-big" style={{ marginBottom: 20 }}>{code}</div>
         <div className="card popin" style={{ padding: 18 }}>
-          <div className="sub" style={{ textAlign: "center", marginBottom: 10 }}>איך קוראים לך הערב?</div>
-          <input className="input" placeholder="הכינוי שלך" value={name} maxLength={14}
+          <h2 style={{ textAlign: "center", marginBottom: 4 }}>ברוכים הבאים! 👋</h2>
+          <p className="sub" style={{ textAlign: "center", marginBottom: 14, fontSize: 13 }}>
+            עוד רגע אתם בפנים. איך קוראים לך?<br />
+            <span style={{ fontSize: 11.5 }}>(השם יופיע אצל שאר השחקנים — אפשר גם כינוי)</span>
+          </p>
+          <input className="input" placeholder="השם שלך" value={name} maxLength={14}
             onChange={(e) => setName(e.target.value)} />
-          <div className="opt-row" style={{ justifyContent: "center", margin: "14px 0" }}>
-            {EMOJIS.map((e) => (
-              <button key={e} className={"opt" + (emoji === e ? " sel" : "")}
-                style={{ fontSize: 22, padding: "6px 10px" }}
-                onClick={() => setEmoji(e)}>{e}</button>
-            ))}
-          </div>
-          <button className="btn" disabled={!name.trim()} onClick={() => setStage("arm")}>
+          <button className="btn" style={{ marginTop: 14 }} disabled={!name.trim()} onClick={() => setStage("arm")}>
             ממשיכים ➜
           </button>
         </div>
@@ -220,6 +225,8 @@ export default function Room({ code }: { code: string }) {
       {isHost ? (
         <HostCatalog room={room} onSelect={(gameId, config) => conn.send({ t: "select_game", gameId, config })}
           onStart={() => conn.send({ t: "start_game" })} />
+      ) : room.gameId ? (
+        <GameExplainer room={room} me={me} conn={conn} />
       ) : (
         <p className="sub" style={{ textAlign: "center" }}>
           {room.players.find((p) => p.id === room.hostId)?.name} בוחר משחק... 👑
@@ -230,6 +237,39 @@ export default function Room({ code }: { code: string }) {
         🚪 עזוב את החדר
       </button>
     </main>
+  );
+}
+
+/* המארח בחר משחק — כל שחקן קורא את ההסבר ומאשר "הבנתי" לפני שמתחילים */
+function GameExplainer({ room, me, conn }: { room: RoomSnapshot; me: string; conn: Connection }) {
+  const g = CATALOG.find((x) => x.id === room.gameId);
+  if (!g) return null;
+  const confirmed = !!room.gotIt?.includes(me);
+
+  return (
+    <div className="card popin" style={{ padding: 18, textAlign: "center" }}>
+      <div style={{ fontSize: 44 }}>{g.icon}</div>
+      <h2 style={{ margin: "6px 0 2px" }}>{g.name}</h2>
+      <p className="sub" style={{ fontSize: 13 }}>{g.tagline}</p>
+      <p style={{
+        fontSize: 14.5, lineHeight: 1.7, textAlign: "right", margin: "14px 0 16px",
+        background: "rgba(255,255,255,0.05)", borderRadius: 14, padding: "12px 14px",
+      }}>
+        {g.howTo ?? g.tagline}
+      </p>
+      {confirmed ? (
+        <div className="popin">
+          <div style={{ fontSize: 34 }}>✅</div>
+          <p className="sub" style={{ fontWeight: 700, marginTop: 4 }}>
+            מעולה! מחכים שהמארח יתחיל... 👑
+          </p>
+        </div>
+      ) : (
+        <button className="btn gold" onClick={() => { Sfx.ding(); vibrate(40); conn.send({ t: "got_it" }); }}>
+          👍 הבנתי, אני מוכן!
+        </button>
+      )}
+    </div>
   );
 }
 
@@ -269,6 +309,10 @@ function HostCatalog({ room, onSelect, onStart }: {
   const sel = CATALOG.find((g) => g.id === room.gameId);
   const connected = room.players.filter((p) => p.connected).length;
   const canStart = !!sel && connected >= (sel?.minPlayers ?? 2);
+  // התקדמות "הבנתי" — כמה מהשחקנים (לא המארח) קראו ואישרו את ההסבר
+  const others = room.players.filter((p) => p.connected && p.id !== room.hostId);
+  const gotCount = others.filter((p) => room.gotIt?.includes(p.id)).length;
+  const allGotIt = others.length > 0 && gotCount === others.length;
 
   return (
     <div>
@@ -305,6 +349,17 @@ function HostCatalog({ room, onSelect, onStart }: {
           </div>
         </div>
       ))}
+      {sel && (
+        <div className="card popin" style={{ padding: 14 }}>
+          <div style={{ fontWeight: 800, marginBottom: 6 }}>📖 איך משחקים ב{sel.name}</div>
+          <p className="sub" style={{ fontSize: 13.5, lineHeight: 1.65 }}>{sel.howTo ?? sel.tagline}</p>
+          {others.length > 0 && (
+            <div className="sub" style={{ marginTop: 10, fontWeight: 700, color: allGotIt ? "#7ee787" : undefined }}>
+              {allGotIt ? "✅ כולם קראו את ההסבר — אפשר להתחיל!" : `👍 הבנתי: ${gotCount}/${others.length} — ההסבר מוצג עכשיו אצל כולם`}
+            </div>
+          )}
+        </div>
+      )}
       <button className="btn" style={{ marginTop: 8 }} disabled={!canStart} onClick={onStart}>
         {canStart ? "🚀 מתחילים!" : sel ? `צריך לפחות ${sel.minPlayers} שחקנים` : "בחר משחק"}
       </button>
