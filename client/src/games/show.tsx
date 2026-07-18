@@ -95,6 +95,22 @@ export function fxColor(fx: FxState, x: number, y: number, now: number, rnd: num
       const b = ft < 0.12 ? 1 : Math.max(0.04, 0.5 - ft * 0.35);
       return [255 * b, 245 * b, 230 * b];
     }
+    case "tribal": {
+      // מקצב שבטי 🥁 — כל טלפון שייך לאחד מ-4 שבטים (אקראי יציב);
+      // כל שבט מהבהב על פעימה אחרת בתוך תיבה של 4 — הקהל מנצנץ בפוליריתמיקה
+      const bpm = fx.bpm ?? 120;
+      const myTribe = Math.floor(rnd * 4);
+      const beatFloat = t * bpm / 60;
+      const beatInBar = Math.floor(beatFloat) % 4;
+      const within = beatFloat % 1; // 0..1 בתוך הפעימה
+      const cols: [number, number, number][] = [[139, 92, 246], [236, 72, 153], [255, 201, 60], [52, 232, 158]];
+      const c = cols[myTribe];
+      if (beatInBar === myTribe) {
+        const b = Math.max(0, 1 - within * 1.6); // הבזק שדועך לאורך הפעימה
+        return [c[0] * (0.15 + b * 0.85), c[1] * (0.15 + b * 0.85), c[2] * (0.15 + b * 0.85)];
+      }
+      return [c[0] * 0.07, c[1] * 0.07, c[2] * 0.07]; // זכר עדין לצבע השבט
+    }
   }
   return DARK;
 }
@@ -108,6 +124,7 @@ const PADS: { fx: ShowFx; label: string }[] = [
   { fx: "heart", label: "❤️ לב" },
   { fx: "countdown", label: "🔢 ספירה" },
   { fx: "sparkle", label: "✨ נצנוץ" },
+  { fx: "tribal", label: "🥁 מקצב שבטי" },
   { fx: "sections", label: "🏟️ יציעים" },
   { fx: "flash", label: "⚡ הבזק" },
   { fx: "off", label: "🌑 חושך" },

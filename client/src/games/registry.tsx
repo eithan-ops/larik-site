@@ -16,6 +16,7 @@ import AliasView from "./alias";
 import TriviaView from "./trivia";
 import WhoMostView from "./whomost";
 import ShowView from "./show";
+import ImpostorView from "./impostor";
 
 export type GameListener = (d: GameServerMsg, at: number) => void;
 
@@ -60,6 +61,7 @@ export const GAME_COLORS: Record<string, string> = {
   forehead: "#2dd4bf",
   pods: "#8b5cf6",
   show: "#ffb46b",
+  impostor: "#c084fc",
 };
 
 export const GAME_VIEWS: Record<string, ComponentType<GameViewProps>> = {
@@ -74,4 +76,5 @@ export const GAME_VIEWS: Record<string, ComponentType<GameViewProps>> = {
   trivia: TriviaView,
   whomost: WhoMostView,
   show: ShowView,
+  impostor: ImpostorView,
 };

@@ -197,8 +197,22 @@ export type WhoMostServerMsg =
   | { a: "wm_result"; idx: number; winners: string[]; tally: Record<string, number>; voters: number }
   | { a: "wm_lit"; pids: string[] }; // cue — הטלפונים של הנבחרים נדלקים
 
+/* ---- המתחזה 🎭 ---- */
+export type ImpostorClientMsg =
+  | { a: "im_said" }              // בעל התור סימן שאמר את המילה שלו
+  | { a: "im_vote"; target: string }
+  | { a: "im_guess"; word: string }; // ניחוש ההצלה של המתחזה
+export type ImpostorServerMsg =
+  | { a: "im_role"; word: string; knowsImpostor: boolean } // knowsImpostor=true רק במצב קלאסי אצל המתחזה (word ריק)
+  | { a: "im_turn"; pid: string; until: number; round: number; totalRounds: number; order: string[] }
+  | { a: "im_vote_open"; until: number; candidates: string[] }
+  | { a: "im_votes"; count: number; total: number }
+  | { a: "im_accused"; pid: string; wasImpostor: boolean; tally: Record<string, number> } // מי הודח בהצבעה
+  | { a: "im_lastguess"; pid: string; until: number } // המתחזה נתפס — הזדמנות אחרונה
+  | { a: "im_result"; impostorWon: boolean; impostorPid: string; word: string; decoy?: string; guess?: string };
+
 /* ---- מופע 🕯️ — הקהל כמסך ---- */
-export type ShowFx = "off" | "candles" | "wave" | "pulse" | "text" | "heart" | "countdown" | "sparkle" | "sections" | "flash" | "color";
+export type ShowFx = "off" | "candles" | "wave" | "pulse" | "text" | "heart" | "countdown" | "sparkle" | "sections" | "flash" | "color" | "tribal";
 export type ShowClientMsg =
   | { a: "sh_set"; fx: ShowFx; text?: string; bpm?: number; color?: string } // מפעיל בלבד
   | { a: "sh_seat"; r: number; c: number }; // מושב מכרטיס (QR) — דורס את השיבוץ האוטומטי
@@ -209,10 +223,10 @@ export type ShowServerMsg =
 
 export type GameClientMsg = ForeheadClientMsg | PodsClientMsg | BombsClientMsg
   | ColorRulesClientMsg | SimonClientMsg | DeathTouchClientMsg | DemonsClientMsg | AliasClientMsg | TriviaClientMsg
-  | WhoMostClientMsg | ShowClientMsg;
+  | WhoMostClientMsg | ShowClientMsg | ImpostorClientMsg;
 export type GameServerMsg = ForeheadServerMsg | PodsServerMsg | BombsServerMsg
   | ColorRulesServerMsg | SimonServerMsg | DeathTouchServerMsg | DemonsServerMsg | AliasServerMsg | TriviaServerMsg
-  | WhoMostServerMsg | ShowServerMsg;
+  | WhoMostServerMsg | ShowServerMsg | ImpostorServerMsg;
 
 /* ---- קטלוג ---- */
 export interface GameMeta {
@@ -233,6 +247,25 @@ export const CATALOG: GameMeta[] = [
     tagline: "המארח שואל. מי הכי מתאים? הטלפון של הנבחר נדלק.",
     minPlayers: 3,
     maxPlayers: 15,
+  },
+  {
+    id: "impostor",
+    name: "המתחזה",
+    icon: "🎭",
+    tagline: "לכולם אותה מילה. לאחד — לא. מצאו אותו.",
+    minPlayers: 4,
+    maxPlayers: 12,
+    configOptions: [
+      {
+        key: "mode",
+        label: "מצב",
+        values: [
+          { v: "similar", label: "מילה דומה 😏 (הוא לא יודע!)" },
+          { v: "classic", label: "קלאסי 🕶️ (הוא יודע)" },
+        ],
+      },
+      { key: "rounds", label: "סבבי רמזים", values: [{ v: "1", label: "סבב אחד" }, { v: "2", label: "שני סבבים" }] },
+    ],
   },
   {
     id: "colorrules",
