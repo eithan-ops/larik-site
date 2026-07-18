@@ -47,7 +47,21 @@ export default function Home() {
         </p>
       </div>
 
-      <div className="card" style={{ padding: "14px 16px", marginBottom: 4 }}>
+      <div className="bento">
+        <div className="bento-card primary" role="button" tabIndex={0}
+          onClick={() => document.getElementById("game-actions")?.scrollIntoView({ behavior: "smooth" })}>
+          <span className="big">🎮</span>
+          <b>ערב משחקים</b>
+          <span className="sub">11 משחקים · 3-15 חברים<br />סביב שולחן אחד</span>
+        </div>
+        <div className="bento-card" role="button" tabIndex={0} onClick={() => navigate("/show")}>
+          <span className="big">🕯️</span>
+          <b>מופע</b>
+          <span className="sub">הקהל הוא המסך<br />לאירועים והופעות</span>
+        </div>
+      </div>
+
+      <div className="card" style={{ padding: "14px 16px", marginBottom: 4 }} id="game-actions">
         <div style={{ display: "flex", gap: 10, alignItems: "flex-start", marginBottom: 10 }}>
           <span style={{ fontSize: 20 }}>1️⃣</span>
           <p className="sub" style={{ fontSize: 13.5 }}><b style={{ color: "var(--text)" }}>אחד פותח חדר</b> — ומקבל קוד ו-QR להראות לכולם.</p>

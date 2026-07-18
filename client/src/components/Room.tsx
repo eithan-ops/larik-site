@@ -73,6 +73,14 @@ export default function Room({ code }: { code: string }) {
   const phase = room?.phase;
   useEffect(() => { if (phase !== "game") hub.reset(); }, [phase, hub]);
 
+  // הגעה מ"עולם המופע" (?show=1) — המופע נבחר אוטומטית למארח
+  const wantShow = useMemo(() => new URLSearchParams(location.search).has("show"), []);
+  useEffect(() => {
+    if (wantShow && room && me === room.hostId && room.phase === "lobby" && !room.gameId) {
+      connRef.current?.send({ t: "select_game", gameId: "show", config: {} });
+    }
+  }, [wantShow, room, me]);
+
   /* ---------- מסכי כניסה ---------- */
   if (stage === "name") {
     return (
@@ -302,6 +310,15 @@ function ShareRow({ code }: { code: string }) {
   );
 }
 
+/* קטגוריות הקטלוג — המופע חי בעולם משלו (larik.ai/show) */
+const CATEGORIES: { icon: string; name: string; ids: string[] }[] = [
+  { icon: "🎉", name: "מסיבה", ids: ["whomost", "impostor", "alias", "forehead"] },
+  { icon: "⚡", name: "אקשן", ids: ["colorrules", "pods", "bombs", "demons"] },
+  { icon: "🧠", name: "מוח", ids: ["trivia", "simon", "deathtouch"] },
+];
+/* סדר ההמלצה של "המנחה" — הכי חברתיים קודם */
+const RECO_ORDER = ["impostor", "whomost", "alias", "bombs", "colorrules", "trivia", "forehead", "demons", "simon", "pods", "deathtouch"];
+
 function HostCatalog({ room, onSelect, onStart }: {
   room: RoomSnapshot;
   onSelect: (gameId: string, config: Record<string, string>) => void;
@@ -316,55 +333,108 @@ function HostCatalog({ room, onSelect, onStart }: {
   const gotCount = others.filter((p) => room.gotIt?.includes(p.id)).length;
   const allGotIt = others.length > 0 && gotCount === others.length;
 
+  // "המנחה": משחקים שמתאימים לכמות המחוברים כרגע
+  const fits = (g: (typeof CATALOG)[number]) => connected >= g.minPlayers && connected <= g.maxPlayers;
+  const suitable = RECO_ORDER
+    .map((id) => CATALOG.find((g) => g.id === id)!)
+    .filter((g) => g && fits(g));
+  const reco = !sel ? suitable[0] : undefined;
+  const shown = sel ?? reco; // הפאנל הגדול: המשחק הנבחר, או ההמלצה
+
+  function surprise() {
+    const pool = suitable.length ? suitable : CATALOG.filter((g) => g.id !== "show");
+    const pick = pool[Math.floor(Math.random() * pool.length)];
+    onSelect(pick.id, config);
+  }
+
   return (
     <div>
-      <h2 className="section-title">🎮 בחר משחק</h2>
-      {CATALOG.map((g) => (
-        <button key={g.id} className={"gamecard" + (room.gameId === g.id ? " sel" : "")}
-          style={{ "--gc": GAME_COLORS[g.id] ?? "#8b5cf6" } as CSSProperties}
-          onClick={() => onSelect(g.id, config)}>
-          <span className="ic">{g.icon}</span>
-          <span style={{ flex: 1 }}>
-            <b>{g.name}</b>
-            <div className="sub">{g.tagline}</div>
-            <div className="sub" style={{ fontSize: 11.5, opacity: 0.8, marginTop: 2 }}>
-              👥 {g.minPlayers}–{g.maxPlayers} שחקנים
-            </div>
-          </span>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <h2 className="section-title" style={{ margin: "6px 0" }}>🎮 בחר משחק</h2>
+        <button className="chip" style={{ border: "none", cursor: "pointer", fontFamily: "inherit", fontWeight: 800 }}
+          onClick={surprise}>
+          🎲 הפתיעו אותנו
         </button>
-      ))}
-      {sel?.configOptions?.map((opt) => (
-        <div key={opt.key} className="card" style={{ padding: 12 }}>
-          <div className="sub">{opt.label}</div>
-          <div className="opt-row">
-            {opt.values.map((v) => (
-              <button key={v.v}
-                className={"opt" + ((config[opt.key] ?? opt.values[0].v) === v.v ? " sel" : "")}
-                onClick={() => {
-                  const next = { ...config, [opt.key]: v.v };
-                  setConfig(next);
-                  onSelect(sel.id, next);
-                }}>
-                {v.label}
-              </button>
-            ))}
+      </div>
+
+      {shown && (
+        <div className="featured popin" key={shown.id}
+          style={{ "--gc": GAME_COLORS[shown.id] ?? "#8b5cf6" } as CSSProperties}>
+          {!sel && <span className="badge-reco">✨ המומלץ ל{connected} מחוברים</span>}
+          <div className="fhead">
+            <span className="fic">{shown.icon}</span>
+            <span>
+              <b style={{ fontSize: 18 }}>{shown.name}</b>
+              <div className="sub" style={{ fontSize: 13 }}>{shown.tagline}</div>
+              <div className="sub" style={{ fontSize: 11.5, opacity: 0.85, marginTop: 2 }}>
+                👥 {shown.minPlayers}–{shown.maxPlayers} שחקנים
+              </div>
+            </span>
           </div>
-        </div>
-      ))}
-      {sel && (
-        <div className="card popin" style={{ padding: 14 }}>
-          <div style={{ fontWeight: 800, marginBottom: 6 }}>📖 איך משחקים ב{sel.name}</div>
-          <p className="sub" style={{ fontSize: 13.5, lineHeight: 1.65 }}>{sel.howTo ?? sel.tagline}</p>
-          {others.length > 0 && (
+          {sel?.configOptions?.map((opt) => (
+            <div key={opt.key} style={{ marginTop: 8 }}>
+              <div className="sub" style={{ fontSize: 12.5 }}>{opt.label}</div>
+              <div className="opt-row">
+                {opt.values.map((v) => (
+                  <button key={v.v}
+                    className={"opt" + ((config[opt.key] ?? opt.values[0].v) === v.v ? " sel" : "")}
+                    onClick={() => {
+                      const next = { ...config, [opt.key]: v.v };
+                      setConfig(next);
+                      onSelect(sel.id, next);
+                    }}>
+                    {v.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+          <div className="howto">{shown.howTo ?? shown.tagline}</div>
+          {sel && others.length > 0 && (
             <div className="sub" style={{ marginTop: 10, fontWeight: 700, color: allGotIt ? "#7ee787" : undefined }}>
               {allGotIt ? "✅ כולם קראו את ההסבר — אפשר להתחיל!" : `👍 הבנתי: ${gotCount}/${others.length} — ההסבר מוצג עכשיו אצל כולם`}
             </div>
           )}
+          {sel ? (
+            <button className="btn" style={{ marginTop: 12 }} disabled={!canStart} onClick={onStart}>
+              {canStart ? "🚀 מתחילים!" : `צריך לפחות ${sel.minPlayers} שחקנים`}
+            </button>
+          ) : (
+            <button className="btn" style={{ marginTop: 12 }} onClick={() => shown && onSelect(shown.id, config)}>
+              👑 בחר את {shown.name}
+            </button>
+          )}
         </div>
       )}
-      <button className="btn" style={{ marginTop: 8 }} disabled={!canStart} onClick={onStart}>
-        {canStart ? "🚀 מתחילים!" : sel ? `צריך לפחות ${sel.minPlayers} שחקנים` : "בחר משחק"}
-      </button>
+
+      {CATEGORIES.map((cat) => (
+        <div key={cat.name}>
+          <div className="cat-title">
+            <span>{cat.icon}</span> {cat.name}
+          </div>
+          <div className="cat-row">
+            {cat.ids.map((id) => {
+              const g = CATALOG.find((x) => x.id === id);
+              if (!g) return null;
+              const ok = fits(g);
+              return (
+                <button key={id}
+                  className={"gcard" + (room.gameId === id ? " sel" : "") + (ok ? "" : " dim")}
+                  style={{ "--gc": GAME_COLORS[id] ?? "#8b5cf6" } as CSSProperties}
+                  onClick={() => onSelect(id, config)}>
+                  <span className="ic">{g.icon}</span>
+                  <b>{g.name}</b>
+                  <span className="pp">👥 {g.minPlayers}–{g.maxPlayers}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+
+      <p className="sub" style={{ fontSize: 11.5, textAlign: "center", marginTop: 6 }}>
+        🕯️ מחפשים את המופע? הוא עבר לעולם משלו — larik.ai/show
+      </p>
     </div>
   );
 }

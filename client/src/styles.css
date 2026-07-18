@@ -256,3 +256,55 @@ input{font-family:inherit}
 
 /* ---------- כותרת סקשן ---------- */
 .section-title{display:flex;align-items:center;gap:8px;margin:6px 0 10px;font-size:17.5px;font-weight:800}
+
+/* ---------- בנטו: שני עולמות בכניסה ---------- */
+.bento{display:grid;grid-template-columns:1.55fr 1fr;gap:10px;margin-bottom:16px}
+.bento-card{
+  position:relative;border-radius:22px;padding:18px 14px;text-align:center;color:var(--text);
+  background:linear-gradient(160deg,var(--card2),var(--card));border:2px solid var(--line2);
+  display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;
+  transition:transform .15s;
+}
+.bento-card:active{transform:scale(.97)}
+.bento-card .big{font-size:38px;filter:drop-shadow(0 4px 14px rgba(0,0,0,.45))}
+.bento-card b{font-size:16px}
+.bento-card .sub{font-size:11.5px}
+.bento-card.primary{border-color:transparent;background:
+  linear-gradient(var(--card2),var(--card2)) padding-box,
+  linear-gradient(135deg,var(--brand1),var(--brand2)) border-box;
+  box-shadow:var(--shadow-brand)}
+
+/* ---------- קטלוג בקטגוריות ---------- */
+.cat-title{display:flex;align-items:center;gap:8px;margin:16px 0 8px;font-size:15.5px;font-weight:800}
+.cat-title .sub{font-weight:600;font-size:12px}
+.cat-row{display:flex;gap:10px;overflow-x:auto;padding:4px 2px 12px;margin:0 -18px;padding-inline:18px;
+  scroll-snap-type:x proximity;scrollbar-width:none}
+.cat-row::-webkit-scrollbar{display:none}
+.gcard{
+  flex:0 0 122px;scroll-snap-align:start;background:var(--card);border:2px solid var(--line);
+  border-radius:18px;padding:14px 8px 12px;display:flex;flex-direction:column;align-items:center;gap:5px;
+  color:var(--text);font-family:inherit;cursor:pointer;transition:transform .15s,border-color .2s;
+}
+.gcard:active{transform:scale(.95)}
+.gcard .ic{
+  font-size:30px;width:54px;height:54px;border-radius:16px;display:grid;place-items:center;
+  background:color-mix(in srgb,var(--gc,#8b5cf6) 16%,transparent);
+}
+.gcard b{font-size:13px;white-space:nowrap;max-width:110px;overflow:hidden;text-overflow:ellipsis}
+.gcard .pp{font-size:10.5px;color:var(--muted);font-weight:700}
+.gcard.sel{border-color:var(--gc,#8b5cf6);box-shadow:0 6px 20px color-mix(in srgb,var(--gc,#8b5cf6) 30%,transparent)}
+.gcard.dim{opacity:.42}
+
+/* המומלץ עכשיו / פאנל משחק נבחר */
+.featured{
+  border-radius:22px;border:2px solid transparent;padding:16px;margin-bottom:4px;
+  background:linear-gradient(var(--card2),var(--card2)) padding-box,
+  linear-gradient(135deg,var(--gc,#8b5cf6),var(--brand2)) border-box;
+}
+.featured .fhead{display:flex;gap:12px;align-items:center;margin-bottom:8px}
+.featured .fic{font-size:40px;width:64px;height:64px;border-radius:18px;display:grid;place-items:center;
+  background:color-mix(in srgb,var(--gc,#8b5cf6) 20%,transparent);flex:0 0 auto}
+.featured .howto{font-size:13.5px;line-height:1.65;color:var(--text);
+  background:rgba(255,255,255,.05);border-radius:14px;padding:10px 12px;margin-top:8px}
+.badge-reco{display:inline-block;font-size:10.5px;font-weight:800;letter-spacing:.4px;color:#111;
+  background:linear-gradient(90deg,var(--gold),#ffe08a);border-radius:99px;padding:3px 10px;margin-bottom:8px}
