@@ -11,6 +11,8 @@ import { readFileSync, existsSync, statSync } from "fs";
 import { join, extname, resolve } from "path";
 import { randomUUID } from "crypto";
 import { RoomManager, Transport } from "./engine";
+import { statRoomCreated, statPlayerJoined, statGameStarted, statConcurrent, statsPage, STATS_KEY, stats } from "./stats";
+import { CATALOG } from "../../shared/protocol";
 import { createForehead } from "./games/forehead";
 import { createPods } from "./games/pods";
 import { createBombs } from "./games/bombs";
@@ -51,7 +53,7 @@ const manager = new RoomManager(transport, {
   whomost: createWhoMost,
   show: createShow,
   impostor: createImpostor,
-});
+}, { playerJoined: statPlayerJoined, gameStarted: statGameStarted });
 setInterval(() => manager.cleanup(), 60_000);
 
 /* ---------- HTTP: יצירת חדר + הגשת לקוח ---------- */
@@ -71,10 +73,25 @@ const http = createServer((req, res) => {
     else room = manager.createRoom();
     res.writeHead(200, { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" });
     res.end(JSON.stringify({ code: room.code }));
+    statRoomCreated();
     return;
   }
   if (url.pathname === "/api/health") {
     res.writeHead(200); res.end("ok"); return;
+  }
+  // דף סטטיסטיקות פרטי — larik.ai/stats?k=<מפתח>
+  if (url.pathname === "/stats" || url.pathname === "/api/stats") {
+    if (url.searchParams.get("k") !== STATS_KEY) { res.writeHead(404); res.end("not found"); return; }
+    const liveRooms = [...manager.rooms.values()].filter((r) => !r.isEmpty).length;
+    if (url.pathname === "/api/stats") {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ ...stats, liveRooms, liveSockets: sockets.size }));
+    } else {
+      const names = Object.fromEntries(CATALOG.map((g) => [g.id, `${g.icon} ${g.name}`]));
+      res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+      res.end(statsPage(names, liveRooms, sockets.size));
+    }
+    return;
   }
   // הגשת קבצי הלקוח (SPA fallback ל-index.html)
   if (existsSync(CLIENT_DIST)) {
@@ -102,6 +119,7 @@ wss.on("connection", (ws, req) => {
   }
   const playerId = rejoinId || randomUUID().slice(0, 8);
   sockets.set(playerId, ws);
+  statConcurrent(sockets.size);
 
   ws.on("message", (raw) => {
     let msg: ClientMsg;

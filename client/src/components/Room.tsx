@@ -5,6 +5,7 @@ import { CATALOG } from "../../../shared/protocol";
 import { Connection, defaultServerUrl } from "../lib/connection";
 import { unlockAudio, Sfx, vibrate } from "../lib/audio";
 import { armPhone } from "../lib/sensors";
+import { track } from "../lib/analytics";
 import QRCodeView from "./QRCodeView";
 import Ceremony from "./Ceremony";
 import { GAME_VIEWS, GAME_COLORS, GameHub } from "../games/registry";
@@ -62,6 +63,7 @@ export default function Room({ code }: { code: string }) {
     connRef.current = conn;
     conn.connect(name.trim() || "שחקן", emoji);
     conn.send({ t: "arm" });
+    track("room_joined");
     setStage("in");
   }
 
@@ -224,7 +226,7 @@ export default function Room({ code }: { code: string }) {
 
       {isHost ? (
         <HostCatalog room={room} onSelect={(gameId, config) => conn.send({ t: "select_game", gameId, config })}
-          onStart={() => conn.send({ t: "start_game" })} />
+          onStart={() => { if (room.gameId) track("game_started", { game_id: room.gameId }); conn.send({ t: "start_game" }); }} />
       ) : room.gameId ? (
         <GameExplainer room={room} me={me} conn={conn} />
       ) : (

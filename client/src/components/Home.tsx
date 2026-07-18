@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { navigate } from "../App";
 import { createRoom } from "../lib/connection";
+import { track } from "../lib/analytics";
 import QRScanner from "./QRScanner";
 
 export default function Home() {
@@ -14,6 +15,7 @@ export default function Home() {
     setErr("");
     try {
       const c = await createRoom();
+      track("room_created");
       navigate(`/r/${c}`);
     } catch {
       setErr("השרת מתעורר... נסו שוב עוד כמה שניות 😴");

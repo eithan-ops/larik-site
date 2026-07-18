@@ -51,6 +51,12 @@ export interface GameInstance {
 
 export type GameFactory = (ctx: GameCtx) => GameInstance;
 
+/** ווי אנליטיקה — אופציונלי לגמרי (הבדיקות לא מעבירות אותו) */
+export interface StatHooks {
+  playerJoined?: () => void;
+  gameStarted?: (gameId: string) => void;
+}
+
 const CUE_LEAD_MS = 350; // מרווח ביטחון מינימלי כדי שה-cue יגיע לכולם לפני זמן הביצוע
 
 export class Room {
@@ -70,17 +76,20 @@ export class Room {
   private transport: Transport;
   private gameFactories: Record<string, GameFactory>;
   private clock: () => number;
+  private hooks: StatHooks;
 
   constructor(
     code: string,
     transport: Transport,
     gameFactories: Record<string, GameFactory>,
-    clock: () => number = () => Date.now()
+    clock: () => number = () => Date.now(),
+    hooks: StatHooks = {}
   ) {
     this.code = code;
     this.transport = transport;
     this.gameFactories = gameFactories;
     this.clock = clock;
+    this.hooks = hooks;
   }
 
   now() { return this.clock(); }
@@ -106,6 +115,7 @@ export class Room {
         armed: false, connected: true, isHost: isFirst,
       });
       if (isFirst) this.hostId = pid;
+      this.hooks.playerJoined?.();
     }
     // מצטרף חדש באמצע משחק שמתיר זאת (מופע) — נכנס מיד כמשתתף
     if (this.phase === "game" && this.game?.allowMidJoin && !this.gamePids.includes(pid)) {
@@ -175,6 +185,7 @@ export class Room {
         this.ceremony = undefined;
         this.gamePids = connected.map((x) => x.id);
         this.game = factory(this.makeCtx());
+        this.hooks.gameStarted?.(this.gameId);
         this.broadcastRoom();
         this.game.onStart();
         return;
@@ -294,10 +305,12 @@ export class RoomManager {
   rooms = new Map<string, Room>();
   private transport: Transport;
   private gameFactories: Record<string, GameFactory>;
+  private hooks: StatHooks;
 
-  constructor(transport: Transport, gameFactories: Record<string, GameFactory>) {
+  constructor(transport: Transport, gameFactories: Record<string, GameFactory>, hooks: StatHooks = {}) {
     this.transport = transport;
     this.gameFactories = gameFactories;
+    this.hooks = hooks;
   }
 
   createRoom(fixedCode?: string): Room {
@@ -307,7 +320,7 @@ export class RoomManager {
         code = Array.from({ length: 4 }, () => CODE_CHARS[Math.floor(Math.random() * CODE_CHARS.length)]).join("");
       } while (this.rooms.has(code));
     }
-    const room = new Room(code, this.transport, this.gameFactories);
+    const room = new Room(code, this.transport, this.gameFactories, undefined, this.hooks);
     this.rooms.set(code, room);
     return room;
   }
