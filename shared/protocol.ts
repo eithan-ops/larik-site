@@ -209,13 +209,13 @@ export type ImpostorServerMsg =
   | { a: "im_exposed"; impostorPid: string; word: string; round: number };
 
 /* ---- מופע 🕯️ — הקהל כמסך ---- */
-export type ShowFx = "off" | "candles" | "wave" | "pulse" | "text" | "heart" | "countdown" | "sparkle" | "sections" | "flash" | "color" | "tribal";
+export type ShowFx = "off" | "candles" | "wave" | "pulse" | "text" | "heart" | "countdown" | "sparkle" | "sections" | "flash" | "color" | "tribal" | "beat";
 export type ShowClientMsg =
-  | { a: "sh_set"; fx: ShowFx; text?: string; bpm?: number; color?: string } // מפעיל בלבד
+  | { a: "sh_set"; fx: ShowFx; text?: string; bpm?: number; color?: string; anchor?: number } // מפעיל בלבד; anchor = זמן-שרת של ביט (Tap-Tempo)
   | { a: "sh_seat"; r: number; c: number }; // מושב מכרטיס (QR) — דורס את השיבוץ האוטומטי
 export type ShowServerMsg =
   | { a: "sh_pos"; r: number; c: number; maxR: number; maxC: number } // המיקום שלי + גבולות הרשת
-  | { a: "sh_fx"; fx: ShowFx; text?: string; bpm?: number; color?: string; at: number } // cue — כולם מחליפים אפקט יחד
+  | { a: "sh_fx"; fx: ShowFx; text?: string; bpm?: number; color?: string; anchor?: number; at: number } // cue — כולם מחליפים אפקט יחד
   | { a: "sh_count"; total: number }; // כמה טלפונים מחוברים (לקונסולה)
 
 export type GameClientMsg = ForeheadClientMsg | PodsClientMsg | BombsClientMsg

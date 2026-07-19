@@ -86,20 +86,35 @@ export default function Ceremony({ room, me, isHost, onBackToLobby }: {
         </>
       )}
 
-      <div className="card" style={{ marginTop: 26, width: "100%", maxWidth: 340 }}>
+      <span className="chip popin" style={{ marginTop: 14 }}>{c.title}</span>
+
+      <div className="card" style={{ marginTop: 14, width: "100%", maxWidth: 340 }}>
         <div className="sub" style={{ marginBottom: 6 }}>לוח הערב 🌙</div>
-        {ranking.map((p, i) => (
-          <div key={p.id} style={{ display: "flex", justifyContent: "space-between", padding: "5px 2px", fontSize: 15 }}>
-            <span>{i === 0 ? "👑 " : ""}{p.emoji} {p.name}</span>
-            <b style={{ color: "var(--money)" }}>{c.eveningScores[p.id] ?? 0}</b>
-          </div>
-        ))}
+        {ranking.map((p, i) => {
+          const medal = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : "·";
+          return (
+            <div key={p.id} className="popin" style={{
+              display: "flex", justifyContent: "space-between", alignItems: "center",
+              padding: i === 0 ? "8px 10px" : "5px 10px", fontSize: i === 0 ? 16.5 : 15,
+              animationDelay: `${0.15 * i}s`, animationFillMode: "backwards",
+              background: i === 0 ? "rgba(255,201,60,.1)" : undefined,
+              borderRadius: 12, fontWeight: i === 0 ? 800 : 500,
+            }}>
+              <span>{medal} {p.emoji} {p.name}{p.id === me ? " (אני)" : ""}</span>
+              <b style={{ color: i === 0 ? "var(--gold)" : "var(--money)" }}>{c.eveningScores[p.id] ?? 0}</b>
+            </div>
+          );
+        })}
       </div>
 
-      {isHost && (
+      {isHost ? (
         <button className="btn" style={{ marginTop: 16, maxWidth: 340 }} onClick={onBackToLobby}>
           עוד משחק! 🔁
         </button>
+      ) : (
+        <p className="sub popin" style={{ marginTop: 16, fontSize: 13 }}>
+          👑 המארח בוחר את המשחק הבא...
+        </p>
       )}
     </main>
   );

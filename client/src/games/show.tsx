@@ -11,7 +11,7 @@ import { Sfx, vibrate } from "../lib/audio";
 import { getVenue, seatToXY } from "../venues";
 
 /* ---------- מנוע האפקטים: צבע = f(x, y, t) ---------- */
-interface FxState { fx: ShowFx; text?: string; bpm?: number; color?: string; at: number }
+interface FxState { fx: ShowFx; text?: string; bpm?: number; color?: string; anchor?: number; at: number }
 
 const bmp = typeof document !== "undefined" ? document.createElement("canvas") : null;
 let bmpData: Uint8ClampedArray | null = null;
@@ -44,7 +44,8 @@ const DARK: [number, number, number] = [16, 10, 30];
 
 /** הפונקציה שכל טלפון מריץ — זהה לסימולטור, רק שכאן הפיקסל הוא כל המסך */
 export function fxColor(fx: FxState, x: number, y: number, now: number, rnd: number): [number, number, number] {
-  const t = Math.max(0, (now - fx.at) / 1000);
+  // anchor (Tap-Tempo) מעגן את הפאזה לביט האמיתי של המוזיקה; בלעדיו — לרגע החלפת האפקט
+  const t = Math.max(0, (now - (fx.anchor ?? fx.at)) / 1000);
   switch (fx.fx) {
     case "off": return DARK;
     case "color": {
@@ -111,12 +112,25 @@ export function fxColor(fx: FxState, x: number, y: number, now: number, rnd: num
       }
       return [c[0] * 0.07, c[1] * 0.07, c[2] * 0.07]; // זכר עדין לצבע השבט
     }
+    case "beat": {
+      // 🎵 לפי הקצב — כל הקהל מבזיק יחד על הביט, צבע חדש בכל פעימה
+      const bpm = fx.bpm ?? 120;
+      const beatFloat = t * bpm / 60;
+      const within = beatFloat % 1;
+      const b = Math.pow(Math.max(0, 1 - within * 1.35), 2.2);
+      const cols: [number, number, number][] = [
+        [139, 92, 246], [236, 72, 153], [255, 201, 60], [52, 232, 158], [92, 138, 255], [255, 255, 255],
+      ];
+      const c = cols[Math.floor(beatFloat) % cols.length];
+      return [c[0] * (0.05 + b * 0.95), c[1] * (0.05 + b * 0.95), c[2] * (0.05 + b * 0.95)];
+    }
   }
   return DARK;
 }
 
 /* ---------- הקונסולה והפיקסל ---------- */
 const PADS: { fx: ShowFx; label: string }[] = [
+  { fx: "beat", label: "🎵 לפי הקצב" },
   { fx: "candles", label: "🕯️ נרות" },
   { fx: "wave", label: "🌊 גל" },
   { fx: "pulse", label: "💓 פעימות" },
@@ -139,6 +153,9 @@ export default function ShowView({ room, me, conn, hub }: GameViewProps) {
   const [text, setText] = useState("");
   const [bpm, setBpm] = useState(120);
   const [hint, setHint] = useState(true);
+  const [tapCount, setTapCount] = useState(0);
+  const tapsRef = useRef<number[]>([]);
+  const anchorRef = useRef<number | null>(null);
   const fxRef = useRef<FxState>({ fx: "candles", at: 0 });
   const rndRef = useRef(Array.from(me).reduce((a, ch) => (a * 31 + ch.charCodeAt(0)) % 997, 7) / 997);
   const screenRef = useRef<HTMLDivElement>(null);
@@ -167,7 +184,7 @@ export default function ShowView({ room, me, conn, hub }: GameViewProps) {
       case "sh_pos": setPos({ r: m.r, c: m.c, maxR: m.maxR, maxC: m.maxC }); return;
       case "sh_count": setCount(m.total); return;
       case "sh_fx":
-        fxRef.current = { fx: m.fx, text: m.text, bpm: m.bpm, color: m.color, at: at || conn.serverNow() };
+        fxRef.current = { fx: m.fx, text: m.text, bpm: m.bpm, color: m.color, anchor: m.anchor, at: at || conn.serverNow() };
         setActiveFx(m.fx);
         if (m.fx === "flash") vibrate(60);
         return;
@@ -175,6 +192,7 @@ export default function ShowView({ room, me, conn, hub }: GameViewProps) {
   }), [hub, conn]);
 
   // לולאת הרינדור של הפיקסל — כל פריים מחשבים את הצבע שלנו
+  const lastBeatRef = useRef(-1);
   useEffect(() => {
     if (isOperator) return;
     let raf = 0;
@@ -185,8 +203,16 @@ export default function ShowView({ room, me, conn, hub }: GameViewProps) {
         if (venueXY) { x = venueXY.x; y = venueXY.y; has = true; } // אולם ממופה — מיקום אמיתי
         else if (pos) { x = pos.maxC > 0 ? pos.c / pos.maxC : 0.5; y = pos.maxR > 0 ? 1 - pos.r / pos.maxR : 0.5; has = true; }
         if (has) {
-          const [r, g, b] = fxColor(fxRef.current, x, y, conn.serverNow(), rndRef.current);
+          const now = conn.serverNow();
+          const [r, g, b] = fxColor(fxRef.current, x, y, now, rndRef.current);
           el.style.background = `rgb(${r | 0},${g | 0},${b | 0})`;
+          // רטט על כל ביט (אנדרואיד; אייפון חוסם רטט בדפדפן) — במצב "לפי הקצב"
+          const fx = fxRef.current;
+          if (fx.fx === "beat") {
+            const period = 60000 / (fx.bpm ?? 120);
+            const idx = Math.floor((now - (fx.anchor ?? fx.at)) / period);
+            if (idx !== lastBeatRef.current) { lastBeatRef.current = idx; vibrate(35); }
+          }
         }
       }
       raf = requestAnimationFrame(step);
@@ -199,9 +225,27 @@ export default function ShowView({ room, me, conn, hub }: GameViewProps) {
 
   /* ---------- מסך המפעיל ---------- */
   if (isOperator) {
-    function fire(fx: ShowFx, extra?: { color?: string }) {
-      conn.sendGame({ a: "sh_set", fx, text: text.trim() || "✨", bpm, ...extra });
+    function fire(fx: ShowFx, extra?: { color?: string; anchor?: number }) {
+      conn.sendGame({ a: "sh_set", fx, text: text.trim() || "✨", bpm, anchor: anchorRef.current ?? undefined, ...extra });
       Sfx.pop(); vibrate(25);
+    }
+    // 🎵 Tap-Tempo — המפעיל מקיש בקצב השיר; מחשבים BPM + עוגן פאזה בזמן-שרת
+    function tapBeat() {
+      const now = conn.serverNow();
+      const taps = tapsRef.current;
+      if (taps.length && now - taps[taps.length - 1] > 2000) taps.length = 0; // הפסקה = מתחילים למדוד מחדש
+      taps.push(now);
+      if (taps.length > 8) taps.shift();
+      vibrate(20);
+      if (taps.length >= 4) {
+        const gaps = taps.slice(1).map((t, i) => t - taps[i]);
+        const avg = gaps.reduce((a, b) => a + b, 0) / gaps.length;
+        const newBpm = Math.max(50, Math.min(200, Math.round(60000 / avg)));
+        setBpm(newBpm);
+        anchorRef.current = now; // ההקשה האחרונה = ביט אמיתי של המוזיקה
+        conn.sendGame({ a: "sh_set", fx: "beat", text: "", bpm: newBpm, anchor: now });
+      }
+      setTapCount(taps.length);
     }
     return (
       <main style={{ minHeight: "100dvh", padding: "60px 16px 20px" }}>
@@ -227,9 +271,19 @@ export default function ShowView({ room, me, conn, hub }: GameViewProps) {
           </button>
         </div>
         <div className="card" style={{ marginTop: 10, padding: 12 }}>
-          <div className="sub" style={{ marginBottom: 6 }}>קצב (BPM לפעימות): {bpm}</div>
+          <div className="sub" style={{ marginBottom: 6 }}>
+            🎵 סנכרון למוזיקה חיה — הקש בקצב השיר (לפחות 4 הקשות):
+          </div>
+          <button className="btn gold" style={{ padding: 22, fontSize: 18, fontWeight: 900 }}
+            onPointerDown={tapBeat}>
+            🥁 TAP — {bpm} BPM{tapCount > 0 && tapCount < 4 ? ` · עוד ${4 - tapCount} הקשות` : anchorRef.current ? " · מסונכרן ✓" : ""}
+          </button>
+          <p className="sub" style={{ fontSize: 11.5, marginTop: 6 }}>
+            מההקשה הרביעית כל הקהל מתחיל להבהב על הביט. התחלף שיר? פשוט הקש שוב.
+          </p>
+          <div className="sub" style={{ margin: "10px 0 6px" }}>או כיוון ידני (BPM): {bpm}</div>
           <input type="range" min={60} max={180} value={bpm} style={{ width: "100%", accentColor: "var(--pink)" }}
-            onChange={(e) => setBpm(Number(e.target.value))} />
+            onChange={(e) => { setBpm(Number(e.target.value)); anchorRef.current = null; }} />
           <div className="sub" style={{ margin: "10px 0 6px" }}>צבע אחיד:</div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             {SWATCHES.map((c) => (

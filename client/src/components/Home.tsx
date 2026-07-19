@@ -104,11 +104,9 @@ export default function Home() {
         הצטרף 🚪
       </button>
 
-      <div style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 34, flexWrap: "wrap" }}>
-        <span className="chip">👥 3–10 שחקנים</span>
-        <span className="chip">⚡ בלי התקנה</span>
-        <span className="chip">🔒 בלי הרשמה</span>
-      </div>
+      <p className="sub" style={{ textAlign: "center", marginTop: 30, fontSize: 12 }}>
+        ⚡ בלי התקנה · 🔒 בלי הרשמה · חינם
+      </p>
     </main>
   );
 }

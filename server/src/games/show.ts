@@ -11,7 +11,7 @@ import type { ShowClientMsg, GameClientMsg, ShowFx } from "../../../shared/proto
 export function createShow(ctx: GameCtx): GameInstance {
   const operator = ctx.players().find((p) => p.isHost)?.id ?? "";
   const seats = new Map<string, { r: number; c: number }>();
-  let current: { fx: ShowFx; text?: string; bpm?: number; color?: string } = { fx: "candles" };
+  let current: { fx: ShowFx; text?: string; bpm?: number; color?: string; anchor?: number } = { fx: "candles" };
   let over = false;
 
   const isOperator = (pid: string) => ctx.players().find((p) => p.id === pid)?.isHost === true;
@@ -44,9 +44,9 @@ export function createShow(ctx: GameCtx): GameInstance {
     for (const p of ctx.players()) if (isOperator(p.id)) ctx.sendTo(p.id, { a: "sh_count", total });
   }
 
-  function fire(fx: ShowFx, text?: string, bpm?: number, color?: string) {
-    current = { fx, text, bpm, color };
-    ctx.cue(600, { a: "sh_fx", fx, text, bpm, color, at: 0 } as never);
+  function fire(fx: ShowFx, text?: string, bpm?: number, color?: string, anchor?: number) {
+    current = { fx, text, bpm, color, anchor };
+    ctx.cue(600, { a: "sh_fx", fx, text, bpm, color, anchor, at: 0 } as never);
   }
 
   return {
@@ -63,7 +63,7 @@ export function createShow(ctx: GameCtx): GameInstance {
       const m = d as ShowClientMsg;
       if (m.a === "sh_set") {
         if (!isOperator(pid)) return;
-        fire(m.fx, (m.text ?? "").slice(0, 24), m.bpm, m.color);
+        fire(m.fx, (m.text ?? "").slice(0, 24), m.bpm, m.color, m.anchor);
       } else if (m.a === "sh_seat") {
         // מושב אמיתי מכרטיס — דורס את השיבוץ האוטומטי
         const r = Math.max(0, Math.min(500, Math.floor(m.r)));

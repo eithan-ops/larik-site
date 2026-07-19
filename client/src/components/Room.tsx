@@ -99,37 +99,42 @@ export default function Room({ code }: { code: string }) {
 
   /* ---------- מסכי כניסה ---------- */
   if (stage === "name") {
+    // מסך כניסה אחד: שם + כפתור שגם "מחמש" (הלחיצה מפעילה אודיו וחיישנים) — בלי עצירות מיותרות
     return (
       <main style={{ justifyContent: "center" }}>
         <div className="logo-big" style={{ fontSize: 34, marginBottom: 2 }}>LARIK</div>
         <div className="sub" style={{ textAlign: "center", marginBottom: 2 }}>חדר</div>
         <div className="code-big" style={{ marginBottom: 20 }}>{code}</div>
-        <div className="card popin" style={{ padding: 18 }}>
+        <form className="card popin" style={{ padding: 18 }}
+          onSubmit={(e) => { e.preventDefault(); if (name.trim()) armAndJoin(); }}>
           <h2 style={{ textAlign: "center", marginBottom: 4 }}>ברוכים הבאים! 👋</h2>
           <p className="sub" style={{ textAlign: "center", marginBottom: 14, fontSize: 13 }}>
             עוד רגע אתם בפנים. איך קוראים לך?<br />
             <span style={{ fontSize: 11.5 }}>(השם יופיע אצל שאר השחקנים — אפשר גם כינוי)</span>
           </p>
-          <input className="input" placeholder="השם שלך" value={name} maxLength={14}
+          <input className="input" placeholder="השם שלך" value={name} maxLength={14} autoFocus
             onChange={(e) => setName(e.target.value)} />
-          <button className="btn" style={{ marginTop: 14 }} disabled={!name.trim()} onClick={() => setStage("arm")}>
-            ממשיכים ➜
+          <button className="btn" type="submit" style={{ marginTop: 14 }} disabled={!name.trim()}>
+            ⚡ נכנסים!
           </button>
-        </div>
+          <p className="sub" style={{ textAlign: "center", fontSize: 11, marginTop: 8 }}>
+            (אייפון ישאל אישור לחיישני תנועה — תאשרו)
+          </p>
+        </form>
       </main>
     );
   }
 
   if (stage === "arm") {
+    // רק בחזרה לחדר מוכר (reload) — לחיצה אחת להפעלת האודיו וממשיכים
     return (
       <main style={{ justifyContent: "center", textAlign: "center" }}>
-        <div style={{ fontSize: 84 }} className="pulse">🔫</div>
-        <h1 style={{ margin: "12px 0 8px" }}>חמש את הטלפון</h1>
+        <div style={{ fontSize: 84 }} className="pulse">⚡</div>
+        <h1 style={{ margin: "12px 0 8px" }}>ממשיכים מאיפה שעצרנו</h1>
         <p className="sub" style={{ marginBottom: 26 }}>
-          לחיצה אחת מפעילה את הרמקול, החיישנים והקסם.<br />
-          (אייפון ישאל אישור לחיישני תנועה — תאשרו!)
+          לחיצה אחת מחזירה אותך פנימה — עם הרמקול והקסם.
         </p>
-        <button className="btn gold" onClick={armAndJoin}>⚡ חמוש ומוכן</button>
+        <button className="btn gold" onClick={armAndJoin}>⚡ חזרה למשחק</button>
       </main>
     );
   }
