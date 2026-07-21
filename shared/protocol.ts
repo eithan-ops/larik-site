@@ -210,12 +210,16 @@ export type ImpostorServerMsg =
 
 /* ---- מופע 🕯️ — הקהל כמסך ---- */
 export type ShowFx = "off" | "candles" | "wave" | "pulse" | "text" | "heart" | "countdown" | "sparkle" | "sections" | "flash" | "color" | "tribal" | "beat";
+/** צורת התאורה על מסך הצופה — full = כל המסך; אחרת צורה גדולה זוהרת שמתמלאת בצבע האפקט */
+export type ShowShape = "full" | "heart" | "circle" | "stripes" | "star" | "bolt" | "dancers";
 export type ShowClientMsg =
-  | { a: "sh_set"; fx: ShowFx; text?: string; bpm?: number; color?: string; anchor?: number } // מפעיל בלבד; anchor = זמן-שרת של ביט (Tap-Tempo)
+  | { a: "sh_set"; fx: ShowFx; text?: string; bpm?: number; color?: string; anchor?: number; shape?: ShowShape } // מפעיל בלבד; anchor = זמן-שרת של ביט (Tap-Tempo)
+  | { a: "sh_dim"; v: number } // מפעיל: פיידר עוצמה ראשי (Grand Master) 0..1
   | { a: "sh_seat"; r: number; c: number }; // מושב מכרטיס (QR) — דורס את השיבוץ האוטומטי
 export type ShowServerMsg =
   | { a: "sh_pos"; r: number; c: number; maxR: number; maxC: number } // המיקום שלי + גבולות הרשת
-  | { a: "sh_fx"; fx: ShowFx; text?: string; bpm?: number; color?: string; anchor?: number; at: number } // cue — כולם מחליפים אפקט יחד
+  | { a: "sh_fx"; fx: ShowFx; text?: string; bpm?: number; color?: string; anchor?: number; shape?: ShowShape; at: number } // cue — כולם מחליפים אפקט יחד
+  | { a: "sh_dim"; v: number; at: number } // cue — עוצמה ראשית לכל הקהל
   | { a: "sh_count"; total: number }; // כמה טלפונים מחוברים (לקונסולה)
 
 export type GameClientMsg = ForeheadClientMsg | PodsClientMsg | BombsClientMsg

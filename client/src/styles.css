@@ -34,7 +34,9 @@ body::after{background:#ec4899;bottom:-25vmax;left:-20vmax;animation:drift2 17s 
 @media (prefers-reduced-motion:reduce){body::before,body::after{animation:none}}
 
 #root,main{min-height:100dvh}
-#root>*{position:relative;z-index:1}
+/* מרימים תוכן מעל כתמי הניאון של הרקע — אבל בלי לדרוס אלמנטים ש"תופסים את כל המסך"
+   (position:fixed). זה היה הבאג שבגללו מסך המופע נדלק רק בפס קטן למעלה. */
+#root>*:where(:not(.fullscreen):not(.sc-root):not(.exit-fab):not(.bomb-arena)){position:relative;z-index:1}
 main{padding:22px 18px calc(22px + env(safe-area-inset-bottom));display:flex;flex-direction:column;position:relative;z-index:1}
 h1{font-size:27px;font-weight:800;letter-spacing:-.3px}
 h2{font-size:17.5px;font-weight:800}
@@ -317,3 +319,79 @@ input{font-family:inherit}
   animation:shimmer 3s linear infinite;
 }
 @keyframes shimmer{to{background-position:-200% center}}
+
+/* ---------- מופע 🕯️ — קונסולת המפעיל (בהשראת קונסולות תאורה) ---------- */
+.sc-root{
+  position:fixed;inset:0;z-index:12;max-width:480px;margin:0 auto;
+  display:flex;flex-direction:column;gap:8px;overflow:hidden;
+  padding:calc(10px + env(safe-area-inset-top)) 10px calc(10px + env(safe-area-inset-bottom));
+  background:var(--bg);touch-action:none;overscroll-behavior:none;
+}
+.sc-head{display:flex;align-items:center;gap:8px;margin-left:104px} /* מפנה מקום לכפתור "סיום משחק" הצף */
+.sc-preview{
+  width:26px;height:26px;border-radius:50%;flex:0 0 auto;
+  border:2px solid var(--line2);background:#10081e;
+  box-shadow:0 0 12px rgba(255,255,255,.12);
+}
+.sc-chipbtn{border:none;cursor:pointer;font-family:inherit;font-weight:800}
+.sc-live{flex:1;display:flex;gap:8px;min-height:0}
+.sc-main{flex:1;display:flex;flex-direction:column;gap:8px;min-width:0}
+.sc-grid{flex:1;display:grid;grid-template-columns:repeat(3,1fr);grid-auto-rows:1fr;gap:7px;min-height:0}
+.sc-pad{
+  border-radius:16px;border:1.5px solid var(--line2);background:var(--card);
+  color:var(--text);font-family:inherit;font-weight:800;font-size:13px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+  touch-action:none;padding:4px;line-height:1.2;
+}
+.sc-pad:active{transform:scale(.96)}
+.sc-pad .ic{font-size:22px;line-height:1.1}
+.sc-pad.on{
+  background:linear-gradient(150deg,rgba(139,92,246,.45),rgba(236,72,153,.35));
+  border-color:var(--gold);box-shadow:0 0 16px rgba(255,201,60,.3);
+}
+.sc-pad.safe{border-color:#8a6d2f} /* "עוגן בטוח" — נרות תמיד מחזיר לוק נעים */
+.sc-shapes{display:flex;gap:5px}
+.sc-shape{
+  flex:1;border-radius:12px;border:1.5px solid var(--line2);background:var(--card);
+  color:var(--muted);font-family:inherit;font-weight:700;font-size:9.5px;
+  display:flex;flex-direction:column;align-items:center;gap:1px;padding:6px 0 4px;
+  touch-action:none;
+}
+.sc-shape.on{color:var(--gold);border-color:var(--gold);background:rgba(255,201,60,.12);box-shadow:0 0 10px rgba(255,201,60,.25)}
+.sc-colors{display:flex;gap:6px}
+.sc-sw{flex:1;height:36px;border-radius:10px;border:2px solid var(--line2);touch-action:none}
+.sc-sw.on{border-color:#fff;box-shadow:0 0 10px rgba(255,255,255,.5)}
+.sc-bottom{display:grid;grid-template-columns:1.35fr 1fr 1fr;gap:7px;height:74px;flex:0 0 auto}
+.sc-tap{background:linear-gradient(150deg,#3a2c08,#241a05);border-color:var(--gold);color:var(--gold);font-size:15px}
+.sc-flash{background:linear-gradient(150deg,#2c2c3e,#1c1c2b);border-color:#8f8fb0}
+.sc-off{background:#0a0612;border-color:#3a2430;color:#c9a7b4}
+.sc-off.arming{border-color:var(--red);box-shadow:0 0 14px rgba(255,92,92,.5);transform:scale(.96)}
+.sc-off.on{background:#1a0b14;border-color:var(--red)}
+.sc-fader{
+  width:44px;flex:0 0 auto;border-radius:14px;border:1.5px solid var(--line2);
+  background:var(--card);position:relative;overflow:hidden;touch-action:none;
+  display:flex;align-items:flex-end;justify-content:center;
+}
+.sc-fader-fill{
+  position:absolute;bottom:0;left:0;right:0;
+  background:linear-gradient(0deg,rgba(139,92,246,.55),rgba(236,72,153,.65));
+  border-top:2px solid #fff8;
+}
+.sc-fader-label{position:relative;z-index:2;font-size:10.5px;font-weight:900;color:var(--text);padding-bottom:8px;pointer-events:none}
+.sc-sheet{
+  position:fixed;left:50%;transform:translateX(-50%);bottom:0;width:100%;max-width:480px;z-index:30;
+  background:var(--card2);border:1.5px solid var(--line2);border-bottom:none;
+  border-radius:22px 22px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom));
+  box-shadow:0 -12px 40px rgba(0,0,0,.5);
+}
+.sc-lock{
+  position:fixed;inset:0;z-index:40;border:none;
+  background:rgba(6,4,17,.88);backdrop-filter:blur(6px);color:var(--text);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;
+  font-family:inherit;font-size:16px;font-weight:900;touch-action:none;
+}
+/* ---------- מופע — מסך הצופה: צורה זוהרת על כל המסך ---------- */
+.sc-viewer-shape{
+  position:fixed;inset:0;width:100%;height:100%;z-index:1;pointer-events:none;
+  padding:max(4vmin, env(safe-area-inset-top)) 4vmin;box-sizing:border-box;
+}
