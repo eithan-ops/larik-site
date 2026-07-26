@@ -395,3 +395,18 @@ input{font-family:inherit}
   position:fixed;inset:0;width:100%;height:100%;z-index:1;pointer-events:none;
   padding:max(4vmin, env(safe-area-inset-top)) 4vmin;box-sizing:border-box;
 }
+/* 🪄 טייס אוטומטי */
+.sc-pilot{
+  flex:0 0 auto;min-height:48px;border-radius:14px;border:1.5px solid var(--line2);
+  background:var(--card);color:var(--text);font-family:inherit;font-weight:900;font-size:14px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;
+  touch-action:none;padding:6px 10px;
+}
+.sc-pilot-sub{font-size:10.5px;font-weight:700;color:var(--muted)}
+.sc-pilot.on{
+  background:linear-gradient(120deg,rgba(52,232,158,.2),rgba(139,92,246,.25));
+  border-color:var(--money);box-shadow:0 0 16px rgba(52,232,158,.3);
+  animation:pilotglow 2s ease-in-out infinite;
+}
+.sc-pilot.on .sc-pilot-sub{color:#c9f7e4}
+@keyframes pilotglow{50%{box-shadow:0 0 26px rgba(52,232,158,.5)}}

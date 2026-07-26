@@ -11,6 +11,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { ShowServerMsg, ShowFx, ShowShape } from "../../../shared/protocol";
 import type { GameViewProps } from "./registry";
 import { Sfx, vibrate } from "../lib/audio";
+import { BeatEar } from "../lib/beatear";
 import { getVenue, seatToXY } from "../venues";
 
 /* ---------- מנוע האפקטים: צבע = f(x, y, t) ---------- */
@@ -191,6 +192,21 @@ const PADS: { fx: ShowFx; ic: string; label: string }[] = [
 ];
 const SWATCHES = ["#8b5cf6", "#ec4899", "#ffc93c", "#34e89e", "#5c8aff", "#ffffff", "#ff5c5c"];
 
+/** 🪄 פלייליסט הטייס האוטומטי — לוקים (אפקט+צורה) שמתחלפים לבד כל 8 תיבות, בנויים כמסע אנרגיה */
+const PILOT_LOOKS: { fx: ShowFx; shape: ShowShape }[] = [
+  { fx: "beat", shape: "full" },
+  { fx: "tribal", shape: "full" },
+  { fx: "beat", shape: "stripes" },
+  { fx: "pulse", shape: "heart" },
+  { fx: "beat", shape: "dancers" },
+  { fx: "sparkle", shape: "full" },
+  { fx: "beat", shape: "circle" },
+  { fx: "wave", shape: "full" },
+  { fx: "beat", shape: "star" },
+  { fx: "tribal", shape: "bolt" },
+];
+const PILOT_BARS = 8; // מחליפים כל 8 תיבות (32 ביטים)
+
 export default function ShowView({ room, me, conn, hub }: GameViewProps) {
   const isOperator = me === room.hostId;
   const [pos, setPos] = useState<{ r: number; c: number; maxR: number; maxC: number } | null>(null);
@@ -219,6 +235,27 @@ export default function ShowView({ room, me, conn, hub }: GameViewProps) {
   const faderRef = useRef<HTMLDivElement>(null);
   const lastDimSent = useRef(0);
   const lockHold = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // 🪄 טייס אוטומטי: האוזן (מיקרופון) + החלפת לוקים אוטומטית
+  const [pilot, setPilot] = useState(false);
+  const [earState, setEarState] = useState<"off" | "listening" | "locked" | "none">("off");
+  const [earBpm, setEarBpm] = useState(0);
+  const pilotRef = useRef(false);
+  const earRef = useRef<BeatEar | null>(null);
+  const bpmRef = useRef(120);
+  const shapeRef = useRef<ShowShape>("full");
+  const textRef = useRef("");
+  const rotIdx = useRef(0);
+  const rotTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastEarSent = useRef(0);
+  useEffect(() => { bpmRef.current = bpm; }, [bpm]);
+  useEffect(() => { shapeRef.current = shape; }, [shape]);
+  useEffect(() => { textRef.current = text; }, [text]);
+  // ניקוי ביציאה מהמופע — מכבים מיקרופון וטיימרים
+  useEffect(() => () => {
+    pilotRef.current = false;
+    earRef.current?.stop();
+    if (rotTimer.current) clearTimeout(rotTimer.current);
+  }, []);
 
   // אולם ממופה? המיקום מחושב לוקאלית מהכרטיס (גוש/שורה/מושב) — בלי תלות בשרת
   const venue = getVenue((room.gameConfig as { venue?: string } | undefined)?.venue);
@@ -320,6 +357,80 @@ export default function ShowView({ room, me, conn, hub }: GameViewProps) {
       send(fx, extra);
       if (!momentary) lastLookRef.current = { fx, color: extra?.color };
       Sfx.pop(); vibrate(25);
+      // הדיג'י התערב ידנית? הטייס מכבד — דוחה את ההחלפה האוטומטית הבאה במחזור מלא
+      if (pilotRef.current && !momentary) {
+        if (fx === "off") stopPilot(); // חושך = הדיג'י רוצה שקט; הטייס לא ידליק בחזרה
+        else scheduleRotation();
+      }
+    }
+    /* ---------- 🪄 טייס אוטומטי ---------- */
+    function scheduleRotation(delayMs?: number) {
+      if (rotTimer.current) clearTimeout(rotTimer.current);
+      const beat = 60000 / (bpmRef.current || 120);
+      let wait = delayMs ?? beat * PILOT_BARS * 4;
+      // מיישרים את רגע ההחלפה לביט (אם יש עוגן) — המעבר מרגיש חלק מהמוזיקה
+      const anc = anchorRef.current;
+      if (anc != null && wait > beat) {
+        const target = conn.serverNow() + wait;
+        const off = (target - anc) % beat;
+        wait += (beat - off) % beat;
+      }
+      rotTimer.current = setTimeout(() => {
+        if (!pilotRef.current) return;
+        const look = PILOT_LOOKS[rotIdx.current++ % PILOT_LOOKS.length];
+        setShape(look.shape);
+        shapeRef.current = look.shape;
+        lastLookRef.current = { fx: look.fx };
+        conn.sendGame({
+          a: "sh_set", fx: look.fx, text: textRef.current.trim() || "✨",
+          bpm: bpmRef.current, anchor: anchorRef.current ?? undefined, shape: look.shape,
+        });
+        scheduleRotation();
+      }, wait);
+    }
+    function stopPilot() {
+      pilotRef.current = false;
+      setPilot(false);
+      earRef.current?.stop();
+      earRef.current = null;
+      setEarState("off");
+      if (rotTimer.current) { clearTimeout(rotTimer.current); rotTimer.current = null; }
+    }
+    async function togglePilot() {
+      if (pilotRef.current) { stopPilot(); vibrate(20); return; }
+      pilotRef.current = true;
+      setPilot(true);
+      Sfx.pop(); vibrate(40);
+      // האוזן: מסנכרנת BPM+פאזה מהמיקרופון; אם אין הרשאה — ממשיכים לפי TAP/ידני
+      const ear = new BeatEar((u) => {
+        if (!pilotRef.current) return;
+        if (!u.locked || u.bpm === 0) { setEarState("listening"); return; }
+        setEarState("locked");
+        setEarBpm(u.bpm);
+        const nowMs = Date.now();
+        // שולחים לקהל רק כשיש שינוי אמיתי או אחת ל-5 שניות (לתקן סחיפת פאזה)
+        if (Math.abs(u.bpm - bpmRef.current) >= 2 || nowMs - lastEarSent.current > 5000) {
+          lastEarSent.current = nowMs;
+          const anchor = conn.serverNow() - u.msSinceBeat;
+          anchorRef.current = anchor;
+          bpmRef.current = u.bpm;
+          setBpm(u.bpm);
+          const p = lastLookRef.current;
+          conn.sendGame({
+            a: "sh_set", fx: p.fx, text: textRef.current.trim() || "✨",
+            bpm: u.bpm, anchor, shape: shapeRef.current,
+            ...(p.color !== undefined ? { color: p.color } : {}),
+          });
+        }
+      });
+      earRef.current = ear;
+      setEarState("listening");
+      // hook לבדיקות אוטומטיות: סטרים מוזרק במקום המיקרופון
+      const fake = (window as unknown as { __larikMicStream?: MediaStream }).__larikMicStream;
+      const ok = await ear.start(fake);
+      if (!ok) setEarState("none");
+      // יוצאים לדרך מיד עם הלוק הראשון בפלייליסט
+      scheduleRotation(400);
     }
     /** ⚡ הבזק רגעי (Flash): דולק כל עוד האצבע על הפד, בשחרור חוזרים ללוק הקודם */
     function flashDown() { fire("flash", undefined, true); }
@@ -384,6 +495,19 @@ export default function ShowView({ room, me, conn, hub }: GameViewProps) {
           <button className="chip sc-chipbtn" onClick={() => setSheet(true)}>🎚️ {bpm} BPM</button>
           <button className="chip sc-chipbtn" onClick={() => setLocked(true)}>🔓</button>
         </div>
+
+        {/* 🪄 טייס אוטומטי — כפתור אחד והמופע מנהל את עצמו */}
+        <button className={"sc-pilot" + (pilot ? " on" : "")} onPointerDown={togglePilot}>
+          {!pilot ? (
+            <>🪄 טייס אוטומטי <span className="sc-pilot-sub">המופע רץ לבד לפי המוזיקה</span></>
+          ) : earState === "locked" ? (
+            <>🎤 שומע את המוזיקה · {earBpm} BPM ✓ <span className="sc-pilot-sub">מחליף לוק כל {PILOT_BARS} תיבות · הקשה = כיבוי</span></>
+          ) : earState === "listening" ? (
+            <>🎤 מאזין למוזיקה... <span className="sc-pilot-sub">תקרבו את הטלפון לרמקול · בינתיים לפי {bpm} BPM</span></>
+          ) : (
+            <>🪄 פועל בלי מיקרופון <span className="sc-pilot-sub">לפי {bpm} BPM — אפשר לדייק עם TAP</span></>
+          )}
+        </button>
 
         <div className="sc-live">
           {/* אזור הפדים — בלי שום גלילה */}
