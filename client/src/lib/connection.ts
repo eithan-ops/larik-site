@@ -35,6 +35,7 @@ export class Connection {
   synced = false;
   private everWelcomed = false; // מתחברים מחדש אוטומטית רק לחדר שבאמת נכנסנו אליו
   private closedByUs = false;
+  private reconnectAttempt = 0; // backoff אקספוננציאלי עם jitter — ש-500 טלפונים לא יסתערו יחד אחרי נפילת רשת
   /** cues שהגיעו לפני שהשעון סונכרן — בלי offset אי אפשר לתזמן אותם; משוחררים בפונג הראשון */
   private pendingCues: Array<{ at: number; d: GameServerMsg }> = [];
 
@@ -71,6 +72,7 @@ export class Connection {
       switch (msg.t) {
         case "welcome":
           this.everWelcomed = true;
+          this.reconnectAttempt = 0; // חזרנו — מאפסים את הענישה
           this.playerId = msg.playerId;
           sessionStorage.setItem(`larik-pid-${this.roomCode}`, msg.playerId);
           this.events.onWelcome(msg.playerId, msg.room);
@@ -105,11 +107,15 @@ export class Connection {
     this.ws.onclose = () => {
       this.events.onStatus("closed");
       clearInterval(this.pingTimer);
-      // ניסיון חיבור מחדש עדין — אבל לא אחרי close() מכוון ולא לחדר שמעולם לא קיבל אותנו
+      // ניסיון חיבור מחדש — אבל לא אחרי close() מכוון ולא לחדר שמעולם לא קיבל אותנו.
+      // backoff אקספוננציאלי עם jitter מלא: 0.75-1.5ש' → ... → עד 30ש'. ככה נפילת רשת
+      // באולם לא הופכת לסערת התחברות שמפילה את השרת (thundering herd).
       if (this.closedByUs || !this.everWelcomed) return;
+      const base = Math.min(30_000, 1500 * Math.pow(2, this.reconnectAttempt++));
+      const delay = base * (0.5 + Math.random() * 0.5);
       setTimeout(() => {
         if (document.visibilityState === "visible") this.connect(name, emoji);
-      }, 1500);
+      }, delay);
     };
   }
 

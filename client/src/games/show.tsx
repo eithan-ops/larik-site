@@ -28,9 +28,9 @@ function renderBitmap(str: string) {
   c.clearRect(0, 0, 220, 70);
   c.fillStyle = "#fff"; c.textAlign = "center"; c.textBaseline = "middle";
   let size = 58;
-  c.font = `900 ${size}px Rubik, Arial`;
+  c.font = `900 ${size}px 'Rubik Variable', Rubik, Arial`;
   const w = c.measureText(str).width;
-  if (w > 210) { size = Math.max(18, Math.floor(size * 210 / w)); c.font = `900 ${size}px Rubik, Arial`; }
+  if (w > 210) { size = Math.max(18, Math.floor(size * 210 / w)); c.font = `900 ${size}px 'Rubik Variable', Rubik, Arial`; }
   c.fillText(str, 110, 39);
   bmpData = c.getImageData(0, 0, 220, 70).data;
 }
@@ -46,8 +46,8 @@ function inHeart(nx: number, ny: number, scale: number): boolean {
 }
 const DARK: [number, number, number] = [16, 10, 30];
 
-/** הפונקציה שכל טלפון מריץ — זהה לסימולטור, רק שכאן הפיקסל הוא כל המסך */
-export function fxColor(fx: FxState, x: number, y: number, now: number, rnd: number): [number, number, number] {
+/** הפונקציה שכל טלפון מריץ — זהה לסימולטור, רק שכאן הפיקסל הוא כל המסך. win = אני זוכה הזרקור 🎯 */
+export function fxColor(fx: FxState, x: number, y: number, now: number, rnd: number, win = false): [number, number, number] {
   // anchor (Tap-Tempo) מעגן את הפאזה לביט האמיתי של המוזיקה; בלעדיו — לרגע החלפת האפקט
   const t = Math.max(0, (now - (fx.anchor ?? fx.at)) / 1000);
   switch (fx.fx) {
@@ -80,10 +80,16 @@ export function fxColor(fx: FxState, x: number, y: number, now: number, rnd: num
       return inHeart(x - 0.5, y - 0.48, 0.34 * beat) ? [255, 60, 110] : DARK;
     }
     case "countdown": {
-      const n = 9 - Math.floor(t % 10);
-      renderBitmap(String(n));
-      const frac = 1 - (t % 1);
-      return sampleBitmap(x, 1 - y) ? [255, 201 * frac + 54, 60] : DARK;
+      // 🔢 ספירה 10→1 ואז הפיצוץ: 3 שניות סטרוב לבן וזהב שמחזיק
+      const n = 10 - Math.floor(t);
+      if (n > 0) {
+        renderBitmap(String(n));
+        const frac = 1 - (t % 1);
+        return sampleBitmap(x, 1 - y) ? [255, 201 * frac + 54, 60] : DARK;
+      }
+      const bt = t - 10;
+      if (bt < 3) { const s = Math.sin(bt * 28 + rnd * 3) > 0 ? 1 : 0.12; return [255 * s, 248 * s, 235 * s]; }
+      return [255, 201, 60];
     }
     case "sparkle":
       return Math.sin(t * 3 + rnd * 700) > 0.94 ? [255, 255, 255] : [30, 20, 55];
@@ -127,6 +133,22 @@ export function fxColor(fx: FxState, x: number, y: number, now: number, rnd: num
       ];
       const c = cols[Math.floor(beatFloat) % cols.length];
       return [c[0] * (0.05 + b * 0.95), c[1] * (0.05 + b * 0.95), c[2] * (0.05 + b * 0.95)];
+    }
+    case "paparazzi": {
+      // 📸 הבזקי מצלמות — כל טלפון מבליח לבן ברגעים אקראיים משלו (דטרמיניסטי, אפס תקשורת)
+      const ph = t * (1.4 + rnd * 0.8) + rnd * 120;
+      const flash = ph % 1 < 0.15 && Math.sin(Math.floor(ph) * 37.7 + rnd * 91) > -0.1;
+      return flash ? [255, 255, 255] : [18, 12, 34];
+    }
+    case "spot": {
+      // 🎯 הזרקור עליך — הזוכה זוהר בזהב מהבהב, כל השאר דועכים לרקע סגלגל
+      if (win) { const s = 0.85 + 0.15 * Math.sin(t * 16); return [255 * s, 215 * s, 90 * s]; }
+      return [28, 16, 44];
+    }
+    case "ember": {
+      // 🌅 גחלים — זוהר חם ונושם לאט; ה-walk-away של סוף הערב (וגם חוסך סוללה)
+      const b = 0.10 + 0.08 * (0.5 + 0.5 * Math.sin(t * 0.7 + rnd * 20));
+      return [255 * b, 130 * b, 40 * b];
     }
   }
   return DARK;
@@ -187,7 +209,10 @@ const PADS: { fx: ShowFx; ic: string; label: string }[] = [
   { fx: "wave", ic: "🌊", label: "גל" },
   { fx: "sparkle", ic: "✨", label: "נצנוץ" },
   { fx: "sections", ic: "🏟️", label: "יציעים" },
+  { fx: "paparazzi", ic: "📸", label: "פפראצי" },
+  { fx: "spot", ic: "🎯", label: "זרקור" },
   { fx: "countdown", ic: "🔢", label: "ספירה" },
+  { fx: "ember", ic: "🌅", label: "גחלים" },
   { fx: "text", ic: "🔤", label: "טקסט" },
 ];
 const SWATCHES = ["#8b5cf6", "#ec4899", "#ffc93c", "#34e89e", "#5c8aff", "#ffffff", "#ff5c5c"];
@@ -247,6 +272,20 @@ export default function ShowView({ room, me, conn, hub }: GameViewProps) {
   const rotIdx = useRef(0);
   const rotTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastEarSent = useRef(0);
+  const [spotName, setSpotName] = useState(""); // שם הזוכה בזרקור — חיווי למפעיל
+  // 📍 אזור ברחבה (שמאל/מרכז/ימין) — נותן x אמיתי לגלים גם בלי מושבים
+  const [zone, setZone] = useState<number | null>(() => {
+    const s = sessionStorage.getItem(`larik-zone-${room.code}`);
+    return s === null ? null : Number(s);
+  });
+  const zoneRef = useRef<number | null>(zone);
+  function pickZone(i: number | null) {
+    setZone(i);
+    zoneRef.current = i;
+    if (i === null) sessionStorage.removeItem(`larik-zone-${room.code}`);
+    else sessionStorage.setItem(`larik-zone-${room.code}`, String(i));
+    vibrate(20);
+  }
   useEffect(() => { bpmRef.current = bpm; }, [bpm]);
   useEffect(() => { shapeRef.current = shape; }, [shape]);
   useEffect(() => { textRef.current = text; }, [text]);
@@ -286,6 +325,7 @@ export default function ShowView({ room, me, conn, hub }: GameViewProps) {
         setActiveFx(m.fx);
         setShape(m.shape ?? "full");
         if (m.fx === "flash") vibrate(60);
+        if (m.fx === "spot" && m.text === me) vibrate([80, 60, 200]); // 🎯 זכית! שתרגיש את זה
         return;
     }
   }), [hub, conn]);
@@ -302,10 +342,12 @@ export default function ShowView({ room, me, conn, hub }: GameViewProps) {
         let x = 0.5, y = 0.5;
         if (venueXY) { x = venueXY.x; y = venueXY.y; } // אולם ממופה — מיקום אמיתי
         else if (pos) { x = pos.maxC > 0 ? pos.c / pos.maxC : 0.5; y = pos.maxR > 0 ? 1 - pos.r / pos.maxR : 0.5; }
+        if (!venueXY && zoneRef.current !== null) x = [0.17, 0.5, 0.83][zoneRef.current]; // אזור שנבחר ידנית — גלים אמיתיים בעמידה
         const now = conn.serverNow();
         const fx = fxRef.current;
         const d = dimRef.current;
-        const [r, g, b] = fxColor(fx, x, y, now, rndRef.current);
+        const win = fx.fx === "spot" && fx.text === me; // 🎯 אני זוכה הזרקור?
+        const [r, g, b] = fxColor(fx, x, y, now, rndRef.current, win);
         const col = `rgb(${(r * d) | 0},${(g * d) | 0},${(b * d) | 0})`;
         const sh = fx.shape ?? "full";
         // צורה "מלא" = כל המסך; אחרת — רקע כהה והצורה מתמלאת. צובעים גם את html —
@@ -432,6 +474,18 @@ export default function ShowView({ room, me, conn, hub }: GameViewProps) {
       // יוצאים לדרך מיד עם הלוק הראשון בפלייליסט
       scheduleRotation(400);
     }
+    /** 🎯 הגרלת זרקור — בוחרים זוכה אקראי מהקהל; הטלפון שלו זוהר בזהב וכולם דועכים */
+    function fireSpot() {
+      const cands = room.players.filter((p) => p.connected && p.id !== me);
+      if (!cands.length) return;
+      const w = cands[Math.floor(Math.random() * cands.length)];
+      lastLookRef.current = { fx: "spot" };
+      conn.sendGame({ a: "sh_set", fx: "spot", text: w.id, bpm, anchor: anchorRef.current ?? undefined, shape });
+      setSpotName(`${w.emoji} ${w.name}`);
+      setTimeout(() => setSpotName(""), 6000);
+      Sfx.pop(); vibrate(30);
+      if (pilotRef.current) scheduleRotation();
+    }
     /** ⚡ הבזק רגעי (Flash): דולק כל עוד האצבע על הפד, בשחרור חוזרים ללוק הקודם */
     function flashDown() { fire("flash", undefined, true); }
     function flashUp() { const p = lastLookRef.current; send(p.fx, { color: p.color }); }
@@ -515,7 +569,7 @@ export default function ShowView({ room, me, conn, hub }: GameViewProps) {
             <div className="sc-grid">
               {PADS.map((p) => (
                 <button key={p.fx} className={"sc-pad" + (activeFx === p.fx ? " on" : "") + (p.fx === "candles" ? " safe" : "")}
-                  onPointerDown={() => (p.fx === "text" ? setSheet(true) : fire(p.fx))}>
+                  onPointerDown={() => (p.fx === "text" ? setSheet(true) : p.fx === "spot" ? fireSpot() : fire(p.fx))}>
                   <span className="ic">{p.ic}</span>{p.label}
                 </button>
               ))}
@@ -556,15 +610,24 @@ export default function ShowView({ room, me, conn, hub }: GameViewProps) {
             </div>
           </div>
 
-          {/* פיידר עוצמה ראשי — Grand Master */}
-          <div className="sc-fader" ref={faderRef}
-            onPointerDown={(e) => { (e.target as HTMLElement).setPointerCapture?.(e.pointerId); faderMove(e.clientY); }}
-            onPointerMove={(e) => e.buttons > 0 && faderMove(e.clientY)}
-            onPointerUp={faderEnd}>
-            <div className="sc-fader-fill" style={{ height: `${dimUi * 100}%` }} />
-            <span className="sc-fader-label">{Math.round(dimUi * 100)}%</span>
+          {/* פיידר עוצמה ראשי — Grand Master + כפתור חזרה מיידית ל-100% */}
+          <div className="sc-fader-col">
+            <button className="sc-fader-max"
+              onPointerDown={() => { setDimUi(1); dimRef.current = 1; conn.sendGame({ a: "sh_dim", v: 1 }); vibrate(20); }}>
+              ⬆ מלא
+            </button>
+            <div className="sc-fader" ref={faderRef}
+              onPointerDown={(e) => { (e.target as HTMLElement).setPointerCapture?.(e.pointerId); faderMove(e.clientY); }}
+              onPointerMove={(e) => e.buttons > 0 && faderMove(e.clientY)}
+              onPointerUp={faderEnd}>
+              <div className="sc-fader-fill" style={{ height: `${dimUi * 100}%` }} />
+              <span className="sc-fader-label">{Math.round(dimUi * 100)}%</span>
+            </div>
           </div>
         </div>
+
+        {/* 🎯 חיווי הזוכה בזרקור */}
+        {spotName && <div className="sc-spotname popin">🎯 הזרקור על: <b>{spotName}</b></div>}
 
         {/* גיליון "עוד": טקסט רץ + BPM ידני */}
         {sheet && (
@@ -620,6 +683,30 @@ export default function ShowView({ room, me, conn, hub }: GameViewProps) {
           <p className="sub" style={{ marginTop: 6 }}>החזיקו את הטלפון גבוה — אתם חלק מהמופע ✨<br />
             <span style={{ fontSize: 11.5 }}>(הקשה על המסך = מסך מלא)</span></p>
         </div>
+      )}
+      {/* 🎯 זכית בזרקור! */}
+      {activeFx === "spot" && fxRef.current.text === me && (
+        <div className="popin" style={{ textAlign: "center", zIndex: 4, textShadow: "0 2px 18px #000" }}>
+          <div style={{ fontSize: 56 }}>🎉</div>
+          <div style={{ fontWeight: 900, fontSize: 26, color: "#3a2a00" }}>הזרקור עליך!</div>
+          <div style={{ fontWeight: 800, fontSize: 16, color: "#3a2a00" }}>תרימו את הטלפון גבוה! 🙌</div>
+        </div>
+      )}
+      {/* 📍 בחירת אזור — נותנת לגלים כיוון אמיתי גם בלי מושבים */}
+      {!venueXY && zone === null && !hint && (
+        <div className="sc-zone popin">
+          <span className="sc-zone-q">📍 איפה אתם ברחבה? (הפנים לבמה)</span>
+          <div className="sc-zone-btns">
+            <button onPointerDown={() => pickZone(0)}>שמאל</button>
+            <button onPointerDown={() => pickZone(1)}>מרכז</button>
+            <button onPointerDown={() => pickZone(2)}>ימין</button>
+          </div>
+        </div>
+      )}
+      {!venueXY && zone !== null && (
+        <button className="sc-zone-chip" onPointerDown={() => pickZone(null)}>
+          📍 {["שמאל", "מרכז", "ימין"][zone]}
+        </button>
       )}
       {!hint && (venueXY && ticketSeat ? (
         <span style={{ position: "fixed", bottom: 10, right: "50%", transform: "translateX(50%)", fontSize: 10, color: "#ffffff55", zIndex: 5 }}>

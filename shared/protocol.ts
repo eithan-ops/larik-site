@@ -209,7 +209,8 @@ export type ImpostorServerMsg =
   | { a: "im_exposed"; impostorPid: string; word: string; round: number };
 
 /* ---- מופע 🕯️ — הקהל כמסך ---- */
-export type ShowFx = "off" | "candles" | "wave" | "pulse" | "text" | "heart" | "countdown" | "sparkle" | "sections" | "flash" | "color" | "tribal" | "beat";
+export type ShowFx = "off" | "candles" | "wave" | "pulse" | "text" | "heart" | "countdown" | "sparkle" | "sections" | "flash" | "color" | "tribal" | "beat"
+  | "paparazzi" | "spot" | "ember"; // פפראצי 📸 · הגרלת זרקור 🎯 (text = pid הזוכה) · גחלים 🌅 (walk-away)
 /** צורת התאורה על מסך הצופה — full = כל המסך; אחרת צורה גדולה זוהרת שמתמלאת בצבע האפקט */
 export type ShowShape = "full" | "heart" | "circle" | "stripes" | "star" | "bolt" | "dancers";
 export type ShowClientMsg =
