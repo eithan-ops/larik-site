@@ -54,7 +54,7 @@ export default function Home() {
           <b>ערב משחקים</b>
           <span className="sub">11 משחקים · 3-15 חברים<br />סביב שולחן אחד</span>
         </div>
-        <div className="bento-card" role="button" tabIndex={0} onClick={() => navigate("/show")}>
+        <div className="bento-card" role="button" tabIndex={0} onClick={() => { location.href = "/s"; }}>
           <span className="big">🕯️</span>
           <b>מופע</b>
           <span className="sub">הקהל הוא המסך<br />לאירועים והופעות</span>

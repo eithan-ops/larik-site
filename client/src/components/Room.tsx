@@ -89,13 +89,14 @@ export default function Room({ code }: { code: string }) {
     return () => { active = false; document.removeEventListener("visibilitychange", onVis); lock?.release?.(); };
   }, [needWake]);
 
-  // הגעה מ"עולם המופע" (?show=1) — המופע נבחר אוטומטית למארח
+  // המופע עבר לאפליקציה נפרדת — קישורים ישנים (?show=1 או חדר מופע) מופנים לשם עם אותו קוד חדר
   const wantShow = useMemo(() => new URLSearchParams(location.search).has("show"), []);
   useEffect(() => {
-    if (wantShow && room && me === room.hostId && room.phase === "lobby" && !room.gameId) {
-      connRef.current?.send({ t: "select_game", gameId: "show", config: {} });
+    if (wantShow || room?.gameId === "show") {
+      connRef.current?.close();
+      location.replace(`/s/r/${code}${wantShow ? "?dj=1" : ""}`);
     }
-  }, [wantShow, room, me]);
+  }, [wantShow, room?.gameId, code]);
 
   /* ---------- מסכי כניסה ---------- */
   if (stage === "name") {
@@ -211,36 +212,6 @@ export default function Room({ code }: { code: string }) {
 
   /* ---------- לובי ---------- */
   const connectedCount = room.players.filter((p) => p.connected).length;
-  const isShowLobby = room.gameId === "show";
-
-  // לובי מופע — אורח: אתם חלק ממשהו מיוחד ✨
-  if (isShowLobby && !isHost) {
-    return (
-      <main style={{ justifyContent: "center", textAlign: "center" }}>
-        {toast && <div className="toast">{toast}</div>}
-        <div className="pulse" style={{ fontSize: 76 }}>🕯️</div>
-        <h1 className="shimmer" style={{ margin: "16px 0 10px", fontSize: 24 }}>
-          אתם חלק ממשהו מיוחד ✨
-        </h1>
-        <p className="sub" style={{ fontSize: 15, lineHeight: 1.7, maxWidth: 320, margin: "0 auto 22px" }}>
-          עוד מעט, כל טלפון בקהל — כולל שלכם —
-          יהפוך לנקודת אור אחת במסך ענק שכולם יוצרים ביחד.
-          <br /><b style={{ color: "var(--text)" }}>המופע מתחיל בעוד רגע...</b>
-        </p>
-        <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap", marginBottom: 26 }}>
-          <span className="chip">🔆 בהירות למקסימום</span>
-          <span className="chip">📱 מסך כלפי חוץ</span>
-          <span className="chip">🔓 אל תנעלו את הטלפון</span>
-        </div>
-        <p className="sub popin" style={{ fontSize: 13 }}>
-          {connectedCount} {connectedCount === 1 ? "אור כבר דולק" : "אורות כבר דולקים"} בקהל 💜
-        </p>
-        <button className="btn ghost" style={{ marginTop: 26, opacity: 0.6, maxWidth: 240, marginInline: "auto" }} onClick={leaveRoom}>
-          🚪 יציאה
-        </button>
-      </main>
-    );
-  }
 
   return (
     <main>
@@ -284,10 +255,7 @@ export default function Room({ code }: { code: string }) {
         ))}
       </div>
 
-      {isHost && isShowLobby ? (
-        <ShowHostPanel connected={connectedCount}
-          onStart={() => { track("game_started", { game_id: "show" }); conn.send({ t: "start_game" }); }} />
-      ) : isHost ? (
+      {isHost ? (
         <HostCatalog room={room} onSelect={(gameId, config) => conn.send({ t: "select_game", gameId, config })}
           onStart={() => { if (room.gameId) track("game_started", { game_id: room.gameId }); conn.send({ t: "start_game" }); }} />
       ) : room.gameId ? (
@@ -302,42 +270,6 @@ export default function Room({ code }: { code: string }) {
         🚪 עזוב את החדר
       </button>
     </main>
-  );
-}
-
-/* לובי מופע — המארח רואה איך "משחקים עם הקהל", בלי שום קטלוג משחקים */
-const SHOW_FX_PREVIEW = [
-  { ic: "🕯️", nm: "נרות" }, { ic: "🌊", nm: "גלים" }, { ic: "🥁", nm: "מקצב שבטי" },
-  { ic: "⚡", nm: "הבזקים" }, { ic: "💓", nm: "פעימות" }, { ic: "🌈", nm: "קשת" },
-  { ic: "✍️", nm: "טקסט על הקהל" }, { ic: "🎨", nm: "ציורים" },
-];
-
-function ShowHostPanel({ connected, onStart }: { connected: number; onStart: () => void }) {
-  return (
-    <div className="featured popin" style={{ "--gc": "#ffc93c" } as CSSProperties}>
-      <div className="fhead">
-        <span className="fic">🎛️</span>
-        <span>
-          <b style={{ fontSize: 18 }}>המופע שלך</b>
-          <div className="sub" style={{ fontSize: 13 }}>הקהל הוא המסך — אתה על ההגה</div>
-        </span>
-      </div>
-      <p className="sub" style={{ fontSize: 13, lineHeight: 1.6, marginTop: 4 }}>
-        כל מי שסורק את ה-QR הופך לנקודת אור.
-        ברגע שתתחיל — תקבל <b style={{ color: "var(--text)" }}>קונסולת אפקטים חיה</b> ותנגן על הקהל:
-      </p>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 10 }}>
-        {SHOW_FX_PREVIEW.map((f) => (
-          <span key={f.nm} className="chip" style={{ fontSize: 12 }}>{f.ic} {f.nm}</span>
-        ))}
-      </div>
-      <p className="sub" style={{ fontSize: 12.5, marginTop: 10, fontWeight: 700 }}>
-        💡 אפשר להתחיל כבר עכשיו — אנשים שסורקים באמצע מצטרפים למופע אוטומטית.
-      </p>
-      <button className="btn gold" style={{ marginTop: 12 }} disabled={connected < 2} onClick={onStart}>
-        {connected < 2 ? "מחכים לאור הראשון בקהל..." : `🕯️ התחל את המופע (${connected} אורות)`}
-      </button>
-    </div>
   );
 }
 
@@ -524,7 +456,7 @@ function HostCatalog({ room, onSelect, onStart }: {
       ))}
 
       <p className="sub" style={{ fontSize: 11.5, textAlign: "center", marginTop: 6 }}>
-        🕯️ מחפשים את המופע? הוא עבר לעולם משלו — larik.ai/show
+        🕯️ מחפשים את המופע? הוא עבר לאפליקציה משלו — larik.ai/s
       </p>
     </div>
   );

@@ -9,7 +9,8 @@ import type { RoomSnapshot } from "../../../shared/protocol";
 import { Connection, defaultServerUrl } from "../lib/connection";
 import { unlockAudio } from "../lib/audio";
 import { armPhone } from "../lib/sensors";
-import { GAME_VIEWS, GameHub } from "../games/registry";
+import { GameHub } from "../lib/gamehub";
+import ShowView from "../games/show";
 import { VENUES } from "../venues";
 
 type Stage = "gate" | "connecting" | "waiting" | "in";
@@ -119,8 +120,7 @@ export default function ShowGate({ code }: { code: string }) {
   const conn = connRef.current!;
 
   if (room.phase === "game" && room.gameId === "show") {
-    const View = GAME_VIEWS.show;
-    return <View room={room} me={me} conn={conn} hub={hub} />;
+    return <ShowView room={room} me={me} conn={conn} hub={hub} />;
   }
 
   // המפיק בלובי — בחירת אולם + כפתור התחלה ישיר (בלי קטלוג)

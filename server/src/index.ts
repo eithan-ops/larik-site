@@ -93,10 +93,15 @@ const http = createServer((req, res) => {
     }
     return;
   }
-  // הגשת קבצי הלקוח (SPA fallback ל-index.html)
+  // הגשת קבצי הלקוח — שתי אפליקציות מאותו dist:
+  // דומיין show.* או נתיב /s → אפליקציית המופע (show.html); כל השאר → משחקים (index.html)
   if (existsSync(CLIENT_DIST)) {
+    const host = String(req.headers.host || "");
+    const isShowApp = host.startsWith("show.") || url.pathname === "/s" || url.pathname.startsWith("/s/");
     let file = join(CLIENT_DIST, url.pathname);
-    if (!existsSync(file) || statSync(file).isDirectory()) file = join(CLIENT_DIST, "index.html");
+    if (!existsSync(file) || statSync(file).isDirectory()) {
+      file = join(CLIENT_DIST, isShowApp ? "show.html" : "index.html");
+    }
     res.writeHead(200, { "Content-Type": MIME[extname(file)] || "application/octet-stream" });
     res.end(readFileSync(file));
     return;

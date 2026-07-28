@@ -12,6 +12,7 @@ import type { ShowServerMsg, ShowFx, ShowShape } from "../../../shared/protocol"
 import type { GameViewProps } from "./registry";
 import { Sfx, vibrate } from "../lib/audio";
 import { BeatEar } from "../lib/beatear";
+import { t } from "../lib/i18n";
 import { getVenue, seatToXY } from "../venues";
 
 /* ---------- מנוע האפקטים: צבע = f(x, y, t) ---------- */
@@ -185,13 +186,13 @@ function shapeNodes(s: ShowShape): ReactNode {
 }
 
 const SHAPES: { s: ShowShape; label: string }[] = [
-  { s: "full", label: "מלא" },
-  { s: "heart", label: "לב" },
-  { s: "circle", label: "עיגול" },
-  { s: "stripes", label: "פסים" },
-  { s: "star", label: "כוכב" },
-  { s: "bolt", label: "ברק" },
-  { s: "dancers", label: "רוקדים" },
+  { s: "full", label: t("shFull") },
+  { s: "heart", label: t("shHeart") },
+  { s: "circle", label: t("shCircle") },
+  { s: "stripes", label: t("shStripes") },
+  { s: "star", label: t("shStar") },
+  { s: "bolt", label: t("shBolt") },
+  { s: "dancers", label: t("shDancers") },
 ];
 
 /** אייקון צורה קטן לצ'יפ בקונסולה */
@@ -202,18 +203,18 @@ function ShapeIcon({ s }: { s: ShowShape }) {
 
 /* ---------- פדים של הקונסולה ---------- */
 const PADS: { fx: ShowFx; ic: string; label: string }[] = [
-  { fx: "beat", ic: "🎵", label: "לפי הקצב" },
-  { fx: "tribal", ic: "🥁", label: "שבטי" },
-  { fx: "pulse", ic: "💓", label: "פעימות" },
-  { fx: "candles", ic: "🕯️", label: "נרות" },
-  { fx: "wave", ic: "🌊", label: "גל" },
-  { fx: "sparkle", ic: "✨", label: "נצנוץ" },
-  { fx: "sections", ic: "🏟️", label: "יציעים" },
-  { fx: "paparazzi", ic: "📸", label: "פפראצי" },
-  { fx: "spot", ic: "🎯", label: "זרקור" },
-  { fx: "countdown", ic: "🔢", label: "ספירה" },
-  { fx: "ember", ic: "🌅", label: "גחלים" },
-  { fx: "text", ic: "🔤", label: "טקסט" },
+  { fx: "beat", ic: "🎵", label: t("fxBeat") },
+  { fx: "tribal", ic: "🥁", label: t("fxTribal") },
+  { fx: "pulse", ic: "💓", label: t("fxPulse") },
+  { fx: "candles", ic: "🕯️", label: t("fxCandles") },
+  { fx: "wave", ic: "🌊", label: t("fxWave") },
+  { fx: "sparkle", ic: "✨", label: t("fxSparkle") },
+  { fx: "sections", ic: "🏟️", label: t("fxSections") },
+  { fx: "paparazzi", ic: "📸", label: t("fxPaparazzi") },
+  { fx: "spot", ic: "🎯", label: t("fxSpot") },
+  { fx: "countdown", ic: "🔢", label: t("fxCountdown") },
+  { fx: "ember", ic: "🌅", label: t("fxEmber") },
+  { fx: "text", ic: "🔤", label: t("fxText") },
 ];
 const SWATCHES = ["#8b5cf6", "#ec4899", "#ffc93c", "#34e89e", "#5c8aff", "#ffffff", "#ff5c5c"];
 
@@ -542,8 +543,8 @@ export default function ShowView({ room, me, conn, hub }: GameViewProps) {
       <div className="sc-root" onContextMenu={(e) => e.preventDefault()}>
         {/* שורת מצב עליונה — קבועה */}
         <div className="sc-head">
-          <span className="sc-preview" ref={previewRef} title="מה הקהל רואה" />
-          <b style={{ fontSize: 16 }}>מופע 🕯️</b>
+          <span className="sc-preview" ref={previewRef} />
+          <b style={{ fontSize: 16 }}>🕯️</b>
           <span className="chip" style={{ fontSize: 12 }}>🔦 {count}</span>
           <span style={{ flex: 1 }} />
           <button className="chip sc-chipbtn" onClick={() => setSheet(true)}>🎚️ {bpm} BPM</button>
@@ -553,13 +554,13 @@ export default function ShowView({ room, me, conn, hub }: GameViewProps) {
         {/* 🪄 טייס אוטומטי — כפתור אחד והמופע מנהל את עצמו */}
         <button className={"sc-pilot" + (pilot ? " on" : "")} onPointerDown={togglePilot}>
           {!pilot ? (
-            <>🪄 טייס אוטומטי <span className="sc-pilot-sub">המופע רץ לבד לפי המוזיקה</span></>
+            <>{t("pilotOff")} <span className="sc-pilot-sub">{t("pilotOffSub")}</span></>
           ) : earState === "locked" ? (
-            <>🎤 שומע את המוזיקה · {earBpm} BPM ✓ <span className="sc-pilot-sub">מחליף לוק כל {PILOT_BARS} תיבות · הקשה = כיבוי</span></>
+            <>{t("pilotHear")} · {earBpm} BPM ✓ <span className="sc-pilot-sub">{t("pilotHearSub")}</span></>
           ) : earState === "listening" ? (
-            <>🎤 מאזין למוזיקה... <span className="sc-pilot-sub">תקרבו את הטלפון לרמקול · בינתיים לפי {bpm} BPM</span></>
+            <>{t("pilotListen")} <span className="sc-pilot-sub">{t("pilotListenSub")} {bpm} BPM</span></>
           ) : (
-            <>🪄 פועל בלי מיקרופון <span className="sc-pilot-sub">לפי {bpm} BPM — אפשר לדייק עם TAP</span></>
+            <>{t("pilotNoMic")} <span className="sc-pilot-sub">{t("pilotNoMicSub")} {bpm} BPM</span></>
           )}
         </button>
 
@@ -598,14 +599,14 @@ export default function ShowView({ room, me, conn, hub }: GameViewProps) {
             <div className="sc-bottom">
               <button className="sc-pad sc-tap" onPointerDown={tapBeat}>
                 <span className="ic">🥁</span>
-                TAP{tapCount > 0 && tapCount < 4 ? ` · עוד ${4 - tapCount}` : anchorRef.current ? " ✓" : ""}
+                TAP{tapCount > 0 && tapCount < 4 ? ` · ${4 - tapCount}` : anchorRef.current ? " ✓" : ""}
               </button>
               <button className="sc-pad sc-flash" onPointerDown={flashDown} onPointerUp={flashUp} onPointerLeave={flashUp}>
-                <span className="ic">⚡</span>הבזק
+                <span className="ic">⚡</span>{t("flash")}
               </button>
               <button className={"sc-pad sc-off" + (arming ? " arming" : "") + (activeFx === "off" ? " on" : "")}
                 onPointerDown={offDown} onPointerUp={offUp} onPointerLeave={offUp}>
-                <span className="ic">🌑</span>{arming ? "..." : "חושך"}
+                <span className="ic">🌑</span>{arming ? t("arming") : t("off")}
               </button>
             </div>
           </div>
@@ -614,7 +615,7 @@ export default function ShowView({ room, me, conn, hub }: GameViewProps) {
           <div className="sc-fader-col">
             <button className="sc-fader-max"
               onPointerDown={() => { setDimUi(1); dimRef.current = 1; conn.sendGame({ a: "sh_dim", v: 1 }); vibrate(20); }}>
-              ⬆ מלא
+              {t("faderMax")}
             </button>
             <div className="sc-fader" ref={faderRef}
               onPointerDown={(e) => { (e.target as HTMLElement).setPointerCapture?.(e.pointerId); faderMove(e.clientY); }}
@@ -627,22 +628,22 @@ export default function ShowView({ room, me, conn, hub }: GameViewProps) {
         </div>
 
         {/* 🎯 חיווי הזוכה בזרקור */}
-        {spotName && <div className="sc-spotname popin">🎯 הזרקור על: <b>{spotName}</b></div>}
+        {spotName && <div className="sc-spotname popin">{t("spotOn")} <b>{spotName}</b></div>}
 
         {/* גיליון "עוד": טקסט רץ + BPM ידני */}
         {sheet && (
           <div className="sc-sheet popin">
-            <div className="sub" style={{ marginBottom: 6 }}>טקסט שירוץ על הקהל:</div>
-            <input className="input" placeholder="למשל: שם השיר / אני אוהב אתכם" maxLength={24}
-              value={text} onChange={(e) => setText(e.target.value)} style={{ textAlign: "right" }} />
+            <div className="sub" style={{ marginBottom: 6 }}>{t("sheetTextLabel")}</div>
+            <input className="input" placeholder={t("sheetTextPh")} maxLength={24}
+              value={text} onChange={(e) => setText(e.target.value)} />
             <button className="btn gold" style={{ marginTop: 8, padding: 12 }}
               onPointerDown={() => { fire("text"); setSheet(false); }}>
-              🔤 שגר את הטקסט
+              {t("sheetSend")}
             </button>
-            <div className="sub" style={{ margin: "14px 0 6px" }}>כיוון BPM ידני: {bpm}</div>
+            <div className="sub" style={{ margin: "14px 0 6px" }}>{t("sheetBpm")} {bpm}</div>
             <input type="range" min={60} max={180} value={bpm} style={{ width: "100%", accentColor: "var(--pink)" }}
               onChange={(e) => { setBpm(Number(e.target.value)); anchorRef.current = null; }} />
-            <button className="btn ghost" style={{ marginTop: 14 }} onClick={() => setSheet(false)}>סגור</button>
+            <button className="btn ghost" style={{ marginTop: 14 }} onClick={() => setSheet(false)}>{t("sheetClose")}</button>
           </div>
         )}
 
@@ -653,8 +654,8 @@ export default function ShowView({ room, me, conn, hub }: GameViewProps) {
             onPointerUp={() => { if (lockHold.current) clearTimeout(lockHold.current); }}
             onPointerLeave={() => { if (lockHold.current) clearTimeout(lockHold.current); }}>
             <span style={{ fontSize: 44 }}>🔒</span>
-            <b>הקונסולה נעולה</b>
-            <span className="sub">החזיקו כדי לשחרר</span>
+            <b>{t("lockTitle")}</b>
+            <span className="sub">{t("lockSub")}</span>
           </button>
         )}
       </div>
@@ -679,33 +680,33 @@ export default function ShowView({ room, me, conn, hub }: GameViewProps) {
       {hint && (
         <div className="popin" style={{ textAlign: "center", padding: 20, background: "#000a", borderRadius: 20, zIndex: 3 }}>
           <div style={{ fontSize: 40 }}>🔆</div>
-          <div style={{ fontWeight: 900, fontSize: 18, marginTop: 6 }}>תרימו בהירות למקסימום!</div>
-          <p className="sub" style={{ marginTop: 6 }}>החזיקו את הטלפון גבוה — אתם חלק מהמופע ✨<br />
-            <span style={{ fontSize: 11.5 }}>(הקשה על המסך = מסך מלא)</span></p>
+          <div style={{ fontWeight: 900, fontSize: 18, marginTop: 6 }}>{t("hintTitle")}</div>
+          <p className="sub" style={{ marginTop: 6 }}>{t("hintBody")}<br />
+            <span style={{ fontSize: 11.5 }}>{t("hintTap")}</span></p>
         </div>
       )}
       {/* 🎯 זכית בזרקור! */}
       {activeFx === "spot" && fxRef.current.text === me && (
         <div className="popin" style={{ textAlign: "center", zIndex: 4, textShadow: "0 2px 18px #000" }}>
           <div style={{ fontSize: 56 }}>🎉</div>
-          <div style={{ fontWeight: 900, fontSize: 26, color: "#3a2a00" }}>הזרקור עליך!</div>
-          <div style={{ fontWeight: 800, fontSize: 16, color: "#3a2a00" }}>תרימו את הטלפון גבוה! 🙌</div>
+          <div style={{ fontWeight: 900, fontSize: 26, color: "#3a2a00" }}>{t("spotWin")}</div>
+          <div style={{ fontWeight: 800, fontSize: 16, color: "#3a2a00" }}>{t("spotWinSub")}</div>
         </div>
       )}
       {/* 📍 בחירת אזור — נותנת לגלים כיוון אמיתי גם בלי מושבים */}
       {!venueXY && zone === null && !hint && (
         <div className="sc-zone popin">
-          <span className="sc-zone-q">📍 איפה אתם ברחבה? (הפנים לבמה)</span>
+          <span className="sc-zone-q">{t("zoneQ")}</span>
           <div className="sc-zone-btns">
-            <button onPointerDown={() => pickZone(0)}>שמאל</button>
-            <button onPointerDown={() => pickZone(1)}>מרכז</button>
-            <button onPointerDown={() => pickZone(2)}>ימין</button>
+            <button onPointerDown={() => pickZone(0)}>{t("zoneL")}</button>
+            <button onPointerDown={() => pickZone(1)}>{t("zoneC")}</button>
+            <button onPointerDown={() => pickZone(2)}>{t("zoneR")}</button>
           </div>
         </div>
       )}
       {!venueXY && zone !== null && (
         <button className="sc-zone-chip" onPointerDown={() => pickZone(null)}>
-          📍 {["שמאל", "מרכז", "ימין"][zone]}
+          📍 {[t("zoneL"), t("zoneC"), t("zoneR")][zone]}
         </button>
       )}
       {!hint && (venueXY && ticketSeat ? (

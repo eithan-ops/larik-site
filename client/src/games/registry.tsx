@@ -3,8 +3,7 @@
  * GameHub: צינור האירועים מהחיבור אל מסך המשחק (כולל cues מתוזמנים).
  */
 import type { ComponentType } from "react";
-import type { RoomSnapshot, GameServerMsg } from "../../../shared/protocol";
-import type { Connection } from "../lib/connection";
+import { GameHub, type GameViewProps, type GameListener } from "../lib/gamehub";
 import ForeheadView from "./forehead";
 import PodsView from "./pods";
 import BombsView from "./bombs";
@@ -15,38 +14,11 @@ import DemonsView from "./demons";
 import AliasView from "./alias";
 import TriviaView from "./trivia";
 import WhoMostView from "./whomost";
-import ShowView from "./show";
 import ImpostorView from "./impostor";
 
-export type GameListener = (d: GameServerMsg, at: number) => void;
-
-export class GameHub {
-  private listeners = new Set<GameListener>();
-  /** הודעות שהגיעו לפני שמסך המשחק הספיק להירשם (מרוץ mount) — נשמרות ומוזרמות ברישום הראשון */
-  private pending: Array<[GameServerMsg, number]> = [];
-  subscribe(fn: GameListener): () => void {
-    this.listeners.add(fn);
-    if (this.pending.length) {
-      const q = this.pending;
-      this.pending = [];
-      for (const [d, at] of q) fn(d, at);
-    }
-    return () => this.listeners.delete(fn);
-  }
-  emit(d: GameServerMsg, at: number) {
-    if (this.listeners.size === 0) { this.pending.push([d, at]); return; }
-    for (const fn of this.listeners) fn(d, at);
-  }
-  /** ניקוי בין משחקים — שלא יזלגו הודעות ישנות למשחק הבא */
-  reset() { this.pending = []; }
-}
-
-export interface GameViewProps {
-  room: RoomSnapshot;
-  me: string;
-  conn: Connection;
-  hub: GameHub;
-}
+// GameHub עבר ל-lib/gamehub (משותף לאפליקציית המופע) — מייצאים מחדש לתאימות
+export { GameHub };
+export type { GameViewProps, GameListener };
 
 /** צבע מזהה לכל משחק — לקטלוג, לכרטיסים ולהדגשות */
 export const GAME_COLORS: Record<string, string> = {
@@ -75,6 +47,6 @@ export const GAME_VIEWS: Record<string, ComponentType<GameViewProps>> = {
   alias: AliasView,
   trivia: TriviaView,
   whomost: WhoMostView,
-  show: ShowView,
+  // show — עבר לאפליקציית המופע הנפרדת (/s)
   impostor: ImpostorView,
 };
