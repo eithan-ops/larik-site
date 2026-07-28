@@ -336,7 +336,7 @@ input{font-family:inherit}
 .sc-chipbtn{border:none;cursor:pointer;font-family:inherit;font-weight:800}
 .sc-live{flex:1;display:flex;gap:8px;min-height:0}
 .sc-main{flex:1;display:flex;flex-direction:column;gap:8px;min-width:0}
-.sc-grid{flex:1;display:grid;grid-template-columns:repeat(3,1fr);grid-auto-rows:1fr;gap:7px;min-height:0}
+.sc-grid{flex:1;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);gap:8px;min-height:0}
 .sc-pad{
   border-radius:16px;border:1.5px solid var(--line2);background:var(--card);
   color:var(--text);font-family:inherit;font-weight:800;font-size:13px;
@@ -350,16 +350,18 @@ input{font-family:inherit}
   border-color:var(--gold);box-shadow:0 0 16px rgba(255,201,60,.3);
 }
 .sc-pad.safe{border-color:#8a6d2f} /* "עוגן בטוח" — נרות תמיד מחזיר לוק נעים */
-.sc-shapes{display:flex;gap:5px}
+/* שורת הצורות — גובה קבוע ו-flex:0 שלא תיכווץ/תחפוף עם שורת הצבעים */
+.sc-shapes{display:flex;gap:6px;flex:0 0 auto;height:52px}
 .sc-shape{
   flex:1;border-radius:12px;border:1.5px solid var(--line2);background:var(--card);
-  color:var(--muted);font-family:inherit;font-weight:700;font-size:9.5px;
-  display:flex;flex-direction:column;align-items:center;gap:1px;padding:6px 0 4px;
+  color:var(--muted);font-family:inherit;font-weight:700;font-size:10px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:5px 0;
   touch-action:none;
 }
+.sc-shape svg{width:24px;height:24px}
 .sc-shape.on{color:var(--gold);border-color:var(--gold);background:rgba(255,201,60,.12);box-shadow:0 0 10px rgba(255,201,60,.25)}
-.sc-colors{display:flex;gap:6px}
-.sc-sw{flex:1;height:36px;border-radius:10px;border:2px solid var(--line2);touch-action:none}
+.sc-colors{display:flex;gap:6px;flex:0 0 auto}
+.sc-sw{flex:1;height:38px;border-radius:10px;border:2px solid var(--line2);touch-action:none}
 .sc-sw.on{border-color:#fff;box-shadow:0 0 10px rgba(255,255,255,.5)}
 .sc-bottom{display:grid;grid-template-columns:1.35fr 1fr 1fr;gap:7px;height:74px;flex:0 0 auto}
 .sc-tap{background:linear-gradient(150deg,#3a2c08,#241a05);border-color:var(--gold);color:var(--gold);font-size:15px}

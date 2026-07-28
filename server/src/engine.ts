@@ -64,6 +64,7 @@ export class Room {
   private players = new Map<string, PlayerInfo>();
   private phase: RoomSnapshot["phase"] = "lobby";
   private hostId = "";
+  private hostGrace?: NodeJS.Timeout; // מארח שהתנתק זמנית (נעילת מסך/מעבר לרקע) — לא מעבירים מיד
   private gameId?: string;
   private gameConfig: unknown;
   private game?: GameInstance;
@@ -101,6 +102,8 @@ export class Room {
     if (existing) {
       existing.connected = true;
       existing.name = name || existing.name;
+      // המפעיל חזר תוך זמן החסד — מבטלים את העברת התפקיד ומשחזרים אותו כמפעיל
+      if (pid === this.hostId) { clearTimeout(this.hostGrace); this.hostGrace = undefined; existing.isHost = true; }
       // חוזר באמצע משחק שהוא חלק ממנו — המשחק ישדר לו מחדש את המצב
       if (this.phase === "game" && this.gamePids.includes(pid)) {
         this.transport.send(pid, { t: "welcome", playerId: pid, room: this.snapshot() });
@@ -134,10 +137,18 @@ export class Room {
     if (!p) return;
     p.connected = false;
     this.game?.onLeave?.(pid, false);
-    // מארח שהתנתק — הבא בתור יורש
+    // מארח שהתנתק — לא מעבירים מיד! נעילת מסך / מעבר להודעות = ניתוק זמני,
+    // וה-auto-reconnect מחזיר אותו כמפעיל. מעבירים את התפקיד רק אם באמת נעלם 60ש'.
+    // (אחרת: המפעיל עובר לרגע להודעות, וטלפון של הקהל "יורש" את הקונסולה — הבאג.)
     if (pid === this.hostId) {
-      const next = [...this.players.values()].find((x) => x.connected);
-      if (next) { this.hostId = next.id; next.isHost = true; p.isHost = false; }
+      clearTimeout(this.hostGrace);
+      this.hostGrace = setTimeout(() => {
+        this.hostGrace = undefined;
+        const cur = this.players.get(this.hostId);
+        if (cur?.connected) return; // המפעיל חזר בינתיים — לא נוגעים
+        const next = [...this.players.values()].find((x) => x.connected);
+        if (next) { if (cur) cur.isHost = false; this.hostId = next.id; next.isHost = true; this.broadcastRoom(); }
+      }, 60_000);
     }
     this.broadcastRoom();
   }
@@ -202,7 +213,9 @@ export class Room {
         if (!leaving) return;
         this.game?.onLeave?.(pid, true);
         this.players.delete(pid);
+        // עזיבה מרצון = כוונה מפורשת, מעבירים מיד (בשונה מניתוק זמני)
         if (pid === this.hostId) {
+          clearTimeout(this.hostGrace); this.hostGrace = undefined;
           const next = [...this.players.values()].find((x) => x.connected);
           if (next) { this.hostId = next.id; next.isHost = true; }
         }

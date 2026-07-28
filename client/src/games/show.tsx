@@ -201,7 +201,9 @@ function ShapeIcon({ s }: { s: ShowShape }) {
   return <svg viewBox="0 0 100 100" width="22" height="22">{shapeNodes(s)}</svg>;
 }
 
-/* ---------- פדים של הקונסולה ---------- */
+/* ---------- פדים של הקונסולה — 9 לוקים קבועים (3×3), גדולים וברורים.
+   טקסט-על-הקהל ו"יציעים" הוסרו בכוונה: הם דורשים מיקום/מושב מסומן שעוד לא קיים.
+   ספירה-לאחור היא רגע חד-פעמי → עברה לגיליון "עוד". ---------- */
 const PADS: { fx: ShowFx; ic: string; label: string }[] = [
   { fx: "beat", ic: "🎵", label: t("fxBeat") },
   { fx: "tribal", ic: "🥁", label: t("fxTribal") },
@@ -209,12 +211,9 @@ const PADS: { fx: ShowFx; ic: string; label: string }[] = [
   { fx: "candles", ic: "🕯️", label: t("fxCandles") },
   { fx: "wave", ic: "🌊", label: t("fxWave") },
   { fx: "sparkle", ic: "✨", label: t("fxSparkle") },
-  { fx: "sections", ic: "🏟️", label: t("fxSections") },
   { fx: "paparazzi", ic: "📸", label: t("fxPaparazzi") },
   { fx: "spot", ic: "🎯", label: t("fxSpot") },
-  { fx: "countdown", ic: "🔢", label: t("fxCountdown") },
   { fx: "ember", ic: "🌅", label: t("fxEmber") },
-  { fx: "text", ic: "🔤", label: t("fxText") },
 ];
 const SWATCHES = ["#8b5cf6", "#ec4899", "#ffc93c", "#34e89e", "#5c8aff", "#ffffff", "#ff5c5c"];
 
@@ -239,7 +238,6 @@ export default function ShowView({ room, me, conn, hub }: GameViewProps) {
   const [count, setCount] = useState(0);
   const [activeFx, setActiveFx] = useState<ShowFx>("candles");
   const [shape, setShape] = useState<ShowShape>("full");
-  const [text, setText] = useState("");
   const [bpm, setBpm] = useState(120);
   const [hint, setHint] = useState(true);
   const [tapCount, setTapCount] = useState(0);
@@ -269,7 +267,6 @@ export default function ShowView({ room, me, conn, hub }: GameViewProps) {
   const earRef = useRef<BeatEar | null>(null);
   const bpmRef = useRef(120);
   const shapeRef = useRef<ShowShape>("full");
-  const textRef = useRef("");
   const rotIdx = useRef(0);
   const rotTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastEarSent = useRef(0);
@@ -289,7 +286,6 @@ export default function ShowView({ room, me, conn, hub }: GameViewProps) {
   }
   useEffect(() => { bpmRef.current = bpm; }, [bpm]);
   useEffect(() => { shapeRef.current = shape; }, [shape]);
-  useEffect(() => { textRef.current = text; }, [text]);
   // ניקוי ביציאה מהמופע — מכבים מיקרופון וטיימרים
   useEffect(() => () => {
     pilotRef.current = false;
@@ -392,7 +388,7 @@ export default function ShowView({ room, me, conn, hub }: GameViewProps) {
   if (isOperator) {
     const send = (fx: ShowFx, extra?: { color?: string; shape?: ShowShape }) =>
       conn.sendGame({
-        a: "sh_set", fx, text: text.trim() || "✨", bpm,
+        a: "sh_set", fx, text: "✨", bpm,
         anchor: anchorRef.current ?? undefined, shape: extra?.shape ?? shape,
         ...(extra?.color !== undefined ? { color: extra.color } : {}),
       });
@@ -425,7 +421,7 @@ export default function ShowView({ room, me, conn, hub }: GameViewProps) {
         shapeRef.current = look.shape;
         lastLookRef.current = { fx: look.fx };
         conn.sendGame({
-          a: "sh_set", fx: look.fx, text: textRef.current.trim() || "✨",
+          a: "sh_set", fx: look.fx, text: "✨",
           bpm: bpmRef.current, anchor: anchorRef.current ?? undefined, shape: look.shape,
         });
         scheduleRotation();
@@ -460,7 +456,7 @@ export default function ShowView({ room, me, conn, hub }: GameViewProps) {
           setBpm(u.bpm);
           const p = lastLookRef.current;
           conn.sendGame({
-            a: "sh_set", fx: p.fx, text: textRef.current.trim() || "✨",
+            a: "sh_set", fx: p.fx, text: "✨",
             bpm: u.bpm, anchor, shape: shapeRef.current,
             ...(p.color !== undefined ? { color: p.color } : {}),
           });
@@ -501,7 +497,7 @@ export default function ShowView({ room, me, conn, hub }: GameViewProps) {
       setShape(s);
       const p = lastLookRef.current;
       conn.sendGame({
-        a: "sh_set", fx: p.fx, text: text.trim() || "✨", bpm,
+        a: "sh_set", fx: p.fx, text: "✨", bpm,
         anchor: anchorRef.current ?? undefined, shape: s,
         ...(p.color !== undefined ? { color: p.color } : {}),
       });
@@ -570,7 +566,7 @@ export default function ShowView({ room, me, conn, hub }: GameViewProps) {
             <div className="sc-grid">
               {PADS.map((p) => (
                 <button key={p.fx} className={"sc-pad" + (activeFx === p.fx ? " on" : "") + (p.fx === "candles" ? " safe" : "")}
-                  onPointerDown={() => (p.fx === "text" ? setSheet(true) : p.fx === "spot" ? fireSpot() : fire(p.fx))}>
+                  onPointerDown={() => (p.fx === "spot" ? fireSpot() : fire(p.fx))}>
                   <span className="ic">{p.ic}</span>{p.label}
                 </button>
               ))}
@@ -630,15 +626,13 @@ export default function ShowView({ room, me, conn, hub }: GameViewProps) {
         {/* 🎯 חיווי הזוכה בזרקור */}
         {spotName && <div className="sc-spotname popin">{t("spotOn")} <b>{spotName}</b></div>}
 
-        {/* גיליון "עוד": טקסט רץ + BPM ידני */}
+        {/* גיליון "עוד": רגעים חד-פעמיים (ספירה לאחור) + BPM ידני */}
         {sheet && (
           <div className="sc-sheet popin">
-            <div className="sub" style={{ marginBottom: 6 }}>{t("sheetTextLabel")}</div>
-            <input className="input" placeholder={t("sheetTextPh")} maxLength={24}
-              value={text} onChange={(e) => setText(e.target.value)} />
-            <button className="btn gold" style={{ marginTop: 8, padding: 12 }}
-              onPointerDown={() => { fire("text"); setSheet(false); }}>
-              {t("sheetSend")}
+            <div className="sub" style={{ marginBottom: 6 }}>{t("sheetMoment")}</div>
+            <button className="btn gold" style={{ padding: 14, fontSize: 16 }}
+              onPointerDown={() => { fire("countdown"); setSheet(false); }}>
+              🔢 {t("fxCountdown")}
             </button>
             <div className="sub" style={{ margin: "14px 0 6px" }}>{t("sheetBpm")} {bpm}</div>
             <input type="range" min={60} max={180} value={bpm} style={{ width: "100%", accentColor: "var(--pink)" }}
