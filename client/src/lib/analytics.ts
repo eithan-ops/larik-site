@@ -3,7 +3,7 @@
  * ה-ID מגיע מחשבון ה-GA של איתן (analytics.google.com → Data Streams → Measurement ID).
  * כל עוד ריק — האתר לא טוען שום דבר של גוגל.
  */
-export const GA_ID = ""; // ← להדביק כאן G-XXXXXXXXXX
+export const GA_ID = "G-CPM104G7JW"; // חשבון LARIK · property "LARIK" · stream "LARIK Web" (חובר 28.7.2026)
 
 declare global {
   interface Window { dataLayer?: unknown[]; gtag?: (...args: unknown[]) => void; }
