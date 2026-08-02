@@ -1,10 +1,13 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { RoomSnapshot } from "../../../shared/protocol";
 import { Sfx, vibrate } from "../lib/audio";
+import { shareEveningBoard } from "../lib/sharecard";
+import { track } from "../lib/analytics";
 
 const COLORS = ["#8b5cf6", "#ec4899", "#ffc93c", "#34e89e", "#5c8aff"];
+const DRUMROLL_MS = 1700;
 
-/** טקס הסיום האחיד — המנצח מוזהב, הליצן מוכרז אצל כולם */
+/** טקס הסיום האחיד — תיפוף מתח, ואז: המנצח מוזהב, הליצן מוכרז אצל כולם */
 export default function Ceremony({ room, me, isHost, onBackToLobby }: {
   room: RoomSnapshot; me: string; isHost: boolean; onBackToLobby: () => void;
 }) {
@@ -15,12 +18,36 @@ export default function Ceremony({ room, me, isHost, onBackToLobby }: {
   const winner = room.players.find((p) => p.id === c.winnerId);
   const winners = winnerIds.map((id) => room.players.find((p) => p.id === id)).filter(Boolean);
   const loser = room.players.find((p) => p.id === c.loserId);
+  // דרמטורגיה: רגע של חושך ותיפוף לפני החשיפה — הציפייה היא חצי מהכיף
+  const [revealed, setRevealed] = useState(false);
+  const [shareMsg, setShareMsg] = useState("");
 
   useEffect(() => {
+    Sfx.drumroll();
+    vibrate([30, 40, 30, 40, 30]);
+    const t = setTimeout(() => setRevealed(true), DRUMROLL_MS);
+    return () => clearTimeout(t);
+  }, []);
+
+  useEffect(() => {
+    if (!revealed) return;
     if (iWon) { Sfx.fanfare(); vibrate([80, 60, 80, 60, 200]); }
     else if (iLost) { Sfx.sadTrombone(); vibrate(400); }
     else Sfx.pop();
-  }, []);
+  }, [revealed]);
+
+  async function share() {
+    track("board_shared");
+    const ranking0 = [...room.players]
+      .filter((p) => c.eveningScores[p.id] !== undefined)
+      .sort((a, b) => (c.eveningScores[b.id] ?? 0) - (c.eveningScores[a.id] ?? 0));
+    const out = await shareEveningBoard({
+      title: c.title,
+      rows: ranking0.map((p) => ({ name: p.name, emoji: p.emoji, score: c.eveningScores[p.id] ?? 0 })),
+      clownName: loser ? `${loser.emoji} ${loser.name}` : undefined,
+    });
+    if (out === "downloaded") { setShareMsg("התמונה ירדה — שלחו אותה לקבוצה 💬"); setTimeout(() => setShareMsg(""), 3000); }
+  }
 
   const confetti = useMemo(() =>
     iLost ? [] : Array.from({ length: 50 }, (_, i) => ({
@@ -39,6 +66,16 @@ export default function Ceremony({ room, me, isHost, onBackToLobby }: {
   const ranking = [...room.players]
     .filter((p) => c.eveningScores[p.id] !== undefined)
     .sort((a, b) => (c.eveningScores[b.id] ?? 0) - (c.eveningScores[a.id] ?? 0));
+
+  /* רגע המתח — חושך, תיפוף, ואז הכול מתפוצץ */
+  if (!revealed) {
+    return (
+      <main className="fullscreen" style={{ background: "radial-gradient(circle at 50% 40%, #171029, #060411)" }}>
+        <div className="huge shake">🥁</div>
+        <div className="big" style={{ marginTop: 16, color: "var(--muted)" }}>ורגע האמת...</div>
+      </main>
+    );
+  }
 
   return (
     <main className="fullscreen" style={{ background: bg, position: "relative", overflow: "hidden" }}>
@@ -107,12 +144,17 @@ export default function Ceremony({ room, me, isHost, onBackToLobby }: {
         })}
       </div>
 
+      <button className="btn social" style={{ marginTop: 12, maxWidth: 340 }} onClick={share}>
+        📤 שתפו את לוח הערב
+      </button>
+      {shareMsg && <p className="sub popin" style={{ marginTop: 8, fontSize: 12.5, fontWeight: 700 }}>{shareMsg}</p>}
+
       {isHost ? (
-        <button className="btn" style={{ marginTop: 16, maxWidth: 340 }} onClick={onBackToLobby}>
+        <button className="btn" style={{ marginTop: 10, maxWidth: 340 }} onClick={onBackToLobby}>
           עוד משחק! 🔁
         </button>
       ) : (
-        <p className="sub popin" style={{ marginTop: 16, fontSize: 13 }}>
+        <p className="sub popin" style={{ marginTop: 12, fontSize: 13 }}>
           👑 המארח בוחר את המשחק הבא...
         </p>
       )}

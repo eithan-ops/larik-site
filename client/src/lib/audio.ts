@@ -57,6 +57,15 @@ export const Sfx = {
     { f: 800, t: 0.4, d: 0.2, type: "square", g: 0.15 }, { f: 600, t: 0.6, d: 0.2, type: "square", g: 0.15 },
   ], inSec(delayMs)),
   pop: (delayMs = 0) => playNotes([{ f: 440, t: 0, d: 0.1, type: "triangle", g: 0.3 }, { f: 880, t: 0.02, d: 0.12, g: 0.2 }], inSec(delayMs)),
+  /** תיפוף מתח לפני חשיפת המנצח — 1.4 שניות של דרמה */
+  drumroll: (delayMs = 0) => {
+    const notes: Note[] = [];
+    for (let i = 0; i < 26; i++) {
+      notes.push({ f: 150 + (i % 2) * 24, t: i * 0.054, d: 0.038, type: "square", g: 0.09 });
+    }
+    notes.push({ f: 520, t: 26 * 0.054, d: 0.3, type: "triangle", g: 0.25 }); // "צ'א!" בסוף
+    playNotes(notes, inSec(delayMs));
+  },
   boom: (delayMs = 0) => {
     const c = ac(); if (!c) return;
     const when = c.currentTime + inSec(delayMs);
