@@ -73,6 +73,16 @@ export default function Room({ code }: { code: string }) {
   const phase = room?.phase;
   useEffect(() => { if (phase !== "game") hub.reset(); }, [phase, hub]);
 
+  // וייב בלובי: "פופ" קטן כשחבר נכנס — החדר מרגיש חי גם לפני שהמשחק התחיל
+  const prevConnected = useRef(0);
+  useEffect(() => {
+    const n = room?.players.filter((p) => p.connected).length ?? 0;
+    if (phase === "lobby" && prevConnected.current > 0 && n > prevConnected.current) {
+      Sfx.pop(); vibrate(20);
+    }
+    prevConnected.current = n;
+  }, [room, phase]);
+
   // Wake Lock — שהמסך לא יכבה באמצע משחק או מופע (קריטי כשהטלפון הוא פיקסל)
   const needWake = phase === "game" || (phase === "lobby" && room?.gameId === "show");
   useEffect(() => {
@@ -344,17 +354,27 @@ const RECO_ORDER = ["impostor", "whomost", "alias", "bombs", "colorrules", "triv
 
 function HostCatalog({ room, onSelect, onStart }: {
   room: RoomSnapshot;
-  onSelect: (gameId: string, config: Record<string, string>) => void;
+  onSelect: (gameId: string, config: Record<string, unknown>) => void;
   onStart: () => void;
 }) {
-  const [config, setConfig] = useState<Record<string, string>>({});
+  const [config, setConfig] = useState<Record<string, unknown>>({});
   const sel = CATALOG.find((g) => g.id === room.gameId);
   const connected = room.players.filter((p) => p.connected).length;
-  const canStart = !!sel && connected >= (sel?.minPlayers ?? 2);
+  // חפיסה אישית ✨ נבחרה אבל עוד לא נוצרה — לא מתחילים בלי קלפים (רלוונטי רק למשחקים עם חפיסה)
+  const hasDeckOpt = !!sel?.configOptions?.some((o) => o.key === "deck");
+  const customPending = hasDeckOpt && config.deck === "custom" && !(Array.isArray(config.customCards) && config.customCards.length >= 8);
+  const canStart = !!sel && connected >= (sel?.minPlayers ?? 2) && !customPending;
   // התקדמות "הבנתי" — כמה מהשחקנים (לא המארח) קראו ואישרו את ההסבר
   const others = room.players.filter((p) => p.connected && p.id !== room.hostId);
   const gotCount = others.filter((p) => room.gotIt?.includes(p.id)).length;
   const allGotIt = others.length > 0 && gotCount === others.length;
+
+  // "דינג" למארח ברגע שכולם סיימו לקרוא — הסימן שאפשר לשגר
+  const prevAllGotIt = useRef(false);
+  useEffect(() => {
+    if (allGotIt && !prevAllGotIt.current) { Sfx.ding(); vibrate(30); }
+    prevAllGotIt.current = allGotIt;
+  }, [allGotIt]);
 
   // "המנחה": משחקים שמתאימים לכמות המחוברים כרגע
   const fits = (g: (typeof CATALOG)[number]) => connected >= g.minPlayers && connected <= g.maxPlayers;
@@ -412,6 +432,18 @@ function HostCatalog({ room, onSelect, onStart }: {
               </div>
             </div>
           ))}
+          {sel && config.deck === "custom" && (
+            <AiDeckPanel
+              current={Array.isArray(config.customCards) && config.customCards.length
+                ? { name: String(config.customName ?? ""), count: (config.customCards as string[]).length }
+                : null}
+              onDeck={(name, cards) => {
+                const next = { ...config, deck: "custom", customName: name, customCards: cards };
+                setConfig(next);
+                onSelect(sel.id, next);
+                Sfx.fanfare(); vibrate([40, 30, 80]);
+              }} />
+          )}
           <div className="howto">{shown.howTo ?? shown.tagline}</div>
           {sel && others.length > 0 && (
             <div className="sub" style={{ marginTop: 10, fontWeight: 700, color: allGotIt ? "#7ee787" : undefined }}>
@@ -420,7 +452,7 @@ function HostCatalog({ room, onSelect, onStart }: {
           )}
           {sel ? (
             <button className="btn" style={{ marginTop: 12 }} disabled={!canStart} onClick={onStart}>
-              {canStart ? "🚀 מתחילים!" : `צריך לפחות ${sel.minPlayers} שחקנים`}
+              {canStart ? "🚀 מתחילים!" : customPending ? "✨ צרו חפיסה למעלה קודם" : `צריך לפחות ${sel.minPlayers} שחקנים`}
             </button>
           ) : (
             <button className="btn" style={{ marginTop: 12 }} onClick={() => shown && onSelect(shown.id, config)}>
@@ -458,6 +490,78 @@ function HostCatalog({ room, onSelect, onStart }: {
       <p className="sub" style={{ fontSize: 11.5, textAlign: "center", marginTop: 6 }}>
         🕯️ מחפשים את המופע? הוא עבר לאפליקציה משלו — larik.ai/s
       </p>
+    </div>
+  );
+}
+
+/* ---------- חפיסה אישית ✨ — המארח מקליד נושא, ה-AI רוקח חפיסה ----------
+ * "החתונה של דנה", "המשרד שלנו", "הטיול לתאילנד" — קריאת LLM אחת לחפיסה שלמה,
+ * דרך פרוקסי בשרת (המפתח לא נחשף). זה הפיצ'ר שהופך ערב רגיל לערב שמדברים עליו.
+ */
+function AiDeckPanel({ current, onDeck }: {
+  current: { name: string; count: number } | null;
+  onDeck: (name: string, cards: string[]) => void;
+}) {
+  const [topic, setTopic] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const [avail, setAvail] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    fetch("/api/ai-deck-available")
+      .then((r) => r.json())
+      .then((d) => setAvail(!!d.available))
+      .catch(() => setAvail(false));
+  }, []);
+
+  async function generate() {
+    const t = topic.trim();
+    if (t.length < 2 || busy) return;
+    setBusy(true);
+    setErr("");
+    try {
+      const res = await fetch(`/api/ai-deck?topic=${encodeURIComponent(t)}`);
+      const data = await res.json();
+      if (!res.ok || !Array.isArray(data.cards)) { setErr(data.error || "משהו השתבש — נסו שוב"); }
+      else { track("ai_deck_created"); onDeck(data.name, data.cards); }
+    } catch {
+      setErr("אין קשר לשרת — נסו שוב עוד רגע");
+    }
+    setBusy(false);
+  }
+
+  if (avail === false) {
+    return (
+      <p className="sub" style={{ marginTop: 10, fontSize: 12.5 }}>
+        ✨ החפיסות האישיות עוד לא הופעלו בשרת — בינתיים בחרו חפיסה מוכנה.
+      </p>
+    );
+  }
+
+  return (
+    <div style={{ marginTop: 10, background: "rgba(255,255,255,.05)", borderRadius: 14, padding: "12px 12px" }}>
+      {current ? (
+        <div className="popin" style={{ textAlign: "center" }}>
+          <b style={{ fontSize: 15 }}>✨ {current.name}</b>
+          <div className="sub" style={{ fontSize: 12 }}>{current.count} קלפים מוכנים — אפשר להתחיל!</div>
+        </div>
+      ) : (
+        <p className="sub" style={{ fontSize: 12.5, marginBottom: 8 }}>
+          על מה החפיסה? <b style={{ color: "var(--text)" }}>"החתונה של דנה"</b>, "המשרד שלנו", "שנות ה-90"...
+        </p>
+      )}
+      <div style={{ display: "flex", gap: 8, marginTop: current ? 10 : 0 }}>
+        <input className="input" placeholder={current ? "נושא אחר?" : "הנושא שלכם"} value={topic} maxLength={60}
+          style={{ textAlign: "right", fontSize: 15, padding: 11 }}
+          onChange={(e) => setTopic(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") generate(); }} />
+        <button className="btn gold" style={{ width: "auto", padding: "0 16px", fontSize: 15 }}
+          disabled={busy || topic.trim().length < 2} onClick={generate}>
+          {busy ? "🪄..." : "✨ צרו"}
+        </button>
+      </div>
+      {busy && <p className="sub pulse" style={{ fontSize: 12, marginTop: 8, textAlign: "center" }}>🪄 רוקחים חפיסה בשבילכם...</p>}
+      {err && <p className="sub" style={{ fontSize: 12, marginTop: 8, color: "#ff8a8a", fontWeight: 700, textAlign: "center" }}>{err}</p>}
     </div>
   );
 }

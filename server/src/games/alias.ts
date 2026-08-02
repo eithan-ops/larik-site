@@ -3,17 +3,14 @@
  */
 import type { GameCtx, GameInstance } from "../engine";
 import type { AliasClientMsg, GameClientMsg } from "../../../shared/protocol";
-import { DECKS } from "../decks";
+import { resolveDeck, type DeckConfig } from "../decks";
 
 const TURN_MS = 45_000;
 const ROUNDS_PER_PLAYER = 2;
 
-interface Config { deck?: string }
-
 export function createAlias(ctx: GameCtx): GameInstance {
-  const cfg = (ctx.config ?? {}) as Config;
-  const deckName = cfg.deck && DECKS[cfg.deck] ? cfg.deck : "animals";
-  const deck = [...DECKS[deckName].cards].sort(() => Math.random() - 0.5);
+  const chosen = resolveDeck((ctx.config ?? {}) as DeckConfig);
+  const deck = [...chosen.cards].sort(() => Math.random() - 0.5);
   let deckPos = 0;
   const players = ctx.connectedPlayers().map((p) => p.id);
   const order = [...players].sort(() => Math.random() - 0.5);
@@ -36,7 +33,7 @@ export function createAlias(ctx: GameCtx): GameInstance {
     describer = order[turnIdx];
     turnsPlayed += 1;
     turnUntil = ctx.now() + TURN_MS;
-    ctx.broadcast({ a: "al_turn", pid: describer, deckName: DECKS[deckName].name, until: turnUntil });
+    ctx.broadcast({ a: "al_turn", pid: describer, deckName: chosen.name, until: turnUntil });
     nextWord();
     turnTimer = ctx.timer(TURN_MS, () => { ctx.broadcast({ a: "al_turnend", pid: describer, got: 0 }); ctx.timer(2500, nextTurn); });
   }
@@ -63,7 +60,7 @@ export function createAlias(ctx: GameCtx): GameInstance {
     },
     onRejoin(pid: string) {
       if (over || !describer) return;
-      ctx.sendTo(pid, { a: "al_turn", pid: describer, deckName: DECKS[deckName].name, until: turnUntil });
+      ctx.sendTo(pid, { a: "al_turn", pid: describer, deckName: chosen.name, until: turnUntil });
       if (pid === describer && currentWord) ctx.sendTo(pid, { a: "al_word", word: currentWord });
     },
     onLeave(pid: string) { if (pid === describer) nextTurn(); },

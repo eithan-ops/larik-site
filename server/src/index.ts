@@ -11,6 +11,7 @@ import { readFileSync, existsSync, statSync } from "fs";
 import { join, extname, resolve } from "path";
 import { randomUUID } from "crypto";
 import { RoomManager, Transport } from "./engine";
+import { generateAiDeck, aiDeckAvailable } from "./aideck";
 import { statRoomCreated, statPlayerJoined, statGameStarted, statConcurrent, statsPage, STATS_KEY, stats } from "./stats";
 import { CATALOG } from "../../shared/protocol";
 import { createForehead } from "./games/forehead";
@@ -78,6 +79,24 @@ const http = createServer((req, res) => {
   }
   if (url.pathname === "/api/health") {
     res.writeHead(200); res.end("ok"); return;
+  }
+  // חפיסה אישית ✨ — פרוקסי ל-LLM (המפתח נשאר בשרת). GET /api/ai-deck?topic=...
+  if (url.pathname === "/api/ai-deck") {
+    const topic = url.searchParams.get("topic") || "";
+    const ip = String(req.headers["x-forwarded-for"] || req.socket.remoteAddress || "?").split(",")[0].trim();
+    generateAiDeck(topic, ip)
+      .then(({ status, body }) => {
+        res.writeHead(status, { "Content-Type": "application/json; charset=utf-8", "Access-Control-Allow-Origin": "*" });
+        res.end(JSON.stringify(body));
+      })
+      .catch(() => { res.writeHead(500, { "Content-Type": "application/json" }); res.end(JSON.stringify({ error: "שגיאה פנימית" })); });
+    return;
+  }
+  // הלקוח שואל אם הפיצ'ר מופעל (יש מפתח בסביבה) — כדי להציג/להסתיר את האופציה
+  if (url.pathname === "/api/ai-deck-available") {
+    res.writeHead(200, { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" });
+    res.end(JSON.stringify({ available: aiDeckAvailable() }));
+    return;
   }
   // דף סטטיסטיקות פרטי — larik.ai/stats?k=<מפתח>
   if (url.pathname === "/stats" || url.pathname === "/api/stats") {

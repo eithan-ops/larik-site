@@ -4,6 +4,33 @@
  */
 export interface Deck { name: string; cards: string[] }
 
+/**
+ * פענוח בחירת חפיסה מה-config של המארח — כולל חפיסה אישית ✨ (deck="custom"):
+ * הקלפים שנוצרו ב-AI מגיעים מהלקוח בתוך ה-config, עוברים חיטוי, ומשמשים כמו כל חפיסה.
+ */
+export interface DeckConfig { deck?: string; customName?: string; customCards?: string[] }
+
+export function resolveDeck(cfg: DeckConfig): Deck {
+  if (cfg.deck === "custom" && Array.isArray(cfg.customCards)) {
+    const seen = new Set<string>();
+    const cards: string[] = [];
+    for (const c of cfg.customCards) {
+      if (typeof c !== "string") continue;
+      const t = c.trim().slice(0, 40);
+      if (!t || seen.has(t)) continue;
+      seen.add(t);
+      cards.push(t);
+      if (cards.length >= 60) break;
+    }
+    if (cards.length >= 8) {
+      const name = String(cfg.customName ?? "החפיסה שלנו").trim().slice(0, 30) || "החפיסה שלנו";
+      return { name: `✨ ${name}`, cards };
+    }
+  }
+  const key = cfg.deck && DECKS[cfg.deck] ? cfg.deck : "animals";
+  return DECKS[key];
+}
+
 export const DECKS: Record<string, Deck> = {
   animals: {
     name: "חיות 🐨",

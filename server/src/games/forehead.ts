@@ -5,17 +5,14 @@
  */
 import type { GameCtx, GameInstance } from "../engine";
 import type { ForeheadClientMsg, GameClientMsg } from "../../../shared/protocol";
-import { DECKS } from "../decks";
+import { resolveDeck, type DeckConfig } from "../decks";
 
 const TURN_MS = 45_000;
 const VOTE_MS = 12_000;
 
-interface Config { deck?: string }
-
 export function createForehead(ctx: GameCtx): GameInstance {
-  const cfg = (ctx.config ?? {}) as Config;
-  const deckName = cfg.deck && DECKS[cfg.deck] ? cfg.deck : "animals";
-  const deck = [...DECKS[deckName].cards].sort(() => Math.random() - 0.5);
+  const chosen = resolveDeck((ctx.config ?? {}) as DeckConfig);
+  const deck = [...chosen.cards].sort(() => Math.random() - 0.5);
 
   const players = ctx.connectedPlayers().map((p) => p.id);
   const cards = new Map<string, string>();
@@ -33,7 +30,7 @@ export function createForehead(ctx: GameCtx): GameInstance {
   function dealCards() {
     players.forEach((pid, i) => {
       cards.set(pid, deck[i % deck.length]);
-      ctx.sendTo(pid, { a: "fh_deal", card: deck[i % deck.length], deckName: DECKS[deckName].name });
+      ctx.sendTo(pid, { a: "fh_deal", card: deck[i % deck.length], deckName: chosen.name });
     });
   }
 
@@ -145,7 +142,7 @@ export function createForehead(ctx: GameCtx): GameInstance {
     onRejoin(pid: string) {
       const card = cards.get(pid);
       if (!card) return;
-      ctx.sendTo(pid, { a: "fh_deal", card, deckName: DECKS[deckName].name });
+      ctx.sendTo(pid, { a: "fh_deal", card, deckName: chosen.name });
       // משחזרים את מי שכבר ניצל
       for (const s of saved) ctx.sendTo(pid, { a: "fh_saved", pid: s, rank: 0, card: cards.get(s) ?? "" });
       if (stage === "placing") {
