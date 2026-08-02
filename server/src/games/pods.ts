@@ -11,7 +11,7 @@ import type { GameCtx, GameInstance } from "../engine";
 import type { PodsClientMsg, GameClientMsg } from "../../../shared/protocol";
 
 const KING_RUN_MS = 30_000;
-const PLAYER_COLORS = ["#00E676", "#b26bff", "#ff4d9d", "#ffce3c", "#5c8aff", "#2dd4bf", "#ff9d5c", "#f4f6ff"];
+const PLAYER_COLORS = ["#34e89e", "#b26bff", "#ff4d9d", "#ffce3c", "#5c8aff", "#2dd4bf", "#ff9d5c", "#f4f6ff"];
 
 interface Config { mode?: "king" | "survival" }
 
@@ -49,9 +49,9 @@ export function createPods(ctx: GameCtx): GameInstance {
     const pods = ctx.connectedPlayers().map((p) => p.id);
     const podId = pods[Math.floor(Math.random() * pods.length)];
     const id = ++lightSeq;
-    const at = ctx.cue(400, { a: "pd_light", lightId: id, podId, color: "#00E676", at: 0 } as never);
+    const at = ctx.cue(400, { a: "pd_light", lightId: id, podId, color: "#34e89e", at: 0 } as never);
     // הזמן האמיתי נקבע ע"י cue — נעדכן את הרשומה המקומית
-    activeLight = { id, podId, at, color: "#00E676", forPid };
+    activeLight = { id, podId, at, color: "#34e89e", forPid };
   }
 
   function finishKing() {

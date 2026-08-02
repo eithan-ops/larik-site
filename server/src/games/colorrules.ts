@@ -7,7 +7,7 @@ import type { ColorRulesClientMsg, GameClientMsg } from "../../../shared/protoco
 interface Config { speed?: "normal" | "fast" }
 
 const RULES: { color: string; label: string; mustTap: boolean }[] = [
-  { color: "#00E676", label: "💚 גע! וצעק \"בננה\"", mustTap: true },
+  { color: "#34e89e", label: "💚 גע! וצעק \"בננה\"", mustTap: true },
   { color: "#5c8aff", label: "💙 גע! וקום", mustTap: true },
   { color: "#ffce3c", label: "💛 גע! ומחא כף", mustTap: true },
   { color: "#ff4d9d", label: "💗 גע! והחלף מקום", mustTap: true },

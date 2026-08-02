@@ -6,7 +6,7 @@ import type { DemonsClientMsg, GameClientMsg } from "../../../shared/protocol";
 
 const GAME_MS = 60_000;
 const METER_PER_DEMON = 12;
-const COLORS = ["#b26bff", "#00E676", "#ff4d9d", "#5c8aff", "#ffce3c", "#2dd4bf", "#ff9d5c", "#f4f6ff"];
+const COLORS = ["#b26bff", "#34e89e", "#ff4d9d", "#5c8aff", "#ffce3c", "#2dd4bf", "#ff9d5c", "#f4f6ff"];
 
 export function createDemons(ctx: GameCtx): GameInstance {
   const players = ctx.connectedPlayers().map((p) => p.id);

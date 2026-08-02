@@ -4,7 +4,7 @@
 import type { GameCtx, GameInstance } from "../engine";
 import type { SimonClientMsg, GameClientMsg } from "../../../shared/protocol";
 
-const COLORS = ["#00E676", "#b26bff", "#ff4d9d", "#ffce3c", "#5c8aff", "#2dd4bf", "#ff9d5c", "#f4f6ff"];
+const COLORS = ["#34e89e", "#b26bff", "#ff4d9d", "#ffce3c", "#5c8aff", "#2dd4bf", "#ff9d5c", "#f4f6ff"];
 const LIVES = 3;
 
 export function createSimon(ctx: GameCtx): GameInstance {
