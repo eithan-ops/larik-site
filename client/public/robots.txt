@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+# חדרי משחק ומופע הם זמניים — לא לאינדוקס
+Disallow: /r/
+Disallow: /s/r/
+Disallow: /s/t/
+Disallow: /stats
+
+Sitemap: https://larik.ai/sitemap.xml
