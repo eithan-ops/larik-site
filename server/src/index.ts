@@ -120,6 +120,12 @@ const http = createServer((req, res) => {
     const host = String(req.headers.host || "");
     const isShowApp = host.startsWith("show.") || url.pathname === "/s" || url.pathname.startsWith("/s/");
     let file = join(CLIENT_DIST, url.pathname);
+    // URLs נקיים לעמודי תוכן סטטיים: /games/trivia → games/trivia.html, /games → games/index.html
+    if (existsSync(file) && statSync(file).isDirectory() && existsSync(join(file, "index.html"))) {
+      file = join(file, "index.html");
+    } else if ((!existsSync(file) || statSync(file).isDirectory()) && url.pathname !== "/" && existsSync(file + ".html")) {
+      file = file + ".html";
+    }
     if (!existsSync(file) || statSync(file).isDirectory()) {
       file = join(CLIENT_DIST, isShowApp ? "show.html" : "index.html");
     }
