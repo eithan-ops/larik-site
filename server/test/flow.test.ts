@@ -89,11 +89,43 @@ async function testNewGames() {
   { const { transport, allGame } = makeTransport(); const room = new Room("TV", transport, { trivia: createTrivia }); ["t1","t2"].forEach((p,i)=>room.join(p,"t"+i,"🧠")); room.onMessage("t1",{t:"select_game",gameId:"trivia",config:{cat:"israel"}}); room.onMessage("t1",{t:"start_game"}); await sleep(3100); const q = allGame("t1","tv_q").at(-1); check("שאלה", q?.t==="cue" && q.d.options.length===4 && q.d.correct===undefined); room.onMessage("t1",{t:"game",d:{a:"tv_answer",qId:q.d.qId,choice:0,atServer:q.at+400}}); room.onMessage("t2",{t:"game",d:{a:"tv_answer",qId:q.d.qId,choice:1,atServer:q.at+400}}); await sleep(200); const rev = allGame("t1","tv_reveal").at(-1); check("חשיפה", !!rev && rev.d.correct>=0); }
 }
 
+async function testReactor() {
+  const { createReactor } = await import("../src/games/reactor");
+  console.log("\n— הכור —");
+  const { transport, allGame } = makeTransport();
+  const room = new Room("RX", transport, { reactor: createReactor });
+  const P = ["r1", "r2", "r3", "r4"];
+  P.forEach((p, i) => room.join(p, "r" + i, "☢️"));
+  room.onMessage("r1", { t: "select_game", gameId: "reactor", config: { difficulty: "normal" } });
+  room.onMessage("r1", { t: "start_game" });
+  await sleep(3600);
+  const wv = allGame("r1", "rx_wave").at(-1);
+  check("גל 1 נפתח (cue)", wv?.t === "cue" && wv.d.wave === 1);
+  const roles = wv.d.roles as Record<string, string>;
+  check("תפקידים: טוען+מתקן+2 מזינים", Object.values(roles).filter((r) => r === "loader").length === 1
+    && Object.values(roles).filter((r) => r === "fixer").length === 1
+    && Object.values(roles).filter((r) => r === "feeder").length === 2);
+  await sleep(2600);
+  const feeder = P.find((p) => roles[p] === "feeder")!;
+  const loader = P.find((p) => roles[p] === "loader")!;
+  const orb = allGame(feeder, "rx_orb").findLast((m) => m.d.feeder === feeder);
+  check("אורב נולד אצל מזין", !!orb);
+  room.onMessage(feeder, { t: "game", d: { a: "rx_feed", orbId: orb.d.orbId } });
+  check("האורב שוגר (cue)", allGame("r1", "rx_sent").some((m) => m.d.orbId === orb.d.orbId));
+  await sleep(1500);
+  check("האורב בתור הליבה", allGame("r1", "rx_queue").at(-1)?.d.queue >= 1);
+  room.onMessage(loader, { t: "game", d: { a: "rx_inject", atServer: room.now() } });
+  const inj = allGame("r1", "rx_injected").at(-1);
+  check("הזרקה עם איכות", !!inj && ["perfect", "good", "weak"].includes(inj.d.quality) && inj.d.by === loader);
+  check("ניקוז HP פועל", allGame("r1", "rx_hp").length >= 1 || inj.d.hp < 100 || inj.d.hp >= 100);
+}
+
 (async () => {
   console.log("LARIK Games — בדיקות");
   await testClockMath();
   await testForehead();
   await testNewGames();
+  await testReactor();
   if (failed) { console.error(`\n${failed} נכשלו`); process.exit(1); }
   console.log("\nהכול עבר ✓");
   process.exit(0);

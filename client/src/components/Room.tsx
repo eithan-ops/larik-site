@@ -346,11 +346,12 @@ function ShareRow({ code }: { code: string }) {
 /* קטגוריות הקטלוג — המופע חי בעולם משלו (larik.ai/show) */
 const CATEGORIES: { icon: string; name: string; ids: string[] }[] = [
   { icon: "🎉", name: "מסיבה", ids: ["whomost", "impostor", "alias", "forehead"] },
-  { icon: "⚡", name: "אקשן", ids: ["colorrules", "pods", "bombs", "demons"] },
-  { icon: "🧠", name: "מוח", ids: ["trivia", "simon", "deathtouch"] },
+  { icon: "⚡", name: "אקשן", ids: ["colorrules", "pods", "demons"] },
+  { icon: "🤝", name: "ביחד נגד המכונה", ids: ["reactor", "bombs", "simon"] },
+  { icon: "🧠", name: "מוח", ids: ["trivia", "deathtouch"] },
 ];
 /* סדר ההמלצה של "המנחה" — הכי חברתיים קודם */
-const RECO_ORDER = ["impostor", "whomost", "alias", "bombs", "colorrules", "trivia", "forehead", "demons", "simon", "pods", "deathtouch"];
+const RECO_ORDER = ["impostor", "whomost", "alias", "reactor", "bombs", "colorrules", "trivia", "forehead", "demons", "simon", "pods", "deathtouch"];
 
 function HostCatalog({ room, onSelect, onStart }: {
   room: RoomSnapshot;

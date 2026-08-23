@@ -26,6 +26,7 @@ import { createTrivia } from "./games/trivia";
 import { createWhoMost } from "./games/whomost";
 import { createShow } from "./games/show";
 import { createImpostor } from "./games/impostor";
+import { createReactor } from "./games/reactor";
 import type { ClientMsg } from "../../shared/protocol";
 
 const PORT = Number(process.env.PORT || 8787);
@@ -54,6 +55,7 @@ const manager = new RoomManager(transport, {
   whomost: createWhoMost,
   show: createShow,
   impostor: createImpostor,
+  reactor: createReactor,
 }, { playerJoined: statPlayerJoined, gameStarted: statGameStarted });
 setInterval(() => manager.cleanup(), 60_000);
 

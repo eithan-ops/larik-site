@@ -443,3 +443,71 @@ input{font-family:inherit}
   background:var(--card2);border:1.5px solid var(--line2);border-radius:10px;padding:7px 0;
   touch-action:none;
 }
+
+/* ═══ הכור ☢️ ═══ */
+.rx-arena{min-height:100dvh;display:flex;flex-direction:column;background:
+  radial-gradient(120% 90% at 50% -10%,rgba(13,32,48,.85) 0%,rgba(7,9,15,.92) 60%),
+  url("/reactor/bg.webp") center/cover no-repeat #07090f;position:relative;overflow:hidden;padding:10px 12px 16px}
+/* נכסי היגספילד מיוצרים על רקע שחור — screen blend מעלים אותו על הרקע הכהה */
+.rx-arena img{mix-blend-mode:screen}
+.rx-flash{position:fixed;inset:0;pointer-events:none;z-index:40;animation:rxflash .45s ease-out}
+.rx-flash.perfect{background:radial-gradient(circle,rgba(52,232,158,.35),transparent 70%)}
+.rx-flash.good{background:radial-gradient(circle,rgba(255,206,60,.25),transparent 70%)}
+.rx-flash.weak{background:radial-gradient(circle,rgba(255,255,255,.12),transparent 70%)}
+.rx-flash.lost{background:radial-gradient(circle,rgba(255,77,77,.35),transparent 70%)}
+@keyframes rxflash{from{opacity:1}to{opacity:0}}
+.rx-strip{display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(255,255,255,.04);
+  border:1px solid var(--line2);border-radius:14px;min-height:48px}
+.rx-line{display:flex;align-items:center;gap:4px;flex:1;overflow:hidden}
+.rx-dot{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-size:16px;background:rgba(255,255,255,.06);border:1.5px solid transparent;position:relative;flex:none}
+.rx-dot.me{border-color:#22d3ee;box-shadow:0 0 8px rgba(34,211,238,.5)}
+.rx-dot.jam{background:rgba(255,77,77,.25);animation:rxpulse .7s infinite}
+.rx-arrow{opacity:.4;font-weight:900}
+.rx-qbadge{position:absolute;top:-6px;inset-inline-end:-6px;background:#ffce3c;color:#1a1a1a;border-radius:999px;
+  font-size:10px;min-width:16px;height:16px;display:flex;align-items:center;justify-content:center;font-weight:900}
+.rx-corebox{display:flex;flex-direction:column;align-items:center;gap:3px;flex:none;width:64px}
+.rx-hpbar{width:100%;height:7px;border-radius:99px;background:rgba(255,255,255,.09);overflow:hidden}
+.rx-hpbar>div{height:100%;border-radius:99px;transition:width .4s,background .4s}
+@keyframes rxpulse{0%,100%{transform:scale(1)}50%{transform:scale(1.12)}}
+.rx-center{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.rx-station{flex:1;display:flex;flex-direction:column;position:relative;padding-top:10px}
+.rx-hint{text-align:center;font-size:12.5px;opacity:.75;padding-bottom:4px}
+.rx-orbzone{flex:1;display:flex;flex-wrap:wrap;gap:16px;align-items:center;justify-content:center;align-content:center}
+.rx-orb{width:96px;height:96px;border-radius:50%;border:none;cursor:pointer;padding:5px;
+  display:flex;align-items:center;justify-content:center;touch-action:manipulation}
+.rx-orb.danger{animation:rxpulse .5s infinite}
+.rx-orb img{filter:drop-shadow(0 0 14px rgba(34,211,238,.8))}
+.rx-jam-overlay{position:absolute;inset:0;z-index:20;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:6px;background:rgba(30,5,8,.88);border-radius:16px;text-align:center}
+.rx-ring{width:min(78vw,300px);height:min(78vw,300px);border-radius:50%;margin:8px auto;position:relative;
+  display:flex;align-items:center;justify-content:center;padding:14px;cursor:pointer;touch-action:manipulation}
+.rx-ring-in{width:100%;height:100%;border-radius:50%;background:#0b0e17;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:6px}
+.rx-marker{position:absolute;inset:0;pointer-events:none}
+.rx-marker i{position:absolute;top:-2px;left:50%;width:14px;height:14px;margin-left:-7px;border-radius:50%;
+  background:#fff;box-shadow:0 0 12px #fff}
+.rx-fixgrid{flex:1;display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;align-content:center}
+.rx-fixcard{border:1.5px solid var(--line2);border-radius:16px;background:rgba(255,255,255,.05);color:var(--text);
+  font-family:inherit;padding:14px 8px;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;touch-action:manipulation}
+.rx-fixcard.jam{background:rgba(255,77,77,.2);border-color:#ff4d4d}
+.rx-bolts{font-size:13px;letter-spacing:2px}
+.rx-overlay{position:absolute;inset:0;z-index:30;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;background:rgba(7,9,15,.94);padding:18px;text-align:center}
+.rx-overlay.gold{background:rgba(30,22,2,.93);cursor:pointer}
+.rx-overlay.melt{background:rgba(40,4,4,.95);z-index:50}
+.rx-goldnum{font-size:80px;font-weight:900;color:#ffce3c;text-shadow:0 0 30px rgba(255,206,60,.8)}
+.rx-goldnum.tap{font-size:44px;animation:rxpulse .35s infinite}
+.rx-meltword{font-size:52px;font-weight:900;color:#ff4d4d;text-shadow:0 0 40px rgba(255,77,77,.9);animation:rxpulse .3s infinite}
+.rx-cards{display:flex;gap:10px;width:100%;max-width:420px;margin-top:10px}
+.rx-card{flex:1;border:1.5px solid var(--line2);border-radius:16px;background:rgba(255,255,255,.05);color:var(--text);
+  font-family:inherit;padding:14px 6px;display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer;touch-action:manipulation}
+.rx-card.sel{border-color:#34e89e;box-shadow:0 0 14px rgba(52,232,158,.4)}
+.rx-card.dim{opacity:.35}
+.rx-bigwave{font-size:88px;font-weight:900;color:#ff8a3c;text-shadow:0 0 30px rgba(255,138,60,.6);line-height:1}
+.rx-nearmiss{background:rgba(255,206,60,.14);border:1.5px solid rgba(255,206,60,.5);border-radius:12px;
+  padding:8px 14px;margin:10px 0 4px;font-weight:800;color:#ffe9a8}
+.rx-stats{width:100%;max-width:340px;margin:12px 0;display:flex;flex-direction:column;gap:5px}
+.rx-statrow{display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,.04);
+  border-radius:10px;padding:6px 10px;font-size:14px}
+.rx-again{margin-top:6px;background:linear-gradient(135deg,#22d3ee,#34e89e);font-size:18px}
