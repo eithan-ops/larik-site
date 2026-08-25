@@ -257,12 +257,60 @@ export type ReactorServerMsg =
   | { a: "rx_run_over"; wave: number; bestWave: number; nearMiss?: string; mvp?: string; stats: Record<string, ReactorStats> }
   | { a: "rx_state"; wave: number; roles: Record<string, ReactorRole>; hp: number; ringMs: number; ringEpoch: number; pf: number; gf: number; queue: number; jams: string[]; phase: "wave" | "draft" | "runover" }; // rejoin / שינוי תפקידים באמצע
 
+/* ---- החומה 🏰 — הגנת נחיל קו-אופ עם תפקידים ----
+ * העולם: רוחב 0-1000, גובה 0-1600. הנחיל נכנס מלמעלה (y שלילי) וצועד מטה.
+ * החומה ב-y=1250. רצועת החלוץ 950-1240. מסלול אויב דטרמיניסטי:
+ *   y(t) = y0 + speed*(t-at)/1000 · x(t) = x0 + wob*sin((t-at)/700)
+ * כל הטלפונים מציירים מהנוסחה; שינויי מצב (עצירה/קרב/מוות) = אירועי שרת.
+ */
+export type WallRole = "infantry" | "archer" | "cannon" | "mg";
+export type WallEnemyType = "swarm" | "runner" | "armored" | "bomber" | "sniper" | "digger" | "boss";
+export interface WallCard { id: string; name: string; emoji: string; desc: string; tier?: number }
+export interface WallStats { kills: number; dmg: number; saves: number; deaths: number }
+
+export type WallClientMsg =
+  | { a: "wl_role"; role: WallRole }                          // בחירת תפקיד במסך ההיערכות
+  | { a: "wl_go" }                                            // מארח: פותחים את הקרב
+  | { a: "wl_pos"; x: number; y: number }                     // חלוץ: מיקום (5-8Hz)
+  | { a: "wl_swing"; dir: number }                            // חלוץ: מכת להב לכיוון (רדיאנים)
+  | { a: "wl_shield"; on: boolean }                           // חלוץ: נעילת מגן
+  | { a: "wl_shot"; tx: number; ty: number; power: number }   // קשת: חץ לנקודה (power 0-1)
+  | { a: "wl_boom"; tx: number; ty: number }                  // תותחן: פגז לנקודה
+  | { a: "wl_fire"; on: boolean }                             // מקלען: התחלת/הפסקת צרור
+  | { a: "wl_aim"; x: number }                                // מקלען: כיוון הזרם (בזמן ירי)
+  | { a: "wl_pick"; cardId: string }                          // דראפט אישי
+  | { a: "wl_again" }                                         // מארח: ריצה חדשה מיד
+  | { a: "wl_finish" };                                       // מארח: סיום → טקס
+
+export type WallServerMsg =
+  | { a: "wl_setup"; roles: Record<string, WallRole>; slots: Record<string, [number, number]> } // מסך היערכות (slots = עמדות שהוקצו)
+  | { a: "wl_wave"; wave: number; wallHp: number; wallMax: number; duration: number }           // cue — פתיחת גל
+  | { a: "wl_spawn"; id: number; type: WallEnemyType; x0: number; y0: number; speed: number; wob: number; hp: number; maxHp: number; at: number }
+  | { a: "wl_estate"; id: number; state: "walk" | "fight" | "wall" | "burrow"; x: number; y: number; at: number; speed?: number } // שינוי מצב/מסלול
+  | { a: "wl_hit"; id: number; hp: number; by: string; crit?: boolean }                          // פגיעה באויב (hp<=0 = מוות)
+  | { a: "wl_arrow"; fx: number; fy: number; tx: number; ty: number; T: number; by: string; fire?: boolean } // cue — חץ באוויר
+  | { a: "wl_shell"; fx: number; fy: number; tx: number; ty: number; T: number; by: string }      // cue — פגז באוויר
+  | { a: "wl_boomfx"; x: number; y: number; r: number }                                          // פיצוץ (בזמן הפגיעה)
+  | { a: "wl_stream"; by: string; x: number; on: boolean }                                       // זרם המקלע (ויזואלי)
+  | { a: "wl_jam"; by: string; ms: number }                                                      // התחממות-יתר
+  | { a: "wl_ppos"; ps: [string, number, number][] }                                             // מיקומי גיבורים (3Hz)
+  | { a: "wl_hero"; pid: string; hp: number; max: number; down?: boolean; upAt?: number }        // חיי גיבור / נפילה
+  | { a: "wl_wall"; hp: number; max: number }                                                    // חיי החומה
+  | { a: "wl_sniper"; id: number; target: string; fireAt: number }                               // צלף ננעל על גיבור — לקשת 3 שנ' להרוג
+  | { a: "wl_levelup"; level: number; cards: WallCard[] }                                        // אישי — דראפט תוך-קרב
+  | { a: "wl_picked"; pid: string; name: string; emoji: string }
+  | { a: "wl_tier"; pid: string; tier: number }                                                  // דרגת נשק עלתה (ויזואל חדש!)
+  | { a: "wl_xp"; xp: number; level: number; next: number }                                      // אישי — מד XP
+  | { a: "wl_clear"; wave: number; wallHp: number }                                              // הגל הוסתיים — נשימה
+  | { a: "wl_over"; wave: number; bestWave: number; nearMiss?: string; mvp?: string; stats: Record<string, WallStats> }
+  | { a: "wl_state"; wave: number; roles: Record<string, WallRole>; slots: Record<string, [number, number]>; wallHp: number; wallMax: number; phase: "setup" | "wave" | "breath" | "over"; tiers: Record<string, number> }; // rejoin
+
 export type GameClientMsg = ForeheadClientMsg | PodsClientMsg | BombsClientMsg
   | ColorRulesClientMsg | SimonClientMsg | DeathTouchClientMsg | DemonsClientMsg | AliasClientMsg | TriviaClientMsg
-  | WhoMostClientMsg | ShowClientMsg | ImpostorClientMsg | ReactorClientMsg;
+  | WhoMostClientMsg | ShowClientMsg | ImpostorClientMsg | ReactorClientMsg | WallClientMsg;
 export type GameServerMsg = ForeheadServerMsg | PodsServerMsg | BombsServerMsg
   | ColorRulesServerMsg | SimonServerMsg | DeathTouchServerMsg | DemonsServerMsg | AliasServerMsg | TriviaServerMsg
-  | WhoMostServerMsg | ShowServerMsg | ImpostorServerMsg | ReactorServerMsg;
+  | WhoMostServerMsg | ShowServerMsg | ImpostorServerMsg | ReactorServerMsg | WallServerMsg;
 
 /* ---- קטלוג ---- */
 export interface GameMeta {
@@ -398,11 +446,11 @@ export const CATALOG: GameMeta[] = [
     ],
   },
   {
-    id: "reactor",
-    name: "הכור",
-    icon: "☢️",
-    tagline: "צוות אחד. ליבה רעבה. אל תגיעו להתכה.",
-    howTo: "אתם צוות הכור ⚛️ לכל אחד תפקיד: מזינים משגרים אורבים, הטוען מזריק אותם לליבה בתזמון מדויק, והמתקן מציל תחנות שנתקעות. הליבה נשחקת כל הזמן — האכילו אותה או שתגיעו להתכה! בין גלים: כל אחד בוחר שדרוג. דברו בקול — זו הדרך היחידה לשרוד.",
+    id: "wall",
+    name: "החומה",
+    icon: "🏰",
+    tagline: "הנחיל מגיע בחושך. כל תפקיד מחזיק את הקו.",
+    howTo: "בחרו תפקיד: ⚔️ חלוץ נלחם בשטח לפני החומה (גרור לזוז, החלק להכות, עצור לחסום) · 🏹 קשת (מתח ושחרר — כמו קשת אמיתית) · 💣 תותחן (כוון ושגר פגז) · 🔫 מקלען (החזק וכוון — היזהר מהתחממות). הרגו את הנחיל לפני שהוא שובר את החומה. כל הריגה = XP ושדרוגים אישיים. הגלים רק מתחזקים!",
     minPlayers: 2,
     maxPlayers: 10,
     configOptions: [

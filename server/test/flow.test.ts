@@ -120,12 +120,52 @@ async function testReactor() {
   check("ניקוז HP פועל", allGame("r1", "rx_hp").length >= 1 || inj.d.hp < 100 || inj.d.hp >= 100);
 }
 
+async function testWall() {
+  const { createWall } = await import("../src/games/wall");
+  console.log("\n— החומה —");
+  const { transport, allGame } = makeTransport();
+  const room = new Room("WL", transport, { wall: createWall });
+  const P = ["w1", "w2", "w3", "w4"];
+  P.forEach((p, i) => room.join(p, "w" + i, "🏰"));
+  room.onMessage("w1", { t: "select_game", gameId: "wall", config: { difficulty: "normal" } });
+  room.onMessage("w1", { t: "start_game" });
+  const setup = allGame("w1", "wl_setup").at(-1);
+  check("מסך היערכות עם תפקידים", !!setup && Object.keys(setup.d.roles).length === 4);
+  room.onMessage("w2", { t: "game", d: { a: "wl_role", role: "archer" } });
+  check("החלפת תפקיד", allGame("w1", "wl_setup").at(-1).d.roles["w2"] === "archer");
+  room.onMessage("w1", { t: "game", d: { a: "wl_go" } });
+  await sleep(3600);
+  const wv = allGame("w1", "wl_wave").at(-1);
+  check("גל 1 נפתח (cue)", wv?.t === "cue" && wv.d.wave === 1 && wv.d.wallHp > 0);
+  await sleep(2500);
+  const sp = allGame("w1", "wl_spawn");
+  check("אויבים נולדים", sp.length >= 1);
+  // קשת יורה לנקודת האויב הראשון
+  const e = sp[0].d;
+  const ey = e.y0 + (e.speed * (room.now() + 700 - e.at)) / 1000;
+  room.onMessage("w2", { t: "game", d: { a: "wl_shot", tx: e.x0, ty: Math.max(100, ey), power: 1 } });
+  check("חץ שוגר (cue)", allGame("w1", "wl_arrow").length >= 1);
+  await sleep(1400);
+  // תותחן מפגיז
+  const gunner = Object.entries(allGame("w1", "wl_setup").at(-1).d.roles).find(([, r]) => r === "cannon")?.[0];
+  if (gunner) {
+    const e2 = allGame("w1", "wl_spawn").at(-1).d;
+    room.onMessage(gunner, { t: "game", d: { a: "wl_boom", tx: e2.x0, ty: 400 } });
+    check("פגז שוגר (cue)", allGame("w1", "wl_shell").length >= 1);
+    await sleep(1600);
+    check("פיצוץ", allGame("w1", "wl_boomfx").length >= 1);
+  }
+  const hits = allGame("w1", "wl_hit");
+  check("פגיעות באויבים", hits.length >= 1);
+}
+
 (async () => {
   console.log("LARIK Games — בדיקות");
   await testClockMath();
   await testForehead();
   await testNewGames();
   await testReactor();
+  await testWall();
   if (failed) { console.error(`\n${failed} נכשלו`); process.exit(1); }
   console.log("\nהכול עבר ✓");
   process.exit(0);

@@ -15,7 +15,7 @@ import AliasView from "./alias";
 import TriviaView from "./trivia";
 import WhoMostView from "./whomost";
 import ImpostorView from "./impostor";
-import ReactorView from "./reactor";
+import WallView from "./wall";
 
 // GameHub עבר ל-lib/gamehub (משותף לאפליקציית המופע) — מייצאים מחדש לתאימות
 export { GameHub };
@@ -35,7 +35,7 @@ export const GAME_COLORS: Record<string, string> = {
   pods: "#8b5cf6",
   show: "#ffb46b",
   impostor: "#c084fc",
-  reactor: "#22d3ee",
+  wall: "#f97316",
 };
 
 export const GAME_VIEWS: Record<string, ComponentType<GameViewProps>> = {
@@ -51,5 +51,5 @@ export const GAME_VIEWS: Record<string, ComponentType<GameViewProps>> = {
   whomost: WhoMostView,
   // show — עבר לאפליקציית המופע הנפרדת (/s)
   impostor: ImpostorView,
-  reactor: ReactorView,
+  wall: WallView,
 };
