@@ -577,7 +577,7 @@ export function createWall(ctx: GameCtx): GameInstance {
         case "wl_pos": {
           if (h.role !== "infantry" || h.down) return;
           h.x = Math.max(30, Math.min(W - 30, m.x));
-          h.y = Math.max(STRIP_TOP, Math.min(WALL_Y - 15, m.y));
+          h.y = Math.max(90, Math.min(WALL_Y - 15, m.y)); // כל שדה הקרב פתוח לחלוץ
           return;
         }
         case "wl_swing": {
@@ -585,6 +585,7 @@ export function createWall(ctx: GameCtx): GameInstance {
           const tn = now();
           if (tn - h.lastSwing < 480 / h.mods.rate) return;
           h.lastSwing = tn;
+          ctx.broadcast({ a: "wl_slash", pid, x: Math.round(h.x), y: Math.round(h.y), dir: m.dir }); // שכולם יראו את ההנפה
           const reach = 130 * h.mods.range * (1 + 0.15 * (h.tier - 1));
           const dmg = 34 * h.mods.dmg * TIER_MULT[h.tier];
           for (const e of [...enemies.values()]) {

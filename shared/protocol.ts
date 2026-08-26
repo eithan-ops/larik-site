@@ -293,6 +293,7 @@ export type WallServerMsg =
   | { a: "wl_boomfx"; x: number; y: number; r: number }                                          // פיצוץ (בזמן הפגיעה)
   | { a: "wl_stream"; by: string; x: number; on: boolean }                                       // זרם המקלע (ויזואלי)
   | { a: "wl_jam"; by: string; ms: number }                                                      // התחממות-יתר
+  | { a: "wl_slash"; pid: string; x: number; y: number; dir: number }                            // הנפת חרב — לכולם
   | { a: "wl_ppos"; ps: [string, number, number][] }                                             // מיקומי גיבורים (3Hz)
   | { a: "wl_hero"; pid: string; hp: number; max: number; down?: boolean; upAt?: number }        // חיי גיבור / נפילה
   | { a: "wl_wall"; hp: number; max: number }                                                    // חיי החומה

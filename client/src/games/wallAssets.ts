@@ -31,6 +31,9 @@ export const WL_IMG = {
   badgeArcher: "/wall/badge-archer.webp",
   badgeCannon: "/wall/badge-cannon.webp",
   badgeMg: "/wall/badge-mg.webp",
+  slash: "/wall/slash.webp",
+  muzzle: "/wall/muzzle.webp",
+  hit: "/wall/hit.webp",
 } as const;
 
 export type WlImgKey = keyof typeof WL_IMG;

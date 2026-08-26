@@ -13,7 +13,7 @@ import { Sfx, vibrate } from "../lib/audio";
 import { wlImg, preloadWl, type WlImgKey } from "./wallAssets";
 
 /* ---- קבועי עולם (זהים לשרת) ---- */
-const W = 1000, WORLD_H = 1600, WALL_Y = 1250, STRIP_TOP = 950, GATE_X = 500;
+const W = 1000, WORLD_H = 1600, WALL_Y = 1250, GATE_X = 500;
 const VIEW_W = 660; // רוחב החלון האישי ביחידות עולם
 
 const ROLE_NAME: Record<WallRole, string> = { infantry: "חלוץ", archer: "קשת", cannon: "תותחן", mg: "מקלען" };
@@ -67,6 +67,8 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
   const phaseRef = useRef(phase); phaseRef.current = phase;
   const rolesRef = useRef(roles); rolesRef.current = roles;
   const camX = useRef(500);
+  const camTopRef = useRef(320);
+  const lunges = useRef(new Map<string, { t0: number; dir: number }>()); // זינוק החלוץ בהנפה
   const shake = useRef(0);
   // קלט
   const ptr = useRef<{ down: boolean; x0: number; y0: number; t0: number; x: number; y: number; moved: boolean }>({ down: false, x0: 0, y0: 0, t0: 0, x: 0, y: 0, moved: false });
@@ -155,6 +157,12 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
           return;
         case "wl_stream":
           if (m.on) streams.current.set(m.by, m.x); else streams.current.delete(m.by);
+          return;
+        case "wl_slash":
+          if (m.pid !== me) {
+            fxs.current.push({ kind: "slash", x: m.x, y: m.y, t0: performance.now(), dir: m.dir });
+            lunges.current.set(m.pid, { t0: performance.now(), dir: m.dir });
+          }
           return;
         case "wl_jam":
           if (m.by === me) { setJamUntil(Date.now() + m.ms); firing.current = false; Sfx.sadTrombone(); vibrate(300); showToast("🥵 התחממות יתר!"); }
@@ -268,7 +276,12 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
     camX.current += (targetCam - camX.current) * 0.08;
     const scale = cw / VIEW_W;
     const viewH = chh / scale;
-    const camTop = Math.max(0, Math.min(WORLD_H - viewH, WALL_Y + 170 - viewH));
+    // מצלמה אנכית: לחלוץ שמעמיק בשדה — עוקבת אחריו
+    const baseTop = Math.max(0, Math.min(WORLD_H - viewH, WALL_Y + 170 - viewH));
+    let targetTop = baseTop;
+    if (myRole() === "infantry" && h && !h.down) targetTop = Math.max(0, Math.min(baseTop, h.y - viewH * 0.58));
+    camTopRef.current += (targetTop - camTopRef.current) * 0.08;
+    const camTop = camTopRef.current;
     let ox = 0, oy = 0;
     if (shake.current > 0.5) {
       ox = (Math.random() - 0.5) * shake.current;
@@ -288,9 +301,6 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
       ctx.drawImage(bg, wx(0), wy(-80), W * scale, (WALL_Y + 80) * scale);
       ctx.globalAlpha = 1;
     }
-    // רצועת החלוץ — הבהוב עדין
-    ctx.fillStyle = "rgba(255,92,92,0.04)";
-    ctx.fillRect(wx(0), wy(STRIP_TOP), W * scale, (WALL_Y - STRIP_TOP) * scale);
 
     // חומה
     const wt = wlImg("walltex");
@@ -353,41 +363,90 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
       else if (role === "archer") im = wlImg("heroArcher");
       else im = wlImg("heroInfantry");
       const size = role === "cannon" ? 95 + hh.tier * 12 : role === "mg" ? 85 + hh.tier * 8 : 72;
+      // זינוק בהנפת חרב
+      let hx = hh.x, hy = hh.y, lungeRot = 0;
+      const lg = lunges.current.get(pid);
+      if (lg) {
+        const lf = (pnow - lg.t0) / 220;
+        if (lf < 1) {
+          const k = Math.sin(lf * Math.PI) * 30;
+          hx += Math.cos(lg.dir) * k; hy += Math.sin(lg.dir) * k;
+          lungeRot = Math.sin(lf * Math.PI) * 0.28 * (Math.cos(lg.dir) >= 0 ? 1 : -1);
+        } else lunges.current.delete(pid);
+      }
       ctx.globalAlpha = hh.down ? 0.35 : 1;
       // הילה בצבע התפקיד
       ctx.beginPath();
       ctx.fillStyle = mine ? ROLE_COLOR[role] + "55" : ROLE_COLOR[role] + "22";
-      ctx.arc(wx(hh.x), wy(hh.y + size * 0.3), size * 0.45 * scale, 0, 7);
+      ctx.arc(wx(hx), wy(hy + size * 0.3), size * 0.45 * scale, 0, 7);
       ctx.fill();
       if (im.complete && im.naturalWidth) {
-        ctx.drawImage(im, wx(hh.x - size / 2), wy(hh.y - size / 2), size * scale, size * scale);
+        if (lungeRot !== 0) {
+          ctx.save(); ctx.translate(wx(hx), wy(hy)); ctx.rotate(lungeRot);
+          ctx.drawImage(im, -size / 2 * scale, -size / 2 * scale, size * scale, size * scale);
+          ctx.restore();
+        } else {
+          ctx.drawImage(im, wx(hx - size / 2), wy(hy - size / 2), size * scale, size * scale);
+        }
       } else {
         ctx.font = `${28 * scale}px sans-serif`; ctx.textAlign = "center";
-        ctx.fillText(ROLE_ICON[role], wx(hh.x), wy(hh.y));
+        ctx.fillText(ROLE_ICON[role], wx(hx), wy(hy));
       }
       ctx.globalAlpha = 1;
       // מגן פעיל
       if (mine && shielding.current) {
         ctx.strokeStyle = "#ffffffcc"; ctx.lineWidth = 3;
-        ctx.beginPath(); ctx.arc(wx(hh.x), wy(hh.y), size * 0.55 * scale, 0, 7); ctx.stroke();
+        ctx.beginPath(); ctx.arc(wx(hx), wy(hy), size * 0.55 * scale, 0, 7); ctx.stroke();
       }
       if (!mine) {
         ctx.font = `${11 * scale}px Rubik, sans-serif`;
         ctx.fillStyle = ROLE_COLOR[role];
         ctx.textAlign = "center";
-        ctx.fillText(nameOf(pid), wx(hh.x), wy(hh.y - 45));
+        ctx.fillText(nameOf(pid), wx(hx), wy(hy - 45));
       }
     }
 
-    // זרמי מקלע
+    // זרמי מקלע — עמודת פגיעה + נותבים + הבהק לוע
     for (const [pid, ax] of streams.current.entries()) {
       const hh = heroes.current.get(pid);
       if (!hh) continue;
-      const grad = ctx.createLinearGradient(wx(hh.x), wy(hh.y), wx(ax), wy(80));
-      grad.addColorStop(0, "#9cc8ffee"); grad.addColorStop(1, "#5c8aff11");
-      ctx.strokeStyle = grad;
-      ctx.lineWidth = 3.5 + Math.random() * 2;
-      ctx.beginPath(); ctx.moveTo(wx(hh.x), wy(hh.y - 20)); ctx.lineTo(wx(ax + (Math.random() - 0.5) * 30), wy(60)); ctx.stroke();
+      const mx = hh.x, my = hh.y - 24; // קצה הקנה
+      // עמודת הפגיעה (זה מה שהמקלע באמת מכסה בשרת)
+      const colW = 124;
+      const cg = ctx.createLinearGradient(0, wy(60), 0, wy(my));
+      cg.addColorStop(0, "#5c8aff2e"); cg.addColorStop(1, "#5c8aff05");
+      ctx.fillStyle = cg;
+      ctx.fillRect(wx(ax - colW / 2), wy(60), colW * scale, (my - 60) * scale);
+      ctx.strokeStyle = "#5c8aff33"; ctx.lineWidth = 1;
+      ctx.strokeRect(wx(ax - colW / 2), wy(60), colW * scale, (my - 60) * scale);
+      // נותבים — קליעים בהירים שנוסעים במעלה העמודה
+      ctx.globalCompositeOperation = "lighter";
+      for (let t = 0; t < 5; t++) {
+        const seed = ((pnow * 0.0022 + t * 0.2) % 1); // 0..1 לאורך המסלול
+        const bx = mx + (ax - mx) * seed + (Math.random() - 0.5) * 18;
+        const by = my + (60 - my) * seed;
+        const nx2 = mx + (ax - mx) * Math.min(1, seed + 0.055);
+        const ny2 = my + (60 - my) * Math.min(1, seed + 0.055);
+        const tg = ctx.createLinearGradient(wx(bx), wy(by), wx(nx2), wy(ny2));
+        tg.addColorStop(0, "#fff6d820"); tg.addColorStop(1, "#ffe9a8ff");
+        ctx.strokeStyle = tg; ctx.lineWidth = 3 * scale;
+        ctx.beginPath(); ctx.moveTo(wx(bx), wy(by)); ctx.lineTo(wx(nx2), wy(ny2)); ctx.stroke();
+        ctx.fillStyle = "#ffffff";
+        ctx.beginPath(); ctx.arc(wx(nx2), wy(ny2), 2.2 * scale, 0, 7); ctx.fill();
+      }
+      // הבהק לוע
+      const mz = wlImg("muzzle");
+      const msz = (44 + Math.random() * 22) * scale;
+      const mang = Math.atan2(60 - my, ax - mx);
+      ctx.save(); ctx.translate(wx(mx), wy(my)); ctx.rotate(mang + Math.PI / 2);
+      if (mz.complete && mz.naturalWidth) ctx.drawImage(mz, -msz / 2, -msz, msz, msz);
+      else {
+        const fg = ctx.createRadialGradient(0, 0, 0, 0, 0, msz / 2);
+        fg.addColorStop(0, "#fff"); fg.addColorStop(0.4, "#ffd24a"); fg.addColorStop(1, "#ff7a2f00");
+        ctx.fillStyle = fg; ctx.beginPath(); ctx.arc(0, 0, msz / 2, 0, 7); ctx.fill();
+      }
+      ctx.restore();
+      ctx.globalCompositeOperation = "source-over";
     }
 
     // פרויקטילים
@@ -397,21 +456,60 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
       const px = p.fx + (p.tx - p.fx) * f;
       const arc = p.kind === "shell" ? 260 : 150;
       const py = p.fy + (p.ty - p.fy) * f - Math.sin(f * Math.PI) * arc;
+      // טבעת נחיתה מהבהבת ביעד — כל עוד הקליע באוויר
+      if (f < 1) {
+        const pulse = 0.6 + 0.4 * Math.sin(pnow / 90);
+        ctx.strokeStyle = p.kind === "shell" ? `rgba(255,206,60,${0.5 * pulse})` : `rgba(52,232,158,${0.45 * pulse})`;
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(wx(p.tx), wy(p.ty), (p.kind === "shell" ? 34 : 16) * scale * pulse, 0, 7); ctx.stroke();
+      }
       if (p.kind === "arrow") {
-        const im = wlImg(p.fire ? "arrowFire" : "arrow");
-        const ang = Math.atan2(p.ty - p.fy, p.tx - p.fx) - Math.PI / 2 + (f - 0.5) * 0.6;
+        const dirAng = Math.atan2(p.ty - p.fy, p.tx - p.fx) + (f - 0.5) * 0.6;
+        // שובל זוהר
+        ctx.globalCompositeOperation = "lighter";
+        for (let g = 1; g <= 3; g++) {
+          const gf = Math.max(0, f - g * 0.05);
+          const gx = p.fx + (p.tx - p.fx) * gf;
+          const gy = p.fy + (p.ty - p.fy) * gf - Math.sin(gf * Math.PI) * arc;
+          ctx.fillStyle = p.fire ? `rgba(255,150,60,${0.3 - g * 0.08})` : `rgba(120,255,190,${0.3 - g * 0.08})`;
+          ctx.beginPath(); ctx.arc(wx(gx), wy(gy), (6 - g) * scale, 0, 7); ctx.fill();
+        }
+        // גוף החץ — שאפט בולט + ראש
         ctx.save();
         ctx.translate(wx(px), wy(py));
-        ctx.rotate(ang);
-        ctx.globalCompositeOperation = "screen";
-        if (im.complete && im.naturalWidth) ctx.drawImage(im, -14 * scale, -22 * scale, 28 * scale, 44 * scale);
+        ctx.rotate(dirAng);
+        const L = 30 * scale;
+        ctx.strokeStyle = p.fire ? "#ffb347" : "#e8fff2"; ctx.lineWidth = 3.2 * scale; ctx.lineCap = "round";
+        ctx.beginPath(); ctx.moveTo(-L / 2, 0); ctx.lineTo(L / 2, 0); ctx.stroke();
+        ctx.fillStyle = p.fire ? "#ffd24a" : "#ffffff";
+        ctx.beginPath(); ctx.moveTo(L / 2 + 7 * scale, 0); ctx.lineTo(L / 2 - 2 * scale, -4 * scale); ctx.lineTo(L / 2 - 2 * scale, 4 * scale); ctx.closePath(); ctx.fill();
+        // נוצות
+        ctx.strokeStyle = p.fire ? "#ff7a2f" : "#34e89e"; ctx.lineWidth = 2 * scale;
+        ctx.beginPath(); ctx.moveTo(-L / 2, 0); ctx.lineTo(-L / 2 - 5 * scale, -4 * scale);
+        ctx.moveTo(-L / 2, 0); ctx.lineTo(-L / 2 - 5 * scale, 4 * scale); ctx.stroke();
+        // ספרייט מעל (אם נטען) — מוגדל
+        const im = wlImg(p.fire ? "arrowFire" : "arrow");
+        if (im.complete && im.naturalWidth) {
+          ctx.rotate(-Math.PI / 2);
+          ctx.drawImage(im, -20 * scale, -32 * scale, 40 * scale, 64 * scale);
+        }
         ctx.globalCompositeOperation = "source-over";
         ctx.restore();
       } else {
+        // פגז — עם שובל עשן
+        ctx.globalAlpha = 0.35;
+        for (let g = 1; g <= 4; g++) {
+          const gf = Math.max(0, f - g * 0.06);
+          const gx = p.fx + (p.tx - p.fx) * gf;
+          const gy = p.fy + (p.ty - p.fy) * gf - Math.sin(gf * Math.PI) * arc;
+          ctx.fillStyle = "#9a9aa5";
+          ctx.beginPath(); ctx.arc(wx(gx), wy(gy), (7 - g) * scale, 0, 7); ctx.fill();
+        }
+        ctx.globalAlpha = 1;
         ctx.fillStyle = "#2c2c34";
         ctx.beginPath(); ctx.arc(wx(px), wy(py), 9 * scale, 0, 7); ctx.fill();
-        ctx.fillStyle = "#ff9a2f88";
-        ctx.beginPath(); ctx.arc(wx(px), wy(py), 4 * scale, 0, 7); ctx.fill();
+        ctx.fillStyle = "#ff9a2f";
+        ctx.beginPath(); ctx.arc(wx(px), wy(py), 4.5 * scale, 0, 7); ctx.fill();
       }
     }
 
@@ -428,12 +526,35 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
         ctx.globalCompositeOperation = "source-over";
         ctx.globalAlpha = 1;
       } else if (f.kind === "slash") {
-        ctx.strokeStyle = `rgba(255,255,255,${1 - ft})`;
-        ctx.lineWidth = 4;
-        ctx.beginPath();
-        ctx.arc(wx(f.x), wy(f.y), 60 * scale * (0.5 + ft), (f.dir ?? 0) - 0.9, (f.dir ?? 0) + 0.9);
-        ctx.stroke();
+        const st = Math.min(1, (pnow - f.t0) / 300); // סלאש מהיר מהשאר
+        const ang = f.dir ?? 0;
+        const im2 = wlImg("slash");
+        ctx.save();
+        ctx.translate(wx(f.x + Math.cos(ang) * 42), wy(f.y + Math.sin(ang) * 42));
+        ctx.rotate(ang + Math.PI / 2);
+        ctx.globalAlpha = 1 - st;
+        ctx.globalCompositeOperation = "lighter";
+        const sz = 160 * (0.6 + st * 0.7) * scale;
+        if (im2.complete && im2.naturalWidth) {
+          ctx.drawImage(im2, -sz / 2, -sz / 2, sz, sz);
+        } else {
+          ctx.strokeStyle = "#bfe8ff"; ctx.lineWidth = 10 * scale; ctx.lineCap = "round";
+          ctx.beginPath(); ctx.arc(0, 0, sz * 0.34, Math.PI * 0.75, Math.PI * 2.25); ctx.stroke();
+          ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 4 * scale;
+          ctx.beginPath(); ctx.arc(0, 0, sz * 0.34, Math.PI * 0.75, Math.PI * 2.25); ctx.stroke();
+        }
+        ctx.globalCompositeOperation = "source-over";
+        ctx.globalAlpha = 1;
+        ctx.restore();
       } else if (f.kind === "spark") {
+        const hi = wlImg("hit");
+        if (hi.complete && hi.naturalWidth && ft < 0.5) {
+          const hsz = 52 * (0.6 + ft) * scale;
+          ctx.globalAlpha = 1 - ft * 2;
+          ctx.globalCompositeOperation = "lighter";
+          ctx.drawImage(hi, wx(f.x) - hsz / 2, wy(f.y) - hsz / 2, hsz, hsz);
+          ctx.globalCompositeOperation = "source-over";
+        }
         ctx.fillStyle = f.color ?? "#fff";
         for (let i = 0; i < 6; i++) {
           const a = (i / 6) * Math.PI * 2;
@@ -468,9 +589,16 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
         }
         ctx.stroke();
         ctx.setLineDash([]);
-        ctx.beginPath();
+        // עיגול יעד ממולא קלות + כוונת צלב
+        const tr = (role === "cannon" ? 60 : 26) * scale;
+        ctx.fillStyle = role === "archer" ? "#34e89e18" : "#ffce3c18";
+        ctx.beginPath(); ctx.arc(wx(aim.tx), wy(aim.ty), tr, 0, 7); ctx.fill();
         ctx.strokeStyle = role === "archer" ? "#34e89e" : "#ffce3c";
-        ctx.arc(wx(aim.tx), wy(aim.ty), (role === "cannon" ? 60 : 26) * scale, 0, 7);
+        ctx.lineWidth = 2.5;
+        ctx.beginPath(); ctx.arc(wx(aim.tx), wy(aim.ty), tr, 0, 7); ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(wx(aim.tx) - tr * 0.55, wy(aim.ty)); ctx.lineTo(wx(aim.tx) + tr * 0.55, wy(aim.ty));
+        ctx.moveTo(wx(aim.tx), wy(aim.ty) - tr * 0.55); ctx.lineTo(wx(aim.tx), wy(aim.ty) + tr * 0.55);
         ctx.stroke();
       }
     }
@@ -503,8 +631,7 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
     const cv = canvasRef.current!;
     const r = cv.getBoundingClientRect();
     const scale = r.width / VIEW_W;
-    const viewH = r.height / scale;
-    const camTop = Math.max(0, Math.min(WORLD_H - viewH, WALL_Y + 170 - viewH));
+    const camTop = camTopRef.current;
     const camL = Math.max(0, Math.min(W - VIEW_W, camX.current - VIEW_W / 2));
     return [camL + (e.clientX - r.left) / scale, camTop + (e.clientY - r.top) / scale];
   }
@@ -537,7 +664,7 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
       const h = myHero();
       if (h && !h.down) {
         h.x = Math.max(30, Math.min(W - 30, wxp));
-        h.y = Math.max(STRIP_TOP, Math.min(WALL_Y - 15, wyp));
+        h.y = Math.max(90, Math.min(WALL_Y - 15, wyp)); // כל שדה הקרב פתוח
         const tn = performance.now();
         if (tn - lastPosSend.current > 140) {
           lastPosSend.current = tn;
@@ -590,7 +717,7 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
         const dir = Math.atan2(dy, dx);
         conn.sendGame({ a: "wl_swing", dir });
         const h = myHero();
-        if (h) fxs.current.push({ kind: "slash", x: h.x, y: h.y, t0: performance.now(), dir });
+        if (h) { fxs.current.push({ kind: "slash", x: h.x, y: h.y, t0: performance.now(), dir }); lunges.current.set(me, { t0: performance.now(), dir }); }
         Sfx.tick(); vibrate(30);
       }
     }
