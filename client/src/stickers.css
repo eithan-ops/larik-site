@@ -1,0 +1,167 @@
+/* ============================================================
+   LARIK — שכבת המדבקות
+   נטענת אחרי styles.css + tokens.css. אף מחלקה לא נמחקת —
+   השכבה הזאת רק מחליפה את *החומר*: קו מתאר עבה במקום גבול דק,
+   צל קשיח במקום זוהר מטושטש, נקודות הדפסה במקום כתמי ניאון.
+
+   ארבעה דברים מגדירים את השפה ולא תלויים בבהירות הרקע:
+   חיתוך מדבקה · נקודות הדפסה · סיבוב קל · סריף כבד מול סן־סריף.
+   ============================================================ */
+
+/* ---------- טיפוגרפיה ---------- */
+body{ font-family:var(--font-body); }
+h1,h2,.logo-big,.code-big,.big,.huge,.brand,
+.gcard b,.gamecard b,.featured b,.pbadge .nm,
+.rx-goldnum,.rx-bigwave,.wl-bigwave,.rx-meltword{
+  font-family:var(--font-display);
+  font-weight:400;           /* Suez One הוא משקל אחד — הכובד כבר בצורה */
+  letter-spacing:0;
+}
+
+/* טקסט משני נגזר מהמשטח שמתחתיו במקום להיות צבע קבוע.
+   --on-surface מוגדר מחדש בכל מדבקה, ולכן אותו .sub נכון גם על
+   מדבקה בהירה וגם על הרקע הכהה — בלי אף חריג בקוד המשחקים.
+   color-mix ולא opacity, כדי ש-<b> בתוך .sub יוכל לחזור למלא. */
+:root{ --on-surface:var(--on-ground); }
+.sub,.gcard .pp,.cat-title .sub,.sc-pilot-sub,.rx-hint,.wl-hint{
+  color:color-mix(in srgb, var(--on-surface) 72%, transparent);
+}
+.sub b,.sub strong{ color:var(--on-surface); font-weight:700; }
+
+/* ---------- הרקע: נקודות הדפסה במקום כתמי ניאון ---------- */
+body::before,body::after{ display:none; }
+body{
+  background-color:var(--ground);
+  background-image:radial-gradient(circle at 1px 1px, var(--dot) 1px, transparent 1.6px);
+  background-size:var(--dot-size) var(--dot-size);
+  color:var(--on-ground);
+}
+
+/* ---------- המדבקה: המשטח הבסיסי ---------- */
+.card,.bento-card,.gcard,.gamecard,.featured,.pbadge,.opt,.chip,.input,
+.throw-chip,.bomb-card,.rx-card,.rx-fixcard,.wl-card,.wl-rolecard,
+.joined-banner,.qr-box,.toast,.sc-pad,.sc-shape,.exit-fab{
+  --on-surface:var(--on-paper);
+  background:var(--paper);
+  color:var(--on-surface);
+  border:var(--stroke-w) solid var(--stroke);
+  box-shadow:var(--hard-x) var(--hard-y) 0 var(--hard);
+  backdrop-filter:none;
+}
+/* משטחים גדולים מקבלים צל עמום — צל בעוצמת CTA על כרטיס בגודל
+   מסך קורא כפס צבע ולא כהרמה מהנייר. */
+.card,.bento-card,.joined-banner{ box-shadow:-2px 3px 0 var(--hard-soft); }
+
+/* סיבוב קל — "מבולגן בכוונה". rotate נפרד מ-transform,
+   כדי ש-:active{transform:scale()} לא ימחק אותו. */
+.gcard:nth-child(odd){ rotate:-1.3deg; }
+.gcard:nth-child(even){ rotate:1.1deg; }
+.pbadge:nth-child(odd){ rotate:-1.6deg; }
+.pbadge:nth-child(even){ rotate:1.4deg; }
+.featured{ rotate:-.8deg; }
+.bento-card:first-child{ rotate:-1deg; }
+.bento-card:last-child{ rotate:1.2deg; }
+
+/* ---------- כפתורים ---------- */
+.btn{
+  background:var(--a-red);
+  color:var(--on-red);
+  border:var(--stroke-w) solid var(--stroke);
+  border-radius:var(--radius);
+  box-shadow:var(--hard-x) var(--hard-y) 0 var(--hard);
+  font-family:var(--font-display); font-weight:400; font-size:19px;
+}
+.btn::after{ display:none; }          /* בלי ברק — מדבקה לא מבריקה */
+.btn:active{ transform:translate(calc(var(--hard-x) * -1), var(--hard-y)); box-shadow:none; }
+.btn:disabled{ opacity:.45; box-shadow:var(--hard-x) var(--hard-y) 0 var(--hard); }
+/* כל וריאנט חייב להצהיר על הצל מחדש — אחרת ה-glow הישן
+   (specificity גבוהה יותר: .btn.social) חוזר מתחת לכפתור. */
+.btn.social,.btn.ghost,.btn.gold,.btn.danger,.btn.wa{
+  border:var(--stroke-w) solid var(--stroke);
+  box-shadow:var(--hard-x) var(--hard-y) 0 var(--hard);
+}
+.btn.social{ background:var(--a-blue); color:var(--on-blue); }
+.btn.ghost{ background:var(--paper); color:var(--on-paper); }
+.btn.gold{ background:var(--a-yellow); color:var(--on-yellow); }
+.btn.danger{ background:var(--a-red); color:var(--on-red); }
+.btn.wa{ background:var(--a-green); color:var(--on-green); }
+
+.opt.sel{
+  background:var(--a-yellow); color:var(--on-yellow);
+  border-color:var(--stroke); box-shadow:var(--hard-x) var(--hard-y) 0 var(--hard);
+}
+.opt:active{ transform:translate(calc(var(--hard-x) * -1), var(--hard-y)); box-shadow:none; }
+
+/* ---------- מותג ---------- */
+.logo-big,.brand,.shimmer{
+  background:none; -webkit-background-clip:border-box; background-clip:border-box;
+  -webkit-text-fill-color:currentColor; color:var(--on-ground);
+  filter:none; animation:none;
+}
+.logo-big{ font-size:52px; }
+
+/* ---------- קוד החדר: מדבקה צהובה, לא טקסט זוהר ---------- */
+.code-big{
+  background:var(--a-yellow); color:var(--on-yellow);
+  border:3px solid var(--stroke); border-radius:var(--radius);
+  box-shadow:-5px 6px 0 var(--hard);
+  text-shadow:none; padding:10px 12px 10px 24px; rotate:-.8deg;
+}
+.qr-box{ background:#fff; color:var(--sk-ink); rotate:1deg; }
+
+/* ---------- הקטלוג ---------- */
+.gamecard .ic,.gcard .ic,.featured .fic{
+  background:color-mix(in srgb, var(--gc,var(--a-purple)) 38%, var(--paper));
+  border:2px solid var(--stroke);
+}
+/* בתוך המומלץ (מדבקה צהובה) הכפתור מקבל צל דיו — צל אדום על צהוב נהיה בוצי */
+.featured .btn{ box-shadow:var(--hard-x) var(--hard-y) 0 var(--on-yellow); }
+/* צבע החתימה של המשחק הוא הצל שלו. זה מה שהופך את הקטלוג
+   משטיח מלבנים לבנים לדף מדבקות שכל אחת בצבע אחר. */
+.gcard,.gamecard{ box-shadow:var(--hard-x) var(--hard-y) 0 var(--gc,var(--hard)); }
+.gamecard.sel,.gcard.sel{
+  border-color:var(--stroke);
+  box-shadow:-5px 6px 0 var(--gc,var(--a-purple));
+  background:color-mix(in srgb, var(--gc,var(--a-purple)) 14%, var(--paper));
+}
+.gcard.dim{ opacity:.45; rotate:0deg; }
+.featured{
+  --on-surface:var(--on-yellow);
+  background:var(--a-yellow); color:var(--on-surface);
+  border:3px solid var(--stroke); box-shadow:-4px 5px 0 var(--hard);
+}
+.featured .howto{
+  background:color-mix(in srgb, var(--on-yellow) 8%, transparent);
+  color:inherit; border-radius:12px;
+}
+.badge-reco{
+  background:var(--on-yellow); color:var(--a-yellow);
+  border-radius:999px;
+}
+.bento-card.primary{ --on-surface:var(--on-yellow); background:var(--a-yellow); color:var(--on-surface); }
+.joined-banner{ --on-surface:var(--on-green); }
+.toast{ --on-surface:var(--on-yellow); }
+
+/* ---------- שחקנים ---------- */
+.pbadge.armed{ border-color:var(--stroke); box-shadow:var(--hard-x) var(--hard-y) 0 var(--a-green); }
+.pbadge.host{ border-color:var(--stroke); box-shadow:var(--hard-x) var(--hard-y) 0 var(--a-yellow); }
+.pbadge.off{ opacity:.4; filter:grayscale(.8); box-shadow:none; }
+
+/* ---------- קלט ---------- */
+.input{ border-radius:14px; }
+.input::placeholder{ color:var(--on-paper); opacity:.4; }
+.input:focus{ border-color:var(--a-blue); box-shadow:var(--hard-x) var(--hard-y) 0 var(--a-blue); }
+
+/* ---------- הודעות ---------- */
+.toast{ background:var(--a-yellow); color:var(--on-yellow); border-radius:999px; }
+.joined-banner{ background:var(--a-green); color:var(--on-green); }
+
+/* ---------- מצבי מיקוד — נגישות מקלדת ---------- */
+:where(button,a,input,[role="button"]):focus-visible{
+  outline:3px solid var(--a-blue); outline-offset:3px;
+}
+
+/* ---------- כיבוד העדפת תנועה מופחתת ---------- */
+@media (prefers-reduced-motion:reduce){
+  .gcard,.pbadge,.featured,.bento-card,.code-big,.qr-box{ rotate:0deg; }
+}

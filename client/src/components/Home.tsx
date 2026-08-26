@@ -64,15 +64,15 @@ export default function Home() {
       <div className="card" style={{ padding: "14px 16px", marginBottom: 4 }} id="game-actions">
         <div style={{ display: "flex", gap: 10, alignItems: "flex-start", marginBottom: 10 }}>
           <span style={{ fontSize: 20 }}>1️⃣</span>
-          <p className="sub" style={{ fontSize: 13.5 }}><b style={{ color: "var(--text)" }}>אחד פותח חדר</b> — ומקבל קוד ו-QR להראות לכולם.</p>
+          <p className="sub" style={{ fontSize: 13.5 }}><b>אחד פותח חדר</b> — ומקבל קוד ו-QR להראות לכולם.</p>
         </div>
         <div style={{ display: "flex", gap: 10, alignItems: "flex-start", marginBottom: 10 }}>
           <span style={{ fontSize: 20 }}>2️⃣</span>
-          <p className="sub" style={{ fontSize: 13.5 }}><b style={{ color: "var(--text)" }}>החברים סורקים</b> עם המצלמה — ותוך 5 שניות כולם בפנים.</p>
+          <p className="sub" style={{ fontSize: 13.5 }}><b>החברים סורקים</b> עם המצלמה — ותוך 5 שניות כולם בפנים.</p>
         </div>
         <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
           <span style={{ fontSize: 20 }}>3️⃣</span>
-          <p className="sub" style={{ fontSize: 13.5 }}><b style={{ color: "var(--text)" }}>בוחרים משחק ומשחקים</b> — טריוויה, מתחזה, פצצות ועוד 9.</p>
+          <p className="sub" style={{ fontSize: 13.5 }}><b>בוחרים משחק ומשחקים</b> — טריוויה, מתחזה, פצצות ועוד 9.</p>
         </div>
       </div>
 

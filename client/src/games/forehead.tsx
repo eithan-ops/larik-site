@@ -201,7 +201,7 @@ export default function ForeheadView({ room, me, conn, hub }: GameViewProps) {
       ) : (
         <>
           <div style={{ fontSize: 46 }}>🤫</div>
-          <p className="sub" style={{ marginTop: 10 }}>תורו של <b style={{ color: "var(--text)" }}>{nameOf(turnPid)}</b> — עזרו לו בתשובות!</p>
+          <p className="sub" style={{ marginTop: 10 }}>תורו של <b>{nameOf(turnPid)}</b> — עזרו לו בתשובות!</p>
           <p className="sub" style={{ marginTop: 6, fontSize: 11 }}>הטלפון שלך על המצח? יופי. בלי להציץ 🐀</p>
         </>
       )}

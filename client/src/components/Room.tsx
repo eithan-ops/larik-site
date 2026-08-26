@@ -6,6 +6,7 @@ import { Connection, defaultServerUrl } from "../lib/connection";
 import { unlockAudio, Sfx, vibrate } from "../lib/audio";
 import { armPhone } from "../lib/sensors";
 import { track } from "../lib/analytics";
+import { setGround } from "../lib/ground";
 import QRCodeView from "./QRCodeView";
 import Ceremony from "./Ceremony";
 import { GAME_VIEWS, GAME_COLORS, GameHub } from "../games/registry";
@@ -72,6 +73,13 @@ export default function Room({ code }: { code: string }) {
   // בין משחקים מנקים הודעות שמורות — שלא יזלגו למשחק הבא
   const phase = room?.phase;
   useEffect(() => { if (phase !== "game") hub.reset(); }, [phase, hub]);
+
+  // הרקע נגזר מהרגע, לא מהגדרה: לובי = מדבקות נייר על דיו,
+  // משחק = הכול כהה (קריאוּת), טקס = אור מלא (הדרמה של סוף הערב).
+  useEffect(() => {
+    setGround(phase === "game" ? "night-ink" : phase === "ceremony" ? "day" : "night-paper");
+    return () => setGround("night-paper");
+  }, [phase]);
 
   // וייב בלובי: "פופ" קטן כשחבר נכנס — החדר מרגיש חי גם לפני שהמשחק התחיל
   const prevConnected = useRef(0);
@@ -548,7 +556,7 @@ function AiDeckPanel({ current, onDeck }: {
         </div>
       ) : (
         <p className="sub" style={{ fontSize: 12.5, marginBottom: 8 }}>
-          על מה החפיסה? <b style={{ color: "var(--text)" }}>"החתונה של דנה"</b>, "המשרד שלנו", "שנות ה-90"...
+          על מה החפיסה? <b>"החתונה של דנה"</b>, "המשרד שלנו", "שנות ה-90"...
         </p>
       )}
       <div style={{ display: "flex", gap: 8, marginTop: current ? 10 : 0 }}>

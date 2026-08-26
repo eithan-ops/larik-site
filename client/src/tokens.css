@@ -1,0 +1,121 @@
+/* ============================================================
+   LARIK — שפה עיצובית v3 "מדבקות"
+   נייר חם · דיו כבד · צל קשיח · נקודות הדפסה
+
+   הקובץ הזה הוא המקור היחיד לצבע. הוא נטען אחרי styles.css
+   וממפה את הפלטה החדשה על *שמות המשתנים הקיימים* — ככה כל
+   מחלקה שכבר משתמשת ב-var(--card) / var(--gold) / וכו'
+   מקבלת את המראה החדש בלי שנגענו בה.
+
+   שלושה רקעים, אותה שפה:
+     ברירת מחדל   = "לילה — נייר"  (קליפה: בית, לובי)
+     data-ground="night-ink" = בתוך משחק
+     data-ground="day"       = טקס סיום, כרטיס שיתוף, נחיתה
+   ============================================================ */
+
+:root{
+  /* ---- הפלטה הגולמית (לא לשימוש ישיר ברכיבים) ---- */
+  --sk-paper:#FFF3DC;      /* נייר חם */
+  --sk-paper-hi:#FFF9EC;   /* מדבקה בהירה */
+  --sk-white:#FFFFFF;
+  --sk-ink:#171310;        /* דיו */
+  --sk-ink-deep:#12100E;   /* דיו עמוק — רקע לילה */
+  --sk-ink-card:#231F1A;   /* מדבקה כהה */
+  --sk-cream:#F2E9D8;      /* טקסט על כהה */
+
+  /* צבעי דפוס — יום (רקע בהיר) */
+  --sk-red:#FF4438;   --sk-blue:#1F52D6;  --sk-yellow:#FFC531;
+  --sk-green:#0FA958; --sk-purple:#6D3FE0;
+  /* צבעי דפוס — לילה (מוארים, ניגודיות נבדקה מול רקע כהה) */
+  --sk-red-n:#FF5A4E;   --sk-blue-n:#4D86FF; --sk-yellow-n:#FFCE4A;
+  --sk-green-n:#2ED47A; --sk-purple-n:#A78BFA;
+
+  /* ---- גיאומטריית המדבקה (זהה בכל הרקעים) ---- */
+  --stroke-w:2.5px;
+  --hard-x:-3px;           /* RTL: הצל נופל שמאלה */
+  --hard-y:4px;
+  --dot-size:13px;
+  --radius:18px;
+  --font-display:"Suez One","Rubik Variable",Georgia,serif;
+  --font-body:"Assistant Variable","Assistant","Rubik Variable","Segoe UI",-apple-system,Arial,sans-serif;
+}
+
+/* ============================================================
+   ברירת מחדל — "לילה — נייר": רקע דיו, מדבקות נייר בהירות.
+   הרקע לא מאיר את החדר, אבל כל מדבקה נשארת נייר — כלומר כל
+   הצבע והשמחה נשמרים. הצל הקשיח הופך צבעוני, כי שחור על
+   רקע כהה פשוט נעלם.
+   ============================================================ */
+:root{
+  --ground:#171310; --ground-2:#1C1712;
+  --on-ground:var(--sk-paper);
+  --paper:var(--sk-paper-hi); --paper-2:var(--sk-paper);
+  --on-paper:var(--sk-ink);
+  --stroke:#0C0906;
+  --hard:var(--sk-red-n);
+  --hard-soft:#7A2A22;   /* משטחים גדולים — צל שנקרא כצל ולא כפס צבע */
+  --dot:rgba(255,243,220,.10);
+
+  --a-red:var(--sk-red-n);       --on-red:#12100E;
+  --a-blue:var(--sk-blue-n);     --on-blue:#04122E;
+  --a-yellow:var(--sk-yellow-n); --on-yellow:#171310;
+  --a-green:var(--sk-green-n);   --on-green:#08301C;
+  --a-purple:var(--sk-purple-n); --on-purple:#1B0B3B;
+}
+
+/* ---- בתוך משחק: מדבקות כהות עם קו קרם ---- */
+:root[data-ground="night-ink"]{
+  --ground:#12100E; --ground-2:#17140F;
+  --on-ground:var(--sk-cream);
+  --paper:var(--sk-ink-card); --paper-2:#2C2721;
+  --on-paper:var(--sk-cream);
+  --stroke:var(--sk-cream);
+  --hard:#000000;
+  --hard-soft:#000000;
+  --dot:rgba(242,233,216,.09);
+}
+
+/* ---- טקס סיום / נחיתה / כרטיס שיתוף: נייר מלא ---- */
+:root[data-ground="day"]{
+  --ground:var(--sk-paper); --ground-2:#FFE7BE;
+  --on-ground:var(--sk-ink);
+  --paper:var(--sk-white); --paper-2:var(--sk-paper);
+  --on-paper:var(--sk-ink);
+  --stroke:var(--sk-ink);
+  --hard:var(--sk-ink);
+  --hard-soft:var(--sk-ink);
+  --dot:rgba(23,19,16,.13);
+
+  --a-red:var(--sk-red);       --on-red:#171310;
+  --a-blue:var(--sk-blue);     --on-blue:#FFF9EC;
+  --a-yellow:var(--sk-yellow); --on-yellow:#171310;
+  --a-green:var(--sk-green);   --on-green:#171310;
+  --a-purple:var(--sk-purple); --on-purple:#FFF9EC;
+}
+
+/* ============================================================
+   מיפוי לשמות הישנים — כאן קורה הקסם.
+   כל CSS קיים שמשתמש במשתנים האלה משתנה אוטומטית.
+   ============================================================ */
+:root,
+:root[data-ground="night-ink"],
+:root[data-ground="day"]{
+  --bg:var(--ground);      --bg2:var(--ground-2);
+  --card:var(--paper);     --card2:var(--paper-2);
+  --line:var(--stroke);    --line2:var(--stroke);
+  --text:var(--on-ground);
+  --muted:color-mix(in srgb, var(--on-ground) 66%, transparent);
+
+  /* הגרדיאנט המותגי הופך לצבע שטוח — בלי לגעת באף מחלקה */
+  --brand1:var(--a-red);   --brand2:var(--a-red);
+
+  --gold:var(--a-yellow);  --money:var(--a-green);
+  --pink:var(--a-red);     --red:var(--a-red);
+  --blue:var(--a-blue);    --social:var(--a-purple);
+
+  /* אין זוהר מטושטש בשפת המדבקות */
+  --shadow-brand:none;
+  --shadow-pink:none;
+}
+
+html{background:var(--ground);}

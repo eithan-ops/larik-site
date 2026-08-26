@@ -10,7 +10,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@fontsource-variable/assistant": "^5.3.0",
     "@fontsource-variable/rubik": "^5.3.0",
+    "@fontsource/suez-one": "^5.3.0",
     "@types/qrcode": "^1.5.6",
     "jsqr": "^1.4.0",
     "qrcode": "^1.5.4",

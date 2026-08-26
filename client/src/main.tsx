@@ -1,8 +1,12 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
-import "@fontsource-variable/rubik"; // פונט מקומי — בלי תלות ב-Google Fonts (קריטי לאולם בלי קליטה)
+// פונטים מקומיים — בלי תלות ב-Google Fonts (קריטי לאולם בלי קליטה). שניהם כוללים תת-קבוצה עברית.
+import "@fontsource/suez-one";              // תצוגה: כותרות, מספרים גדולים, שמות משחקים
+import "@fontsource-variable/assistant";    // גוף הטקסט
 import "./styles.css";
+import "./tokens.css";     // הפלטה — חייב לבוא אחרי styles.css
+import "./stickers.css";   // שכבת המראה — חייבת לבוא אחרונה
 import { initAnalytics } from "./lib/analytics";
 
 initAnalytics();
