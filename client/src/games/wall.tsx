@@ -20,10 +20,16 @@ const ROLE_NAME: Record<WallRole, string> = { infantry: "חלוץ", archer: "ק�
 const ROLE_ICON: Record<WallRole, string> = { infantry: "⚔️", archer: "🏹", cannon: "💣", mg: "🔫" };
 const ROLE_COLOR: Record<WallRole, string> = { infantry: "#ff5c5c", archer: "#34e89e", cannon: "#ffce3c", mg: "#5c8aff" };
 const ROLE_DESC: Record<WallRole, string> = {
-  infantry: "נלחם בשטח לפני החומה — גרור לזוז, החלק להכות, החזק את כפתור המגן לחסום",
-  archer: "על החומה — משוך אחורה ושחרר כמו קשת אמיתית. פגיעת ראש = נזק כפול",
-  cannon: "במגדל — כוון, שגר פגז שטח. כל פגז הוא החלטה",
-  mg: "בעמדת המקלע — החזק לירי רציף וגרור לכוון. היזהר מהתחממות!",
+  infantry: "גרור לזוז בכל השדה — הוא מכה לבד כשאויב קרוב! החזק 🛡️ לחסום",
+  archer: "גע והחזק על המטרה — הקשת יורה לבד. הזז את האצבע לכוון",
+  cannon: "כוון ושחרר — פגז שטח. כל פגז הוא החלטה",
+  mg: "החזק וגרור לרסס כדורים על כל השדה. היזהר מהתחממות!",
+};
+const ROLE_HINT: Record<WallRole, string> = {
+  infantry: "🕹️ גרור בכל מקום כדי לזוז — הלוחם מכה לבד כשאויב קרוב · 🛡️ החזק את הכפתור לחסום",
+  archer: "👆 גע והחזק על אויב — הקשת יורה לבד · הזז את האצבע כדי לכוון",
+  cannon: "🎯 גרור לכוון, שחרר — בום! כל פגז הוא החלטה",
+  mg: "👆 החזק וגרור ימינה-שמאלה — מרסס על כל השדה · שים עין על מד החום",
 };
 const ETYPE_IMG: Record<WallEnemyType, WlImgKey> = {
   swarm: "eSwarm", runner: "eRunner", armored: "eArmored", bomber: "eBomber", sniper: "eSniper", digger: "eDigger", boss: "eBoss",
@@ -38,7 +44,7 @@ interface EnemyV {
   deadAt?: number;
 }
 interface Proj { kind: "arrow" | "shell"; fx: number; fy: number; tx: number; ty: number; t0: number; T: number; fire?: boolean; by: string }
-interface Fx { kind: "boom" | "slash" | "spark" | "levelup"; x: number; y: number; t0: number; r?: number; dir?: number; color?: string }
+interface Fx { kind: "boom" | "slash" | "spark" | "levelup" | "dmg"; x: number; y: number; t0: number; r?: number; dir?: number; color?: string; txt?: string; big?: boolean }
 interface HeroV { role: WallRole; slot: [number, number]; x: number; y: number; hp: number; max: number; down: boolean; tier: number }
 
 export default function WallView({ room, me, conn, hub }: GameViewProps) {
@@ -56,6 +62,7 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
   const [toast, setToast] = useState("");
   const [jamUntil, setJamUntil] = useState(0);
   const [over, setOver] = useState<{ wave: number; bestWave: number; nearMiss?: string; mvp?: string; stats: Record<string, WallStats> } | null>(null);
+  const [hint, setHint] = useState("");
   const [, setUi] = useState(0); // רענון קל ל-HUD
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -65,10 +72,16 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
   const fxs = useRef<Fx[]>([]);
   const streams = useRef(new Map<string, number>()); // מקלען → aimX
   const phaseRef = useRef(phase); phaseRef.current = phase;
+  // downRef מוגדר למטה עם שאר ה-refs — משוקף כאן אחרי ההגדרה
   const rolesRef = useRef(roles); rolesRef.current = roles;
   const camX = useRef(500);
   const camTopRef = useRef(320);
   const lunges = useRef(new Map<string, { t0: number; dir: number }>()); // זינוק החלוץ בהנפה
+  const joyRef = useRef({ active: false, ox: 0, oy: 0, kx: 0, ky: 0 }); // ג'ויסטיק צף (מסך)
+  const lastAutoSwing = useRef(0);
+  const lastAutoShot = useRef(0);
+  const lastFrame = useRef(0);
+  const downRef = useRef(false); downRef.current = down;
   const shake = useRef(0);
   // קלט
   const ptr = useRef<{ down: boolean; x0: number; y0: number; t0: number; x: number; y: number; moved: boolean }>({ down: false, x0: 0, y0: 0, t0: 0, x: 0, y: 0, moved: false });
@@ -115,6 +128,11 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
           setPhase("wave"); setWave(m.wave); setWallHp(m.wallHp); setWallMax(m.wallMax);
           heat.current = 0; firing.current = false;
           showBanner(`🌊 גל ${m.wave}`);
+          if (m.wave === 1) {
+            // מדריך 6 שניות בתחילת כל ריצה — איך מפעילים את הנשק שלך
+            setHint(ROLE_HINT[rolesRef.current[me] ?? "infantry"]);
+            window.setTimeout(() => setHint(""), 6500);
+          }
           Sfx.goBeep(); vibrate([60, 40, 60]);
           return;
         case "wl_spawn":
@@ -131,12 +149,24 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
         case "wl_hit": {
           const e = enemies.current.get(m.id);
           if (!e) return;
+          const delta = Math.max(0, e.hp - m.hp);
           e.hp = m.hp;
           const [ex, ey] = posOf(e, conn.serverNow());
+          // מספר נזק קופץ — כל פגיעה נראית
+          if (delta > 0) {
+            fxs.current.push({
+              kind: "dmg", x: ex + (Math.random() - 0.5) * 26, y: ey - 20, t0: performance.now(),
+              txt: String(Math.round(delta)), big: !!m.crit,
+              color: m.crit ? "#ff5c5c" : m.by === me ? "#ffce3c" : "#ffffff",
+            });
+          }
           if (m.hp <= 0) {
             e.deadAt = conn.serverNow();
             fxs.current.push({ kind: "spark", x: ex, y: ey, t0: performance.now(), color: m.by === me ? "#ffce3c" : "#fff" });
-            if (m.by === me) { Sfx.pop(); vibrate(20); }
+            // צליל-הריגה אישי: פיץ' לפי השחקן — כולם שומעים מי קוטל 🎵
+            const ki = room.players.findIndex((p) => p.id === m.by);
+            Sfx.killNote(ki < 0 ? 0 : ki, m.by === me);
+            if (m.by === me) vibrate(20);
             window.setTimeout(() => enemies.current.delete(m.id), 400);
           } else if (m.crit && m.by === me) {
             fxs.current.push({ kind: "spark", x: ex, y: ey, t0: performance.now(), color: "#ff5c5c" });
@@ -245,7 +275,12 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
   useEffect(() => {
     let raf = 0;
     const step = () => {
-      draw();
+      try {
+        draw();
+        (window as any).__wlFrames = ((window as any).__wlFrames || 0) + 1;
+      } catch (err) {
+        (window as any).__wlErr = String((err as Error)?.stack || err);
+      }
       raf = requestAnimationFrame(step);
     };
     raf = requestAnimationFrame(step);
@@ -257,6 +292,67 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
     // מראה מקומית של החום (השרת אוכף; זה רק ל-HUD)
     if (myRole() === "mg") {
       heat.current = firing.current ? Math.min(100, heat.current + 0.29) : Math.max(0, heat.current - 0.37);
+    }
+    /* ---- קלט רציף (אגודל אחד, כל השאר אוטומטי) ---- */
+    {
+      const pn = performance.now();
+      const dtMs = Math.min(50, pn - (lastFrame.current || pn));
+      lastFrame.current = pn;
+      const r0 = myRole();
+      const inWave = phaseRef.current === "wave" && !downRef.current;
+      // חלוץ: תנועה בג'ויסטיק
+      if (r0 === "infantry" && inWave && joyRef.current.active && !shielding.current) {
+        const j = joyRef.current;
+        const dx = j.kx - j.ox, dy = j.ky - j.oy;
+        const d = Math.hypot(dx, dy);
+        if (d > 8) {
+          const sp = 360 * Math.min(1, d / 64);
+          const h2 = myHero();
+          if (h2) {
+            h2.x = Math.max(30, Math.min(W - 30, h2.x + (dx / d) * (sp * dtMs) / 1000));
+            h2.y = Math.max(90, Math.min(WALL_Y - 15, h2.y + (dy / d) * (sp * dtMs) / 1000));
+            if (pn - lastPosSend.current > 140) {
+              lastPosSend.current = pn;
+              conn.sendGame({ a: "wl_pos", x: Math.round(h2.x), y: Math.round(h2.y) });
+            }
+          }
+        }
+      }
+      // חלוץ: אוטו-תקיפה על האויב הקרוב (Archero-style)
+      if (r0 === "infantry" && inWave && !shielding.current && pn - lastAutoSwing.current > 520) {
+        const h2 = myHero();
+        if (h2) {
+          const sn = conn.serverNow();
+          let bx = 0, by = 0, bd = 150;
+          for (const e of enemies.current.values()) {
+            if (e.deadAt !== undefined || e.state === "burrow") continue;
+            const [ex, ey] = posOf(e, sn);
+            const dd = Math.hypot(ex - h2.x, ey - h2.y);
+            if (dd < bd) { bd = dd; bx = ex; by = ey; }
+          }
+          if (bd < 150) {
+            lastAutoSwing.current = pn;
+            const dir = Math.atan2(by - h2.y, bx - h2.x);
+            conn.sendGame({ a: "wl_swing", dir });
+            fxs.current.push({ kind: "slash", x: h2.x, y: h2.y, t0: pn, dir });
+            lunges.current.set(me, { t0: pn, dir });
+            Sfx.tick(); vibrate(20);
+          }
+        }
+      }
+      // קשת: אוטו-ירי כל עוד האצבע על המסך
+      if (r0 === "archer" && inWave && ptr.current.down && aimRef.current && pn - lastAutoShot.current > 660) {
+        lastAutoShot.current = pn;
+        const a = aimRef.current;
+        conn.sendGame({ a: "wl_shot", tx: Math.round(a.tx), ty: Math.round(a.ty), power: 1 });
+        const h2 = myHero();
+        projs.current.push({
+          kind: "arrow", fx: h2?.slot[0] ?? 500, fy: h2?.slot[1] ?? WALL_Y + 60, tx: a.tx, ty: a.ty, t0: pn,
+          T: 280 + Math.hypot(a.tx - (h2?.slot[0] ?? 500), a.ty - (h2?.slot[1] ?? 0)) * 0.35,
+          fire: (h2?.tier ?? 1) >= 2, by: me,
+        });
+        Sfx.tick(); vibrate(12);
+      }
     }
     const cv = canvasRef.current;
     if (!cv) return;
@@ -271,7 +367,7 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
     // מצלמה: עוקבת אחרי הגיבור/הכיוון שלי
     const h = myHero();
     let targetCam = h ? h.x : 500;
-    if (myRole() === "mg" && firing.current && aimRef.current) targetCam = (aimRef.current.tx + (h?.x ?? 500)) / 2;
+    if (myRole() === "mg" && firing.current && aimRef.current) targetCam = aimRef.current.tx; // עוקבת אחרי הכוונת — כל השדה נגיש
     if (aimRef.current && (myRole() === "archer" || myRole() === "cannon")) targetCam = (aimRef.current.tx + (h?.slot[0] ?? 500)) / 2;
     camX.current += (targetCam - camX.current) * 0.08;
     const scale = cw / VIEW_W;
@@ -493,8 +589,8 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
           ctx.rotate(-Math.PI / 2);
           ctx.drawImage(im, -20 * scale, -32 * scale, 40 * scale, 64 * scale);
         }
-        ctx.globalCompositeOperation = "source-over";
         ctx.restore();
+        ctx.globalCompositeOperation = "source-over"; // חובה אחרי restore — אחרת ה-lighter מודלף ומלבין את המסך
       } else {
         // פגז — עם שובל עשן
         ctx.globalAlpha = 0.35;
@@ -567,6 +663,18 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
         ctx.strokeStyle = `rgba(255,206,60,${1 - ft})`;
         ctx.lineWidth = 3;
         ctx.beginPath(); ctx.arc(wx(f.x), wy(f.y), 30 + ft * 120, 0, 7); ctx.stroke();
+      } else if (f.kind === "dmg") {
+        // מספר נזק צף — עולה ודוהה
+        const fsz = (f.big ? 24 : 15) * scale;
+        ctx.font = `900 ${fsz}px Rubik, sans-serif`;
+        ctx.textAlign = "center";
+        ctx.globalAlpha = Math.max(0, 1 - ft * 1.15);
+        ctx.strokeStyle = "rgba(0,0,0,.75)"; ctx.lineWidth = 3;
+        const dy2 = wy(f.y) - ft * 42 * scale;
+        ctx.strokeText(f.txt ?? "", wx(f.x), dy2);
+        ctx.fillStyle = f.color ?? "#fff";
+        ctx.fillText(f.txt ?? "", wx(f.x), dy2);
+        ctx.globalAlpha = 1;
       }
     }
 
@@ -603,6 +711,22 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
       }
     }
 
+    // ג'ויסטיק צף של החלוץ (קואורדינטות מסך)
+    if (myRole() === "infantry" && joyRef.current.active) {
+      const j = joyRef.current;
+      const cvR = cv.getBoundingClientRect();
+      const jox = j.ox - cvR.left, joy2 = j.oy - cvR.top;
+      let jdx = j.kx - j.ox, jdy = j.ky - j.oy;
+      const jd = Math.hypot(jdx, jdy);
+      if (jd > 56) { jdx = (jdx / jd) * 56; jdy = (jdy / jd) * 56; }
+      ctx.strokeStyle = "#ff5c5c66"; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(jox, joy2, 56, 0, 7); ctx.stroke();
+      ctx.fillStyle = "#ff5c5c22";
+      ctx.beginPath(); ctx.arc(jox, joy2, 56, 0, 7); ctx.fill();
+      ctx.fillStyle = "#ff5c5ccc";
+      ctx.beginPath(); ctx.arc(jox + jdx, joy2 + jdy, 24, 0, 7); ctx.fill();
+    }
+
     // מיני-מפה: פס עליון של כל החזית
     const mmH = 34;
     ctx.fillStyle = "rgba(5,7,12,.82)";
@@ -636,21 +760,36 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
     return [camL + (e.clientX - r.left) / scale, camTop + (e.clientY - r.top) / scale];
   }
 
+  /** מקלען: מיפוי X של המסך → כל רוחב השדה (לא תלוי מצלמה) */
+  function mgAimX(e: React.PointerEvent): number {
+    const r = canvasRef.current!.getBoundingClientRect();
+    const f = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width));
+    return 30 + f * (W - 60);
+  }
+
   function onDown(e: React.PointerEvent) {
     if (phaseRef.current !== "wave" || down) return;
+    (e.target as Element).setPointerCapture?.(e.pointerId); // גרירות לא בורחות לשכבות-על
     const [wx0, wy0] = toWorld(e);
     ptr.current = { down: true, x0: e.clientX, y0: e.clientY, t0: performance.now(), x: e.clientX, y: e.clientY, moved: false };
     const role = myRole();
     if (role === "mg") {
       if (Date.now() < jamUntil) return;
       firing.current = true;
-      aimRef.current = { tx: wx0, ty: 100, power: 1 };
+      const ax = mgAimX(e);
+      aimRef.current = { tx: ax, ty: 100, power: 1 };
       conn.sendGame({ a: "wl_fire", on: true });
-      conn.sendGame({ a: "wl_aim", x: wx0 });
-    } else if (role === "archer" || role === "cannon") {
+      conn.sendGame({ a: "wl_aim", x: Math.round(ax) });
+    } else if (role === "archer") {
+      // גע והחזק על המטרה — יורה לבד (הירייה הראשונה מיידית דרך לולאת ה-RAF)
+      aimRef.current = { tx: wx0, ty: Math.max(60, Math.min(wy0, WALL_Y - 60)), power: 1 };
+      lastAutoShot.current = 0;
+    } else if (role === "cannon") {
       aimRef.current = { tx: wx0, ty: Math.min(wy0, WALL_Y - 60), power: 0.7 };
+    } else if (role === "infantry" && !shielding.current) {
+      // ג'ויסטיק צף: הבסיס נולד איפה שנגעת
+      joyRef.current = { active: true, ox: e.clientX, oy: e.clientY, kx: e.clientX, ky: e.clientY };
     }
-    void wy0;
   }
 
   function onMove(e: React.PointerEvent) {
@@ -659,28 +798,19 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
     p.x = e.clientX; p.y = e.clientY;
     if (Math.hypot(e.clientX - p.x0, e.clientY - p.y0) > 14) p.moved = true;
     const role = myRole();
-    const [wxp, wyp] = toWorld(e);
-    if (role === "infantry" && !shielding.current) {
-      const h = myHero();
-      if (h && !h.down) {
-        h.x = Math.max(30, Math.min(W - 30, wxp));
-        h.y = Math.max(90, Math.min(WALL_Y - 15, wyp)); // כל שדה הקרב פתוח
-        const tn = performance.now();
-        if (tn - lastPosSend.current > 140) {
-          lastPosSend.current = tn;
-          conn.sendGame({ a: "wl_pos", x: Math.round(h.x), y: Math.round(h.y) });
-        }
-      }
+    if (role === "infantry" && joyRef.current.active) {
+      joyRef.current.kx = e.clientX; joyRef.current.ky = e.clientY;
     } else if (role === "mg" && firing.current) {
-      aimRef.current = { tx: wxp, ty: 100, power: 1 };
+      const ax = mgAimX(e);
+      aimRef.current = { tx: ax, ty: 100, power: 1 };
       const tn = performance.now();
       if (tn - lastAimSend.current > 160) {
         lastAimSend.current = tn;
-        conn.sendGame({ a: "wl_aim", x: Math.round(wxp) });
+        conn.sendGame({ a: "wl_aim", x: Math.round(ax) });
       }
     } else if (role === "archer" || role === "cannon") {
-      // קשת: מתיחה — ככל שמושכים למטה, יורים רחוק יותר (Angry Birds הפוך פשוט: היעד = מיקום האצבע)
-      aimRef.current = { tx: wxp, ty: Math.max(60, Math.min(wyp, WALL_Y - 60)), power: Math.min(1, Math.max(0.35, (WALL_Y - wyp) / WALL_Y + 0.3)) };
+      const [wxp, wyp] = toWorld(e);
+      aimRef.current = { tx: wxp, ty: Math.max(60, Math.min(wyp, WALL_Y - 60)), power: 1 };
     }
   }
 
@@ -689,37 +819,18 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
     if (!p.down) return;
     p.down = false;
     const role = myRole();
-    const dur = performance.now() - p.t0;
+    joyRef.current.active = false;
     if (role === "mg") {
       firing.current = false;
       conn.sendGame({ a: "wl_fire", on: false });
       aimRef.current = null;
-    } else if (role === "archer") {
-      if (aimRef.current) {
-        conn.sendGame({ a: "wl_shot", tx: Math.round(aimRef.current.tx), ty: Math.round(aimRef.current.ty), power: aimRef.current.power });
-        const h = myHero();
-        projs.current.push({ kind: "arrow", fx: h?.slot[0] ?? 500, fy: h?.slot[1] ?? WALL_Y + 60, tx: aimRef.current.tx, ty: aimRef.current.ty, t0: performance.now(), T: 280 + Math.hypot(aimRef.current.tx - (h?.slot[0] ?? 500), aimRef.current.ty - (h?.slot[1] ?? 0)) * 0.35, fire: (h?.tier ?? 1) >= 2, by: me });
-        Sfx.tick(); vibrate(25);
-      }
-      aimRef.current = null;
-    } else if (role === "cannon") {
-      if (aimRef.current && Date.now() >= cannonReady.current) {
+    } else if (role === "archer" || role === "cannon") {
+      if (role === "cannon" && aimRef.current && Date.now() >= cannonReady.current) {
         conn.sendGame({ a: "wl_boom", tx: Math.round(aimRef.current.tx), ty: Math.round(aimRef.current.ty) });
         cannonReady.current = Date.now() + 3600;
         setUi((u) => u + 1);
       }
       aimRef.current = null;
-    } else if (role === "infantry") {
-      // החלקה מהירה = מכה
-      const dx = p.x - p.x0, dy = p.y - p.y0;
-      const dist = Math.hypot(dx, dy);
-      if (dur < 320 && dist > 24) {
-        const dir = Math.atan2(dy, dx);
-        conn.sendGame({ a: "wl_swing", dir });
-        const h = myHero();
-        if (h) { fxs.current.push({ kind: "slash", x: h.x, y: h.y, t0: performance.now(), dir }); lunges.current.set(me, { t0: performance.now(), dir }); }
-        Sfx.tick(); vibrate(30);
-      }
     }
   }
 
@@ -805,13 +916,14 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
             onPointerDown={(e) => { e.stopPropagation(); shielding.current = true; conn.sendGame({ a: "wl_shield", on: true }); setUi((u) => u + 1); }}
             onPointerUp={() => { shielding.current = false; conn.sendGame({ a: "wl_shield", on: false }); setUi((u) => u + 1); }}
             onPointerLeave={() => { if (shielding.current) { shielding.current = false; conn.sendGame({ a: "wl_shield", on: false }); setUi((u) => u + 1); } }}>
-            🛡️
+            🛡️<small>מגן</small>
           </button>
         )}
         <div className="wl-hp"><div style={{ width: `${(myHp / Math.max(1, myMax)) * 100}%` }} /></div>
       </div>
 
       {banner && <div className="wl-banner popin">{banner}</div>}
+      {hint && <div className="wl-hint popin">{hint}</div>}
       {toast && <div className="toast" style={{ zIndex: 70 }}>{toast}</div>}
       {down && <div className="wl-downveil"><b>💀 נפלת!</b><span className="sub">חוזר בעוד רגע...</span></div>}
 

@@ -66,6 +66,16 @@ export const Sfx = {
     notes.push({ f: 520, t: 26 * 0.054, d: 0.3, type: "triangle", g: 0.25 }); // "צ'א!" בסוף
     playNotes(notes, inSec(delayMs));
   },
+  /** צליל-הריגה אישי: לכל שחקן פיץ' משלו (פנטטוני) — כל השולחן שומע מי קוטל */
+  killNote: (idx: number, mine = false, delayMs = 0) => {
+    const SCALE = [523, 659, 784, 880, 1046, 1175, 1319, 1568]; // C E G A C D E G
+    const f = SCALE[((idx % SCALE.length) + SCALE.length) % SCALE.length];
+    const g = mine ? 0.3 : 0.14;
+    playNotes([
+      { f, t: 0, d: 0.09, type: "triangle", g },
+      { f: f * 1.5, t: 0.055, d: 0.14, type: "triangle", g: g * 0.8 },
+    ], inSec(delayMs));
+  },
   boom: (delayMs = 0) => {
     const c = ac(); if (!c) return;
     const when = c.currentTime + inSec(delayMs);
