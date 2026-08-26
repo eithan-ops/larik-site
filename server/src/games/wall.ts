@@ -121,6 +121,8 @@ export function createWall(ctx: GameCtx): GameInstance {
   const pendingLevels = new Map<string, number>(); // עליות רמה שמחכות לדראפט
 
   const alive = () => ctx.participants().filter((p) => p.connected).map((p) => p.id);
+  /** רק שחקנים שיש להם גיבור — מצטרף באמצע קרב הוא צופה עד הריצה הבאה (מגן מקריסת הטיק!) */
+  const fighters = () => alive().filter((p) => heroes.has(p));
   const hostId = () => ctx.players().find((p) => p.isHost)?.id;
   const st = (pid: string) => (stats[pid] ??= { kills: 0, dmg: 0, saves: 0, deaths: 0 });
   const now = () => ctx.now();
@@ -129,12 +131,13 @@ export function createWall(ctx: GameCtx): GameInstance {
   const posOf = (e: Enemy, t: number): [number, number] => {
     if (e.state === "fight" || e.state === "wall") return [e.x0, e.y0];
     const dt = t - e.at;
-    return [e.x0 + e.wob * Math.sin(dt / 700), e.y0 + (e.speed * dt) / 1000];
+    // clamp לקו החומה — אויב לעולם לא "בורח" מתחת למסך (זהה ללקוח)
+    return [e.x0 + e.wob * Math.sin(dt / 700), Math.min(WALL_Y - 45, e.y0 + (e.speed * dt) / 1000)];
   };
 
   /* ---- הקצאת עמדות ---- */
   function assignSlots() {
-    const ps = alive();
+    const ps = fighters();
     const byRole: Record<WallRole, string[]> = { infantry: [], archer: [], cannon: [], mg: [] };
     for (const p of ps) byRole[heroes.get(p)!.role].push(p);
     // חלוצים — פרוסים ברצועה; תפקידי חומה — משבצות לאורך הקו
@@ -194,17 +197,26 @@ export function createWall(ctx: GameCtx): GameInstance {
       ctx.timer(delay, () => { if (token === t && phase === "wave") spawn(type, t); else spawnsLeft--; });
     }
     if (w % 5 === 0) ctx.timer(at - now() + duration * 0.35, () => { if (token === t && phase === "wave") spawn("boss", t); else spawnsLeft--; });
-    // טיק
+    // טיק — עמיד לשגיאות: חריגה בפריים אחד לעולם לא מקפיאה את המשחק
     ctx.timer(at - now(), function tick() {
       if (token !== t || phase !== "wave") return;
-      simTick(t);
+      try { simTick(t); } catch (err) { console.error("[wall] simTick error:", err); }
       ctx.timer(100, tick);
     });
-    // סוף גל: כשנגמר הזמן וכל האויבים מתו
+    // סוף גל: כשנגמר הזמן וכל האויבים מתו; רשת ביטחון נגד תקועים
     ctx.timer(at - now() + duration, function checkEnd() {
       if (token !== t || phase !== "wave") return;
-      if (enemies.size === 0 && spawnsLeft <= 0) waveClear();
-      else ctx.timer(500, checkEnd);
+      if (enemies.size === 0 && spawnsLeft <= 0) return waveClear();
+      // רשת ביטחון: 25 שניות אחרי סוף הזמן — מפנים שאריות תקועות ומסיימים את הגל
+      if (now() > waveEndsAt + 25_000) {
+        for (const e of [...enemies.values()]) {
+          enemies.delete(e.id);
+          ctx.broadcast({ a: "wl_hit", id: e.id, hp: 0, by: "" });
+        }
+        spawnsLeft = 0;
+        return waveClear();
+      }
+      ctx.timer(500, checkEnd);
     });
   }
 
@@ -234,7 +246,7 @@ export function createWall(ctx: GameCtx): GameInstance {
   /* ---- הטיק המרכזי ---- */
   function simTick(t: number) {
     const tn = now();
-    const infantry = alive().filter((p) => { const h = heroes.get(p); return h && h.role === "infantry" && !h.down; });
+    const infantry = fighters().filter((p) => { const h = heroes.get(p); return h && h.role === "infantry" && !h.down; });
 
     for (const e of [...enemies.values()]) {
       const [ex, ey] = posOf(e, tn);
@@ -242,7 +254,7 @@ export function createWall(ctx: GameCtx): GameInstance {
       if (e.state === "walk") {
         // צלף: נעצר ונועל על גיבור
         if (e.type === "sniper" && ey >= 470) {
-          const targets = alive().filter((p) => !heroes.get(p)!.down);
+          const targets = fighters().filter((p) => !heroes.get(p)!.down);
           if (targets.length) {
             const target = targets[Math.floor(Math.random() * targets.length)];
             e.target = target; e.sniperFireAt = tn + 3200;
@@ -313,7 +325,7 @@ export function createWall(ctx: GameCtx): GameInstance {
     }
 
     // מקלענים
-    for (const p of alive()) {
+    for (const p of fighters()) {
       const h = heroes.get(p)!;
       if (h.role !== "mg" || h.down) continue;
       if (h.firing && tn < h.jamUntil) h.firing = false;
@@ -344,7 +356,7 @@ export function createWall(ctx: GameCtx): GameInstance {
 
     // שידור מיקומי גיבורים (כל 300ms)
     if (Math.floor(tn / 300) !== Math.floor((tn - 100) / 300)) {
-      ctx.broadcast({ a: "wl_ppos", ps: alive().map((p) => { const h = heroes.get(p)!; return [p, Math.round(h.x), Math.round(h.y)] as [string, number, number]; }) });
+      ctx.broadcast({ a: "wl_ppos", ps: fighters().map((p) => { const h = heroes.get(p)!; return [p, Math.round(h.x), Math.round(h.y)] as [string, number, number]; }) });
     }
   }
 
@@ -492,13 +504,13 @@ export function createWall(ctx: GameCtx): GameInstance {
       if (phase !== "over") return;
       ctx.broadcast({
         a: "wl_over", wave, bestWave, nearMiss, mvp: mvpId(),
-        stats: Object.fromEntries(alive().map((p) => [p, st(p)])),
+        stats: Object.fromEntries(fighters().map((p) => [p, st(p)])),
       });
     });
   }
 
   const score = (p: string) => { const s = st(p); return s.kills * 3 + s.dmg / 50 + s.saves * 5 - s.deaths * 2; };
-  function mvpId() { const ps = alive(); return [...ps].sort((a, b) => score(b) - score(a))[0]; }
+  function mvpId() { const ps = fighters(); return [...ps].sort((a, b) => score(b) - score(a))[0]; }
 
   function finish() {
     phase = "done"; token++;
@@ -516,7 +528,19 @@ export function createWall(ctx: GameCtx): GameInstance {
   }
 
   function resetRun() {
-    for (const p of alive()) {
+    alive().forEach((p, i) => {
+      // מי שהצטרף אחרי ההתחלה מקבל גיבור עכשיו — אף אחד לא נשאר בלי
+      if (!heroes.has(p)) {
+        heroes.set(p, {
+          role: defaultRole(i), slot: [GATE_X, 1100], x: GATE_X, y: 1100,
+          hp: 150, max: 150, down: false, upAt: 0, shield: false,
+          mods: baseMods(), level: 1, xp: 0, tier: 1, picks: {},
+          firing: false, aimX: GATE_X, heat: 0, jamUntil: 0,
+          lastSwing: 0, lastShot: 0, cannonReadyAt: 0, lastXpMsg: 0,
+        });
+      }
+    });
+    for (const p of fighters()) {
       const h = heroes.get(p)!;
       const isInf = h.role === "infantry";
       h.hp = h.max = isInf ? 150 : 100;
@@ -554,7 +578,18 @@ export function createWall(ctx: GameCtx): GameInstance {
 
     onMessage(pid: string, d: GameClientMsg) {
       const m = d as WallClientMsg;
-      const h = heroes.get(pid);
+      let h = heroes.get(pid);
+      if (!h && phase === "setup") {
+        // מצטרף בזמן מסך ההיערכות — מקבל גיבור ויכול לבחור תפקיד
+        h = {
+          role: defaultRole(heroes.size), slot: [GATE_X, 1100], x: GATE_X, y: 1100,
+          hp: 150, max: 150, down: false, upAt: 0, shield: false,
+          mods: baseMods(), level: 1, xp: 0, tier: 1, picks: {},
+          firing: false, aimX: GATE_X, heat: 0, jamUntil: 0,
+          lastSwing: 0, lastShot: 0, cannonReadyAt: 0, lastXpMsg: 0,
+        };
+        heroes.set(pid, h);
+      }
       if (!h) return;
       switch (m.a) {
         case "wl_role": {

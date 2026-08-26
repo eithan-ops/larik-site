@@ -72,6 +72,7 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
   const fxs = useRef<Fx[]>([]);
   const streams = useRef(new Map<string, number>()); // מקלען → aimX
   const phaseRef = useRef(phase); phaseRef.current = phase;
+  const waveRef = useRef(wave); waveRef.current = wave;
   // downRef מוגדר למטה עם שאר ה-refs — משוקף כאן אחרי ההגדרה
   const rolesRef = useRef(roles); rolesRef.current = roles;
   const camX = useRef(500);
@@ -104,7 +105,8 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
   const posOf = (e: EnemyV, t: number): [number, number] => {
     if (e.state === "fight" || e.state === "wall") return [e.x0, e.y0];
     const dt = t - e.at;
-    return [e.x0 + e.wob * Math.sin(dt / 700), e.y0 + (e.speed * dt) / 1000];
+    // clamp לקו החומה — גם אם השרת שותק, אויב לא ממשיך לרדת מתחת למסך (זהה לשרת)
+    return [e.x0 + e.wob * Math.sin(dt / 700), Math.min(WALL_Y - 45, e.y0 + (e.speed * dt) / 1000)];
   };
 
   /* ---- אירועי שרת ---- */
@@ -726,6 +728,15 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
       ctx.fillStyle = "#ff5c5ccc";
       ctx.beginPath(); ctx.arc(jox + jdx, joy2 + jdy, 24, 0, 7); ctx.fill();
     }
+
+    // דיבאג/בדיקות: מצב חשוף לבוטים של ה-E2E (זול — רץ פעם בפריים)
+    (window as unknown as { __wlDbg?: unknown }).__wlDbg = {
+      wave: waveRef.current, phase: phaseRef.current, vw: cw, vh: chh,
+      enemies: [...enemies.current.values()].filter((e) => e.deadAt === undefined).map((e) => {
+        const [x, y] = posOf(e, now);
+        return { x, y, sx: wx(x), sy: wy(y), type: e.type };
+      }),
+    };
 
     // מיני-מפה: פס עליון של כל החזית
     const mmH = 34;
