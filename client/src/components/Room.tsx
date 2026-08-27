@@ -192,6 +192,7 @@ export default function Room({ code }: { code: string }) {
       <>
         {!isHost && <button className="exit-fab" onClick={leaveRoom}>🚪 יציאה</button>}
         <Ceremony room={room} me={me} isHost={isHost}
+          onSaveGroup={(name) => conn.send({ t: "save_group", name })}
           onBackToLobby={() => conn.send({ t: "back_to_lobby" })} />
       </>
     );

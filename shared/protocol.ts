@@ -5,6 +5,8 @@
 
 export interface PlayerInfo {
   id: string;
+  /** מזהה יציב בין ערבים, נשמר במכשיר — הבסיס ל"החבורה שלנו". נפרד מ-id של החדר. */
+  gpid?: string;
   name: string;
   emoji: string;
   armed: boolean; // עבר את מסך "חמש את הטלפון"
@@ -51,6 +53,28 @@ export interface Award {
   headline?: string;
 }
 
+/* ---- החבורה שלנו ---- */
+
+/** שיא שנשבר בחבורה — "האצבע הכי מהירה בחבורה: 0.38" */
+export interface GroupRecord {
+  label: string;
+  pid: string;
+  name: string;
+  value: number;
+  at: number;
+}
+
+/** תקציר החבורה שנשלח ללקוח — קטן בכוונה, בלי שדות פנימיים */
+export interface GroupSummary {
+  id: string;
+  name: string;
+  evenings: number;
+  seasonNo: number;
+  daysLeftInSeason: number;
+  table: { pid: string; name: string; emoji: string; points: number; evenings: number }[];
+  records: GroupRecord[];
+}
+
 export interface CeremonyInfo {
   title: string;
   winnerId?: string;
@@ -63,6 +87,8 @@ export interface CeremonyInfo {
   awards?: Record<string, Award>;
   /** כמה משחקים כבר שוחקו בערב הזה — מופיע על הכרטיס ("ערב #7") */
   gamesPlayed?: number;
+  /** החבורה שהחדר משויך אליה — טבלת עונה, שיאים, ושם אמיתי על הכרטיס */
+  group?: GroupSummary;
 }
 
 export interface RoomSnapshot {
@@ -77,11 +103,15 @@ export interface RoomSnapshot {
   gamePids?: string[];
   /** מי לחץ "הבנתי" על הסבר המשחק שנבחר (בלובי) */
   gotIt?: string[];
+  /** החבורה שהחדר משויך אליה (אם יש) — מוצג כבר בלובי: "הרביעייה · ערב #7" */
+  group?: GroupSummary;
 }
 
 /* ---- לקוח → שרת ---- */
 export type ClientMsg =
-  | { t: "join"; name: string; emoji: string; rejoinId?: string }
+  | { t: "join"; name: string; emoji: string; rejoinId?: string; gpid?: string }
+  | { t: "save_group"; name: string }   // מארח בלבד: הפיכת הערב הזה לחבורה שנשמרת
+  | { t: "rename_group"; name: string } // מארח בלבד
   | { t: "arm" } // הטלפון חומש (אודיו+חיישנים)
   | { t: "ping"; t0: number } // סנכרון שעונים
   | { t: "select_game"; gameId: string; config?: unknown } // מארח בלבד

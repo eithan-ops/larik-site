@@ -42,6 +42,10 @@ export interface EndCardData {
   totalPlayers: number;
   gamesPlayed: number;  // "ערב #7"
   roomCode: string;
+  /** שם החבורה — מה שהופך את הכרטיס מ"חדר KFRT" ל"הרביעייה מהמילואים" */
+  groupName?: string;
+  /** מספר הערב בעונה של החבורה (לא מספר המשחק בערב הזה) */
+  groupEvening?: number;
   joinUrl: string;      // מה שה-QR מוביל אליו
   style?: CardStyle;    // כפייה ידנית (לתצוגות ובדיקות)
 }
@@ -150,6 +154,15 @@ function band(ctx: CanvasRenderingContext2D, text: string, cy: number, bg: strin
   ctx.restore();
 }
 
+/**
+ * השורה שמזהה את הערב. חבורה שמורה מנצחת קוד חדר —
+ * "הרביעייה מהמילואים · ערב 7" הוא משהו שמראים לחברים; "חדר KFRT" הוא לא.
+ */
+function groupLine(d: EndCardData): string {
+  if (d.groupName) return `${d.groupName} · ערב ${Math.max(1, d.groupEvening ?? 1)}`;
+  return `חדר ${d.roomCode} · ערב #${Math.max(1, d.gamesPlayed)}`;
+}
+
 async function qrImage(url: string, dark: string, light: string): Promise<HTMLCanvasElement> {
   const c = document.createElement("canvas");
   await QRCode.toCanvas(c, url, { width: 190, margin: 1, color: { dark, light } });
@@ -174,7 +187,7 @@ async function footer(ctx: CanvasRenderingContext2D, d: EndCardData, onDark: boo
   ctx.font = `700 34px ${BODY}`;
   ctx.fillStyle = onDark ? "rgba(242,233,216,.75)" : "rgba(23,19,16,.65)";
   ctx.fillText("סרקו והצטרפו לערב", W - 92, y + 112);
-  ctx.fillText(`חדר ${d.roomCode} · ערב #${Math.max(1, d.gamesPlayed)}`, W - 92, y + 160);
+  ctx.fillText(groupLine(d), W - 92, y + 160);
   ctx.textAlign = "center";
 }
 
@@ -346,7 +359,7 @@ async function drawPoster(ctx: CanvasRenderingContext2D, d: EndCardData) {
     wrapCenter(ctx, `"${d.award.headline}"`, W / 2, 1200, W - 260, 42, BODY, "700");
   }
 
-  band(ctx, `🏆 ערב #${Math.max(1, d.gamesPlayed)} · ${d.points} נק'`, 1400, BLUE, CREAM, 48, 1.5);
+  band(ctx, `🏆 ערב #${Math.max(1, d.groupEvening ?? d.gamesPlayed)} · ${d.points} נק'`, 1400, BLUE, CREAM, 48, 1.5);
 
   ctx.fillStyle = "rgba(242,233,216,.55)";
   ctx.font = `700 30px ${BODY}`;
@@ -373,7 +386,7 @@ async function drawNews(ctx: CanvasRenderingContext2D, d: EndCardData) {
 
   ctx.fillStyle = "rgba(23,19,16,.6)";
   ctx.font = `700 30px ${BODY}`;
-  ctx.fillText(`גיליון #${Math.max(1, d.gamesPlayed)} · מהדורת חדר ${d.roomCode} · המחיר: חינם`, W / 2, 278);
+  ctx.fillText(`גיליון #${Math.max(1, d.groupEvening ?? d.gamesPlayed)} · מהדורת ${d.groupName ?? `חדר ${d.roomCode}`} · המחיר: חינם`, W / 2, 278);
 
   // הכותרת הראשית היא ה"סיפור" של התואר — זה מה שמצחיק בשיתוף
   ctx.fillStyle = INK;

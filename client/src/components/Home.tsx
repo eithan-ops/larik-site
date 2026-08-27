@@ -3,6 +3,7 @@ import { navigate } from "../App";
 import { createRoom } from "../lib/connection";
 import { track } from "../lib/analytics";
 import QRScanner from "./QRScanner";
+import { myGroups, openRoomForGroup, type SavedGroup } from "../lib/group";
 
 /**
  * מסך הבית — "אלבום המדבקות קם לחיים" 🎪
@@ -20,6 +21,8 @@ export default function Home() {
   const [joining, setJoining] = useState(false);
   const [err, setErr] = useState("");
   const [shared, setShared] = useState("");
+  // נקרא פעם אחת — רשימת החבורות לא משתנה תוך כדי שהמסך פתוח
+  const [groups] = useState<SavedGroup[]>(() => myGroups());
 
   /** שיתוף: תמונת ההירו + משפט + קישור. נופל ברכות לוואטסאפ / העתקה. */
   async function share() {
@@ -63,6 +66,16 @@ export default function Home() {
     setBusy(false);
   }
 
+  /** ערב נוסף לחבורה קיימת — הנקודות ייזקפו לאותה עונה */
+  async function hostForGroup(g: SavedGroup) {
+    setBusy(true);
+    setErr("");
+    const c = await openRoomForGroup(g.id);
+    if (c) { track("room_created", { from: "group" }); navigate(`/r/${c}`); }
+    else setErr("השרת מתעורר... נסו שוב עוד כמה שניות 😴");
+    setBusy(false);
+  }
+
   function onScan(text: string) {
     setScanning(false);
     const m = text.match(/\/r\/([a-zA-Z]{4})/) || text.match(/^([a-zA-Z]{4})$/);
@@ -93,8 +106,15 @@ export default function Home() {
       </div>
 
       <div className="home-actions">
-        <button className="mega-cta" onClick={host} disabled={busy}>
-          {busy ? "פותח חדר..." : <>🎉 פתח חדר חדש</>}
+        {/* חבורה שנשמרה עולה מעל "חדר חדש" — למי שכבר יש עונה, זו הפעולה שהוא בא בשבילה */}
+        {groups.length > 0 && (
+          <button className="mega-cta" onClick={() => hostForGroup(groups[0])} disabled={busy}>
+            {busy ? "פותח חדר..." : <>🏅 ערב של {groups[0].name}</>}
+          </button>
+        )}
+
+        <button className={groups.length ? "shelf-cta" : "mega-cta"} onClick={host} disabled={busy}>
+          {busy && !groups.length ? "פותח חדר..." : <>🎉 פתח חדר חדש</>}
         </button>
 
         <button className="shelf-cta" onClick={() => { track("shelf_open"); navigate("/play"); }}>

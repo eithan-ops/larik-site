@@ -11,6 +11,7 @@ import { readFileSync, existsSync, statSync } from "fs";
 import { join, extname, resolve } from "path";
 import { randomUUID } from "crypto";
 import { RoomManager, Transport } from "./engine";
+import { Groups } from "./groups";
 import { generateAiDeck, aiDeckAvailable } from "./aideck";
 import { statRoomCreated, statPlayerJoined, statGameStarted, statConcurrent, statsPage, STATS_KEY, stats } from "./stats";
 import { CATALOG } from "../../shared/protocol";
@@ -42,6 +43,8 @@ const transport: Transport = {
   },
 };
 
+const groups = new Groups();
+
 const manager = new RoomManager(transport, {
   forehead: createForehead,
   pods: createPods,
@@ -56,7 +59,7 @@ const manager = new RoomManager(transport, {
   show: createShow,
   impostor: createImpostor,
   wall: createWall,
-}, { playerJoined: statPlayerJoined, gameStarted: statGameStarted });
+}, { playerJoined: statPlayerJoined, gameStarted: statGameStarted }, groups);
 setInterval(() => manager.cleanup(), 60_000);
 
 /* ---------- HTTP: יצירת חדר + הגשת לקוח ---------- */
@@ -76,9 +79,23 @@ const http = createServer((req, res) => {
     let room;
     if (wanted.length >= 3) room = manager.get(wanted) ?? manager.createRoom(wanted);
     else room = manager.createRoom();
+    // ?g=ABCDE — פתיחת חדר עבור חבורה קיימת, כך שהערב נזקף לעונה שלה
+    const gid = (url.searchParams.get("g") || "").toUpperCase().replace(/[^A-Z]/g, "").slice(0, 8);
+    if (gid) void room.attachGroup(gid);
     res.writeHead(200, { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" });
-    res.end(JSON.stringify({ code: room.code }));
+    res.end(JSON.stringify({ code: room.code, group: gid || undefined }));
     statRoomCreated();
+    return;
+  }
+  // עמוד החבורה — טבלת עונה שאפשר לשתף בלי להיות בחדר
+  if (url.pathname === "/api/group") {
+    const gid = (url.searchParams.get("id") || "").toUpperCase().replace(/[^A-Z]/g, "").slice(0, 8);
+    groups.get(gid)
+      .then((g) => {
+        res.writeHead(g ? 200 : 404, { "Content-Type": "application/json; charset=utf-8", "Access-Control-Allow-Origin": "*" });
+        res.end(JSON.stringify(g ? groups.summarize(g) : { error: "לא נמצאה חבורה כזו" }));
+      })
+      .catch(() => { res.writeHead(503); res.end(JSON.stringify({ error: "האחסון לא זמין" })); });
     return;
   }
   if (url.pathname === "/api/health") {
@@ -158,7 +175,7 @@ wss.on("connection", (ws, req) => {
   ws.on("message", (raw) => {
     let msg: ClientMsg;
     try { msg = JSON.parse(String(raw)); } catch { return; }
-    if (msg.t === "join") room.join(playerId, msg.name, msg.emoji);
+    if (msg.t === "join") room.join(playerId, msg.name, msg.emoji, msg.gpid);
     else room.onMessage(playerId, msg);
   });
 

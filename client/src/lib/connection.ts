@@ -10,6 +10,7 @@
  * 5. פינג מתחדש כל 15 שניות לתיקון סחיפה.
  */
 import type { ClientMsg, ServerMsg, RoomSnapshot, GameServerMsg } from "../../../shared/protocol";
+import { myGpid } from "./group";
 
 export type CueHandler = (d: GameServerMsg, at: number) => void;
 
@@ -62,7 +63,8 @@ export class Connection {
 
     this.ws.onopen = () => {
       this.events.onStatus("open");
-      this.send({ t: "join", name, emoji });
+      // gpid = הזהות היציבה של המכשיר, מה שמאפשר לעונה של החבורה לזכור אותו
+      this.send({ t: "join", name, emoji, gpid: myGpid() });
       this.syncClock();
       this.pingTimer = window.setInterval(() => this.syncClock(), PING_INTERVAL);
     };

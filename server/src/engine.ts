@@ -10,6 +10,8 @@ import type {
 } from "../../shared/protocol";
 import { CATALOG } from "../../shared/protocol";
 import { mergeFacts, computeAwards } from "./awards";
+import { Groups } from "./groups";
+import type { GroupSummary } from "../../shared/protocol";
 
 export interface Transport {
   send(playerId: string, msg: ServerMsg): void;
@@ -84,6 +86,11 @@ export class Room {
   private ceremony?: CeremonyInfo;
   private eveningScores: Record<string, number> = {};
   private eveningFacts: Record<string, PlayerFacts> = {}; // הזיכרון של הערב — מזין את התארים
+  groupId?: string;                    // החבורה שהחדר משויך אליה
+  private groupSummary?: GroupSummary;  // התקציר האחרון — מוצג בלובי ובטקס
+  private groupApplied = 0;             // כמה משחקים כבר נזקפו לעונה (מונע ספירה כפולה)
+  private groupPointsApplied: Record<string, number> = {}; // כמה נקודות כבר נזקפו לכל שחקן
+  private groups?: Groups;
   private winStreak: Record<string, number> = {};         // רצף ניצחונות רץ (לא נשמר בעובדות)
   private wonGameIds: Record<string, Set<string>> = {};   // באילו משחקים שונים ניצח
   private gamesPlayed = 0;
@@ -101,24 +108,37 @@ export class Room {
     transport: Transport,
     gameFactories: Record<string, GameFactory>,
     clock: () => number = () => Date.now(),
-    hooks: StatHooks = {}
+    hooks: StatHooks = {},
+    groups?: Groups
   ) {
     this.code = code;
     this.transport = transport;
     this.gameFactories = gameFactories;
     this.clock = clock;
     this.hooks = hooks;
+    this.groups = groups;
+  }
+
+  /** שיוך החדר לחבורה קיימת — נקרא מיצירת החדר (`/api/create-room?g=...`) */
+  async attachGroup(id: string) {
+    if (!this.groups) return;
+    const g = await this.groups.get(id);
+    if (!g) return;
+    this.groupId = g.id;
+    this.groupSummary = this.groups.summarize(g);
+    this.broadcastRoom();
   }
 
   now() { return this.clock(); }
 
   /* ---------- חיבור שחקנים ---------- */
 
-  join(pid: string, name: string, emoji: string): void {
+  join(pid: string, name: string, emoji: string, gpid?: string): void {
     const existing = this.players.get(pid);
     if (existing) {
       existing.connected = true;
       existing.name = name || existing.name;
+      if (gpid) existing.gpid = gpid;
       // המפעיל חזר תוך זמן החסד — מבטלים את העברת התפקיד ומשחזרים אותו כמפעיל
       if (pid === this.hostId) { clearTimeout(this.hostGrace); this.hostGrace = undefined; existing.isHost = true; }
       // חוזר באמצע משחק שהוא חלק ממנו — המשחק ישדר לו מחדש את המצב
@@ -131,7 +151,7 @@ export class Room {
     } else {
       const isFirst = this.players.size === 0;
       this.players.set(pid, {
-        id: pid, name: name.slice(0, 16) || "שחקן", emoji: emoji || "🙂",
+        id: pid, gpid, name: name.slice(0, 16) || "שחקן", emoji: emoji || "🙂",
         armed: false, connected: true, isHost: isFirst,
       });
       if (isFirst) this.hostId = pid;
@@ -191,6 +211,27 @@ export class Room {
         this.gameConfig = msg.config;
         if (changed) this.gotIt.clear(); // משחק חדש = כולם קוראים הסבר מחדש
         this.broadcastRoom();
+        return;
+      }
+      case "save_group": {
+        // הרגע הנכון היחיד לבקש את זה הוא בסוף ערב מוצלח, כשכולם עוד צוחקים
+        if (pid !== this.hostId || !this.groups || this.groupId) return;
+        const members = [...this.players.values()].map((x) => ({
+          pid: this.stablePid(x), name: x.name, emoji: x.emoji,
+        }));
+        this.groups.create(msg.name, members).then((g) => {
+          this.groupId = g.id;
+          this.groupApplied = 0;
+          // הערב שכבר שוחק נזקף לחבורה מיד — אחרת הוא היה הולך לאיבוד
+          return this.syncGroup();
+        }).catch(() => { /* אחסון נפל — הערב ממשיך בלי עונה */ });
+        return;
+      }
+      case "rename_group": {
+        if (pid !== this.hostId || !this.groups || !this.groupId) return;
+        this.groups.rename(this.groupId, msg.name)
+          .then((g) => { if (g) { this.groupSummary = this.groups!.summarize(g); this.broadcastRoom(); } })
+          .catch(() => { /* לא קריטי */ });
         return;
       }
       case "got_it":
@@ -299,9 +340,52 @@ export class Room {
       eveningScores: { ...this.eveningScores },
       awards: computeAwards(this.eveningFacts),
       gamesPlayed: this.gamesPlayed,
+      group: this.groupSummary,
     };
     this.teardownGame();
     this.phase = "ceremony";
+    this.broadcastRoom();
+    // העונה מתעדכנת אחרי השידור — כשהאחסון עונה, נשלח שידור נוסף עם הטבלה.
+    // הטקס לא מחכה לאף מסד; אם הוא איטי או מת, פשוט אין טבלה.
+    void this.syncGroup().catch(() => { /* best-effort במכוון */ });
+  }
+
+  /**
+   * מזהה יציב לחבורה: מה שהמכשיר שמר, ובהיעדרו מזהה החדר.
+   * הנפילה הזו מכוונת — עדיף חבר שנספר פעמיים מערב שלא נשמר בכלל.
+   */
+  private stablePid(p: PlayerInfo): string {
+    return p.gpid || p.id;
+  }
+
+  /**
+   * זוקף לעונה את המשחקים שעדיין לא נזקפו, ומרענן את התקציר.
+   * נקרא אחרי כל טקס; `groupApplied` הוא מה שמונע ספירה כפולה של אותו ערב.
+   */
+  private async syncGroup(): Promise<void> {
+    if (!this.groups || !this.groupId) return;
+    const first = this.groupApplied === 0;
+    const players = [...this.players.values()].map((p) => {
+      const c = this.ceremony;
+      const winners = c?.winnerIds ?? (c?.winnerId ? [c.winnerId] : []);
+      return {
+        pid: this.stablePid(p),
+        name: p.name,
+        emoji: p.emoji,
+        points: (this.eveningScores[p.id] ?? 0) - (this.groupPointsApplied[p.id] ?? 0),
+        won: winners.includes(p.id),
+        clown: c?.loserId === p.id,
+      };
+    });
+    const factsByStable: Record<string, PlayerFacts> = {};
+    for (const p of this.players.values()) factsByStable[this.stablePid(p)] = this.eveningFacts[p.id] ?? {};
+
+    const g = await this.groups.applyGame(this.groupId, players, factsByStable, first);
+    if (!g) return;
+    for (const p of this.players.values()) this.groupPointsApplied[p.id] = this.eveningScores[p.id] ?? 0;
+    this.groupApplied += 1;
+    this.groupSummary = this.groups.summarize(g);
+    if (this.ceremony) this.ceremony.group = this.groupSummary;
     this.broadcastRoom();
   }
 
@@ -357,6 +441,7 @@ export class Room {
       ceremony: this.ceremony,
       gamePids: this.phase === "game" ? [...this.gamePids] : undefined,
       gotIt: this.phase === "lobby" && this.gameId ? [...this.gotIt] : undefined,
+      group: this.groupSummary,
     };
   }
 }
@@ -371,10 +456,13 @@ export class RoomManager {
   private gameFactories: Record<string, GameFactory>;
   private hooks: StatHooks;
 
-  constructor(transport: Transport, gameFactories: Record<string, GameFactory>, hooks: StatHooks = {}) {
+  private groups?: Groups;
+
+  constructor(transport: Transport, gameFactories: Record<string, GameFactory>, hooks: StatHooks = {}, groups?: Groups) {
     this.transport = transport;
     this.gameFactories = gameFactories;
     this.hooks = hooks;
+    this.groups = groups;
   }
 
   createRoom(fixedCode?: string): Room {
@@ -384,7 +472,7 @@ export class RoomManager {
         code = Array.from({ length: 4 }, () => CODE_CHARS[Math.floor(Math.random() * CODE_CHARS.length)]).join("");
       } while (this.rooms.has(code));
     }
-    const room = new Room(code, this.transport, this.gameFactories, undefined, this.hooks);
+    const room = new Room(code, this.transport, this.gameFactories, undefined, this.hooks, this.groups);
     this.rooms.set(code, room);
     return room;
   }

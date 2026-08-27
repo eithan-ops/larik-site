@@ -3,14 +3,17 @@ import type { RoomSnapshot } from "../../../shared/protocol";
 import { Sfx, vibrate } from "../lib/audio";
 import { shareEveningBoard } from "../lib/sharecard";
 import { shareEndCard } from "../lib/endcard";
+import { rememberGroup } from "../lib/group";
 import { track } from "../lib/analytics";
 
 const COLORS = ["#8b5cf6", "#ec4899", "#ffc93c", "#34e89e", "#5c8aff"];
 const DRUMROLL_MS = 1700;
 
 /** טקס הסיום האחיד — תיפוף מתח, ואז: המנצח מוזהב, הליצן מוכרז אצל כולם */
-export default function Ceremony({ room, me, isHost, onBackToLobby }: {
-  room: RoomSnapshot; me: string; isHost: boolean; onBackToLobby: () => void;
+export default function Ceremony({ room, me, isHost, onSaveGroup, onBackToLobby }: {
+  room: RoomSnapshot; me: string; isHost: boolean;
+  onSaveGroup: (name: string) => void;
+  onBackToLobby: () => void;
 }) {
   const c = room.ceremony!;
   const winnerIds = c.winnerIds ?? (c.winnerId ? [c.winnerId] : []);
@@ -23,7 +26,15 @@ export default function Ceremony({ room, me, isHost, onBackToLobby }: {
   const [revealed, setRevealed] = useState(false);
   const [shareMsg, setShareMsg] = useState("");
   const [carding, setCarding] = useState(false);
+  const [groupName, setGroupName] = useState("");
+  const [namingGroup, setNamingGroup] = useState(false);
   const myAward = c.awards?.[me];
+  const group = c.group ?? room.group;
+
+  // חבורה שנוצרה או שוחקה — נשמרת במכשיר, כך שהיא תופיע במסך הבית בפעם הבאה
+  useEffect(() => {
+    if (group) rememberGroup(group.id, group.name);
+  }, [group?.id, group?.name]);
 
   useEffect(() => {
     Sfx.drumroll();
@@ -71,6 +82,8 @@ export default function Ceremony({ room, me, isHost, onBackToLobby }: {
         totalPlayers: ranked.length || room.players.length,
         gamesPlayed: c.gamesPlayed ?? 1,
         roomCode: room.code,
+        groupName: group?.name,
+        groupEvening: group?.evenings,
         joinUrl: `${location.origin}/r/${room.code}`,
       });
       if (out === "downloaded") { setShareMsg("הכרטיס ירד — שלחו אותו לחבר'ה 💬"); setTimeout(() => setShareMsg(""), 3000); }
@@ -191,6 +204,60 @@ export default function Ceremony({ room, me, isHost, onBackToLobby }: {
           );
         })}
       </div>
+
+      {/* החבורה: הרגע הנכון היחיד לבקש את זה הוא כאן, כשהערב הצליח וכולם עוד צוחקים */}
+      {group ? (
+        <div className="card popin" style={{ marginTop: 12, width: "100%", maxWidth: 340 }}>
+          <div className="sub" style={{ marginBottom: 6 }}>
+            🏅 {group.name} · עונה {group.seasonNo} · ערב {group.evenings}
+          </div>
+          {group.table.slice(0, 6).map((m, i) => (
+            <div key={m.pid} style={{
+              display: "flex", justifyContent: "space-between", alignItems: "center",
+              padding: "4px 10px", fontSize: i === 0 ? 15.5 : 14.5,
+              fontWeight: i === 0 ? 800 : 500,
+              background: i === 0 ? "rgba(255,201,60,.1)" : undefined, borderRadius: 10,
+            }}>
+              <span>{i === 0 ? "🥇" : `${i + 1}.`} {m.emoji} {m.name}</span>
+              <b style={{ color: i === 0 ? "var(--gold)" : "var(--money)" }}>{m.points}</b>
+            </div>
+          ))}
+          {group.records[0] && (
+            <p className="sub" style={{ marginTop: 6, fontSize: 12 }}>
+              {group.records[0].label}: <b>{group.records[0].name}</b>
+            </p>
+          )}
+          <p className="sub" style={{ marginTop: 4, fontSize: 11.5 }}>
+            העונה נסגרת בעוד {group.daysLeftInSeason} ימים
+          </p>
+        </div>
+      ) : isHost && (
+        namingGroup ? (
+          <div className="card popin" style={{ marginTop: 12, width: "100%", maxWidth: 340 }}>
+            <div className="sub" style={{ marginBottom: 6 }}>איך קוראים לחבורה?</div>
+            <input
+              autoFocus value={groupName} maxLength={24}
+              onChange={(e) => setGroupName(e.target.value)}
+              placeholder="הרביעייה מהמילואים"
+              style={{
+                width: "100%", padding: "10px 12px", borderRadius: 12, fontSize: 16,
+                border: "2px solid var(--line2)", background: "var(--card2)", color: "var(--text)",
+              }}
+            />
+            <button
+              className="btn gold" style={{ marginTop: 10 }}
+              disabled={!groupName.trim()}
+              onClick={() => { Sfx.ding(); onSaveGroup(groupName.trim()); setNamingGroup(false); }}
+            >
+              שמרו את החבורה 🏅
+            </button>
+          </div>
+        ) : (
+          <button className="btn gold" style={{ marginTop: 12, maxWidth: 340 }} onClick={() => setNamingGroup(true)}>
+            🏅 שמרו את החבורה ופתחו עונה
+          </button>
+        )
+      )}
 
       <button className="btn ghost" style={{ marginTop: 10, maxWidth: 340 }} onClick={share}>
         📤 שתפו את לוח הערב
