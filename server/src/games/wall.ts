@@ -246,6 +246,11 @@ export function createWall(ctx: GameCtx): GameInstance {
   /* ---- הטיק המרכזי ---- */
   function simTick(t: number) {
     const tn = now();
+    // הקמת נפולים — לפי שעון, לא לפי טיימר תלוי-token
+    for (const p of fighters()) {
+      const h = heroes.get(p)!;
+      if (h.down && tn >= h.upAt) reviveHero(p, h);
+    }
     const infantry = fighters().filter((p) => { const h = heroes.get(p); return h && h.role === "infantry" && !h.down; });
 
     for (const e of [...enemies.values()]) {
@@ -358,6 +363,13 @@ export function createWall(ctx: GameCtx): GameInstance {
     if (Math.floor(tn / 300) !== Math.floor((tn - 100) / 300)) {
       ctx.broadcast({ a: "wl_ppos", ps: fighters().map((p) => { const h = heroes.get(p)!; return [p, Math.round(h.x), Math.round(h.y)] as [string, number, number]; }) });
     }
+    // חום אמיתי למקלענים (5Hz) — המד בלקוח כבר לא מנחש ולא משקר עם "קירור-על"
+    if (Math.floor(tn / 200) !== Math.floor((tn - 100) / 200)) {
+      for (const p of fighters()) {
+        const h = heroes.get(p)!;
+        if (h.role === "mg") ctx.sendTo(p, { a: "wl_heat", heat: Math.round(h.heat) });
+      }
+    }
   }
 
   function explode(e: Enemy, heroPid?: string) {
@@ -381,16 +393,19 @@ export function createWall(ctx: GameCtx): GameInstance {
       h.hp = 0; h.down = true; h.upAt = now() + 3500;
       st(pid).deaths++;
       ctx.broadcast({ a: "wl_hero", pid, hp: 0, max: h.max, down: true, upAt: h.upAt });
-      const t = token;
-      ctx.timer(3500, () => {
-        if (token !== t || (phase !== "wave" && phase !== "breath")) return;
-        h.down = false; h.hp = h.max;
-        if (h.role === "infantry") { h.x = GATE_X; h.y = 1180; }
-        ctx.broadcast({ a: "wl_hero", pid, hp: h.hp, max: h.max });
-      });
+      // ההקמה נעשית בטיק לפי upAt (ולא בטיימר תלוי-token) — אחרת נפילה בסוף גל
+      // הייתה משאירה את השחקן מת עד סוף הריצה. רשת נוספת: waveClear מקים את כולם.
     } else {
       ctx.broadcast({ a: "wl_hero", pid, hp: Math.round(h.hp), max: h.max });
     }
+  }
+
+  /** מקים גיבור שנפל (בטיק או בסוף גל) */
+  function reviveHero(pid: string, h: Hero, hpFrac = 1) {
+    h.down = false;
+    h.hp = Math.max(1, Math.round(h.max * hpFrac));
+    if (h.role === "infantry") { h.x = GATE_X; h.y = 1180; }
+    ctx.broadcast({ a: "wl_hero", pid, hp: h.hp, max: h.max, down: false });
   }
 
   function damageEnemy(e: Enemy, dmg: number, by: string, crit = false) {
@@ -411,6 +426,12 @@ export function createWall(ctx: GameCtx): GameInstance {
   }
 
   /* ---- XP ודראפט ---- */
+  /** הלקוח מכייל איתם את שערי הקלט שלו — בלעדיהם "קצב אש" ו"זריזות" לא מורגשים בכלל */
+  function sendMods(pid: string) {
+    const h = heroes.get(pid);
+    if (!h) return;
+    ctx.sendTo(pid, { a: "wl_mods", rate: h.mods.rate, speed: h.mods.speed });
+  }
   const xpNeed = (lvl: number) => Math.round(10 * Math.pow(1.35, lvl - 1));
   function giveXp(pid: string, amount: number) {
     const h = heroes.get(pid)!;
@@ -472,8 +493,7 @@ export function createWall(ctx: GameCtx): GameInstance {
       case "shieldstr": m.shieldStr += 1; break;
       case "lifesteal": m.lifesteal += 1; break;
     }
-    const info = ctx.players().find((p) => p.id === pid);
-    void info;
+    sendMods(pid); // הלקוח חייב לדעת — אחרת שערי הקצב/מהירות שלו חוסמים את השדרוג
     ctx.broadcast({ a: "wl_picked", pid, name: card.name, emoji: card.emoji });
     // עוד רמה ממתינה?
     const pending = pendingLevels.get(pid) ?? 0;
@@ -484,9 +504,21 @@ export function createWall(ctx: GameCtx): GameInstance {
   function waveClear() {
     phase = "breath";
     token++;
-    ctx.broadcast({ a: "wl_clear", wave, wallHp: Math.round(wallHp) });
-    // תיקון קטן בין גלים
+    // נשימה = התאוששות: כל מי שנפל קם, וכולם מתאוששים 35%.
+    // בלי זה החלוץ מדמם לאורך כל הריצה בלי שום מקור ריפוי.
+    for (const p of fighters()) {
+      const h = heroes.get(p)!;
+      if (h.down) reviveHero(p, h, 0.6);
+      else if (h.hp < h.max) {
+        h.hp = Math.min(h.max, h.hp + h.max * 0.35);
+        ctx.broadcast({ a: "wl_hero", pid: p, hp: Math.round(h.hp), max: h.max, down: false });
+      }
+      h.heat = 0; h.firing = false; h.jamUntil = 0;
+    }
+    // תיקון קטן בין גלים — קודם מרפאים, ואז משדרים את המספר האמיתי
     wallHp = Math.min(wallMax, wallHp + wallMax * 0.06);
+    ctx.broadcast({ a: "wl_clear", wave, wallHp: Math.round(wallHp) });
+    ctx.broadcast({ a: "wl_wall", hp: Math.round(wallHp), max: wallMax });
     const t = token;
     ctx.timer(9000, () => { if (token === t && phase === "breath") startWave(wave + 1, 2500); });
   }
@@ -547,6 +579,8 @@ export function createWall(ctx: GameCtx): GameInstance {
       h.down = false; h.shield = false; h.firing = false; h.heat = 0; h.jamUntil = 0;
       h.mods = baseMods(); h.level = 1; h.xp = 0; h.tier = 1; h.picks = {};
       [h.x, h.y] = h.slot;
+      sendMods(p);
+      ctx.sendTo(p, { a: "wl_xp", xp: 0, level: 1, next: xpNeed(1) });
     }
     hands.clear(); pendingLevels.clear();
     const n = Math.max(2, alive().length);
@@ -574,6 +608,13 @@ export function createWall(ctx: GameCtx): GameInstance {
     onRejoin(pid: string) {
       if (phase === "done") return;
       ctx.sendTo(pid, stateMsg());
+      // משחזרים גם את המצב האישי — אחרת החוזר רואה HUD של רמה 1 עם חיים מלאים
+      const h = heroes.get(pid);
+      if (h) {
+        ctx.sendTo(pid, { a: "wl_hero", pid, hp: Math.round(h.hp), max: h.max, down: h.down, upAt: h.upAt });
+        ctx.sendTo(pid, { a: "wl_xp", xp: Math.round(h.xp), level: h.level, next: xpNeed(h.level) });
+        sendMods(pid);
+      }
     },
 
     onMessage(pid: string, d: GameClientMsg) {

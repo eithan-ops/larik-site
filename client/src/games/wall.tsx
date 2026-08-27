@@ -84,6 +84,10 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
   const lastFrame = useRef(0);
   const downRef = useRef(false); downRef.current = down;
   const shake = useRef(0);
+  const wallHpRef = useRef(1); // ה-closure של ה-subscribe נוצר פעם אחת — state כאן תמיד היה מיושן
+  const modsRef = useRef({ rate: 1, speed: 1 }); // מגיע מהשרת: מכייל את שערי הקצב/המהירות המקומיים
+  const hurtFlash = useRef(0);   // הבזק אדום כשהחומה חוטפת
+  const lastAlarm = useRef(0);
   // קלט
   const ptr = useRef<{ down: boolean; x0: number; y0: number; t0: number; x: number; y: number; moved: boolean }>({ down: false, x0: 0, y0: 0, t0: 0, x: 0, y: 0, moved: false });
   const aimRef = useRef<{ tx: number; ty: number; power: number } | null>(null); // קשת/תותחן
@@ -215,9 +219,19 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
           return;
         }
         case "wl_wall": {
-          const prev = wallHp;
+          const prev = wallHpRef.current;
+          wallHpRef.current = m.hp;
           setWallHp(m.hp); setWallMax(m.max);
-          if (m.hp < prev) { shake.current = Math.max(shake.current, 6); if (m.hp / m.max < 0.25) { Sfx.alarm(); } }
+          if (m.hp < prev) {
+            // מכה בחומה חייבת להרגיש: רעידה + הבזק אדום, ואזעקה כשזה נהיה קריטי
+            shake.current = Math.max(shake.current, 7);
+            hurtFlash.current = 1;
+            vibrate(25);
+            if (m.hp / m.max < 0.25 && performance.now() - lastAlarm.current > 4000) {
+              lastAlarm.current = performance.now();
+              Sfx.alarm();
+            }
+          }
           return;
         }
         case "wl_sniper": {
@@ -244,6 +258,12 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
         }
         case "wl_xp":
           setXp({ xp: m.xp, level: m.level, next: m.next });
+          return;
+        case "wl_mods":
+          modsRef.current = { rate: m.rate, speed: m.speed };
+          return;
+        case "wl_heat":
+          heat.current = m.heat; // האמת מהשרת (מכבדת "קירור-על") — בין העדכונים ממשיכים להחליק מקומית
           return;
         case "wl_clear":
           setPhase("breath"); setWallHp(m.wallHp);
@@ -272,6 +292,14 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hub, me]);
+
+  /* ---- דופק HUD: מד החום, הקולדאון של התותח וספירת התקיעה נקראים מ-refs,
+     ובלי רינדור יזום הם פשוט קופאים על המסך. 10Hz זה זול ומספיק. ---- */
+  useEffect(() => {
+    if (phase !== "wave" && phase !== "breath") return;
+    const id = window.setInterval(() => setUi((u) => u + 1), 100);
+    return () => window.clearInterval(id);
+  }, [phase]);
 
   /* ---- לולאת רנדור ---- */
   useEffect(() => {
@@ -308,7 +336,7 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
         const dx = j.kx - j.ox, dy = j.ky - j.oy;
         const d = Math.hypot(dx, dy);
         if (d > 8) {
-          const sp = 360 * Math.min(1, d / 64);
+          const sp = 360 * modsRef.current.speed * Math.min(1, d / 64); // "זריזות" באמת מזיזה
           const h2 = myHero();
           if (h2) {
             h2.x = Math.max(30, Math.min(W - 30, h2.x + (dx / d) * (sp * dtMs) / 1000));
@@ -321,7 +349,7 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
         }
       }
       // חלוץ: אוטו-תקיפה על האויב הקרוב (Archero-style)
-      if (r0 === "infantry" && inWave && !shielding.current && pn - lastAutoSwing.current > 520) {
+      if (r0 === "infantry" && inWave && !shielding.current && pn - lastAutoSwing.current > 520 / modsRef.current.rate) {
         const h2 = myHero();
         if (h2) {
           const sn = conn.serverNow();
@@ -343,7 +371,7 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
         }
       }
       // קשת: אוטו-ירי כל עוד האצבע על המסך
-      if (r0 === "archer" && inWave && ptr.current.down && aimRef.current && pn - lastAutoShot.current > 660) {
+      if (r0 === "archer" && inWave && ptr.current.down && aimRef.current && pn - lastAutoShot.current > 660 / modsRef.current.rate) {
         lastAutoShot.current = pn;
         const a = aimRef.current;
         conn.sendGame({ a: "wl_shot", tx: Math.round(a.tx), ty: Math.round(a.ty), power: 1 });
@@ -390,12 +418,18 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
     const wx = (x: number) => (x - camL) * scale + ox;
     const wy = (y: number) => (y - camTop) * scale + oy;
 
-    // רקע
-    ctx.fillStyle = "#0a0d14";
-    ctx.fillRect(0, 0, cw, chh);
+    // רקע — שדה דשא בהיר (הדמויות כהות; על רקע לילי הן נבלעו)
+    {
+      const bgGrad = ctx.createLinearGradient(0, 0, 0, chh);
+      bgGrad.addColorStop(0, "#7d9aa8");    // דמדומים באופק
+      bgGrad.addColorStop(0.28, "#7f9c62");
+      bgGrad.addColorStop(1, "#415c2b");    // דשא קרוב
+      ctx.fillStyle = bgGrad;
+      ctx.fillRect(0, 0, cw, chh);
+    }
     const bg = wlImg("bgfield");
     if (bg.complete && bg.naturalWidth) {
-      ctx.globalAlpha = 0.55;
+      ctx.globalAlpha = 0.95;
       ctx.drawImage(bg, wx(0), wy(-80), W * scale, (WALL_Y + 80) * scale);
       ctx.globalAlpha = 1;
     }
@@ -434,6 +468,17 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
       const dying = e.deadAt !== undefined;
       const alpha = dying ? Math.max(0, 1 - (now - e.deadAt!) / 350) : e.state === "burrow" ? 0.25 : 1;
       ctx.globalAlpha = alpha;
+      // צל מגע — מקרקע את היצור ומפריד אותו מהדשא
+      if (!dying && e.state !== "burrow") {
+        ctx.save();
+        ctx.globalAlpha = alpha * 0.32;
+        ctx.fillStyle = "#0d1a08";
+        ctx.beginPath();
+        ctx.ellipse(wx(ex), wy(ey + size * 0.34), size * 0.33 * scale, size * 0.12 * scale, 0, 0, 7);
+        ctx.fill();
+        ctx.restore();
+        ctx.globalAlpha = alpha;
+      }
       if (im.complete && im.naturalWidth) {
         const bob = e.state === "walk" ? Math.sin((now - e.at) / 120) * 2 : 0;
         ctx.drawImage(im, wx(ex - size / 2), wy(ey - size / 2 + bob), size * scale, size * scale);
@@ -444,9 +489,10 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
       ctx.globalAlpha = 1;
       if (!dying && e.hp < e.maxHp) {
         const bw = size * scale * 0.8;
-        ctx.fillStyle = "rgba(0,0,0,.5)";
+        ctx.fillStyle = "rgba(0,0,0,.6)";
         ctx.fillRect(wx(ex) - bw / 2, wy(ey - size / 2 - 10), bw, 4);
-        ctx.fillStyle = e.type === "armored" ? "#ff8a3c" : "#39e75f";
+        // אדום/כתום — ירוק על דשא ירוק לא נקרא
+        ctx.fillStyle = e.type === "armored" ? "#ffce3c" : "#ff4d4d";
         ctx.fillRect(wx(ex) - bw / 2, wy(ey - size / 2 - 10), bw * (e.hp / e.maxHp), 4);
       }
     }
@@ -473,11 +519,23 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
         } else lunges.current.delete(pid);
       }
       ctx.globalAlpha = hh.down ? 0.35 : 1;
-      // הילה בצבע התפקיד
+      // צל מגע + טבעת בצבע התפקיד (על דשא בהיר טבעת קוראת טוב מהילה מלאה)
+      ctx.save();
+      ctx.globalAlpha = (hh.down ? 0.35 : 1) * 0.3;
+      ctx.fillStyle = "#0d1a08";
       ctx.beginPath();
-      ctx.fillStyle = mine ? ROLE_COLOR[role] + "55" : ROLE_COLOR[role] + "22";
+      ctx.ellipse(wx(hx), wy(hy + size * 0.36), size * 0.34 * scale, size * 0.12 * scale, 0, 0, 7);
+      ctx.fill();
+      ctx.restore();
+      ctx.beginPath();
+      ctx.fillStyle = mine ? ROLE_COLOR[role] + "44" : ROLE_COLOR[role] + "1c";
       ctx.arc(wx(hx), wy(hy + size * 0.3), size * 0.45 * scale, 0, 7);
       ctx.fill();
+      ctx.strokeStyle = ROLE_COLOR[role] + (mine ? "ee" : "88");
+      ctx.lineWidth = (mine ? 2.6 : 1.6) * scale;
+      ctx.beginPath();
+      ctx.ellipse(wx(hx), wy(hy + size * 0.34), size * 0.36 * scale, size * 0.14 * scale, 0, 0, 7);
+      ctx.stroke();
       if (im.complete && im.naturalWidth) {
         if (lungeRot !== 0) {
           ctx.save(); ctx.translate(wx(hx), wy(hy)); ctx.rotate(lungeRot);
@@ -497,9 +555,11 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
         ctx.beginPath(); ctx.arc(wx(hx), wy(hy), size * 0.55 * scale, 0, 7); ctx.stroke();
       }
       if (!mine) {
-        ctx.font = `${11 * scale}px Rubik, sans-serif`;
-        ctx.fillStyle = ROLE_COLOR[role];
+        ctx.font = `700 ${11 * scale}px Rubik, sans-serif`;
         ctx.textAlign = "center";
+        ctx.strokeStyle = "rgba(8,16,6,.8)"; ctx.lineWidth = 3 * scale; // קונטור — על דשא בהיר בלעדיו לא קוראים
+        ctx.strokeText(nameOf(pid), wx(hx), wy(hy - 45));
+        ctx.fillStyle = ROLE_COLOR[role];
         ctx.fillText(nameOf(pid), wx(hx), wy(hy - 45));
       }
     }
@@ -729,6 +789,13 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
       ctx.beginPath(); ctx.arc(jox + jdx, joy2 + jdy, 24, 0, 7); ctx.fill();
     }
 
+    // הבזק אדום כשהחומה חוטפת — עכשיו באמת מרגישים שמפסידים
+    if (hurtFlash.current > 0.02) {
+      ctx.fillStyle = `rgba(255,45,45,${0.17 * hurtFlash.current})`;
+      ctx.fillRect(0, 0, cw, chh);
+      hurtFlash.current *= 0.88;
+    }
+
     // דיבאג/בדיקות: מצב חשוף לבוטים של ה-E2E (זול — רץ פעם בפריים)
     (window as unknown as { __wlDbg?: unknown }).__wlDbg = {
       wave: waveRef.current, phase: phaseRef.current, vw: cw, vh: chh,
@@ -838,7 +905,7 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
     } else if (role === "archer" || role === "cannon") {
       if (role === "cannon" && aimRef.current && Date.now() >= cannonReady.current) {
         conn.sendGame({ a: "wl_boom", tx: Math.round(aimRef.current.tx), ty: Math.round(aimRef.current.ty) });
-        cannonReady.current = Date.now() + 3600;
+        cannonReady.current = Date.now() + 3600 / modsRef.current.rate; // תואם לשרת — "קצב אש" מקצר טעינה
         setUi((u) => u + 1);
       }
       aimRef.current = null;

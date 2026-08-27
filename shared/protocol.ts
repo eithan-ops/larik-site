@@ -375,6 +375,8 @@ export type WallServerMsg =
   | { a: "wl_picked"; pid: string; name: string; emoji: string }
   | { a: "wl_tier"; pid: string; tier: number }                                                  // דרגת נשק עלתה (ויזואל חדש!)
   | { a: "wl_xp"; xp: number; level: number; next: number }                                      // אישי — מד XP
+  | { a: "wl_mods"; rate: number; speed: number }                                                // אישי — מכפילי קצב/מהירות (הלקוח מכייל איתם את שערי הקלט)
+  | { a: "wl_heat"; heat: number }                                                               // אישי (מקלען) — החום האמיתי מהשרת, 5Hz
   | { a: "wl_clear"; wave: number; wallHp: number }                                              // הגל הוסתיים — נשימה
   | { a: "wl_over"; wave: number; bestWave: number; nearMiss?: string; mvp?: string; stats: Record<string, WallStats> }
   | { a: "wl_state"; wave: number; roles: Record<string, WallRole>; slots: Record<string, [number, number]>; wallHp: number; wallMax: number; phase: "setup" | "wave" | "breath" | "over"; tiers: Record<string, number> }; // rejoin
