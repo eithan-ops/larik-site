@@ -143,7 +143,7 @@ const http = createServer((req, res) => {
   if (url.pathname === "/api/trivia/grow") {
     if (url.searchParams.get("k") !== STATS_KEY) { res.writeHead(403); res.end("no"); return; }
     const n = Math.min(50, Math.max(1, Number(url.searchParams.get("n")) || 20));
-    const cat = (url.searchParams.get("cat") || "world") as "israel" | "world" | "science";
+    const cat = (url.searchParams.get("cat") || "weird") as "israel" | "world" | "science" | "weird";
     getTriviaBank().grow(n, cat, askModel)
       .then((r) => {
         res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });

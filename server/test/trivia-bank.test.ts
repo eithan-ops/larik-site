@@ -59,7 +59,7 @@ await test("מפעל השאלות מוסיף, מדלג על כפילויות, ו
   const existing = b.all()[0].q;
   const fake = async () => JSON.stringify({
     questions: [
-      { q: "מהי בירת יפן?", options: ["טוקיו", "אוסקה", "קיוטו", "נגויה"], correct: 0 },
+      { q: "איזו חיה ישנה בממוצע רק שעתיים ביממה?", options: ["ג'ירפה", "פיל", "סוס", "כלב"], correct: 0 },
       { q: existing, options: ["א", "ב", "ג", "ד"], correct: 0 },          // כפולה
       { q: "Which city is the capital of Japan?", options: ["a", "b", "c", "d"], correct: 0 }, // לא עברית
       { q: "שאלה עם שלוש תשובות בלבד?", options: ["א", "ב", "ג"], correct: 0 },
@@ -71,7 +71,7 @@ await test("מפעל השאלות מוסיף, מדלג על כפילויות, ו
   assert.equal(r.added, 1, `נוספו ${r.added} במקום 1`);
   assert.equal(r.skipped, 5);
   assert.equal(b.size(), before + 1);
-  assert.equal(b.all()[before].q, "מהי בירת יפן?");
+  assert.equal(b.all()[before].q, "איזו חיה ישנה בממוצע רק שעתיים ביממה?");
   assert.equal(b.all()[before].id, before, "השאלה החדשה קיבלה את המזהה הבא");
 });
 
@@ -113,7 +113,8 @@ await test("3,650 שאלות (שנה של יומית) נשארות מתחת ל-2
 
 console.log("\nסינון שאלות פגומות:");
 
-const goodQ = { q: "מהי בירת צרפת?", options: ["פריז", "ליון", "מרסיי", "ניס"], correct: 0 };
+// שאלה שעוברת את כל השערים, כולל שער ה"משעמם" — עובדה שמפתיעה באמת
+const goodQ = { q: "באיזו מדינה יש יותר פירמידות מבמצרים?", options: ["סודן", "מקסיקו", "פרו", "סין"], correct: 0 };
 const growOne = async (q: object) => {
   const b = makeTriviaBank(makeMemoryStore());
   return b.grow(1, "world", async () => JSON.stringify({ questions: [q] }));
@@ -170,7 +171,7 @@ await test("סבב האימות פוסל שאלה שגויה עובדתית", as
   const r = await b.grow(2, "world", async (prompt) =>
     prompt.includes('"reject"')
       ? JSON.stringify({ reject: [0] })                       // האימות פוסל את הראשונה
-      : JSON.stringify({ questions: [goodQ, { q: "מהי בירת יפן?", options: ["טוקיו", "אוסקה", "קיוטו", "נרה"], correct: 0 }] })
+      : JSON.stringify({ questions: [goodQ, { q: "כמה זמן נמשכה המלחמה הקצרה בהיסטוריה?", options: ["38 דקות", "יומיים", "שבוע", "שעתיים"], correct: 0 }] })
   );
   assert.equal(r.added, 1, JSON.stringify(r.rejected));
   assert.match(r.rejected![0], /נפסלה באימות/);
@@ -202,6 +203,43 @@ await test("מזהה לא קיים לא מפיל ולא נספר", async () => {
   const b = makeTriviaBank(makeMemoryStore());
   const r = await b.retire([9999, -1]);
   assert.equal(r.disabled, 0);
+});
+
+
+
+console.log("\nשאלות משעממות:");
+
+await test("שאלת בירה נפסלת כשאלת ספר לימוד", async () => {
+  const r = await growOne({ q: "מהי בירת אוסטרליה?", options: ["קנברה", "סידני", "מלבורן", "פרת'"], correct: 0 });
+  assert.equal(r.added, 0);
+  assert.match(r.rejected![0], /ספר לימוד/);
+});
+
+await test("שאלת 'ראש הממשלה הראשון' נפסלת", async () => {
+  const r = await growOne({ q: "מי היה ראש הממשלה הראשון של ישראל?", options: ["בן גוריון", "בגין", "שרת", "אשכול"], correct: 0 });
+  assert.equal(r.added, 0);
+  assert.match(r.rejected![0], /ספר לימוד/);
+});
+
+await test("שאלה מפתיעה על אותו נושא כן עוברת", async () => {
+  // מזכירה בירות אבל אינה שאלת "מהי בירת X" — הרשימה מכוונת לנוסח ולא לנושא
+  const r = await growOne({
+    q: "איזו בירה בעולם היא הגבוהה ביותר מעל פני הים?",
+    options: ["לה פאס", "קיטו", "בוגוטה", "אדיס אבבה"],
+    correct: 0,
+  });
+  assert.equal(r.added, 1, JSON.stringify(r.rejected));
+});
+
+await test("האימות פוסל שאלה משעממת", async () => {
+  const b = makeTriviaBank(makeMemoryStore());
+  const r = await b.grow(1, "weird", async (prompt) =>
+    prompt.includes('"reject"')
+      ? JSON.stringify({ reject: [0] })
+      : JSON.stringify({ questions: [{ q: "כמה רגליים יש לחתול?", options: ["ארבע", "שתיים", "שש", "שמונה"], correct: 0 }] })
+  );
+  assert.equal(r.added, 0);
+  assert.match(r.rejected![0], /נפסלה באימות/);
 });
 
 console.log(`\n${passed}/${total} עברו`);

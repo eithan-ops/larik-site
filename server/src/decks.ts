@@ -72,7 +72,7 @@ export const DECKS: Record<string, Deck> = {
 };
 
 /* ---------- טריוויה ---------- */
-export interface TriviaQ { q: string; options: string[]; correct: number; cat: "israel" | "world" | "science" }
+export interface TriviaQ { q: string; options: string[]; correct: number; cat: "israel" | "world" | "science" | "weird" }
 
 export const TRIVIA: TriviaQ[] = [
   { q: "מהי עיר הבירה של ישראל?", options: ["תל אביב", "ירושלים", "חיפה", "באר שבע"], correct: 1, cat: "israel" },
