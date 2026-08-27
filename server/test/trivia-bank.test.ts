@@ -107,4 +107,101 @@ await test("3,650 שאלות (שנה של יומית) נשארות מתחת ל-2
   assert.equal(decodeSeen(blob).size, 3650);
 });
 
+
+
+/* ---------- כללי הסינון שנולדו מהסבב הראשון מול הלייב ---------- */
+
+console.log("\nסינון שאלות פגומות:");
+
+const goodQ = { q: "מהי בירת צרפת?", options: ["פריז", "ליון", "מרסיי", "ניס"], correct: 0 };
+const growOne = async (q: object) => {
+  const b = makeTriviaBank(makeMemoryStore());
+  return b.grow(1, "world", async () => JSON.stringify({ questions: [q] }));
+};
+
+await test("שאלה תקינה עוברת", async () => {
+  const r = await growOne(goodQ);
+  assert.equal(r.added, 1, JSON.stringify(r.rejected));
+});
+
+await test("תו משפה זרה נפסל (הבאג של 'הכայית')", async () => {
+  const r = await growOne({ ...goodQ, q: "באיזו שנה התרחשה הכայית והכרזת העצמאות?" });
+  assert.equal(r.added, 0);
+  assert.match(r.rejected![0], /תווים זרים/);
+});
+
+await test("שתי שאלות בפריט אחד נפסלות ('נשאל אחרת')", async () => {
+  const r = await growOne({ ...goodQ, q: "מהי הבצורת בימי אליהו? נשאל אחרת: מהי הנקודה הנמוכה?" });
+  assert.equal(r.added, 0);
+  assert.match(r.rejected![0], /שתי שאלות/);
+});
+
+await test("שאלה שעונה על עצמה נפסלת (הבאג של 'שקדייה')", async () => {
+  const r = await growOne({ q: "איזה צמח מזוהה עם חג השקדייה?", options: ["שקדייה", "כלנית", "רקפת", "זית"], correct: 0 });
+  assert.equal(r.added, 0);
+  assert.match(r.rejected![0], /התשובה מופיעה בשאלה/);
+});
+
+await test("רמז בסוגריים נפסל", async () => {
+  const r = await growOne({ ...goodQ, q: "איזה הר הוא הגבוה בגליל? (רמז: שוכן בגליל העליון)" });
+  assert.equal(r.added, 0);
+  assert.match(r.rejected![0], /רמז/);
+});
+
+await test("שאלה ארוכה מדי נפסלת", async () => {
+  // הנוסח האמיתי שהמודל ייצר בסבב הראשון (בלי הרמז, שנתפס בכלל אחר)
+  const r = await growOne({ ...goodQ, q: "איזה הר בארץ ישראל מכונה ההר האפור או ההר הקדוש בשל מיקומו ומרכזיותו ההיסטורית, והוא הגבוה בהרי הגליל העליון והסביבה?" });
+  assert.equal(r.added, 0);
+  assert.match(r.rejected![0], /ארוכה מדי/);
+});
+
+await test("תשובה נכונה ארוכה בהרבה מהשאר נפסלת", async () => {
+  const r = await growOne({
+    q: "איזה יום זיכרון חל לפני יום העצמאות?",
+    options: ["יום הזיכרון לחללי מערכות ישראל ולנפגעי פעולות איבה", "יום השואה", "יום רבין", "תשעה באב"],
+    correct: 0,
+  });
+  assert.equal(r.added, 0);
+  assert.match(r.rejected![0], /ארוכה בהרבה/);
+});
+
+await test("סבב האימות פוסל שאלה שגויה עובדתית", async () => {
+  const b = makeTriviaBank(makeMemoryStore());
+  const r = await b.grow(2, "world", async (prompt) =>
+    prompt.includes('"reject"')
+      ? JSON.stringify({ reject: [0] })                       // האימות פוסל את הראשונה
+      : JSON.stringify({ questions: [goodQ, { q: "מהי בירת יפן?", options: ["טוקיו", "אוסקה", "קיוטו", "נרה"], correct: 0 }] })
+  );
+  assert.equal(r.added, 1, JSON.stringify(r.rejected));
+  assert.match(r.rejected![0], /נפסלה באימות/);
+});
+
+await test("אימות שנפל לא פוסל כלום", async () => {
+  const b = makeTriviaBank(makeMemoryStore());
+  const r = await b.grow(1, "world", async (prompt) =>
+    prompt.includes('"reject"') ? "המודל התבלבל" : JSON.stringify({ questions: [goodQ] })
+  );
+  assert.equal(r.added, 1);
+});
+
+console.log("\nהוצאה משימוש:");
+
+await test("שאלה שהוצאה משימוש לא נבחרת יותר, והמזהים לא זזים", async () => {
+  const b = makeTriviaBank(makeMemoryStore());
+  const before = b.size();
+  const target = b.all()[3];
+  await b.retire([3]);
+  assert.equal(b.size(), before, "המאגר התכווץ — המזהים זזו");
+  assert.equal(b.all()[3].q, target.q, "השאלה במקום 3 השתנתה");
+  assert.equal(b.active(), before - 1);
+  const picked = b.pick(before, {});
+  assert.ok(!picked.some((q) => q.id === 3), "שאלה שהוצאה משימוש עדיין נבחרת");
+});
+
+await test("מזהה לא קיים לא מפיל ולא נספר", async () => {
+  const b = makeTriviaBank(makeMemoryStore());
+  const r = await b.retire([9999, -1]);
+  assert.equal(r.disabled, 0);
+});
+
 console.log(`\n${passed}/${total} עברו`);

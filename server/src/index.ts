@@ -118,6 +118,7 @@ const http = createServer((req, res) => {
           writable: ok,
           persists: store.kind !== "memory" && ok,
           triviaBank: getTriviaBank().size(),
+          triviaActive: getTriviaBank().active(),
         }));
       })
       .catch((e) => {
@@ -144,6 +145,22 @@ const http = createServer((req, res) => {
     const n = Math.min(50, Math.max(1, Number(url.searchParams.get("n")) || 20));
     const cat = (url.searchParams.get("cat") || "world") as "israel" | "world" | "science";
     getTriviaBank().grow(n, cat, askModel)
+      .then((r) => {
+        res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify(r));
+      })
+      .catch((e) => { res.writeHead(500); res.end(String(e).slice(0, 200)); });
+    return;
+  }
+  /**
+   * הוצאת שאלות משימוש. לא מוחק — מזהה שאלה הוא מיקום במערך, ומחיקה
+   * הייתה מזיזה את כל המזהים שאחריה והופכת את זיכרון ה"נראה" לשקר.
+   * GET /api/trivia/retire?k=...&ids=30,33,35
+   */
+  if (url.pathname === "/api/trivia/retire") {
+    if (url.searchParams.get("k") !== STATS_KEY) { res.writeHead(403); res.end("no"); return; }
+    const ids = (url.searchParams.get("ids") || "").split(",").map(Number).filter(Number.isInteger);
+    getTriviaBank().retire(ids)
       .then((r) => {
         res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
         res.end(JSON.stringify(r));
