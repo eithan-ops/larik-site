@@ -242,4 +242,37 @@ await test("האימות פוסל שאלה משעממת", async () => {
   assert.match(r.rejected![0], /נפסלה באימות/);
 });
 
+
+
+console.log("\nאימות כפול:");
+
+await test("מספיק שסבב אימות אחד פוסל כדי שהשאלה תיפסל", async () => {
+  const b = makeTriviaBank(makeMemoryStore());
+  let call = 0;
+  const r = await b.grow(1, "weird", async (prompt) => {
+    if (!prompt.includes('"reject"')) return JSON.stringify({ questions: [goodQ] });
+    call++;
+    return JSON.stringify({ reject: call === 1 ? [] : [0] }); // רק השני פוסל
+  });
+  assert.equal(r.added, 0, "עובדה שרק סבב אחד פסל עדיין נכנסה");
+  assert.match(r.rejected![0], /נפסלה באימות/);
+});
+
+await test("שני סבבים שמאשרים — השאלה עוברת", async () => {
+  const b = makeTriviaBank(makeMemoryStore());
+  const r = await b.grow(1, "weird", async (prompt) =>
+    prompt.includes('"reject"') ? JSON.stringify({ reject: [] }) : JSON.stringify({ questions: [goodQ] })
+  );
+  assert.equal(r.added, 1, JSON.stringify(r.rejected));
+});
+
+await test("שני הסבבים נפלו — לא פוסלים כלום", async () => {
+  const b = makeTriviaBank(makeMemoryStore());
+  const r = await b.grow(1, "weird", async (prompt) => {
+    if (prompt.includes('"reject"')) throw new Error("המודל נפל");
+    return JSON.stringify({ questions: [goodQ] });
+  });
+  assert.equal(r.added, 1);
+});
+
 console.log(`\n${passed}/${total} עברו`);

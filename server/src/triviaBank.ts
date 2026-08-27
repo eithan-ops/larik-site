@@ -224,19 +224,40 @@ export class TriviaBank {
       "2. הניסוח מבלבל או דו-משמעי.",
       "3. **השאלה משעממת** — ידע בסיסי שספר לימוד שואל, בלי שום הפתעה.",
       "   המבחן: האם מישהו סביב שולחן היה אומר 'מה?! באמת?' כששומע את התשובה.",
+      "",
+      "היה חשדן במיוחד בשני מקרים שבהם קל להמציא:",
+      "- **טענות מקור** ('הומצא במקור עבור', 'נוצר כדי'). אם אינך יודע בוודאות",
+      "  שזה מתועד — פסול. סיפור מקור שנשמע טוב הוא בדרך כלל מומצא.",
+      "- **שמות מקצועיים בעברית**. ודא שהמונח בתשובה הוא באמת מה שהשאלה מתארת",
+      "  (למשל 'כסף' ו'כסף חי' הם שני חומרים שונים לגמרי).",
+      "",
       "אם אינך בטוח בעובדה — פסול. עדיף לוותר על שאלה מאשר לשאול שאלה שגויה.",
       "",
       list,
       "",
       'החזר JSON בלבד: {"reject":[מספרי השאלות לפסילה]}',
     ].join("\n");
-    try {
-      const raw = await ask(prompt, Math.min(4000, 300 + qs.length * 60));
-      const parsed = JSON.parse(extractJson(raw)) as { reject?: number[] };
-      return new Set((parsed.reject ?? []).filter((i) => Number.isInteger(i)));
-    } catch {
-      return new Set(); // האימות נפל — לא פוסלים כלום
+
+    /**
+     * שתי בדיקות בלתי תלויות, ופסילה אם *אחת* מהן פסלה.
+     * הרציונל: עובדה אמיתית יציבה — המודל יאשר אותה פעמיים. עובדה מומצאת
+     * לא יציבה, ולכן די בכך שסבב אחד ייפול עליה. זה עולה קריאה אחת נוספת
+     * לאצווה שלמה, וזה מחיר זניח מול שאלה שגויה שנשארת במאגר לנצח.
+     */
+    const budget = Math.min(4000, 300 + qs.length * 60);
+    const runs = await Promise.all([
+      ask(prompt, budget).catch(() => ""),
+      ask(prompt, budget).catch(() => ""),
+    ]);
+    const out = new Set<number>();
+    for (const raw of runs) {
+      if (!raw) continue;
+      try {
+        const parsed = JSON.parse(extractJson(raw)) as { reject?: number[] };
+        for (const i of parsed.reject ?? []) if (Number.isInteger(i)) out.add(i);
+      } catch { /* סבב שנפל לא פוסל כלום — הסבב השני עדיין קובע */ }
     }
+    return out;
   }
 
   private async save(): Promise<void> {
