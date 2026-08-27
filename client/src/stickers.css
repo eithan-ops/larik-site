@@ -165,3 +165,134 @@ body{
 @media (prefers-reduced-motion:reduce){
   .gcard,.pbadge,.featured,.bento-card,.code-big,.qr-box{ rotate:0deg; }
 }
+
+/* ============================================================
+   מסך הבית החי + מדף המשחקים (v1 שנבחר במוקאפים, 26.8)
+   ============================================================ */
+
+/* ---------- בית: אלבום מדבקות חי ---------- */
+.home-live{
+  justify-content:center; gap:10px; position:relative;
+  background:url("/stickers/home-bg.webp") center/cover no-repeat, var(--ground);
+  min-height:100dvh;
+}
+.home-hero{ text-align:center; margin-top:8px; }
+.logo-sticker{
+  display:inline-block; font-family:var(--font-display); font-size:64px; line-height:1;
+  color:var(--sk-paper); letter-spacing:.02em; rotate:-1.5deg;
+  text-shadow:-4px 5px 0 var(--sk-red-n), -1px 1px 0 var(--stroke), 1px -1px 0 var(--stroke), -1px -1px 0 var(--stroke), 1px 1px 0 var(--stroke);
+}
+.logo-sub{
+  font-family:var(--font-display); font-size:15px; color:var(--sk-red-n);
+  background:var(--paper); color:var(--on-paper); display:inline-block;
+  padding:2px 14px; border:var(--stroke-w) solid var(--stroke); border-radius:999px;
+  rotate:1deg; margin-top:10px; box-shadow:var(--hard-x) var(--hard-y) 0 var(--hard);
+  font-weight:700;
+}
+.home-pitch{
+  font-size:14.5px; color:var(--on-ground); margin-top:12px; line-height:1.55;
+  /* כרית כהה שקופה כדי שהטקסט יישאר קריא מעל דמויות הרקע */
+  background:rgba(12,8,23,.62); backdrop-filter:blur(2px); -webkit-backdrop-filter:blur(2px);
+  border-radius:14px; padding:8px 14px; display:inline-block;
+}
+
+.home-actions{ display:flex; flex-direction:column; gap:14px; margin-top:10px; }
+.mega-cta{
+  font-family:var(--font-display); font-size:28px; padding:20px 18px;
+  background:var(--a-red); color:var(--on-red);
+  border:calc(var(--stroke-w) + 1px) solid var(--stroke); border-radius:26px;
+  rotate:-1.2deg; cursor:pointer;
+  box-shadow:calc(var(--hard-x) * 2) calc(var(--hard-y) * 2) 0 var(--stroke), var(--hard-x) var(--hard-y) 0 var(--stroke);
+  transition:transform .08s, box-shadow .08s;
+}
+.mega-cta:active{ transform:translate(6px, 8px); box-shadow:0 0 0 var(--stroke); }
+.mega-cta:disabled{ opacity:.55; }
+.shelf-cta{
+  font-family:var(--font-display); font-size:19px; padding:13px 16px;
+  background:var(--a-yellow); color:var(--on-yellow);
+  border:var(--stroke-w) solid var(--stroke); border-radius:18px; rotate:.9deg;
+  box-shadow:var(--hard-x) var(--hard-y) 0 var(--hard); cursor:pointer;
+  transition:transform .08s, box-shadow .08s;
+}
+.shelf-cta:active{ transform:translate(3px,4px); box-shadow:none; }
+.join-cta{
+  font-weight:800; font-size:15px; padding:11px 16px;
+  background:transparent; color:var(--a-blue);
+  border:var(--stroke-w) solid var(--a-blue); border-radius:16px; rotate:-.6deg;
+  cursor:pointer;
+}
+.join-cta:active{ transform:translate(2px,3px); }
+.join-panel{ display:flex; flex-direction:column; gap:8px; }
+.home-foot{ text-align:center; margin-top:14px; font-size:12px; }
+.show-corner{
+  position:absolute; top:14px; left:14px; z-index:2;
+  display:flex; flex-direction:column; align-items:center; gap:1px;
+  font-size:20px; padding:7px 10px; background:var(--paper); color:var(--on-paper);
+  border:var(--stroke-w) solid var(--stroke); border-radius:14px; rotate:-4deg;
+  box-shadow:var(--hard-x) var(--hard-y) 0 var(--a-yellow); cursor:pointer;
+}
+.show-corner small{ font-size:10px; font-weight:800; }
+
+/* ---------- מדף המשחקים: פוסטרים שמתקלפים ---------- */
+.shelf{ gap:10px; padding-bottom:40px; }
+.shelf-head{ display:flex; align-items:center; gap:12px; margin-top:6px; }
+.shelf-back{
+  font-size:22px; font-weight:900; width:44px; height:44px;
+  background:var(--paper); color:var(--on-paper);
+  border:var(--stroke-w) solid var(--stroke); border-radius:12px; rotate:2deg;
+  box-shadow:var(--hard-x) var(--hard-y) 0 var(--hard); cursor:pointer;
+}
+.shelf-title{
+  font-family:var(--font-display); font-size:34px; color:var(--sk-paper);
+  text-shadow:-3px 4px 0 var(--sk-red-n); rotate:-.8deg; margin:0;
+}
+.shelf-sub{ font-size:13.5px; }
+.shelf-grid{
+  display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:6px;
+}
+.poster-wrap{ perspective:900px; cursor:pointer; height:308px; }
+.poster-inner{
+  position:relative; width:100%; height:100%;
+  transform-style:preserve-3d; transition:transform .55s cubic-bezier(.4,1.4,.6,1);
+}
+.poster-wrap.flipped .poster-inner{ transform:rotateY(180deg); }
+.poster-face{
+  position:absolute; inset:0; backface-visibility:hidden; -webkit-backface-visibility:hidden;
+  display:flex; flex-direction:column; border-radius:16px; overflow:hidden;
+  background:var(--paper); color:var(--on-paper);
+  border:var(--stroke-w) solid var(--stroke);
+  box-shadow:var(--hard-x) var(--hard-y) 0 var(--gc,var(--hard));
+}
+.poster-wrap:nth-child(odd) .poster-inner{ rotate:-1.2deg; }
+.poster-wrap:nth-child(even) .poster-inner{ rotate:1deg; }
+.poster-front{ padding:0; }
+.poster-art{ width:100%; aspect-ratio:3/4; object-fit:cover; display:block; border-bottom:var(--stroke-w) solid var(--stroke); }
+/* משחק בלי פוסטר מצויר — אייקון ענק על צבע החתימה */
+.poster-art-fb{
+  display:flex; align-items:center; justify-content:center; font-size:72px;
+  background:var(--gc,var(--a-yellow));
+  background:radial-gradient(circle at 50% 40%,
+    color-mix(in srgb, var(--gc,var(--a-yellow)) 45%, var(--paper)),
+    color-mix(in srgb, var(--gc,var(--a-yellow)) 85%, var(--sk-ink)) 85%);
+  text-shadow:0 6px 0 rgba(0,0,0,.25);
+}
+.poster-meta{ display:flex; flex-direction:column; gap:3px; padding:8px 10px 10px; }
+.poster-name{ font-family:var(--font-display); font-size:16.5px; }
+.poster-tag{ font-size:11.5px; color:var(--on-paper); opacity:.75; line-height:1.35; }
+.poster-chip{
+  align-self:flex-start; font-size:10.5px; font-weight:800;
+  background:var(--gc,var(--a-yellow)); color:var(--sk-ink);
+  border:2px solid var(--stroke); border-radius:999px; padding:1px 8px; margin-top:3px;
+}
+.poster-back{
+  transform:rotateY(180deg); padding:12px; gap:8px; justify-content:space-between;
+}
+.poster-howto{ font-size:12px; line-height:1.5; margin:0; flex:1; overflow-y:auto; }
+.poster-play{ font-size:14px; padding:9px 10px; margin:0; }
+.shelf-how{ margin-top:16px; }
+.shelf-how b{ font-family:var(--font-display); }
+
+@media (prefers-reduced-motion:reduce){
+  .poster-inner{ transition:none; }
+  .logo-sticker,.mega-cta,.shelf-cta,.join-cta,.show-corner,.shelf-title{ rotate:0deg; }
+}

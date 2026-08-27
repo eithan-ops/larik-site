@@ -4,10 +4,16 @@ import { createRoom } from "../lib/connection";
 import { track } from "../lib/analytics";
 import QRScanner from "./QRScanner";
 
+/**
+ * מסך הבית — "אלבום המדבקות קם לחיים" 🎪
+ * כפתור ענק אחד ששולט במסך (פתח חדר), מדף המשחקים ("מה משחקים כאן?"),
+ * והצטרפות לחברים בעדיפות שלישית. הרקע חי: דמויות המשחקים מציצות מהקצוות.
+ */
 export default function Home() {
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [scanning, setScanning] = useState(false);
+  const [joining, setJoining] = useState(false);
   const [err, setErr] = useState("");
 
   async function host() {
@@ -25,64 +31,62 @@ export default function Home() {
 
   function onScan(text: string) {
     setScanning(false);
-    // תומך גם בקישור מלא (https://.../r/ABCD) וגם בקוד גולמי
     const m = text.match(/\/r\/([a-zA-Z]{4})/) || text.match(/^([a-zA-Z]{4})$/);
     if (m) { setErr(""); navigate(`/r/${m[1].toUpperCase()}`); }
     else setErr("זה לא QR של חדר LARIK 🤔 — סרקו את הקוד מהמסך של המארח");
   }
 
   return (
-    <main style={{ justifyContent: "center", gap: 8 }}>
+    <main className="home-live">
       {scanning && <QRScanner onScan={onScan} onClose={() => setScanning(false)} />}
 
-      <div className="hero">
-        <div className="hero-emojis" aria-hidden>
-          <span>🎭</span><span>💣</span><span>🫵</span><span>🧠</span><span>🕯️</span>
-        </div>
-        <div className="logo-big">LARIK</div>
-        <p style={{ fontSize: 19, fontWeight: 800, marginTop: 8 }}>ברוכים הבאים ללאריק 👋</p>
-        <p className="sub" style={{ fontSize: 15, marginTop: 6, maxWidth: 320 }}>
+      <button className="show-corner" onClick={() => { location.href = "/s"; }} aria-label="מופע">
+        🕯️<small>מופע</small>
+      </button>
+
+      <div className="home-hero">
+        <div className="logo-sticker">LARIK</div>
+        <p className="logo-sub">משחקים. צוחקים. מתחברים.</p>
+        <p className="home-pitch">
           ערב משחקים שלם — בלי קופסה, בלי חלקים, בלי הורדות.
-          הטלפון של כל אחד הופך לאביזר במשחק.
+          <br />הטלפון של כל אחד הופך לחלק מהמשחק.
         </p>
       </div>
 
-      <div className="bento">
-        <div className="bento-card primary" role="button" tabIndex={0}
-          onClick={() => document.getElementById("game-actions")?.scrollIntoView({ behavior: "smooth" })}>
-          <span className="big">🎮</span>
-          <b>ערב משחקים</b>
-          <span className="sub">11 משחקים · 3-15 חברים<br />סביב שולחן אחד</span>
-        </div>
-        <div className="bento-card" role="button" tabIndex={0} onClick={() => { location.href = "/s"; }}>
-          <span className="big">🕯️</span>
-          <b>מופע</b>
-          <span className="sub">הקהל הוא המסך<br />לאירועים והופעות</span>
-        </div>
+      <div className="home-actions">
+        <button className="mega-cta" onClick={host} disabled={busy}>
+          {busy ? "פותח חדר..." : <>🎉 פתח חדר חדש</>}
+        </button>
+
+        <button className="shelf-cta" onClick={() => { track("shelf_open"); navigate("/play"); }}>
+          👀 מה משחקים כאן?
+        </button>
+
+        <button className="join-cta" onClick={() => { setErr(""); setJoining(!joining); }}>
+          📷 הצטרפו לחברים
+        </button>
       </div>
 
-      <div className="card" style={{ padding: "14px 16px", marginBottom: 4 }} id="game-actions">
-        <div style={{ display: "flex", gap: 10, alignItems: "flex-start", marginBottom: 10 }}>
-          <span style={{ fontSize: 20 }}>1️⃣</span>
-          <p className="sub" style={{ fontSize: 13.5 }}><b>אחד פותח חדר</b> — ומקבל קוד ו-QR להראות לכולם.</p>
+      {joining && (
+        <div className="card join-panel popin">
+          <button className="btn social" onClick={() => { setJoining(false); setScanning(true); }}>
+            📷 סרוק QR של המארח
+          </button>
+          <div className="divider">או הצטרף עם קוד</div>
+          <input
+            className="input"
+            placeholder="ABCD"
+            maxLength={4}
+            value={code}
+            style={{ letterSpacing: 8, fontWeight: 900, fontSize: 24, textTransform: "uppercase" }}
+            onChange={(e) => setCode(e.target.value.replace(/[^a-zA-Z]/g, "").toUpperCase())}
+          />
+          <button className="btn ghost" style={{ marginTop: 8 }} disabled={code.length !== 4}
+            onClick={() => navigate(`/r/${code}`)}>
+            הצטרף 🚪
+          </button>
         </div>
-        <div style={{ display: "flex", gap: 10, alignItems: "flex-start", marginBottom: 10 }}>
-          <span style={{ fontSize: 20 }}>2️⃣</span>
-          <p className="sub" style={{ fontSize: 13.5 }}><b>החברים סורקים</b> עם המצלמה — ותוך 5 שניות כולם בפנים.</p>
-        </div>
-        <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-          <span style={{ fontSize: 20 }}>3️⃣</span>
-          <p className="sub" style={{ fontSize: 13.5 }}><b>בוחרים משחק ומשחקים</b> — טריוויה, מתחזה, פצצות ועוד 9.</p>
-        </div>
-      </div>
-
-      <button className="btn" onClick={host} disabled={busy}>
-        {busy ? "פותח חדר..." : "🎉 פתח חדר חדש"}
-      </button>
-
-      <button className="btn social" style={{ marginTop: 8 }} onClick={() => { setErr(""); setScanning(true); }}>
-        📷 סרוק QR של המארח
-      </button>
+      )}
 
       {err && (
         <p className="sub popin" style={{ textAlign: "center", marginTop: 10, color: "#ff8a8a", fontWeight: 700 }}>
@@ -90,23 +94,7 @@ export default function Home() {
         </p>
       )}
 
-      <div className="divider">או הצטרף עם קוד</div>
-      <input
-        className="input"
-        placeholder="ABCD"
-        maxLength={4}
-        value={code}
-        style={{ letterSpacing: 8, fontWeight: 900, fontSize: 24, textTransform: "uppercase" }}
-        onChange={(e) => setCode(e.target.value.replace(/[^a-zA-Z]/g, "").toUpperCase())}
-      />
-      <button className="btn ghost" style={{ marginTop: 8 }} disabled={code.length !== 4}
-        onClick={() => navigate(`/r/${code}`)}>
-        הצטרף 🚪
-      </button>
-
-      <p className="sub" style={{ textAlign: "center", marginTop: 30, fontSize: 12 }}>
-        ⚡ בלי התקנה · 🔒 בלי הרשמה · חינם
-      </p>
+      <p className="sub home-foot">⚡ בלי התקנה · 🔒 בלי הרשמה · חינם</p>
     </main>
   );
 }

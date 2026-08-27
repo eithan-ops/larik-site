@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import Home from "./components/Home";
 import Room from "./components/Room";
 import Mapper from "./components/Mapper";
+import GamesShelf from "./components/GamesShelf";
 
 /** ראוטר משחקים: / (בית) · /r/CODE (חדר). המופע עבר לאפליקציה נפרדת (/s) */
 export default function App() {
@@ -21,6 +22,8 @@ export default function App() {
   const roomMatch = path.match(/^\/r\/([A-Za-z]{4})$/);
   if (roomMatch) return <Room code={roomMatch[1].toUpperCase()} />;
   if (path === "/mapper") return <Mapper />;
+  // ‎/games שמור לעמוד ה-SEO הסטטי — מדף המשחקים באפליקציה חי ב-/play
+  if (path === "/play") return <GamesShelf />;
   return <Home />;
 }
 
