@@ -29,12 +29,25 @@ export interface Store {
   put<T>(key: string, value: T): Promise<void>;
   /** כל המפתחות שמתחילים בקידומת — לעמודי סטטוס ולתחזוקה, לא לנתיב חם */
   list(prefix: string, limit?: number): Promise<string[]>;
+  /**
+   * כתיבה+קריאה שעוקפות את המטמון ופונות ישירות למסד.
+   * קיים כי בלעדיו עמוד הסטטוס משקר: כתיבה שנכשלה עדיין יושבת במטמון,
+   * הקריאה מוצאת אותה שם, והכול נראה תקין בזמן שהנתונים לא נשמרים בשום מקום.
+   */
+  probe(): Promise<boolean>;
   readonly kind: StoreKind;
 }
 
 /* ---------- זיכרון ---------- */
 
 class MemoryStore implements Store {
+  async probe(): Promise<boolean> {
+    const k = `probe:${Date.now()}:${Math.random()}`;
+    await this.put(k, { ok: true });
+    const back = await this.get<{ ok?: boolean }>(k);
+    return back?.ok === true;
+  }
+
   readonly kind = "memory" as const;
   private map = new Map<string, string>();
   async get<T>(key: string): Promise<T | null> {
@@ -56,6 +69,13 @@ interface LibsqlResult {
 }
 
 class LibsqlStore implements Store {
+  async probe(): Promise<boolean> {
+    const k = `probe:${Date.now()}:${Math.random()}`;
+    await this.put(k, { ok: true });
+    const back = await this.get<{ ok?: boolean }>(k);
+    return back?.ok === true;
+  }
+
   readonly kind = "libsql" as const;
   private url: string;
   private token: string;
@@ -118,6 +138,13 @@ class LibsqlStore implements Store {
 /* ---------- Supabase (PostgREST) ---------- */
 
 class SupabaseStore implements Store {
+  async probe(): Promise<boolean> {
+    const k = `probe:${Date.now()}:${Math.random()}`;
+    await this.put(k, { ok: true });
+    const back = await this.get<{ ok?: boolean }>(k);
+    return back?.ok === true;
+  }
+
   readonly kind = "supabase" as const;
   private base: string;
   private headers: Record<string, string>;
@@ -160,6 +187,13 @@ class SupabaseStore implements Store {
 /* ---------- Upstash Redis (REST) ---------- */
 
 class UpstashStore implements Store {
+  async probe(): Promise<boolean> {
+    const k = `probe:${Date.now()}:${Math.random()}`;
+    await this.put(k, { ok: true });
+    const back = await this.get<{ ok?: boolean }>(k);
+    return back?.ok === true;
+  }
+
   readonly kind = "upstash" as const;
   private url: string;
   private token: string;
@@ -236,6 +270,11 @@ class ResilientStore implements Store {
     try { return await this.primary.list(prefix, limit); } catch (e) { this.note(e); return this.cache.list(prefix, limit); }
   }
 
+  /** ההבדל מכל שאר המתודות: כאן *לא* נופלים למטמון. השאלה היא על המסד. */
+  async probe(): Promise<boolean> {
+    return this.primary.probe();
+  }
+
   private note(e: unknown) {
     // מדווחים על העשר הראשונות בלבד — שרת שאיבד מסד לא צריך להציף את הלוג
     if (this.failures++ < 10) console.warn("[store] נפילה, ממשיכים מהזיכרון:", (e as Error).message);
@@ -295,6 +334,7 @@ export function makeBrokenStore(): Store {
     async get() { throw new Error("מסד נפל"); },
     async put() { throw new Error("מסד נפל"); },
     async list() { throw new Error("מסד נפל"); },
+    async probe() { throw new Error("מסד נפל"); },
   };
   return new ResilientStore(broken);
 }

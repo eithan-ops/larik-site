@@ -109,15 +109,14 @@ const http = createServer((req, res) => {
    */
   if (url.pathname === "/api/store-status") {
     const store = getStore();
-    const probe = `probe:${Date.now()}`;
-    store.put(probe, { ok: true })
-      .then(() => store.get<{ ok: boolean }>(probe))
-      .then((back) => {
+    // probe() עוקף את המטמון בכוונה — אחרת כתיבה שנכשלה נראית כמו הצלחה
+    store.probe()
+      .then((ok) => {
         res.writeHead(200, { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" });
         res.end(JSON.stringify({
           kind: store.kind,
-          writable: back?.ok === true,
-          persists: store.kind !== "memory",
+          writable: ok,
+          persists: store.kind !== "memory" && ok,
           triviaBank: getTriviaBank().size(),
         }));
       })
