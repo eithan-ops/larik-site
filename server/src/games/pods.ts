@@ -61,20 +61,27 @@ export function createPods(ctx: GameCtx): GameInstance {
       .sort((a, b) => scores[b] - scores[a] || (avg[a] ?? 9e9) - (avg[b] ?? 9e9));
     const winner = ranked[0];
     const loser = [...players].sort((a, b) => scores[a] - scores[b])[0];
-    ctx.end({ title: "פודים ⚡ מלך המהירות", winnerId: winner, loserId: loser, scores });
+    ctx.end({ title: "פודים ⚡ מלך המהירות", winnerId: winner, loserId: loser, scores, facts: podFacts() });
   }
 
   /* ---------- הישרדות ---------- */
   const colorOf: Record<string, string> = {};
   let alive = [...players];
   let windowMs = 3000;
+  const eliminated: string[] = []; // סדר ההדחה — מזין את "הראשון שנופל"
 
   function survivalRound() {
     if (disposed) return;
     if (alive.length <= 1) {
       const winner = alive[0];
       const loser = players.find((p) => p !== winner && scores[p] === Math.min(...players.filter(x => x !== winner).map((x) => scores[x])));
-      return ctx.end({ title: "פודים 💀 הישרדות", winnerId: winner, loserId: loser ?? undefined, scores });
+      const extra: Record<string, { outFirst?: number; survivedLast?: number }> = {};
+      if (eliminated[0]) extra[eliminated[0]] = { outFirst: 1 };
+      if (winner) extra[winner] = { ...(extra[winner] ?? {}), survivedLast: 1 };
+      return ctx.end({
+        title: "פודים 💀 הישרדות", winnerId: winner, loserId: loser ?? undefined, scores,
+        facts: podFacts(extra),
+      });
     }
     const target = alive[Math.floor(Math.random() * alive.length)];
     const pods = ctx.connectedPlayers().map((p) => p.id);
@@ -88,6 +95,7 @@ export function createPods(ctx: GameCtx): GameInstance {
         // לא נגע בזמן — הדחה
         turnOffActive();
         alive = alive.filter((p) => p !== target);
+        if (!eliminated.includes(target)) eliminated.push(target);
         ctx.broadcast({ a: "pd_miss", lightId: id, pid: target });
         ctx.broadcast({ a: "pd_eliminated", pid: target });
         ctx.timer(1800, survivalRound);
@@ -103,6 +111,20 @@ export function createPods(ctx: GameCtx): GameInstance {
       ctx.broadcast({ a: "pd_off", lightId: activeLight.id });
       activeLight = null;
     }
+  }
+
+  /** עובדות למנוע התארים: הזמן הטוב ביותר וכמה פודים נחטפו */
+  function podFacts(extra: Record<string, { outFirst?: number; survivedLast?: number }> = {}) {
+    const out: Record<string, Record<string, number>> = {};
+    for (const pid of players) {
+      const arr = reactions[pid] ?? [];
+      const f: Record<string, number> = {};
+      if (arr.length) f.bestReactionMs = Math.min(...arr);
+      if (scores[pid]) f.taps = scores[pid];
+      Object.assign(f, extra[pid] ?? {});
+      if (Object.keys(f).length) out[pid] = f;
+    }
+    return out;
   }
 
   function avgReactions(): Record<string, number> {

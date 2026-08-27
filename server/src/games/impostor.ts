@@ -42,6 +42,8 @@ export function createImpostor(ctx: GameCtx): GameInstance {
     const candidates = players.filter((p) => p !== impostor);
     impostor = (candidates.length ? candidates : players)[Math.floor(Math.random() * (candidates.length ? candidates.length : players.length))];
     for (const pid of players) sendRole(pid);
+    // המתחזה לא נגמר ב-end(), אז הוא מדווח עובדות תוך כדי — אחרת לא היה מזין תארים
+    ctx.reportFacts({ [impostor]: { impostorRounds: 1 } });
   }
 
   function sendRole(pid: string) {

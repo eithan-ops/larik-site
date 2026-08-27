@@ -19,6 +19,7 @@ export function createForehead(ctx: GameCtx): GameInstance {
   const placed = new Set<string>();
   const saved = new Set<string>();
   const votes = new Map<string, boolean>();
+  const peeks = new Map<string, number>(); // מי נתפס מציץ וכמה — לתואר "נתפס מציץ 🐀"
   let order: string[] = [...players].sort(() => Math.random() - 0.5);
   let turnIdx = -1;
   let stage: "placing" | "playing" | "voting" | "done" = "placing";
@@ -93,7 +94,10 @@ export function createForehead(ctx: GameCtx): GameInstance {
     const scores: Record<string, number> = {};
     [...saved].forEach((pid, i) => (scores[pid] = saved.size - i));
     if (loser) scores[loser] = 0;
-    ctx.end({ title: "על המצח 🤳", winnerId: winner, loserId: loser, scores });
+    const facts: Record<string, { guessed?: number; peeks?: number }> = {};
+    for (const pid of saved) facts[pid] = { guessed: 1 };
+    for (const [pid, n] of peeks) facts[pid] = { ...(facts[pid] ?? {}), peeks: n };
+    ctx.end({ title: "על המצח 🤳", winnerId: winner, loserId: loser, scores, facts });
   }
 
   return {
@@ -133,8 +137,11 @@ export function createForehead(ctx: GameCtx): GameInstance {
           }
           return;
         case "fh_peek":
-          // הג'ירו תפס הצצה — אזעקה מסונכרנת אצל כולם
-          if (stage === "playing" || stage === "voting") ctx.cue(400, { a: "fh_cheater", pid });
+          // הג'ירו תפס הצצה — אזעקה מסונכרנת אצל כולם, וגם תעודת אופי לכרטיס הסיום
+          if (stage === "playing" || stage === "voting") {
+            peeks.set(pid, (peeks.get(pid) ?? 0) + 1);
+            ctx.cue(400, { a: "fh_cheater", pid });
+          }
           return;
       }
     },

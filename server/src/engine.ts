@@ -6,8 +6,10 @@
  */
 import type {
   ClientMsg, ServerMsg, RoomSnapshot, PlayerInfo, GameServerMsg, GameClientMsg, CeremonyInfo,
+  PlayerFacts,
 } from "../../shared/protocol";
 import { CATALOG } from "../../shared/protocol";
+import { mergeFacts, computeAwards } from "./awards";
 
 export interface Transport {
   send(playerId: string, msg: ServerMsg): void;
@@ -20,6 +22,12 @@ export interface GameEndResult {
   winnerIds?: string[];
   loserId?: string;
   scores?: Record<string, number>;
+  /**
+   * עובדות ייעודיות למנוע התארים — אופציונלי לגמרי.
+   * המשחק מדווח מה קרה ("זמן התגובה הכי טוב היה 410ms"), לא מה זה אומר.
+   * העובדות הבסיסיות (ניצחונות, ליצן, נקודות) נצברות אוטומטית ולא צריך לדווח אותן.
+   */
+  facts?: Record<string, PlayerFacts>;
 }
 
 export interface GameCtx {
@@ -34,6 +42,11 @@ export interface GameCtx {
   cue(delayMs: number, d: GameServerMsg, only?: string[]): number;
   timer(ms: number, fn: () => void): NodeJS.Timeout;
   end(result: GameEndResult): void;
+  /**
+   * דיווח עובדות תוך כדי משחק — למשחקים שלא נגמרים ב-end() (כמו המתחזה,
+   * שרץ בסיבובים עד שהמארח יוצא). בלי זה הם לא היו מזינים תארים בכלל.
+   */
+  reportFacts(facts: Record<string, PlayerFacts>): void;
   config: unknown;
 }
 
@@ -70,6 +83,10 @@ export class Room {
   private game?: GameInstance;
   private ceremony?: CeremonyInfo;
   private eveningScores: Record<string, number> = {};
+  private eveningFacts: Record<string, PlayerFacts> = {}; // הזיכרון של הערב — מזין את התארים
+  private winStreak: Record<string, number> = {};         // רצף ניצחונות רץ (לא נשמר בעובדות)
+  private wonGameIds: Record<string, Set<string>> = {};   // באילו משחקים שונים ניצח
+  private gamesPlayed = 0;
   private timers = new Set<NodeJS.Timeout>();
   private gamePids: string[] = []; // משתתפי המשחק הרץ — ננעל ברגע ההתחלה
   private gotIt = new Set<string>(); // מי אישר "הבנתי" על המשחק שנבחר
@@ -252,18 +269,27 @@ export class Room {
         return h;
       },
       end: (result) => this.endGame(result),
+      reportFacts: (facts) => {
+        for (const [pid, add] of Object.entries(facts)) {
+          if (!this.players.has(pid)) continue;
+          mergeFacts((this.eveningFacts[pid] ??= {}), add);
+        }
+      },
       config: this.gameConfig,
     };
   }
 
   private endGame(result: GameEndResult) {
     const winners = result.winnerIds?.length ? result.winnerIds : result.winnerId ? [result.winnerId] : [];
+    const endedGameId = this.gameId ?? "game";
+    this.gamesPlayed += 1;
     // ניקוד ערב: כל מנצח (גם בתיקו) +3, כולם חוץ מהליצן +1
     for (const p of this.players.values()) {
       const base = this.eveningScores[p.id] ?? 0;
       const gain = winners.includes(p.id) ? 3 : p.id === result.loserId ? 0 : 1;
       this.eveningScores[p.id] = base + gain;
     }
+    this.collectFacts(result, winners, endedGameId);
     this.ceremony = {
       title: result.title,
       winnerId: winners[0],
@@ -271,10 +297,35 @@ export class Room {
       loserId: result.loserId,
       scores: result.scores,
       eveningScores: { ...this.eveningScores },
+      awards: computeAwards(this.eveningFacts),
+      gamesPlayed: this.gamesPlayed,
     };
     this.teardownGame();
     this.phase = "ceremony";
     this.broadcastRoom();
+  }
+
+  /**
+   * צובר את עובדות הערב: קודם מה שנגזר אוטומטית מכל משחק (ניצחון/ליצן/נקודות/רצף),
+   * ואז מה שהמשחק עצמו טרח לדווח. משחק שלא מדווח כלום עדיין מייצר תארים.
+   */
+  private collectFacts(result: GameEndResult, winners: string[], gameId: string) {
+    // רק מי שבאמת השתתף במשחק שנגמר — מי שהצטרף באמצע לא מקבל עליו נתונים
+    const took = this.gamePids.length ? this.gamePids : [...this.players.keys()];
+    for (const pid of took) {
+      const won = winners.includes(pid);
+      this.winStreak[pid] = won ? (this.winStreak[pid] ?? 0) + 1 : 0;
+      if (won) (this.wonGameIds[pid] ??= new Set()).add(gameId);
+      const f = (this.eveningFacts[pid] ??= {});
+      mergeFacts(f, { games: 1, wins: won ? 1 : 0, clown: pid === result.loserId ? 1 : 0 });
+      f.bestStreak = Math.max(f.bestStreak ?? 0, this.winStreak[pid] ?? 0);
+      f.wonGames = this.wonGameIds[pid]?.size ?? 0;
+      f.points = this.eveningScores[pid] ?? 0;
+    }
+    for (const [pid, add] of Object.entries(result.facts ?? {})) {
+      if (!this.players.has(pid)) continue;
+      mergeFacts((this.eveningFacts[pid] ??= {}), add);
+    }
   }
 
   private teardownGame() {

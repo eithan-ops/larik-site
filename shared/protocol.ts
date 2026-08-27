@@ -14,6 +14,43 @@ export interface PlayerInfo {
 
 export type RoomPhase = "lobby" | "game" | "ceremony";
 
+/**
+ * עובדות על שחקן שנצברות לאורך כל הערב ומזינות את מנוע התארים.
+ * המשחקים לא יודעים מה זה תואר — הם רק מדווחים מה קרה.
+ * מדיניות המיזוג לכל מפתח מוגדרת ב-server/src/awards.ts (FACT_MERGE).
+ */
+export interface PlayerFacts {
+  /* נצברות אוטומטית במנוע — כל המשחקים מקבלים אותן בחינם */
+  games?: number;        // כמה משחקים שיחק
+  wins?: number;         // כמה ניצח
+  clown?: number;        // כמה פעמים היה הליצן
+  points?: number;       // ניקוד הערב המצטבר
+  bestStreak?: number;   // רצף הניצחונות הארוך ביותר
+  wonGames?: number;     // בכמה משחקים *שונים* ניצח
+
+  /* עובדות ייעודיות שהמשחקים מדווחים */
+  bestReactionMs?: number;  // פודים — זמן התגובה הטוב ביותר (מינימום)
+  taps?: number;            // פודים — כמה פודים חטף
+  outFirst?: number;        // הודח ראשון
+  survivedLast?: number;    // נשאר אחרון
+  correct?: number;         // טריוויה — תשובות נכונות
+  wrong?: number;           // טריוויה — תשובות שגויות
+  impostorRounds?: number;  // המתחזה — כמה סיבובים היה המתחזה
+  impostorSafe?: number;    // המתחזה — כמה פעמים לא נחשף
+  peeks?: number;           // על המצח — נתפס מציץ
+  guessed?: number;         // על המצח — ניחש נכון
+}
+
+/** התואר האישי שמופיע על כרטיס הסיום של השחקן */
+export interface Award {
+  id: string;
+  emoji: string;
+  title: string;    // "האצבע הכי מהירה"
+  detail?: string;  // "0.41 שניות"
+  /** כותרת עיתונאית לסגנון "עיתון הערב" */
+  headline?: string;
+}
+
 export interface CeremonyInfo {
   title: string;
   winnerId?: string;
@@ -22,6 +59,10 @@ export interface CeremonyInfo {
   loserId?: string;
   scores?: Record<string, number>; // ניקוד המשחק שנגמר
   eveningScores: Record<string, number>; // לוח הערב המצטבר
+  /** תואר אישי לכל שחקן — כל טלפון מקבל כרטיס משלו, וזה מה שמייצר את השיתופים */
+  awards?: Record<string, Award>;
+  /** כמה משחקים כבר שוחקו בערב הזה — מופיע על הכרטיס ("ערב #7") */
+  gamesPlayed?: number;
 }
 
 export interface RoomSnapshot {

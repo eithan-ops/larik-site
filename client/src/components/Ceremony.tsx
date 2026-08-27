@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { RoomSnapshot } from "../../../shared/protocol";
 import { Sfx, vibrate } from "../lib/audio";
 import { shareEveningBoard } from "../lib/sharecard";
+import { shareEndCard } from "../lib/endcard";
 import { track } from "../lib/analytics";
 
 const COLORS = ["#8b5cf6", "#ec4899", "#ffc93c", "#34e89e", "#5c8aff"];
@@ -21,6 +22,8 @@ export default function Ceremony({ room, me, isHost, onBackToLobby }: {
   // דרמטורגיה: רגע של חושך ותיפוף לפני החשיפה — הציפייה היא חצי מהכיף
   const [revealed, setRevealed] = useState(false);
   const [shareMsg, setShareMsg] = useState("");
+  const [carding, setCarding] = useState(false);
+  const myAward = c.awards?.[me];
 
   useEffect(() => {
     Sfx.drumroll();
@@ -47,6 +50,33 @@ export default function Ceremony({ room, me, isHost, onBackToLobby }: {
       clownName: loser ? `${loser.emoji} ${loser.name}` : undefined,
     });
     if (out === "downloaded") { setShareMsg("התמונה ירדה — שלחו אותה לקבוצה 💬"); setTimeout(() => setShareMsg(""), 3000); }
+  }
+
+  /** הכרטיס האישי — לכל טלפון יש אחד משלו, וזה מה שמייצר את השיתופים */
+  async function shareCard() {
+    if (!myAward || carding) return;
+    setCarding(true);
+    track("card_shared");
+    const meP = room.players.find((p) => p.id === me);
+    const ranked = [...room.players]
+      .filter((p) => c.eveningScores[p.id] !== undefined)
+      .sort((a, b) => (c.eveningScores[b.id] ?? 0) - (c.eveningScores[a.id] ?? 0));
+    try {
+      const out = await shareEndCard({
+        name: meP?.name ?? "שחקן",
+        emoji: meP?.emoji ?? "🙂",
+        award: myAward,
+        points: c.eveningScores[me] ?? 0,
+        place: Math.max(1, ranked.findIndex((p) => p.id === me) + 1),
+        totalPlayers: ranked.length || room.players.length,
+        gamesPlayed: c.gamesPlayed ?? 1,
+        roomCode: room.code,
+        joinUrl: `${location.origin}/r/${room.code}`,
+      });
+      if (out === "downloaded") { setShareMsg("הכרטיס ירד — שלחו אותו לחבר'ה 💬"); setTimeout(() => setShareMsg(""), 3000); }
+    } finally {
+      setCarding(false);
+    }
   }
 
   const confetti = useMemo(() =>
@@ -125,6 +155,24 @@ export default function Ceremony({ room, me, isHost, onBackToLobby }: {
 
       <span className="chip popin" style={{ marginTop: 14 }}>{c.title}</span>
 
+      {/* התואר האישי — מגיע אחרי ההכרזה הכללית, כי הוא ההפתעה השנייה של הרגע */}
+      {myAward && (
+        <div className="card popin" style={{
+          marginTop: 14, width: "100%", maxWidth: 340, textAlign: "center",
+          animationDelay: ".5s", animationFillMode: "backwards",
+        }}>
+          <div className="sub" style={{ fontSize: 12, letterSpacing: ".08em" }}>התואר שלך הערב</div>
+          <div style={{ fontSize: 46, lineHeight: 1.1, marginTop: 4 }}>{myAward.emoji}</div>
+          <div style={{ fontFamily: "var(--font-display)", fontSize: 24, marginTop: 2 }}>{myAward.title}</div>
+          {myAward.detail && (
+            <div className="sub" style={{ marginTop: 4, fontSize: 14, fontWeight: 700 }}>{myAward.detail}</div>
+          )}
+          <button className="btn social" style={{ marginTop: 12 }} onClick={shareCard} disabled={carding}>
+            {carding ? "מכין את הכרטיס…" : "📸 שתפו את הכרטיס שלכם"}
+          </button>
+        </div>
+      )}
+
       <div className="card" style={{ marginTop: 14, width: "100%", maxWidth: 340 }}>
         <div className="sub" style={{ marginBottom: 6 }}>לוח הערב 🌙</div>
         {ranking.map((p, i) => {
@@ -144,7 +192,7 @@ export default function Ceremony({ room, me, isHost, onBackToLobby }: {
         })}
       </div>
 
-      <button className="btn social" style={{ marginTop: 12, maxWidth: 340 }} onClick={share}>
+      <button className="btn ghost" style={{ marginTop: 10, maxWidth: 340 }} onClick={share}>
         📤 שתפו את לוח הערב
       </button>
       {shareMsg && <p className="sub popin" style={{ marginTop: 8, fontSize: 12.5, fontWeight: 700 }}>{shareMsg}</p>}

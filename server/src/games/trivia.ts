@@ -19,6 +19,8 @@ export function createTrivia(ctx: GameCtx): GameInstance {
   let qIdx = -1;
   let current: { id: number; correct: number; at: number; deadline: number } | null = null;
   const answers = new Map<string, { choice: number; atServer: number }>();
+  const hits: Record<string, number> = {};   // תשובות נכונות — לתואר "המוח של הערב"
+  const misses: Record<string, number> = {}; // תשובות שגויות — לתואר "ביטחון עצמי מופרז"
   let over = false;
 
   function nextQ() {
@@ -46,6 +48,9 @@ export function createTrivia(ctx: GameCtx): GameInstance {
         const pts = Math.round(300 + (MAX_POINTS - 300) * frac);
         scores[pid] = (scores[pid] ?? 0) + pts;
         gained[pid] = pts;
+        hits[pid] = (hits[pid] ?? 0) + 1;
+      } else {
+        misses[pid] = (misses[pid] ?? 0) + 1;
       }
     }
     current = null;
@@ -63,7 +68,14 @@ export function createTrivia(ctx: GameCtx): GameInstance {
     const low = scores[ranked[ranked.length - 1]] ?? 0;
     const lowIds = ranked.filter((p) => (scores[p] ?? 0) === low);
     const loser = lowIds.length === 1 && low < top ? lowIds[0] : undefined;
-    ctx.end({ title: "טריוויה 🧠", winnerId: winnerIds[0], winnerIds, loserId: loser, scores: { ...scores } });
+    const facts: Record<string, { correct?: number; wrong?: number }> = {};
+    for (const pid of players) {
+      const f: { correct?: number; wrong?: number } = {};
+      if (hits[pid]) f.correct = hits[pid];
+      if (misses[pid]) f.wrong = misses[pid];
+      if (f.correct || f.wrong) facts[pid] = f;
+    }
+    ctx.end({ title: "טריוויה 🧠", winnerId: winnerIds[0], winnerIds, loserId: loser, scores: { ...scores }, facts });
   }
 
   return {
