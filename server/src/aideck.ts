@@ -73,7 +73,7 @@ function parseCards(text: string): string[] {
 }
 
 /* ---------- ספקים ---------- */
-async function askGemini(prompt: string): Promise<string> {
+async function askGemini(prompt: string, maxTokens = 1200): Promise<string> {
   const key = process.env.GEMINI_API_KEY;
   if (!key) throw new Error("no gemini key");
   const res = await fetch(
@@ -83,9 +83,9 @@ async function askGemini(prompt: string): Promise<string> {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.9, maxOutputTokens: 1200 },
+        generationConfig: { temperature: 0.9, maxOutputTokens: maxTokens },
       }),
-      signal: AbortSignal.timeout(20_000),
+      signal: AbortSignal.timeout(maxTokens > 2000 ? 60_000 : 20_000),
     },
   );
   if (!res.ok) throw new Error(`gemini ${res.status}`);
@@ -93,7 +93,7 @@ async function askGemini(prompt: string): Promise<string> {
   return data.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("") ?? "";
 }
 
-async function askGroq(prompt: string): Promise<string> {
+async function askGroq(prompt: string, maxTokens = 1200): Promise<string> {
   const key = process.env.GROQ_API_KEY;
   if (!key) throw new Error("no groq key");
   const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
@@ -103,9 +103,9 @@ async function askGroq(prompt: string): Promise<string> {
       model: GROQ_MODEL,
       messages: [{ role: "user", content: prompt }],
       temperature: 0.9,
-      max_tokens: 1200,
+      max_tokens: maxTokens,
     }),
-    signal: AbortSignal.timeout(20_000),
+    signal: AbortSignal.timeout(maxTokens > 2000 ? 60_000 : 20_000),
   });
   if (!res.ok) throw new Error(`groq ${res.status}`);
   const data = (await res.json()) as { choices?: { message?: { content?: string } }[] };
@@ -116,9 +116,9 @@ async function askGroq(prompt: string): Promise<string> {
  * שאילתה גנרית למודל — Gemini ואם הוא נופל אז Groq.
  * חשוף כדי שמפעל השאלות ישתמש באותם מפתחות ובאותה נפילה, במקום לשכפל.
  */
-export async function askModel(prompt: string): Promise<string> {
-  try { return await askGemini(prompt); }
-  catch { return await askGroq(prompt); }
+export async function askModel(prompt: string, maxTokens = 1200): Promise<string> {
+  try { return await askGemini(prompt, maxTokens); }
+  catch { return await askGroq(prompt, maxTokens); }
 }
 
 /* ---------- ה-API ---------- */

@@ -13,7 +13,7 @@
  * מחיקה או שינוי סדר יהפכו את זיכרון ה"נראה" של כל השחקנים לשקר.
  */
 import { TRIVIA, type TriviaQ } from "./decks";
-import type { Store } from "./store";
+import { getStore, type Store } from "./store";
 
 export interface BankQ extends TriviaQ { id: number }
 
@@ -98,8 +98,8 @@ export class TriviaBank {
   async grow(
     n: number,
     cat: TriviaQ["cat"],
-    ask: (prompt: string) => Promise<string>
-  ): Promise<{ added: number; skipped: number; size: number }> {
+    ask: (prompt: string, maxTokens?: number) => Promise<string>
+  ): Promise<{ added: number; skipped: number; size: number; error?: string; sample?: string }> {
     await this.load();
     const seen = new Set(this.all().map((q) => norm(q.q)));
     const sample = this.all().filter((q) => q.cat === cat).slice(-6).map((q) => q.q);
@@ -115,12 +115,23 @@ export class TriviaBank {
       'החזר JSON בלבד במבנה: {"questions":[{"q":"...","options":["a","b","c","d"],"correct":0}]}',
     ].join("\n");
 
+    // תקציב טוקנים לפי מספר השאלות. שאלה בעברית עם ארבע תשובות היא ~200
+    // טוקנים, וברירת המחדל של 1200 חתכה את התשובה באמצע ה-JSON.
+    let raw = "";
     let parsed: { questions?: TriviaQ[] };
     try {
-      const raw = await ask(prompt);
-      parsed = JSON.parse(raw.replace(/^```json\s*|```$/g, "").trim()) as { questions?: TriviaQ[] };
-    } catch {
-      return { added: 0, skipped: 0, size: this.size() };
+      raw = await ask(prompt, Math.min(8000, 400 + n * 220));
+      parsed = JSON.parse(extractJson(raw)) as { questions?: TriviaQ[] };
+    } catch (e) {
+      // מפעל ששותק הוא מפעל שאי אפשר לתקן — מחזירים את הסיבה ואת תחילת התשובה
+      return {
+        added: 0, skipped: 0, size: this.size(),
+        error: (e as Error).message.slice(0, 120),
+        sample: raw.slice(0, 200),
+      };
+    }
+    if (!parsed.questions?.length) {
+      return { added: 0, skipped: 0, size: this.size(), error: "המודל לא החזיר שאלות", sample: raw.slice(0, 200) };
     }
 
     let added = 0, skipped = 0;
@@ -155,8 +166,12 @@ export class TriviaBank {
 
 let bank: TriviaBank | null = null;
 
-/** המאגר של השרת. נטען פעם אחת מהאחסון; עד שהטעינה חוזרת עובדים על הזרע. */
-export function getTriviaBank(store?: Store): TriviaBank {
+/**
+ * המאגר של השרת. נטען פעם אחת מהאחסון; עד שהטעינה חוזרת עובדים על הזרע.
+ * ברירת המחדל היא האחסון האמיתי — בלעדיה המאגר "עובד" אבל שום שאלה
+ * שנוצרה לא נשמרת ולא נטענת, וזה נראה בדיוק כמו מפעל תקין שמייצר לחלל.
+ */
+export function getTriviaBank(store: Store = getStore()): TriviaBank {
   if (!bank) {
     bank = new TriviaBank(store);
     void bank.load();
@@ -167,6 +182,18 @@ export function getTriviaBank(store?: Store): TriviaBank {
 /** לבדיקות: מאגר נקי בלי לגעת במופע הגלובלי */
 export function makeTriviaBank(store?: Store): TriviaBank {
   return new TriviaBank(store);
+}
+
+/**
+ * מחלץ את גוש ה-JSON מתשובת המודל. מודלים עוטפים ב-```json, מוסיפים
+ * משפט לפני, ולפעמים גם אחרי — לקחת מהסוגר הראשון עד האחרון עמיד יותר
+ * מלנסות לנקות כל וריאציה בנפרד.
+ */
+function extractJson(raw: string): string {
+  const start = raw.indexOf("{");
+  const end = raw.lastIndexOf("}");
+  if (start < 0 || end <= start) throw new Error("לא נמצא JSON בתשובה");
+  return raw.slice(start, end + 1);
 }
 
 function catName(cat: TriviaQ["cat"]): string {
