@@ -375,7 +375,9 @@ export class Room {
    */
   private async syncGroup(): Promise<void> {
     if (!this.groups || !this.groupId) return;
-    const first = this.groupApplied === 0;
+    // חבורה שנשמרה לפני שהמשחק הראשון נגמר עדיין רושמת את החברים,
+    // אבל לא סופרת ערב — אחרת החבורה נולדת ב"ערב 1" בלי ששיחקו בו.
+    const countsAsEvening = this.groupApplied === 0 && this.gamesPlayed > 0;
     const players = [...this.players.values()].map((p) => {
       const c = this.ceremony;
       const winners = c?.winnerIds ?? (c?.winnerId ? [c.winnerId] : []);
@@ -391,10 +393,10 @@ export class Room {
     const factsByStable: Record<string, PlayerFacts> = {};
     for (const p of this.players.values()) factsByStable[this.stablePid(p)] = this.eveningFacts[p.id] ?? {};
 
-    const g = await this.groups.applyGame(this.groupId, players, factsByStable, first);
+    const g = await this.groups.applyGame(this.groupId, players, factsByStable, countsAsEvening);
     if (!g) return;
     for (const p of this.players.values()) this.groupPointsApplied[p.id] = this.eveningScores[p.id] ?? 0;
-    this.groupApplied += 1;
+    if (this.gamesPlayed > 0) this.groupApplied += 1;
     this.groupSummary = this.groups.summarize(g);
     if (this.ceremony) this.ceremony.group = this.groupSummary;
     this.broadcastRoom();

@@ -157,4 +157,21 @@ await test("כרטיס הסיום מקבל את שם החבורה ואת מספ�
   assert.ok(c.awards?.p2, "התארים נעלמו כשנוספה חבורה");
 });
 
+await test("חבורה שנשמרה לפני שהמשחק הראשון נגמר לא סופרת ערב", async () => {
+  const groups = new Groups(makeMemoryStore());
+  const { room, snap } = harness(groups);
+  ["p1", "p2", "p3"].forEach((p, i) => room.join(p, "שחקן" + i, "🙂", "g-" + p));
+  room.onMessage("p1", { t: "save_group", name: "מוקדם מדי" });
+  await settle();
+
+  const early = snap("p1").group!;
+  assert.equal(early.evenings, 0, "נספר ערב שלא שוחק");
+  assert.equal(early.table.length, 3, "החברים כן צריכים להירשם");
+
+  await playGame(room);
+  const after = snap("p1").group!;
+  assert.equal(after.evenings, 1, "הערב האמיתי לא נספר");
+  assert.equal(after.table.find((m) => m.pid === "g-p1")!.points, 3);
+});
+
 console.log(`\n${passed}/${total} עברו`);

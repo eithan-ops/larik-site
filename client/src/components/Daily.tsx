@@ -18,6 +18,9 @@ import { markSeen } from "../lib/seen";
 import { track } from "../lib/analytics";
 import { loadStreak, saveStreak, todayISO, type Streak } from "../lib/daily";
 
+/** אותה פלטה כמו במשחק הקבוצתי — ראו client/src/games/trivia.tsx */
+const OPT_COLORS = ["#ff4d9d", "#5c8aff", "#ffce3c", "#34e89e"];
+
 interface Q { id: number; q: string; options: string[]; correct: number }
 
 export default function Daily() {
@@ -117,25 +120,30 @@ export default function Daily() {
         <div style={{ fontFamily: "var(--font-display)", fontSize: 21, lineHeight: 1.25, textAlign: "center", padding: "6px 4px 14px" }}>
           {q.q}
         </div>
-        {q.options.map((o, i) => {
-          const isRight = chosen !== null && i === q.correct;
-          const isWrong = chosen === i && i !== q.correct;
-          return (
-            <button
-              key={i}
-              className="btn"
-              disabled={chosen !== null}
-              onClick={() => answer(i)}
-              style={{
-                marginTop: 8, width: "100%",
-                background: isRight ? "var(--money)" : isWrong ? "#ff5a4e" : undefined,
-                color: isRight || isWrong ? "#fff" : undefined,
-              }}
-            >
-              {o}
-            </button>
-          );
-        })}
+        {/* אותם ארבעה צבעים כמו בטריוויה הקבוצתית — כדי שזה יורגש כאותו משחק */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 6 }}>
+          {q.options.map((o, i) => {
+            const isRight = chosen !== null && i === q.correct;
+            const dim = chosen !== null && !isRight && chosen !== i;
+            return (
+              <button
+                key={i}
+                className="btn"
+                disabled={chosen !== null}
+                onClick={() => answer(i)}
+                style={{
+                  position: "relative", minHeight: 74, fontSize: 15,
+                  color: "#0c0817", background: OPT_COLORS[i],
+                  opacity: dim ? 0.35 : 1,
+                  outline: isRight ? "4px solid var(--money)" : chosen === i ? "4px solid #ff5a4e" : undefined,
+                }}
+              >
+                {o}
+                {isRight && <span style={{ position: "absolute", top: 4, left: 6, fontSize: 18 }}>✓</span>}
+              </button>
+            );
+          })}
+        </div>
       </div>
     </main>
   );

@@ -1,0 +1,46 @@
+# מפעל השאלות — רץ פעם ביום ומגדיל את מאגר הטריוויה.
+#
+# למה זה חייב להיות אוטומטי: הטריוויה היומית מוציאה 10 שאלות ביום לכל שחקן,
+# כלומר 3,650 בשנה. מאגר שגדל ידנית לא ישרוד את החודש הראשון.
+#
+# בונוס: הקריאה היומית גם מעירה את השרת ב-Render וגם נוגעת במסד —
+# מה שמונע מפרויקט Supabase חינמי להיעצר אחרי שבוע של חוסר פעילות.
+#
+# הגדרה חד-פעמית: Settings → Secrets → Actions → New repository secret
+#   LARIK_STATS_KEY = אותו מפתח שמופיע ב-STATS_KEY בשרת
+name: grow-trivia
+
+on:
+  schedule:
+    - cron: "0 3 * * *" # 03:00 UTC — שעה שקטה, לא מתחרה בשימוש אמיתי
+  workflow_dispatch:
+    inputs:
+      rounds:
+        description: "כמה סבבים לכל קטגוריה"
+        default: "3"
+
+jobs:
+  grow:
+    runs-on: ubuntu-latest
+    steps:
+      - name: הגדלת המאגר
+        env:
+          KEY: ${{ secrets.LARIK_STATS_KEY }}
+          ROUNDS: ${{ github.event.inputs.rounds || '3' }}
+        run: |
+          if [ -z "$KEY" ]; then echo "חסר LARIK_STATS_KEY"; exit 1; fi
+          # מעירים את השרת לפני הסבב — Render חינמי נרדם, והבקשה הראשונה איטית
+          curl -sS --max-time 90 "https://larik.ai/api/health" >/dev/null || true
+          total_added=0
+          for i in $(seq 1 "$ROUNDS"); do
+            for cat in israel world science; do
+              res=$(curl -sS --max-time 120 "https://larik.ai/api/trivia/grow?k=$KEY&n=25&cat=$cat" || echo '{}')
+              echo "$cat סבב $i: $res"
+              added=$(echo "$res" | grep -o '"added":[0-9]*' | cut -d: -f2 || echo 0)
+              total_added=$((total_added + ${added:-0}))
+              sleep 5   # לא מציפים את מכסת המודל
+            done
+          done
+          echo "---"
+          echo "נוספו היום: $total_added"
+          curl -sS --max-time 60 "https://larik.ai/api/store-status"
