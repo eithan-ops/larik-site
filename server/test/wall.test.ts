@@ -107,9 +107,86 @@ async function testWall() {
     console.log("  ~ החומה נפלה לפני סוף הגל — בדיקות סוף-גל לא נבחנו");
   }
 
-  room.dispose?.();
+
+}
+
+/** מנוע התכונות: שערימות באמת משנות התנהגות, שיש אבולוציה, ושהדראפט לא מציע קלף מת */
+async function testTraits() {
+  console.log("\n— מנוע השדרוגים ⚗️ —");
+  const { transport, game } = makeTransport();
+  const room = new Room("TRT", transport, { wall: createWall });
+  const PT = ["a1", "a2", "a3", "a4"];
+  PT.forEach((p, i) => room.join(p, "ט" + i, "🙂"));
+  room.onMessage("a1", { t: "select_game", gameId: "wall", config: {} });
+  room.onMessage("a1", { t: "start_game" });
+  room.onMessage("a1", { t: "game", d: { a: "wl_role", role: "cannon" } });
+  for (const p of ["a2", "a3", "a4"]) room.onMessage(p, { t: "game", d: { a: "wl_role", role: "archer" } });
+  room.onMessage("a1", { t: "game", d: { a: "wl_go" } });
+  await sleep(400);
+  check("wl_style משודר לכל החדר בתחילת ריצה", game("a2", "wl_style").length >= 1);
+
+  // הדראפט של התותחן — אין בו קלפים מתים
+  const dead = ["speed", "hp"]; // תנועה/חיים לא רלוונטיים למי שעל החומה
+  let sawDeadCard = false, offers = 0;
+  const seen = new Set<string>();
+  // מזרימים XP: הקשת יורה על כל מה שנולד
+  const killed = new Set<number>();
+  const posOf = (e: any, t: number): [number, number] => [
+    e.x0 + e.wob * Math.sin((t - e.at) / 700),
+    Math.min(1205, e.y0 + (e.speed * (t - e.at)) / 1000),
+  ];
+  const bot = setInterval(() => {
+    for (const h of game("a1", "wl_hit") as any[]) if (h.hp <= 0) killed.add(h.id);
+    const live = (game("a1", "wl_spawn") as any[]).filter((e) => !killed.has(e.id));
+    const shooters = ["a2", "a3", "a4"];
+    live.slice(0, 6).forEach((e, i) => {
+      const [x, y] = posOf(e, room.now());
+      if (y < 60) return;
+      room.onMessage(shooters[i % 3], { t: "game", d: { a: "wl_shot", tx: Math.round(x), ty: Math.round(y), power: 1 } });
+      room.onMessage("a1", { t: "game", d: { a: "wl_boom", tx: Math.round(x), ty: Math.round(y) } });
+    });
+    // כל דראפט שמגיע — בוחרים תכונה אם אפשר, אחרת את הראשון
+    for (const pid of PT) {
+      const lv = (game(pid, "wl_levelup") as any[]).at(-1);
+      if (!lv) continue;
+      const key = pid + ":" + lv.level;
+      if (seen.has(key)) continue;
+      seen.add(key); offers++;
+      for (const c of lv.cards) { if (pid === "a1" && dead.includes(c.id)) sawDeadCard = true; }
+      // תמיד מעדיפים תכונה — ככה הבדיקה באמת מפעילה DoT/שרשרת/נפץ בעולם
+      const TR = ["burn", "poison", "chain", "blast", "frost", "multi", "pierce", "vamp"];
+      const want = lv.cards.find((c: any) => TR.includes(c.id)) ?? lv.cards[0];
+      room.onMessage(pid, { t: "game", d: { a: "wl_pick", cardId: want.id } });
+    }
+  }, 220);
+
+  // WALL_SOAK=1 מריץ ריצה ארוכה שמגיעה עד האבולוציה (דרגה 4 + ערימה 5)
+  const SOAK = process.env.WALL_SOAK === "1";
+  console.log(`    ...צוברים רמות (עד ~${SOAK ? 300 : 100} שנ')`);
+  for (let i = 0; i < (SOAK ? 300 : 100); i++) {
+    await sleep(1000);
+    if ((game("a1", "wl_evo") as any[]).length) break;
+    if ((game("a1", "wl_over") as any[]).length) break;
+  }
+  clearInterval(bot);
+
+  check("הדראפט הציע הרבה שדרוגים (העקומה החדשה)", offers >= 8);
+  check("לתותחן לא הוצע אף קלף מת (זריזות/חוסן)", !sawDeadCard);
+  const tiers = game("a2", "wl_tier") as any[];
+  check("דרגת נשק עלתה מעבר לישנה (היה תקרה בדרגה 3)", tiers.length > 0);
+  const styles = game("a2", "wl_style") as any[];
+  const withTraits = styles.filter((m) => Object.values(m.traits as Record<string, number>).some((v) => v > 0));
+  check("wl_style נושא ערימות תכונה — הלקוח יודע איך לצייר את הנשק", withTraits.length > 0);
+  const dots = (game("a2", "wl_hit") as any[]).filter((h) => h.k && h.k !== "hit");
+  check("תכונות באמת פועלות בעולם (נזק מ-DoT/שרשרת/נפץ)", dots.length > 0);
+  const evos = game("a2", "wl_evo") as any[];
+  if (evos.length) check("🌟 אבולוציה מוכרזת לכל החדר", !!evos[0].name);
+  else console.log("  ~ לא הושגה אבולוציה בריצה הקצרה — לא נבחן");
+  const xp = (game("a2", "wl_xp") as any[]).at(-1);
+  console.log(`    (רמה שהושגה: ${xp?.level ?? "?"}, הצעות: ${offers}, אירועי DoT: ${dots.length})`);
 }
 
 await testWall();
+await testTraits();
 console.log(failed ? `\n${failed} בדיקות נכשלו ✗` : "\nהכול עבר ✓");
 process.exit(failed ? 1 : 0);

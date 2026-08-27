@@ -36,6 +36,36 @@ const ETYPE_IMG: Record<WallEnemyType, WlImgKey> = {
 };
 const ETYPE_SIZE: Record<WallEnemyType, number> = { swarm: 52, runner: 60, armored: 84, bomber: 64, sniper: 68, digger: 62, boss: 150 };
 
+/* ---- שפת המראה של הנשק ----
+ * המראה לא נבחר מרשימה — הוא *מורכב* מהתכונות שאספת: צבע ליבה, צבע שובל, אורך
+ * שובל, עובי, זוהר, חלקיקים ואאורה. 8 תכונות × ערימות = צירופים בלי סוף, אפס נכסים.
+ * כל השחקנים מקבלים wl_style של כולם — ולכן רואים את הנשק של החבר משתנה. */
+const TRAIT_COLOR: Record<string, string> = {
+  burn: "#ff7a2f", frost: "#5fd8ff", chain: "#bfe8ff", poison: "#8ee34a",
+  blast: "#ff5c3d", pierce: "#e6edf5", multi: "#ffd24a", vamp: "#ff3b6b",
+};
+const TRAIT_EMOJI: Record<string, string> = {
+  burn: "🔥", frost: "❄️", chain: "⚡", poison: "☠️", blast: "💥", pierce: "🗡️", multi: "✨", vamp: "🩸",
+};
+const TRAIT_ORDER = ["burn", "frost", "chain", "poison", "blast", "pierce", "multi", "vamp"];
+/** צבע מספר הנזק לפי מקור הפגיעה — DoT ושרשרת נראים אחרת מפגיעה ישירה */
+const KIND_COLOR: Record<string, string> = { burn: "#ff9a3c", poison: "#8ee34a", chain: "#bfe8ff", blast: "#ff6b4d" };
+interface WStyle { traits: Record<string, number>; tier: number; evos: string[] }
+interface Vis { color: string | null; second: string | null; top: string[]; total: number; glow: number; size: number; tier: number; evo: boolean }
+/** #rrggbb + אלפא → rgba() — כל הזוהר נגזר מזה */
+const _rgbCache = new Map<string, [number, number, number]>();
+function hexA(hex: string, a: number) {
+  let c = _rgbCache.get(hex);
+  if (!c) {
+    const h = hex.replace("#", "");
+    const n = parseInt(h.length === 3 ? h.split("").map((x) => x + x).join("") : h, 16);
+    c = [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+    _rgbCache.set(hex, c);
+  }
+  return `rgba(${c[0]},${c[1]},${c[2]},${Math.max(0, Math.min(1, a))})`;
+}
+const FX_CAP = 140; // תקציב חלקיקים — שומר 60fps גם על אנדרואיד חלש
+
 interface EnemyV {
   id: number; type: WallEnemyType;
   hp: number; maxHp: number;
@@ -76,6 +106,8 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
   // downRef מוגדר למטה עם שאר ה-refs — משוקף כאן אחרי ההגדרה
   const rolesRef = useRef(roles); rolesRef.current = roles;
   const camX = useRef(500);
+  const viewWRef = useRef(VIEW_W);
+  const dbgTick = useRef(0);
   const camTopRef = useRef(320);
   const lunges = useRef(new Map<string, { t0: number; dir: number }>()); // זינוק החלוץ בהנפה
   const joyRef = useRef({ active: false, ox: 0, oy: 0, kx: 0, ky: 0 }); // ג'ויסטיק צף (מסך)
@@ -87,6 +119,13 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
   const wallHpRef = useRef(1); // ה-closure של ה-subscribe נוצר פעם אחת — state כאן תמיד היה מיושן
   const modsRef = useRef({ rate: 1, speed: 1 }); // מגיע מהשרת: מכייל את שערי הקצב/המהירות המקומיים
   const hurtFlash = useRef(0);   // הבזק אדום כשהחומה חוטפת
+  const styles = useRef(new Map<string, WStyle>());              // pid → איך הנשק שלו נראה
+  const surge = useRef<{ t0: number; color: string; big: boolean } | null>(null); // רגע השדרוג
+  const wideUntil = useRef(0);   // אבולוציה — המצלמה של כולם נפתחת לרוחב מלא
+  const parade = useRef(-1e9);   // מצעד הנשקים בסוף גל
+  const chains = useRef<{ x1: number; y1: number; x2: number; y2: number; t0: number; c: string }[]>([]);
+  const [evoBanner, setEvoBanner] = useState<{ name: string; emoji: string; who: string } | null>(null);
+  const [myStyle, setMyStyle] = useState<WStyle>({ traits: {}, tier: 1, evos: [] });
   const lastAlarm = useRef(0);
   // קלט
   const ptr = useRef<{ down: boolean; x0: number; y0: number; t0: number; x: number; y: number; moved: boolean }>({ down: false, x0: 0, y0: 0, t0: 0, x: 0, y: 0, moved: false });
@@ -97,6 +136,23 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
   const lastPosSend = useRef(0);
   const lastAimSend = useRef(0);
   const cannonReady = useRef(0);
+
+  /** מרכיב את הפרמטרים הוויזואליים מהתכונות של שחקן — הלב של "אינסוף בלי נכסים" */
+  const visOf = (pid: string): Vis => {
+    const s = styles.current.get(pid);
+    const t = s?.traits ?? {};
+    const list = TRAIT_ORDER.filter((k) => (t[k] ?? 0) > 0).sort((a, b) => (t[b] ?? 0) - (t[a] ?? 0));
+    const total = list.reduce((a, k) => a + (t[k] ?? 0), 0);
+    const tier = s?.tier ?? 1;
+    return {
+      color: list[0] ? TRAIT_COLOR[list[0]] : null,
+      second: list[1] ? TRAIT_COLOR[list[1]] : null,
+      top: list.slice(0, 3), total,
+      glow: Math.min(1, total / 7),
+      size: 1 + Math.min(0.6, total * 0.05) + Math.min(0.4, (tier - 1) * 0.05),
+      tier, evo: (s?.evos?.length ?? 0) > 0,
+    };
+  };
 
   const myRole = (): WallRole => rolesRef.current[me] ?? "infantry";
   const myHero = () => heroes.current.get(me);
@@ -122,7 +178,7 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
         case "wl_setup": {
           setPhase("setup"); setOver(null); setDraft(null);
           setRoles(m.roles);
-          heroes.current.clear();
+          heroes.current.clear(); styles.current.clear(); chains.current = [];
           for (const [pid, role] of Object.entries(m.roles)) {
             const slot = m.slots[pid] ?? [500, 1100];
             heroes.current.set(pid, { role, slot, x: slot[0], y: slot[1], hp: 150, max: 150, down: false, tier: 1 });
@@ -159,11 +215,12 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
           e.hp = m.hp;
           const [ex, ey] = posOf(e, conn.serverNow());
           // מספר נזק קופץ — כל פגיעה נראית
-          if (delta > 0) {
+          if (delta > 0 && fxs.current.length < FX_CAP) {
+            const kc = m.k && m.k !== "hit" ? KIND_COLOR[m.k] : undefined;
             fxs.current.push({
               kind: "dmg", x: ex + (Math.random() - 0.5) * 26, y: ey - 20, t0: performance.now(),
               txt: String(Math.round(delta)), big: !!m.crit,
-              color: m.crit ? "#ff5c5c" : m.by === me ? "#ffce3c" : "#ffffff",
+              color: kc ?? (m.crit ? "#ff5c5c" : m.by === me ? "#ffce3c" : "#ffffff"),
             });
           }
           if (m.hp <= 0) {
@@ -259,6 +316,25 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
         case "wl_xp":
           setXp({ xp: m.xp, level: m.level, next: m.next });
           return;
+        case "wl_style":
+          styles.current.set(m.pid, { traits: m.traits, tier: m.tier, evos: m.evos });
+          if (m.pid === me) setMyStyle({ traits: m.traits, tier: m.tier, evos: m.evos });
+          return;
+        case "wl_chain":
+          if (chains.current.length < 40) {
+            chains.current.push({ x1: m.x1, y1: m.y1, x2: m.x2, y2: m.y2, t0: performance.now(), c: TRAIT_COLOR.chain });
+          }
+          return;
+        case "wl_evo": {
+          // הרגע הגדול: המצלמה של *כולם* נפתחת לרוחב מלא, באנר, וריזר
+          setEvoBanner({ name: m.name, emoji: m.emoji, who: m.pid === me ? "" : nameOf(m.pid) });
+          window.setTimeout(() => setEvoBanner(null), 2600);
+          wideUntil.current = performance.now() + 1800;
+          surge.current = { t0: performance.now(), color: TRAIT_COLOR[m.trait] ?? "#ffd24a", big: true };
+          shake.current = Math.max(shake.current, 14);
+          Sfx.evolve(); vibrate([60, 40, 60, 40, 160]);
+          return;
+        }
         case "wl_mods":
           modsRef.current = { rate: m.rate, speed: m.speed };
           return;
@@ -267,6 +343,7 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
           return;
         case "wl_clear":
           setPhase("breath"); setWallHp(m.wallHp);
+          parade.current = performance.now(); // 🎖️ מצעד הנשקים — 2 שניות שרואים את כל הצוות
           showBanner(`🌊 גל ${m.wave} הושרד! ✨`, 2600);
           Sfx.fanfare(); vibrate([40, 30, 40, 30, 100]);
           return;
@@ -400,7 +477,17 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
     if (myRole() === "mg" && firing.current && aimRef.current) targetCam = aimRef.current.tx; // עוקבת אחרי הכוונת — כל השדה נגיש
     if (aimRef.current && (myRole() === "archer" || myRole() === "cannon")) targetCam = (aimRef.current.tx + (h?.slot[0] ?? 500)) / 2;
     camX.current += (targetCam - camX.current) * 0.08;
-    const scale = cw / VIEW_W;
+    // רוחב תצוגה דינמי: באבולוציה ובמצעד הנשקים כולם רואים את כל החזית
+    const wantWide = pnow < wideUntil.current || pnow - parade.current < 2200;
+    // פעימת זום קטנה ברגע שבחרת שדרוג — הגוף מרגיש את זה לפני שהעין מבינה
+    let zoom = 1;
+    if (surge.current) {
+      const sf = (pnow - surge.current.t0) / (surge.current.big ? 1200 : 460);
+      if (sf >= 1) surge.current = null; else zoom = 1 - Math.sin(sf * Math.PI) * (surge.current.big ? 0.09 : 0.05);
+    }
+    viewWRef.current += ((wantWide ? W : VIEW_W) * zoom - viewWRef.current) * 0.09;
+    const vw = viewWRef.current;
+    const scale = cw / vw;
     const viewH = chh / scale;
     // מצלמה אנכית: לחלוץ שמעמיק בשדה — עוקבת אחריו
     const baseTop = Math.max(0, Math.min(WORLD_H - viewH, WALL_Y + 170 - viewH));
@@ -414,7 +501,7 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
       oy = (Math.random() - 0.5) * shake.current;
       shake.current *= 0.88;
     }
-    const camL = Math.max(0, Math.min(W - VIEW_W, camX.current - VIEW_W / 2));
+    const camL = Math.max(0, Math.min(W - vw, camX.current - vw / 2));
     const wx = (x: number) => (x - camL) * scale + ox;
     const wy = (y: number) => (y - camTop) * scale + oy;
 
@@ -506,7 +593,10 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
       else if (role === "mg") im = wlImg(hh.tier >= 2 ? "mg2" : "mg1");
       else if (role === "archer") im = wlImg("heroArcher");
       else im = wlImg("heroInfantry");
-      const size = role === "cannon" ? 95 + hh.tier * 12 : role === "mg" ? 85 + hh.tier * 8 : 72;
+      const hv = visOf(pid);
+      // הנשק גדל עם הדרגה — לכל התפקידים, כולל החלוץ והקשת שעד היום לא השתנו בכלל
+      const tg2 = Math.min(6, hh.tier);
+      const size = role === "cannon" ? 95 + tg2 * 12 : role === "mg" ? 85 + tg2 * 8 : 72 + (tg2 - 1) * 5;
       // זינוק בהנפת חרב
       let hx = hh.x, hy = hh.y, lungeRot = 0;
       const lg = lunges.current.get(pid);
@@ -536,6 +626,24 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
       ctx.beginPath();
       ctx.ellipse(wx(hx), wy(hy + size * 0.34), size * 0.36 * scale, size * 0.14 * scale, 0, 0, 7);
       ctx.stroke();
+      // אאורת התכונות — ככה רואים ממרחק שלחבר שלך יש משהו
+      if (hv.total > 0) {
+        const pulse = 0.72 + 0.28 * Math.sin(pnow / (hv.evo ? 220 : 380));
+        ctx.globalCompositeOperation = "lighter";
+        ctx.strokeStyle = hexA(hv.color!, (0.28 + 0.42 * hv.glow) * pulse);
+        ctx.lineWidth = (1.6 + 2.4 * hv.glow) * scale;
+        ctx.beginPath();
+        ctx.ellipse(wx(hx), wy(hy + size * 0.3), size * (0.46 + 0.08 * hv.glow) * scale, size * (0.2 + 0.05 * hv.glow) * scale, 0, 0, 7);
+        ctx.stroke();
+        if (hv.second) {
+          ctx.strokeStyle = hexA(hv.second, 0.22 * pulse);
+          ctx.lineWidth = 1.4 * scale;
+          ctx.beginPath();
+          ctx.ellipse(wx(hx), wy(hy + size * 0.3), size * 0.56 * scale, size * 0.24 * scale, 0, 0, 7);
+          ctx.stroke();
+        }
+        ctx.globalCompositeOperation = "source-over";
+      }
       if (im.complete && im.naturalWidth) {
         if (lungeRot !== 0) {
           ctx.save(); ctx.translate(wx(hx), wy(hy)); ctx.rotate(lungeRot);
@@ -554,6 +662,16 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
         ctx.strokeStyle = "#ffffffcc"; ctx.lineWidth = 3;
         ctx.beginPath(); ctx.arc(wx(hx), wy(hy), size * 0.55 * scale, 0, 7); ctx.stroke();
       }
+      // 🏷️ שבב הבנייה — שתי התכונות החזקות + כתר לאבולוציה. זה מה שמייצר קנאה.
+      if (hv.top.length) {
+        const chip = (hv.evo ? "👑" : "") + hv.top.slice(0, 2).map((k) => TRAIT_EMOJI[k]).join("");
+        ctx.font = `${13 * scale}px sans-serif`;
+        ctx.textAlign = "center";
+        ctx.fillStyle = "rgba(8,14,6,.55)";
+        const cwid = chip.length * 8 * scale;
+        ctx.fillRect(wx(hx) - cwid / 2, wy(hy - 68), cwid, 17 * scale);
+        ctx.fillText(chip, wx(hx), wy(hy - 56));
+      }
       if (!mine) {
         ctx.font = `700 ${11 * scale}px Rubik, sans-serif`;
         ctx.textAlign = "center";
@@ -568,26 +686,28 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
     for (const [pid, ax] of streams.current.entries()) {
       const hh = heroes.current.get(pid);
       if (!hh) continue;
+      const sv = visOf(pid);
       const mx = hh.x, my = hh.y - 24; // קצה הקנה
       // עמודת הפגיעה (זה מה שהמקלע באמת מכסה בשרת)
       const colW = 124;
+      const colC = sv.color ?? "#5c8aff";
       const cg = ctx.createLinearGradient(0, wy(60), 0, wy(my));
-      cg.addColorStop(0, "#5c8aff2e"); cg.addColorStop(1, "#5c8aff05");
+      cg.addColorStop(0, hexA(colC, 0.18)); cg.addColorStop(1, hexA(colC, 0.02));
       ctx.fillStyle = cg;
       ctx.fillRect(wx(ax - colW / 2), wy(60), colW * scale, (my - 60) * scale);
-      ctx.strokeStyle = "#5c8aff33"; ctx.lineWidth = 1;
+      ctx.strokeStyle = hexA(colC, 0.22); ctx.lineWidth = 1;
       ctx.strokeRect(wx(ax - colW / 2), wy(60), colW * scale, (my - 60) * scale);
       // נותבים — קליעים בהירים שנוסעים במעלה העמודה
       ctx.globalCompositeOperation = "lighter";
-      for (let t = 0; t < 5; t++) {
+      for (let t = 0; t < Math.min(9, 5 + sv.total); t++) {
         const seed = ((pnow * 0.0022 + t * 0.2) % 1); // 0..1 לאורך המסלול
         const bx = mx + (ax - mx) * seed + (Math.random() - 0.5) * 18;
         const by = my + (60 - my) * seed;
         const nx2 = mx + (ax - mx) * Math.min(1, seed + 0.055);
         const ny2 = my + (60 - my) * Math.min(1, seed + 0.055);
         const tg = ctx.createLinearGradient(wx(bx), wy(by), wx(nx2), wy(ny2));
-        tg.addColorStop(0, "#fff6d820"); tg.addColorStop(1, "#ffe9a8ff");
-        ctx.strokeStyle = tg; ctx.lineWidth = 3 * scale;
+        tg.addColorStop(0, hexA(colC, 0.12)); tg.addColorStop(1, colC);
+        ctx.strokeStyle = tg; ctx.lineWidth = 3 * sv.size * scale;
         ctx.beginPath(); ctx.moveTo(wx(bx), wy(by)); ctx.lineTo(wx(nx2), wy(ny2)); ctx.stroke();
         ctx.fillStyle = "#ffffff";
         ctx.beginPath(); ctx.arc(wx(nx2), wy(ny2), 2.2 * scale, 0, 7); ctx.fill();
@@ -621,28 +741,33 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
         ctx.lineWidth = 2;
         ctx.beginPath(); ctx.arc(wx(p.tx), wy(p.ty), (p.kind === "shell" ? 34 : 16) * scale * pulse, 0, 7); ctx.stroke();
       }
+      const pv = visOf(p.by);
       if (p.kind === "arrow") {
         const dirAng = Math.atan2(p.ty - p.fy, p.tx - p.fx) + (f - 0.5) * 0.6;
-        // שובל זוהר
+        const core = pv.color ?? (p.fire ? "#ffb347" : "#e8fff2");
+        const tail = pv.second ?? pv.color ?? (p.fire ? "#ff7a2f" : "#34e89e");
+        const gw = pv.size;
+        // שובל זוהר — מתארך ומתעבה עם כל ערימה שאספת
         ctx.globalCompositeOperation = "lighter";
-        for (let g = 1; g <= 3; g++) {
-          const gf = Math.max(0, f - g * 0.05);
+        const segs = Math.min(7, 3 + Math.round(pv.total * 0.6));
+        for (let g = 1; g <= segs; g++) {
+          const gf = Math.max(0, f - g * 0.045);
           const gx = p.fx + (p.tx - p.fx) * gf;
           const gy = p.fy + (p.ty - p.fy) * gf - Math.sin(gf * Math.PI) * arc;
-          ctx.fillStyle = p.fire ? `rgba(255,150,60,${0.3 - g * 0.08})` : `rgba(120,255,190,${0.3 - g * 0.08})`;
-          ctx.beginPath(); ctx.arc(wx(gx), wy(gy), (6 - g) * scale, 0, 7); ctx.fill();
+          ctx.fillStyle = hexA(g % 2 ? core : tail, Math.max(0, 0.34 - g * 0.045) * (0.7 + pv.glow * 0.6));
+          ctx.beginPath(); ctx.arc(wx(gx), wy(gy), Math.max(1, 7 - g * 0.8) * gw * scale, 0, 7); ctx.fill();
         }
         // גוף החץ — שאפט בולט + ראש
         ctx.save();
         ctx.translate(wx(px), wy(py));
         ctx.rotate(dirAng);
-        const L = 30 * scale;
-        ctx.strokeStyle = p.fire ? "#ffb347" : "#e8fff2"; ctx.lineWidth = 3.2 * scale; ctx.lineCap = "round";
+        const L = 30 * gw * scale;
+        ctx.strokeStyle = core; ctx.lineWidth = 3.2 * gw * scale; ctx.lineCap = "round";
         ctx.beginPath(); ctx.moveTo(-L / 2, 0); ctx.lineTo(L / 2, 0); ctx.stroke();
-        ctx.fillStyle = p.fire ? "#ffd24a" : "#ffffff";
-        ctx.beginPath(); ctx.moveTo(L / 2 + 7 * scale, 0); ctx.lineTo(L / 2 - 2 * scale, -4 * scale); ctx.lineTo(L / 2 - 2 * scale, 4 * scale); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = "#ffffff";
+        ctx.beginPath(); ctx.moveTo(L / 2 + 7 * scale, 0); ctx.lineTo(L / 2 - 2 * scale, -4 * gw * scale); ctx.lineTo(L / 2 - 2 * scale, 4 * gw * scale); ctx.closePath(); ctx.fill();
         // נוצות
-        ctx.strokeStyle = p.fire ? "#ff7a2f" : "#34e89e"; ctx.lineWidth = 2 * scale;
+        ctx.strokeStyle = tail; ctx.lineWidth = 2 * scale;
         ctx.beginPath(); ctx.moveTo(-L / 2, 0); ctx.lineTo(-L / 2 - 5 * scale, -4 * scale);
         ctx.moveTo(-L / 2, 0); ctx.lineTo(-L / 2 - 5 * scale, 4 * scale); ctx.stroke();
         // ספרייט מעל (אם נטען) — מוגדל
@@ -665,13 +790,41 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
         }
         ctx.globalAlpha = 1;
         ctx.fillStyle = "#2c2c34";
-        ctx.beginPath(); ctx.arc(wx(px), wy(py), 9 * scale, 0, 7); ctx.fill();
-        ctx.fillStyle = "#ff9a2f";
-        ctx.beginPath(); ctx.arc(wx(px), wy(py), 4.5 * scale, 0, 7); ctx.fill();
+        ctx.beginPath(); ctx.arc(wx(px), wy(py), 9 * pv.size * scale, 0, 7); ctx.fill();
+        ctx.fillStyle = pv.color ?? "#ff9a2f";
+        ctx.beginPath(); ctx.arc(wx(px), wy(py), 4.5 * pv.size * scale, 0, 7); ctx.fill();
+        if (pv.glow > 0) {
+          ctx.globalCompositeOperation = "lighter";
+          ctx.fillStyle = hexA(pv.color ?? "#ff9a2f", 0.35 * pv.glow);
+          ctx.beginPath(); ctx.arc(wx(px), wy(py), 16 * pv.size * scale, 0, 7); ctx.fill();
+          ctx.globalCompositeOperation = "source-over";
+        }
       }
     }
 
+    const myVis = visOf(me);
+    // ⚡ קשתות שרשרת בין אויבים
+    chains.current = chains.current.filter((c) => pnow - c.t0 < 260);
+    for (const c of chains.current) {
+      const cf = (pnow - c.t0) / 260;
+      ctx.globalCompositeOperation = "lighter";
+      ctx.strokeStyle = hexA(c.c, 1 - cf);
+      ctx.lineWidth = (3.5 - cf * 2) * scale;
+      ctx.beginPath();
+      ctx.moveTo(wx(c.x1), wy(c.y1));
+      const segs = 4;
+      for (let i = 1; i <= segs; i++) {
+        const t = i / segs;
+        const jx = i === segs ? 0 : (Math.sin(i * 12.9898 + c.t0) * 0.5) * 26;
+        const jy = i === segs ? 0 : (Math.cos(i * 78.233 + c.t0) * 0.5) * 26;
+        ctx.lineTo(wx(c.x1 + (c.x2 - c.x1) * t + jx), wy(c.y1 + (c.y2 - c.y1) * t + jy));
+      }
+      ctx.stroke();
+      ctx.globalCompositeOperation = "source-over";
+    }
+
     // אפקטים
+    if (fxs.current.length > FX_CAP) fxs.current.splice(0, fxs.current.length - FX_CAP);
     fxs.current = fxs.current.filter((f) => pnow - f.t0 < 600);
     for (const f of fxs.current) {
       const ft = (pnow - f.t0) / 600;
@@ -696,7 +849,7 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
         if (im2.complete && im2.naturalWidth) {
           ctx.drawImage(im2, -sz / 2, -sz / 2, sz, sz);
         } else {
-          ctx.strokeStyle = "#bfe8ff"; ctx.lineWidth = 10 * scale; ctx.lineCap = "round";
+          ctx.strokeStyle = myVis.color ?? "#bfe8ff"; ctx.lineWidth = 10 * scale; ctx.lineCap = "round";
           ctx.beginPath(); ctx.arc(0, 0, sz * 0.34, Math.PI * 0.75, Math.PI * 2.25); ctx.stroke();
           ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 4 * scale;
           ctx.beginPath(); ctx.arc(0, 0, sz * 0.34, Math.PI * 0.75, Math.PI * 2.25); ctx.stroke();
@@ -789,6 +942,13 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
       ctx.beginPath(); ctx.arc(jox + jdx, joy2 + jdy, 24, 0, 7); ctx.fill();
     }
 
+    // הבזק בצבע התכונה ברגע השדרוג/האבולוציה
+    if (surge.current) {
+      const sf = (pnow - surge.current.t0) / (surge.current.big ? 1200 : 460);
+      ctx.fillStyle = hexA(surge.current.color, (1 - sf) * (surge.current.big ? 0.3 : 0.18));
+      ctx.fillRect(0, 0, cw, chh);
+    }
+
     // הבזק אדום כשהחומה חוטפת — עכשיו באמת מרגישים שמפסידים
     if (hurtFlash.current > 0.02) {
       ctx.fillStyle = `rgba(255,45,45,${0.17 * hurtFlash.current})`;
@@ -796,14 +956,19 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
       hurtFlash.current *= 0.88;
     }
 
-    // דיבאג/בדיקות: מצב חשוף לבוטים של ה-E2E (זול — רץ פעם בפריים)
-    (window as unknown as { __wlDbg?: unknown }).__wlDbg = {
-      wave: waveRef.current, phase: phaseRef.current, vw: cw, vh: chh,
-      enemies: [...enemies.current.values()].filter((e) => e.deadAt === undefined).map((e) => {
-        const [x, y] = posOf(e, now);
-        return { x, y, sx: wx(x), sy: wy(y), type: e.type };
-      }),
-    };
+    // דיבאג/בדיקות: מצב חשוף לבוטים של ה-E2E. נבנה כל 6 פריימים ולא כל פריים —
+    // אותה API בדיוק, בלי להקצות מיפוי מלא של הנחיל 60 פעם בשנייה.
+    dbgTick.current++;
+    if (dbgTick.current % 6 === 0) {
+      (window as unknown as { __wlDbg?: unknown }).__wlDbg = {
+        wave: waveRef.current, phase: phaseRef.current, vw: cw, vh: chh,
+        styles: Object.fromEntries([...styles.current.entries()]),
+        enemies: [...enemies.current.values()].filter((e) => e.deadAt === undefined).map((e) => {
+          const [x, y] = posOf(e, now);
+          return { x, y, sx: wx(x), sy: wy(y), type: e.type };
+        }),
+      };
+    }
 
     // מיני-מפה: פס עליון של כל החזית
     const mmH = 34;
@@ -825,16 +990,17 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
     }
     // חלון המצלמה שלי
     ctx.strokeStyle = "rgba(255,255,255,.35)";
-    ctx.strokeRect((camL / W) * cw, 1, (VIEW_W / W) * cw, mmH - 2);
+    ctx.strokeRect((camL / W) * cw, 1, (vw / W) * cw, mmH - 2);
   }
 
   /* ---- קלט ---- */
   function toWorld(e: React.PointerEvent): [number, number] {
     const cv = canvasRef.current!;
     const r = cv.getBoundingClientRect();
-    const scale = r.width / VIEW_W;
+    const vw = viewWRef.current;
+    const scale = r.width / vw;
     const camTop = camTopRef.current;
-    const camL = Math.max(0, Math.min(W - VIEW_W, camX.current - VIEW_W / 2));
+    const camL = Math.max(0, Math.min(W - vw, camX.current - vw / 2));
     return [camL + (e.clientX - r.left) / scale, camTop + (e.clientY - r.top) / scale];
   }
 
@@ -975,6 +1141,23 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
       </div>
       {/* מד XP */}
       <div className="wl-xpbar"><div style={{ width: `${Math.min(100, (xp.xp / xp.next) * 100)}%` }} /></div>
+      {/* 🧬 הבנייה שלי — מה שאספתי, תמיד מול העיניים */}
+      {(() => {
+        const t = myStyle.traits ?? {};
+        const list = TRAIT_ORDER.filter((k) => (t[k] ?? 0) > 0).sort((a, b) => (t[b] ?? 0) - (t[a] ?? 0));
+        if (!list.length && myStyle.tier <= 1) return null;
+        return (
+          <div className="wl-build">
+            <span className="wl-tierchip">🔩{myStyle.tier}</span>
+            {list.map((k) => (
+              <span key={k} className={"wl-tchip" + (myStyle.evos.includes(k) ? " evo" : "")}
+                style={{ "--tc": TRAIT_COLOR[k] } as React.CSSProperties}>
+                {TRAIT_EMOJI[k]}<b>{t[k]}</b>
+              </span>
+            ))}
+          </div>
+        );
+      })()}
 
       {/* HUD תפקיד */}
       <div className="wl-rolehud">
@@ -1000,6 +1183,13 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
         <div className="wl-hp"><div style={{ width: `${(myHp / Math.max(1, myMax)) * 100}%` }} /></div>
       </div>
 
+      {evoBanner && (
+        <div className="wl-evobanner popin">
+          <span style={{ fontSize: 40 }}>{evoBanner.emoji}</span>
+          <b>{evoBanner.who ? `${evoBanner.who} פיתח:` : "פיתחת:"}</b>
+          <span className="wl-evoname">{evoBanner.name}</span>
+        </div>
+      )}
       {banner && <div className="wl-banner popin">{banner}</div>}
       {hint && <div className="wl-hint popin">{hint}</div>}
       {toast && <div className="toast" style={{ zIndex: 70 }}>{toast}</div>}
@@ -1011,7 +1201,16 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
           <b>⬆️ רמה {draft.level}! בחר שדרוג:</b>
           <div className="wl-draftrow">
             {draft.cards.map((c) => (
-              <button key={c.id} className="wl-card" onClick={() => { conn.sendGame({ a: "wl_pick", cardId: c.id }); setDraft(null); Sfx.goBeep(); vibrate(30); }}>
+              <button key={c.id} className="wl-card" onClick={() => {
+                conn.sendGame({ a: "wl_pick", cardId: c.id });
+                setDraft(null);
+                // הרגע: הבזק בצבע התכונה, פעימת זום, רטט וצליל ייעודי — שדרוג הוא אירוע
+                const col = TRAIT_COLOR[c.id] ?? "#ffd24a";
+                surge.current = { t0: performance.now(), color: col, big: false };
+                shake.current = Math.max(shake.current, 8);
+                Sfx.upgrade(TRAIT_ORDER.indexOf(c.id) + 1);
+                vibrate([25, 30, 45]);
+              }}>
                 <span style={{ fontSize: 26 }}>{c.emoji}</span>
                 <b style={{ fontSize: 12 }}>{c.name}</b>
                 <span className="sub" style={{ fontSize: 10 }}>{c.desc}</span>
@@ -1029,12 +1228,25 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
           {over.nearMiss && <div className="wl-nearmiss popin">{over.nearMiss}</div>}
           {over.bestWave > over.wave && <p className="sub">🏆 שיא הערב: גל {over.bestWave}</p>}
           <div className="wl-stats">
-            {Object.entries(over.stats).map(([pid, s]) => (
-              <div key={pid} className="wl-statrow">
-                <span>{ROLE_ICON[roles[pid] ?? "infantry"]} {nameOf(pid)} {over.mvp === pid && "👑"}</span>
-                <span className="sub" style={{ fontSize: 12 }}>⚔️{s.kills} · 💥{Math.round(s.dmg)} · 🛟{s.saves} · 💀{s.deaths}</span>
-              </div>
-            ))}
+            {Object.entries(over.stats).map(([pid, s]) => {
+              const st2 = styles.current.get(pid);
+              const tt = st2?.traits ?? {};
+              const list = TRAIT_ORDER.filter((k) => (tt[k] ?? 0) > 0).sort((a, b) => (tt[b] ?? 0) - (tt[a] ?? 0));
+              return (
+                <div key={pid} className="wl-statrow">
+                  <span>{ROLE_ICON[roles[pid] ?? "infantry"]} {nameOf(pid)} {over.mvp === pid && "👑"}</span>
+                  {/* 🗡️ כרטיס הנשק — הבילד שנבנה בריצה הזאת, וזה מה ששולחים לחברים */}
+                  <span className="wl-weapon">
+                    <span className="wl-tierchip">🔩{st2?.tier ?? 1}</span>
+                    {list.slice(0, 4).map((k) => (
+                      <span key={k} className={"wl-tchip" + (st2?.evos?.includes(k) ? " evo" : "")}
+                        style={{ "--tc": TRAIT_COLOR[k] } as React.CSSProperties}>{TRAIT_EMOJI[k]}<b>{tt[k]}</b></span>
+                    ))}
+                  </span>
+                  <span className="sub" style={{ fontSize: 12 }}>⚔️{s.kills} · 💥{Math.round(s.dmg)} · 🛟{s.saves} · 💀{s.deaths}</span>
+                </div>
+              );
+            })}
           </div>
           {isHost ? (
             <>

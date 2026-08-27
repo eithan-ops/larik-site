@@ -360,7 +360,10 @@ export type WallServerMsg =
   | { a: "wl_wave"; wave: number; wallHp: number; wallMax: number; duration: number }           // cue — פתיחת גל
   | { a: "wl_spawn"; id: number; type: WallEnemyType; x0: number; y0: number; speed: number; wob: number; hp: number; maxHp: number; at: number }
   | { a: "wl_estate"; id: number; state: "walk" | "fight" | "wall" | "burrow"; x: number; y: number; at: number; speed?: number } // שינוי מצב/מסלול
-  | { a: "wl_hit"; id: number; hp: number; by: string; crit?: boolean }                          // פגיעה באויב (hp<=0 = מוות)
+  | { a: "wl_hit"; id: number; hp: number; by: string; crit?: boolean; k?: "hit" | "burn" | "poison" | "chain" | "blast" } // פגיעה באויב (hp<=0 = מוות); k = מקור הנזק, לצביעה ולחלקיקים
+  | { a: "wl_chain"; x1: number; y1: number; x2: number; y2: number; by: string }                // קשת ברק בין שני אויבים
+  | { a: "wl_style"; pid: string; traits: Record<string, number>; tier: number; evos: string[] } // איך הנשק של השחקן נראה — כל החדר מקבל
+  | { a: "wl_evo"; pid: string; trait: string; name: string; emoji: string }                     // 🌟 אבולוציה — הרגע שכל החדר עוצר בשבילו
   | { a: "wl_arrow"; fx: number; fy: number; tx: number; ty: number; T: number; by: string; fire?: boolean } // cue — חץ באוויר
   | { a: "wl_shell"; fx: number; fy: number; tx: number; ty: number; T: number; by: string }      // cue — פגז באוויר
   | { a: "wl_boomfx"; x: number; y: number; r: number }                                          // פיצוץ (בזמן הפגיעה)

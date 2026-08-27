@@ -531,6 +531,19 @@ input{font-family:inherit}
 .wl-shieldbtn{width:64px;height:64px;border-radius:50%;border:2px solid #ff5c5c;background:rgba(255,92,92,.15);
   font-size:28px;touch-action:none;cursor:pointer}
 .wl-shieldbtn.on{background:rgba(255,92,92,.5);box-shadow:0 0 18px rgba(255,92,92,.7)}
+.wl-build{position:absolute;top:68px;left:8px;right:8px;display:flex;gap:4px;flex-wrap:wrap;z-index:20;pointer-events:none}
+.wl-tchip{display:inline-flex;align-items:center;gap:2px;font-size:11px;font-weight:900;padding:1px 6px;border-radius:99px;
+  background:rgba(0,0,0,.55);border:1.5px solid var(--tc);color:var(--tc);box-shadow:0 0 8px color-mix(in srgb,var(--tc) 45%,transparent)}
+.wl-tchip.evo{background:var(--tc);color:#0b0f14;animation:wlEvoPulse 1.1s ease-in-out infinite}
+.wl-tierchip{display:inline-flex;align-items:center;font-size:11px;font-weight:900;padding:1px 6px;border-radius:99px;
+  background:rgba(0,0,0,.55);border:1.5px solid #cfd6e0;color:#eef3f8}
+.wl-weapon{display:flex;gap:3px;align-items:center;flex-wrap:wrap}
+@keyframes wlEvoPulse{0%,100%{box-shadow:0 0 6px var(--tc)}50%{box-shadow:0 0 18px var(--tc)}}
+.wl-evobanner{position:absolute;top:26%;left:0;right:0;z-index:60;display:flex;flex-direction:column;align-items:center;gap:2px;
+  pointer-events:none;text-shadow:0 2px 14px rgba(0,0,0,.95)}
+.wl-evobanner b{font-size:15px;opacity:.9}
+.wl-evoname{font-size:29px;font-weight:900;letter-spacing:.5px;
+  background:linear-gradient(90deg,#ffe9a8,#ffce3c,#fff);-webkit-background-clip:text;background-clip:text;color:transparent}
 .wl-banner{position:absolute;top:20%;left:0;right:0;text-align:center;font-size:30px;font-weight:900;z-index:40;
   text-shadow:0 0 22px rgba(0,0,0,.9);pointer-events:none}
 .wl-downveil{position:absolute;inset:0;z-index:35;background:rgba(20,3,6,.6);display:flex;flex-direction:column;

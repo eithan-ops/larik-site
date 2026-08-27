@@ -56,6 +56,25 @@ export const Sfx = {
     { f: 800, t: 0, d: 0.2, type: "square", g: 0.15 }, { f: 600, t: 0.2, d: 0.2, type: "square", g: 0.15 },
     { f: 800, t: 0.4, d: 0.2, type: "square", g: 0.15 }, { f: 600, t: 0.6, d: 0.2, type: "square", g: 0.15 },
   ], inSec(delayMs)),
+  /** צליל שדרוג — לכל תכונה גוון משלה, כך שאתה *שומע* מה קיבלת */
+  upgrade: (i = 0, delayMs = 0) => {
+    const roots = [392, 440, 523, 587, 659, 698, 784, 880];
+    const f = roots[Math.abs(i) % roots.length];
+    playNotes([
+      { f, t: 0, d: 0.12, type: "triangle", g: 0.3 },
+      { f: f * 1.26, t: 0.07, d: 0.14, type: "triangle", g: 0.28 },
+      { f: f * 1.5, t: 0.14, d: 0.32, type: "triangle", g: 0.34 },
+    ], inSec(delayMs));
+  },
+  /** אבולוציה — הרגע הגדול, ריזר שכל החדר שומע */
+  evolve: (delayMs = 0) => playNotes([
+    { f: 262, t: 0, d: 0.2, type: "sawtooth", g: 0.16 },
+    { f: 392, t: 0.12, d: 0.2, type: "sawtooth", g: 0.2 },
+    { f: 523, t: 0.24, d: 0.2, type: "triangle", g: 0.26 },
+    { f: 659, t: 0.36, d: 0.24, type: "triangle", g: 0.3 },
+    { f: 784, t: 0.5, d: 0.3, type: "triangle", g: 0.34 },
+    { f: 1046, t: 0.66, d: 0.9, type: "triangle", g: 0.38 },
+  ], inSec(delayMs)),
   pop: (delayMs = 0) => playNotes([{ f: 440, t: 0, d: 0.1, type: "triangle", g: 0.3 }, { f: 880, t: 0.02, d: 0.12, g: 0.2 }], inSec(delayMs)),
   /** תיפוף מתח לפני חשיפת המנצח — 1.4 שניות של דרמה */
   drumroll: (delayMs = 0) => {

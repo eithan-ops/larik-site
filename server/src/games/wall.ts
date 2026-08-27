@@ -43,15 +43,44 @@ interface Enemy {
   lastHit: number;          // מתי הכה לאחרונה
   sniperFireAt?: number;
   resurfaceAt?: number;
+  // ---- מצבים מתכונות נשק ----
+  burnUntil?: number; burnDps?: number; burnBy?: string;
+  poisonUntil?: number; poisonStacks?: number; poisonBy?: string;
+  slowUntil?: number; fullSpeed?: number;   // fullSpeed = המהירות לפני ההאטה
+  lastDot?: number;
 }
+
+/* ---- תכונות נשק (השכבה שבה חי ה"אינסוף") ----
+ * כל תכונה נערמת בלי תקרה. הערימה הראשונה = התנהגות חדשה שאי אפשר לא לראות;
+ * כל ערימה נוספת מעצימה גם את המספר וגם את הוויזואל (הלקוח מרכיב את המראה מהערימות). */
+export type TraitId = "burn" | "frost" | "chain" | "poison" | "blast" | "pierce" | "multi" | "vamp";
+const TRAIT_IDS: TraitId[] = ["burn", "frost", "chain", "poison", "blast", "pierce", "multi", "vamp"];
+/** ערימה שמזכה באבולוציה (בתנאי שדרגת הנשק מספיקה) */
+const EVO_STACKS = 5;
+const EVO_TIER = 4;
+const EVO: Record<TraitId, { name: string; emoji: string }> = {
+  burn:   { name: "לשון הדרקון",   emoji: "🐉" },
+  frost:  { name: "עידן הקרח",     emoji: "🧊" },
+  chain:  { name: "זעם הסופה",     emoji: "⚡" },
+  poison: { name: "נשימת הביצה",   emoji: "☣️" },
+  blast:  { name: "יום הדין",      emoji: "☄️" },
+  pierce: { name: "רומח הנצח",     emoji: "🔱" },
+  multi:  { name: "גשם הכוכבים",   emoji: "🌠" },
+  vamp:   { name: "צמא הנצח",      emoji: "🩸" },
+};
 
 /* ---- שחקנים ---- */
 interface Mods {
-  dmg: number; rate: number; hpMul: number; speed: number; range: number;
-  crit: number; xpMul: number; pierce: number; multi: number; radius: number;
+  dmg: number; rate: number; speed: number; range: number;
+  crit: number; xpMul: number; radius: number;
   heat: number; tracer: number; shieldStr: number; lifesteal: number;
+  armor: number;    // שובר שריון — נזק נוסף למשוריין/בוס
+  exec: number;     // מכת חסד — נזק נוסף לאויב פצוע
+  momentum: number; // מומנטום — כל הריגה מוסיפה נזק זמני
+  sentry: number;   // מוצב מבוצר — סופג את יריית הצלף הראשונה בגל
 }
-const baseMods = (): Mods => ({ dmg: 1, rate: 1, hpMul: 1, speed: 1, range: 1, crit: 0, xpMul: 1, pierce: 0, multi: 0, radius: 1, heat: 1, tracer: 0, shieldStr: 0, lifesteal: 0 });
+const baseMods = (): Mods => ({ dmg: 1, rate: 1, speed: 1, range: 1, crit: 0, xpMul: 1, radius: 1, heat: 1, tracer: 0, shieldStr: 0, lifesteal: 0, armor: 0, exec: 0, momentum: 0, sentry: 0 });
+const baseTraits = (): Record<TraitId, number> => ({ burn: 0, frost: 0, chain: 0, poison: 0, blast: 0, pierce: 0, multi: 0, vamp: 0 });
 
 interface Hero {
   role: WallRole;
@@ -61,46 +90,67 @@ interface Hero {
   down: boolean; upAt: number;
   shield: boolean;
   mods: Mods; level: number; xp: number; tier: number;
+  traits: Record<TraitId, number>;
+  evos: TraitId[];
+  momoUntil: number; momoStacks: number; // מומנטום פעיל
+  sentryUsed: boolean;
   picks: Record<string, number>;
   // מקלען
   firing: boolean; aimX: number; heat: number; jamUntil: number; tracerRamp?: number;
   // קצבים
   lastSwing: number; lastShot: number; cannonReadyAt: number;
   lastXpMsg: number;
+  lastChainFx: number; lastBlastFx: number; // סינון אפקטים — הנזק תמיד מוחל
 }
 
-/* ---- קלפי הדראפט — אוניברסליים חוזרים (אינסוף) + ייחודיים לתפקיד ---- */
-const UCARDS: WallCard[] = [
-  { id: "dmg",   name: "עוצמה",        emoji: "💥", desc: "‎+15% נזק לכל מכה/ירייה" },
-  { id: "rate",  name: "קצב אש",       emoji: "⚡", desc: "‎+12% מהירות ירי/מכות" },
-  { id: "hp",    name: "חוסן",         emoji: "❤️", desc: "‎+25% חיים מרביים + ריפוי מלא" },
-  { id: "speed", name: "זריזות",       emoji: "👟", desc: "‎+10% מהירות תנועה/כיוון" },
-  { id: "range", name: "טווח",         emoji: "📏", desc: "‎+10% טווח/רדיוס פגיעה" },
-  { id: "crit",  name: "קטלניות",      emoji: "🎯", desc: "‎+8% סיכוי לנזק כפול" },
-  { id: "xp",    name: "חוכמת קרב",    emoji: "🧠", desc: "‎+12% ניסיון מהריגות" },
-  { id: "wall",  name: "בנאי החומה",   emoji: "🧱", desc: "מתקן מיד 12% מחיי החומה" },
-];
-const CCARDS: Record<WallRole, WallCard[]> = {
-  archer: [
-    { id: "pierce", name: "חץ חודר",   emoji: "🏹", desc: "החץ ממשיך דרך אויב נוסף" },
-    { id: "multi",  name: "מטח כפול",  emoji: "🎯", desc: "כל מתיחה יורה חץ נוסף" },
-  ],
-  cannon: [
-    { id: "radius", name: "פגז מצרר",  emoji: "💣", desc: "‎+25% רדיוס פיצוץ" },
-    { id: "multi",  name: "לוע כפול",  emoji: "🔥", desc: "פגז נוסף בכל שיגור" },
-  ],
-  mg: [
-    { id: "heatc",  name: "קירור-על",  emoji: "❄️", desc: "‎+30% קיבולת חום" },
-    { id: "tracer", name: "קליעי נותב", emoji: "✨", desc: "הנזק גדל ככל שהצרור נמשך" },
-  ],
-  infantry: [
-    { id: "shieldstr", name: "מגן קרב",   emoji: "🛡️", desc: "המגן חוסם עוד 10% ומכה בהדיפה" },
-    { id: "lifesteal", name: "צמא דם",    emoji: "🩸", desc: "כל מכה מרפאת 3 חיים" },
-  ],
-};
+/* ---- קלפי הדראפט ----
+ * שלוש משפחות: מגברים (אחוזים — אבל כאלה שרואים ומרגישים), תכונות (התנהגות+מראה),
+ * וקלפי תפקיד. `roles` מגביל קלף לתפקידים שבהם הוא באמת עושה משהו — הדראפט
+ * לעולם לא מציע קלף מת (זה מה שהפך את הבריכה של התותחן ל-6 קלפים בלבד). */
+type Card = WallCard & { roles?: WallRole[]; kind: "amp" | "trait" | "role" };
 
-const TIER_MULT = [1, 1, 1.5, 2.2]; // דרגת נשק (1-3) — אינדקס לפי דרגה
-const TIER_LEVELS = [3, 7]; // רמה 3 → דרגה 2 · רמה 7 → דרגה 3 (הנשק מתחלף ויזואלית!)
+const AMPS: Card[] = [
+  { kind: "amp", id: "dmg",    name: "עוצמה",        emoji: "💥", desc: "‎+18% נזק — והקליע מתעבה" },
+  { kind: "amp", id: "rate",   name: "קצב אש",       emoji: "⚡", desc: "‎+12% מהירות ירי/מכות" },
+  { kind: "amp", id: "crit",   name: "קטלניות",      emoji: "🎯", desc: "‎+8% סיכוי לנזק כפול" },
+  { kind: "amp", id: "range",  name: "טווח",         emoji: "📏", desc: "‎+12% טווח ורדיוס פגיעה" },
+  { kind: "amp", id: "armor",  name: "שובר שריון",   emoji: "🔨", desc: "‎+35% נזק למשוריינים ולבוס" },
+  { kind: "amp", id: "exec",   name: "מכת חסד",      emoji: "💀", desc: "‎+45% נזק לאויב מתחת ל-35% חיים" },
+  { kind: "amp", id: "momo",   name: "מומנטום",      emoji: "⏱️", desc: "כל הריגה ‎+4% נזק ל-4 שניות (מצטבר)" },
+  { kind: "amp", id: "xp",     name: "חוכמת קרב",    emoji: "🧠", desc: "‎+12% ניסיון מהריגות" },
+  { kind: "amp", id: "wall",   name: "בנאי החומה",   emoji: "🧱", desc: "מתקן מיד 12% מחיי החומה" },
+  // חיים/תנועה רלוונטיים רק למי שבשטח
+  { kind: "amp", id: "hp",     name: "חוסן",         emoji: "❤️", desc: "‎+25% חיים מרביים + ריפוי מלא", roles: ["infantry"] },
+  { kind: "amp", id: "speed",  name: "זריזות",       emoji: "👟", desc: "‎+10% מהירות תנועה", roles: ["infantry"] },
+  // ...ולמי שעל החומה יש מקבילה משלו
+  { kind: "amp", id: "sentry", name: "מוצב מבוצר",   emoji: "🎖️", desc: "סופג את יריית הצלף הראשונה בכל גל", roles: ["archer", "cannon", "mg"] },
+];
+
+const TRAIT_CARDS: Card[] = [
+  { kind: "trait", id: "burn",   name: "בעירה",      emoji: "🔥", desc: "הפגיעה מציתה — האויב ממשיך לבעור" },
+  { kind: "trait", id: "frost",  name: "כפור",       emoji: "❄️", desc: "הפגיעה מקפיאה — האויב מאט" },
+  { kind: "trait", id: "chain",  name: "שרשרת ברק",  emoji: "⚡", desc: "הפגיעה קופצת לאויב נוסף בקרבת מקום" },
+  { kind: "trait", id: "poison", name: "רעל",        emoji: "☠️", desc: "רעל מצטבר שממשיך לכרסם" },
+  { kind: "trait", id: "blast",  name: "נפץ",        emoji: "💥", desc: "כל הריגה מפוצצת פיצוץ קטן" },
+  { kind: "trait", id: "pierce", name: "חדירה",      emoji: "🗡️", desc: "עובר דרך אויב נוסף ומתעלם משריון" },
+  { kind: "trait", id: "multi",  name: "כפילות",     emoji: "✨", desc: "קליע נוסף בכל ירייה" },
+  { kind: "trait", id: "vamp",   name: "ערפד",       emoji: "🩸", desc: "כל הריגה מרפאת אותך" },
+];
+
+const ROLE_CARDS: Card[] = [
+  { kind: "role", id: "radius",    name: "פגז מצרר",   emoji: "💣", desc: "‎+25% רדיוס פיצוץ", roles: ["cannon"] },
+  { kind: "role", id: "heatc",     name: "קירור-על",   emoji: "🧊", desc: "‎+30% קיבולת חום", roles: ["mg"] },
+  { kind: "role", id: "tracer",    name: "קליעי נותב", emoji: "🌟", desc: "הנזק גדל ככל שהצרור נמשך", roles: ["mg"] },
+  { kind: "role", id: "shieldstr", name: "מגן קרב",    emoji: "🛡️", desc: "המגן חוסם עוד ומכה בהדיפה", roles: ["infantry"] },
+  { kind: "role", id: "lifesteal", name: "צמא דם",     emoji: "🫀", desc: "כל מכה מרפאת 3 חיים", roles: ["infantry"] },
+];
+
+const ALL_CARDS = [...AMPS, ...TRAIT_CARDS, ...ROLE_CARDS];
+const cardsFor = (role: WallRole) => ALL_CARDS.filter((c) => !c.roles || c.roles.includes(role));
+
+/* ---- דרגות נשק — בלי תקרה. כל 3 רמות הנשק מחליף גוף וגדל. ---- */
+const tierOf = (level: number) => 1 + Math.floor(level / 3);
+const tierMult = (tier: number) => 1 + 0.45 * (tier - 1);
 
 export function createWall(ctx: GameCtx): GameInstance {
   const brutal = ((ctx.config ?? {}) as Config).difficulty === "brutal";
@@ -251,6 +301,7 @@ export function createWall(ctx: GameCtx): GameInstance {
       const h = heroes.get(p)!;
       if (h.down && tn >= h.upAt) reviveHero(p, h);
     }
+    tickDots(tn);
     const infantry = fighters().filter((p) => { const h = heroes.get(p); return h && h.role === "infantry" && !h.down; });
 
     for (const e of [...enemies.values()]) {
@@ -303,7 +354,12 @@ export function createWall(ctx: GameCtx): GameInstance {
         if (e.type === "sniper") {
           if (e.sniperFireAt && tn >= e.sniperFireAt) {
             const h = e.target && heroes.get(e.target);
-            if (h && !h.down) hurtHero(e.target!, 38);
+            if (h && !h.down) {
+              if (h.mods.sentry > 0 && !h.sentryUsed) {
+                h.sentryUsed = true; // 🎖️ המוצב ספג — הבזק במקום נזק
+                ctx.broadcast({ a: "wl_boomfx", x: Math.round(h.x), y: Math.round(h.y), r: 50 });
+              } else hurtHero(e.target!, 38);
+            }
             e.sniperFireAt = tn + 4000; // טוען שוב
           }
           continue;
@@ -343,14 +399,15 @@ export function createWall(ctx: GameCtx): GameInstance {
           ctx.broadcast({ a: "wl_stream", by: p, x: h.aimX, on: false });
         } else {
           // פוגע באויב הקדמי בציר הכיוון (לא משוריינים!)
+          const canArmor = h.traits.pierce > 0; // 🗡️ חדירה = סוף-סוף אפשר לפגוע במשוריין
           const targets = [...enemies.values()]
-            .filter((e) => e.type !== "armored" && e.state !== "burrow")
+            .filter((e) => (canArmor || e.type !== "armored") && e.state !== "burrow")
             .map((e) => ({ e, pos: posOf(e, tn) }))
             .filter(({ pos }) => Math.abs(pos[0] - h.aimX) < 62 * h.mods.range && pos[1] > 0 && pos[1] < WALL_Y)
             .sort((a, b) => b.pos[1] - a.pos[1]);
           if (targets.length) {
-            const dmg = 4.6 * h.mods.dmg * TIER_MULT[h.tier] * (1 + (h.mods.tracer ? h.tracerRamp ?? 0 : 0));
-            damageEnemy(targets[0].e, dmg, p);
+            const dmg = 4.6 * h.mods.dmg * tierMult(h.tier) * (1 + (h.mods.tracer ? h.tracerRamp ?? 0 : 0));
+            for (let i = 0; i < 1 + h.traits.multi && i < targets.length; i++) damageEnemy(targets[i].e, dmg, p);
           }
         }
       } else {
@@ -408,20 +465,136 @@ export function createWall(ctx: GameCtx): GameInstance {
     ctx.broadcast({ a: "wl_hero", pid, hp: h.hp, max: h.max, down: false });
   }
 
-  function damageEnemy(e: Enemy, dmg: number, by: string, crit = false) {
+  /* ================= צנרת הנזק + תכונות הנשק =================
+   * כל התכונות חיות כאן, בצינור אחד, ולא בקוד נפרד לכל תפקיד — ככה הן עובדות
+   * אוטומטית לארבעת התפקידים, וגם ל-DoT ולשרשרת. `kind` נשלח ללקוח כדי שידע
+   * לצבוע את מספר הנזק ולירות את החלקיק הנכון. */
+  type HitKind = "hit" | "burn" | "poison" | "chain" | "blast";
+
+  /** מכפיל הנזק של המגברים שתלויים במצב (שריון/גסיסה/מומנטום) */
+  function ampMul(h: Hero | undefined, e: Enemy): number {
+    if (!h) return 1;
+    let mul = 1;
+    if (h.mods.armor && (e.type === "armored" || e.type === "boss")) mul *= 1 + 0.35 * h.mods.armor;
+    if (h.traits.pierce && (e.type === "armored" || e.type === "boss")) mul *= 1 + 0.22 * h.traits.pierce;
+    if (h.mods.exec && e.hp / e.maxHp < 0.35) mul *= 1 + 0.45 * h.mods.exec;
+    if (h.mods.momentum && now() < h.momoUntil) mul *= 1 + 0.04 * h.momoStacks;
+    return mul;
+  }
+
+  /** האטה מכפור — משנה מהירות ומשדרת מסלול חדש (מסונן כדי לא להציף) */
+  function applySlow(e: Enemy, stacks: number) {
+    if (e.state !== "walk") return;
+    const tn = now();
+    if (e.slowUntil && tn < e.slowUntil - 400) return; // כבר מואט — לא משדרים שוב
+    if (e.fullSpeed === undefined) e.fullSpeed = e.speed;
+    const mul = Math.max(0.35, 1 - 0.18 * stacks);
+    e.slowUntil = tn + 1600;
+    const [ex, ey] = posOf(e, tn);
+    setPath(e, ex, ey, "walk", e.fullSpeed * mul);
+  }
+
+  function damageEnemy(e: Enemy, dmg: number, by: string, crit = false, kind: HitKind = "hit", depth = 0) {
     if (!enemies.has(e.id)) return;
     const h = heroes.get(by);
-    if (h && Math.random() < h.mods.crit) { dmg *= 2; crit = true; }
+    dmg *= ampMul(h, e);
+    if (h && kind === "hit" && Math.random() < h.mods.crit) { dmg *= 2; crit = true; }
     e.hp -= dmg;
     st(by).dmg += dmg;
     if (h?.mods.lifesteal && h.role === "infantry" && !h.down) h.hp = Math.min(h.max, h.hp + 3 * h.mods.lifesteal);
+
+    // ---- תכונות שנדלקות על פגיעה ישירה ----
+    if (h && kind === "hit" && depth < 2) {
+      const t = h.traits;
+      const evo = (id: TraitId) => (h.evos.includes(id) ? 2 : 1); // אבולוציה = כפול
+      if (t.burn > 0) {
+        e.burnUntil = now() + 3000;
+        e.burnDps = 3.5 * t.burn * evo("burn") * tierMult(h.tier);
+        e.burnBy = by;
+      }
+      if (t.poison > 0) {
+        e.poisonStacks = Math.min(20, (e.poisonStacks ?? 0) + t.poison * evo("poison"));
+        e.poisonUntil = now() + 5000;
+        e.poisonBy = by;
+      }
+      if (t.frost > 0) applySlow(e, t.frost * evo("frost"));
+      if (t.chain > 0 && enemies.has(e.id)) {
+        const tn = now();
+        const [ex, ey] = posOf(e, tn);
+        const reach = 150 + 25 * t.chain;
+        let best: Enemy | undefined; let bd = reach;
+        for (const o of enemies.values()) {
+          if (o.id === e.id || o.state === "burrow") continue;
+          const [ox, oy] = posOf(o, tn);
+          const d = Math.hypot(ox - ex, oy - ey);
+          if (d < bd) { bd = d; best = o; }
+        }
+        if (best) {
+          const [bx, by2] = posOf(best, tn);
+          if (tn - h.lastChainFx > 150) { // אפקט מסונן — במקלען זה 10 פעמים בשנייה
+            h.lastChainFx = tn;
+            ctx.broadcast({ a: "wl_chain", x1: Math.round(ex), y1: Math.round(ey), x2: Math.round(bx), y2: Math.round(by2), by });
+          }
+          damageEnemy(best, dmg * (0.35 + 0.08 * t.chain) * evo("chain"), by, false, "chain", depth + 1);
+        }
+      }
+    }
+
     if (e.hp <= 0) {
       enemies.delete(e.id);
-      ctx.broadcast({ a: "wl_hit", id: e.id, hp: 0, by, crit });
+      ctx.broadcast({ a: "wl_hit", id: e.id, hp: 0, by, crit, k: kind });
       st(by).kills++;
-      if (h) giveXp(by, ETYPES[e.type].xp);
+      if (h) {
+        // XP מסקיילי עם הגל — בלי זה אויב בגל 15 שווה כמו בגל 1 והפרוגרסיה נעצרת
+        giveXp(by, ETYPES[e.type].xp * (0.6 + 0.4 * hpScale(wave)));
+        // ---- תכונות שנדלקות על הריגה ----
+        const t = h.traits;
+        const evo = (id: TraitId) => (h.evos.includes(id) ? 2 : 1);
+        if (h.mods.momentum) {
+          h.momoStacks = Math.min(12, (now() < h.momoUntil ? h.momoStacks : 0) + h.mods.momentum);
+          h.momoUntil = now() + 4000;
+        }
+        if (t.vamp > 0 && !h.down) {
+          h.hp = Math.min(h.max, h.hp + 2 * t.vamp * evo("vamp"));
+          ctx.broadcast({ a: "wl_hero", pid: by, hp: Math.round(h.hp), max: h.max, down: false });
+        }
+        if (t.blast > 0 && depth < 2) {
+          const tn = now();
+          const [ex, ey] = posOf(e, tn);
+          const r = (70 + 18 * t.blast) * evo("blast");
+          if (tn - h.lastBlastFx > 130) {
+            h.lastBlastFx = tn;
+            ctx.broadcast({ a: "wl_boomfx", x: Math.round(ex), y: Math.round(ey), r: Math.round(r) });
+          }
+          for (const o of [...enemies.values()]) {
+            const [ox, oy] = posOf(o, tn);
+            if (Math.hypot(ox - ex, oy - ey) < r) {
+              damageEnemy(o, (14 + 7 * t.blast) * tierMult(h.tier) * evo("blast"), by, false, "blast", depth + 1);
+            }
+          }
+        }
+      }
     } else {
-      ctx.broadcast({ a: "wl_hit", id: e.id, hp: Math.round(e.hp), by, crit });
+      ctx.broadcast({ a: "wl_hit", id: e.id, hp: Math.round(e.hp), by, crit, k: kind });
+    }
+  }
+
+  /** DoT — רץ פעם בשנייה מתוך הטיק (ולא בטיימר לכל אויב) כדי לא להציף הודעות */
+  function tickDots(tn: number) {
+    for (const e of [...enemies.values()]) {
+      // שחרור האטה שפגה — קודם, ובלי תלות בשעון ה-DoT
+      if (e.slowUntil && tn > e.slowUntil && e.fullSpeed !== undefined && e.state === "walk") {
+        const [ex, ey] = posOf(e, tn);
+        e.slowUntil = undefined;
+        setPath(e, ex, ey, "walk", e.fullSpeed);
+      }
+      if (e.lastDot && tn - e.lastDot < 1000) continue;
+      const burning = e.burnUntil && tn < e.burnUntil;
+      const poisoned = e.poisonUntil && tn < e.poisonUntil;
+      if (!burning && !poisoned) continue;
+      e.lastDot = tn;
+      if (burning) damageEnemy(e, e.burnDps ?? 0, e.burnBy ?? "", false, "burn");
+      if (poisoned && enemies.has(e.id)) damageEnemy(e, 2.2 * (e.poisonStacks ?? 0), e.poisonBy ?? "", false, "poison");
     }
   }
 
@@ -432,21 +605,30 @@ export function createWall(ctx: GameCtx): GameInstance {
     if (!h) return;
     ctx.sendTo(pid, { a: "wl_mods", rate: h.mods.rate, speed: h.mods.speed });
   }
-  const xpNeed = (lvl: number) => Math.round(10 * Math.pow(1.35, lvl - 1));
+  /** עקומה מתונה (1.16 במקום 1.35): בריצת ערב מגיעים לרמה ~20 במקום ~9,
+   *  כלומר פי 2 בחירות שדרוג — בלי זה אין מספיק ערימות בשביל שהתכונות יורגשו. */
+  const xpNeed = (lvl: number) => Math.round(10 * Math.pow(1.16, lvl - 1));
+
+  /** משדר לכל החדר איך הנשק של השחקן נראה — מכאן הלקוח מרכיב את המראה */
+  function sendStyle(pid: string) {
+    const h = heroes.get(pid);
+    if (!h) return;
+    ctx.broadcast({ a: "wl_style", pid, traits: { ...h.traits }, tier: h.tier, evos: [...h.evos] });
+  }
+
   function giveXp(pid: string, amount: number) {
     const h = heroes.get(pid)!;
     h.xp += amount * h.mods.xpMul;
+    let tiered = false;
     while (h.xp >= xpNeed(h.level)) {
       h.xp -= xpNeed(h.level);
       h.level++;
-      // דרגת נשק אוטומטית
-      const tierIdx = TIER_LEVELS.indexOf(h.level); // רמה 3 → דרגה 2, רמה 7 → דרגה 3
-      if (tierIdx >= 0) {
-        h.tier = tierIdx + 2;
-        ctx.broadcast({ a: "wl_tier", pid, tier: h.tier });
-      }
+      // דרגת נשק כל 3 רמות — בלי תקרה
+      const nt = tierOf(h.level);
+      if (nt > h.tier) { h.tier = nt; tiered = true; ctx.broadcast({ a: "wl_tier", pid, tier: h.tier }); }
       queueDraft(pid);
     }
+    if (tiered) { checkEvos(pid); sendStyle(pid); }
     const tn = now();
     if (tn - h.lastXpMsg > 900) {
       h.lastXpMsg = tn;
@@ -454,15 +636,33 @@ export function createWall(ctx: GameCtx): GameInstance {
     }
   }
 
+  /** אבולוציה: תכונה בערימה 5 + דרגת נשק 4 → נשק עם שם, והכרזה לכל החדר */
+  function checkEvos(pid: string) {
+    const h = heroes.get(pid);
+    if (!h || h.tier < EVO_TIER) return;
+    for (const t of TRAIT_IDS) {
+      if (h.traits[t] >= EVO_STACKS && !h.evos.includes(t)) {
+        h.evos.push(t);
+        ctx.broadcast({ a: "wl_evo", pid, trait: t, name: EVO[t].name, emoji: EVO[t].emoji });
+      }
+    }
+  }
+
   function queueDraft(pid: string) {
     if (hands.has(pid)) { pendingLevels.set(pid, (pendingLevels.get(pid) ?? 0) + 1); return; }
     const h = heroes.get(pid)!;
-    const pool = [...UCARDS, ...CCARDS[h.role]];
+    const pool = [...cardsFor(h.role)];
     const cards: WallCard[] = [];
     while (cards.length < 3 && pool.length) {
       const c = pool.splice(Math.floor(Math.random() * pool.length), 1)[0];
       const tier = (h.picks[c.id] ?? 0) + 1;
-      cards.push({ ...c, tier, name: tier > 1 ? `${c.name} ${["", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"][Math.min(tier, 10)]}` : c.name });
+      // תכונה שעל סף אבולוציה מסומנת — זה מה שגורם לרדוף אחרי בילד
+      const nextIsEvo = c.kind === "trait" && tier >= EVO_STACKS && h.tier >= EVO_TIER && !h.evos.includes(c.id as TraitId);
+      cards.push({
+        id: c.id, emoji: nextIsEvo ? EVO[c.id as TraitId].emoji : c.emoji, tier,
+        name: nextIsEvo ? EVO[c.id as TraitId].name : (tier > 1 ? `${c.name} ${["", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"][Math.min(tier, 10)]}` : c.name),
+        desc: nextIsEvo ? "🌟 אבולוציה! הנשק שלך משתנה" : c.desc,
+      });
     }
     hands.set(pid, cards);
     ctx.sendTo(pid, { a: "wl_levelup", level: h.level, cards });
@@ -476,24 +676,32 @@ export function createWall(ctx: GameCtx): GameInstance {
     const h = heroes.get(pid)!;
     h.picks[cardId] = (h.picks[cardId] ?? 0) + 1;
     const m = h.mods;
-    switch (cardId) {
-      case "dmg": m.dmg *= 1.15; break;
-      case "rate": m.rate *= 1.12; break;
-      case "hp": h.max = Math.round(h.max * 1.25); h.hp = h.max; ctx.broadcast({ a: "wl_hero", pid, hp: h.hp, max: h.max }); break;
-      case "speed": m.speed *= 1.1; break;
-      case "range": m.range *= 1.1; break;
-      case "crit": m.crit = Math.min(0.6, m.crit + 0.08); break;
-      case "xp": m.xpMul *= 1.12; break;
-      case "wall": wallHp = Math.min(wallMax, wallHp + wallMax * 0.12); ctx.broadcast({ a: "wl_wall", hp: Math.round(wallHp), max: wallMax }); break;
-      case "pierce": m.pierce += 1; break;
-      case "multi": m.multi += 1; break;
-      case "radius": m.radius *= 1.25; break;
-      case "heatc": m.heat *= 1.3; break;
-      case "tracer": m.tracer += 1; break;
-      case "shieldstr": m.shieldStr += 1; break;
-      case "lifesteal": m.lifesteal += 1; break;
+    if ((TRAIT_IDS as string[]).includes(cardId)) {
+      h.traits[cardId as TraitId]++;
+      checkEvos(pid);
+    } else {
+      switch (cardId) {
+        case "dmg": m.dmg *= 1.18; break;
+        case "rate": m.rate *= 1.12; break;
+        case "hp": h.max = Math.round(h.max * 1.25); h.hp = h.max; ctx.broadcast({ a: "wl_hero", pid, hp: h.hp, max: h.max, down: h.down }); break;
+        case "speed": m.speed *= 1.1; break;
+        case "range": m.range *= 1.12; break;
+        case "crit": m.crit = Math.min(0.6, m.crit + 0.08); break;
+        case "xp": m.xpMul *= 1.12; break;
+        case "wall": wallHp = Math.min(wallMax, wallHp + wallMax * 0.12); ctx.broadcast({ a: "wl_wall", hp: Math.round(wallHp), max: wallMax }); break;
+        case "armor": m.armor += 1; break;
+        case "exec": m.exec += 1; break;
+        case "momo": m.momentum += 1; break;
+        case "sentry": m.sentry += 1; h.sentryUsed = false; break;
+        case "radius": m.radius *= 1.25; break;
+        case "heatc": m.heat *= 1.3; break;
+        case "tracer": m.tracer += 1; break;
+        case "shieldstr": m.shieldStr += 1; break;
+        case "lifesteal": m.lifesteal += 1; break;
+      }
     }
     sendMods(pid); // הלקוח חייב לדעת — אחרת שערי הקצב/מהירות שלו חוסמים את השדרוג
+    sendStyle(pid); // ...וכל החדר צריך לדעת, כדי שיראו את הנשק שלך משתנה
     ctx.broadcast({ a: "wl_picked", pid, name: card.name, emoji: card.emoji });
     // עוד רמה ממתינה?
     const pending = pendingLevels.get(pid) ?? 0;
@@ -514,6 +722,7 @@ export function createWall(ctx: GameCtx): GameInstance {
         ctx.broadcast({ a: "wl_hero", pid: p, hp: Math.round(h.hp), max: h.max, down: false });
       }
       h.heat = 0; h.firing = false; h.jamUntil = 0;
+      h.sentryUsed = false; // המוצב טעון מחדש בכל גל
     }
     // תיקון קטן בין גלים — קודם מרפאים, ואז משדרים את המספר האמיתי
     wallHp = Math.min(wallMax, wallHp + wallMax * 0.06);
@@ -567,8 +776,9 @@ export function createWall(ctx: GameCtx): GameInstance {
           role: defaultRole(i), slot: [GATE_X, 1100], x: GATE_X, y: 1100,
           hp: 150, max: 150, down: false, upAt: 0, shield: false,
           mods: baseMods(), level: 1, xp: 0, tier: 1, picks: {},
+          traits: baseTraits(), evos: [], momoUntil: 0, momoStacks: 0, sentryUsed: false,
           firing: false, aimX: GATE_X, heat: 0, jamUntil: 0,
-          lastSwing: 0, lastShot: 0, cannonReadyAt: 0, lastXpMsg: 0,
+          lastSwing: 0, lastShot: 0, cannonReadyAt: 0, lastXpMsg: 0, lastChainFx: 0, lastBlastFx: 0,
         });
       }
     });
@@ -578,8 +788,10 @@ export function createWall(ctx: GameCtx): GameInstance {
       h.hp = h.max = isInf ? 150 : 100;
       h.down = false; h.shield = false; h.firing = false; h.heat = 0; h.jamUntil = 0;
       h.mods = baseMods(); h.level = 1; h.xp = 0; h.tier = 1; h.picks = {};
+      h.traits = baseTraits(); h.evos = []; h.momoUntil = 0; h.momoStacks = 0; h.sentryUsed = false;
       [h.x, h.y] = h.slot;
       sendMods(p);
+      sendStyle(p);
       ctx.sendTo(p, { a: "wl_xp", xp: 0, level: 1, next: xpNeed(1) });
     }
     hands.clear(); pendingLevels.clear();
@@ -597,8 +809,9 @@ export function createWall(ctx: GameCtx): GameInstance {
           role: defaultRole(i), slot: [500, 1100], x: 500, y: 1100,
           hp: 150, max: 150, down: false, upAt: 0, shield: false,
           mods: baseMods(), level: 1, xp: 0, tier: 1, picks: {},
+          traits: baseTraits(), evos: [], momoUntil: 0, momoStacks: 0, sentryUsed: false,
           firing: false, aimX: 500, heat: 0, jamUntil: 0,
-          lastSwing: 0, lastShot: 0, cannonReadyAt: 0, lastXpMsg: 0,
+          lastSwing: 0, lastShot: 0, cannonReadyAt: 0, lastXpMsg: 0, lastChainFx: 0, lastBlastFx: 0,
         });
       });
       assignSlots();
@@ -615,6 +828,9 @@ export function createWall(ctx: GameCtx): GameInstance {
         ctx.sendTo(pid, { a: "wl_xp", xp: Math.round(h.xp), level: h.level, next: xpNeed(h.level) });
         sendMods(pid);
       }
+      for (const [p2, h2] of heroes.entries()) {
+        ctx.sendTo(pid, { a: "wl_style", pid: p2, traits: { ...h2.traits }, tier: h2.tier, evos: [...h2.evos] });
+      }
     },
 
     onMessage(pid: string, d: GameClientMsg) {
@@ -626,8 +842,9 @@ export function createWall(ctx: GameCtx): GameInstance {
           role: defaultRole(heroes.size), slot: [GATE_X, 1100], x: GATE_X, y: 1100,
           hp: 150, max: 150, down: false, upAt: 0, shield: false,
           mods: baseMods(), level: 1, xp: 0, tier: 1, picks: {},
+          traits: baseTraits(), evos: [], momoUntil: 0, momoStacks: 0, sentryUsed: false,
           firing: false, aimX: GATE_X, heat: 0, jamUntil: 0,
-          lastSwing: 0, lastShot: 0, cannonReadyAt: 0, lastXpMsg: 0,
+          lastSwing: 0, lastShot: 0, cannonReadyAt: 0, lastXpMsg: 0, lastChainFx: 0, lastBlastFx: 0,
         };
         heroes.set(pid, h);
       }
@@ -663,16 +880,28 @@ export function createWall(ctx: GameCtx): GameInstance {
           h.lastSwing = tn;
           ctx.broadcast({ a: "wl_slash", pid, x: Math.round(h.x), y: Math.round(h.y), dir: m.dir }); // שכולם יראו את ההנפה
           const reach = 130 * h.mods.range * (1 + 0.15 * (h.tier - 1));
-          const dmg = 34 * h.mods.dmg * TIER_MULT[h.tier];
-          for (const e of [...enemies.values()]) {
-            const [ex, ey] = posOf(e, tn);
-            const dx = ex - h.x, dy = ey - h.y;
-            const dist = Math.hypot(dx, dy);
-            if (dist > reach) continue;
-            const ang = Math.atan2(dy, dx);
-            let dd = Math.abs(ang - m.dir);
-            if (dd > Math.PI) dd = 2 * Math.PI - dd;
-            if (dd < 1.15) damageEnemy(e, dmg, pid);
+          const dmg = 34 * h.mods.dmg * tierMult(h.tier);
+          const swing = (mul: number) => {
+            const t2 = now();
+            for (const e of [...enemies.values()]) {
+              const [ex, ey] = posOf(e, t2);
+              const dx = ex - h.x, dy = ey - h.y;
+              if (Math.hypot(dx, dy) > reach) continue;
+              const ang = Math.atan2(dy, dx);
+              let dd = Math.abs(ang - m.dir);
+              if (dd > Math.PI) dd = 2 * Math.PI - dd;
+              if (dd < 1.15) damageEnemy(e, dmg * mul, pid);
+            }
+          };
+          swing(1);
+          // ✨ כפילות לחלוץ = הנפות הד — כל ערימה מוסיפה סיבוב נוסף ב-70% נזק
+          const t0 = token;
+          for (let k = 1; k <= h.traits.multi; k++) {
+            ctx.timer(140 * k, () => {
+              if (token !== t0 || phase !== "wave" || h.down) return;
+              ctx.broadcast({ a: "wl_slash", pid, x: Math.round(h.x), y: Math.round(h.y), dir: m.dir });
+              swing(0.7);
+            });
           }
           return;
         }
@@ -686,7 +915,7 @@ export function createWall(ctx: GameCtx): GameInstance {
           const tn = now();
           if (tn - h.lastShot < 650 / h.mods.rate) return;
           h.lastShot = tn;
-          const shots = 1 + h.mods.multi;
+          const shots = 1 + h.traits.multi;
           for (let s = 0; s < shots; s++) {
             const tx = Math.max(0, Math.min(W, m.tx + (s ? (s % 2 ? 70 : -70) * Math.ceil(s / 2) : 0)));
             const ty = Math.max(0, Math.min(WALL_Y, m.ty));
@@ -697,14 +926,14 @@ export function createWall(ctx: GameCtx): GameInstance {
             ctx.timer(300 + T, () => {
               if (token !== t || phase !== "wave") return;
               const impactT = now();
-              let hitsLeft = 1 + h.mods.pierce;
+              let hitsLeft = 1 + h.traits.pierce;
               const near = [...enemies.values()]
                 .map((e) => ({ e, pos: posOf(e, impactT) }))
                 .filter(({ e, pos }) => e.state !== "burrow" && Math.hypot(pos[0] - tx, pos[1] - ty) < 75 * h.mods.range)
                 .sort((a, b) => Math.hypot(a.pos[0] - tx, a.pos[1] - ty) - Math.hypot(b.pos[0] - tx, b.pos[1] - ty));
               for (const { e } of near) {
                 if (hitsLeft-- <= 0) break;
-                damageEnemy(e, 26 * h.mods.dmg * TIER_MULT[h.tier] * (0.5 + 0.5 * m.power), pid);
+                damageEnemy(e, 26 * h.mods.dmg * tierMult(h.tier) * (0.5 + 0.5 * m.power), pid);
                 // צלף שנוטרל לפני הירייה = הצלה
                 if (e.type === "sniper") st(pid).saves++;
               }
@@ -717,7 +946,7 @@ export function createWall(ctx: GameCtx): GameInstance {
           const tn = now();
           if (tn < h.cannonReadyAt) return;
           h.cannonReadyAt = tn + 3600 / h.mods.rate;
-          const shots = 1 + h.mods.multi;
+          const shots = 1 + h.traits.multi;
           for (let s = 0; s < shots; s++) {
             const tx = Math.max(0, Math.min(W, m.tx + (s ? (s % 2 ? 90 : -90) : 0)));
             const ty = Math.max(60, Math.min(WALL_Y - 30, m.ty));
@@ -727,12 +956,12 @@ export function createWall(ctx: GameCtx): GameInstance {
             ctx.timer(300 + T, () => {
               if (token !== t || phase !== "wave") return;
               const impactT = now();
-              const r = 145 * h.mods.radius * (1 + 0.12 * (h.tier - 1));
+              const r = 145 * h.mods.radius * h.mods.range * (1 + 0.12 * (h.tier - 1));
               ctx.broadcast({ a: "wl_boomfx", x: Math.round(tx), y: Math.round(ty), r: Math.round(r) });
               for (const e of [...enemies.values()]) {
                 const pos = posOf(e, impactT);
                 if (e.state !== "burrow" && Math.hypot(pos[0] - tx, pos[1] - ty) < r) {
-                  damageEnemy(e, 95 * h.mods.dmg * TIER_MULT[h.tier], pid);
+                  damageEnemy(e, 95 * h.mods.dmg * tierMult(h.tier), pid);
                 }
               }
             });
