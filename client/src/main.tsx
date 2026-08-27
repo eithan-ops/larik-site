@@ -1,6 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
+import { watchInstallPrompt } from "./lib/install";
 // פונטים מקומיים — בלי תלות ב-Google Fonts (קריטי לאולם בלי קליטה). שניהם כוללים תת-קבוצה עברית.
 import "@fontsource/suez-one";              // תצוגה: כותרות, מספרים גדולים, שמות משחקים
 import "@fontsource-variable/assistant";    // גוף הטקסט
@@ -15,6 +16,9 @@ initAnalytics();
 if ("serviceWorker" in navigator && import.meta.env.PROD) {
   window.addEventListener("load", () => navigator.serviceWorker.register("/sw.js").catch(() => { /* דפדפן ישן */ }));
 }
+
+// חייב לרוץ לפני הרינדור — כרום יורה את אירוע ההתקנה מוקדם, ומי שלא תפס אותו איבד אותו
+watchInstallPrompt();
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>

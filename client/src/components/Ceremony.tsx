@@ -4,6 +4,7 @@ import { Sfx, vibrate } from "../lib/audio";
 import { shareEveningBoard } from "../lib/sharecard";
 import { shareEndCard } from "../lib/endcard";
 import { rememberGroup } from "../lib/group";
+import InstallPrompt from "./InstallPrompt";
 import { track } from "../lib/analytics";
 
 const COLORS = ["#8b5cf6", "#ec4899", "#ffc93c", "#34e89e", "#5c8aff"];
@@ -258,6 +259,9 @@ export default function Ceremony({ room, me, isHost, onSaveGroup, onBackToLobby 
           </button>
         )
       )}
+
+      {/* ההזמנה להתקנה מגיעה רק כאן — אחרי ערב מוצלח, כשיש כבר סיבה */}
+      <InstallPrompt />
 
       <button className="btn ghost" style={{ marginTop: 10, maxWidth: 340 }} onClick={share}>
         📤 שתפו את לוח הערב

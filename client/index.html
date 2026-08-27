@@ -19,6 +19,10 @@
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="icon" type="image/png" href="/icon-192.png" />
     <link rel="apple-touch-icon" href="/icon-192.png" />
+    <!-- אייפון לא קורא display:standalone מהמניפסט — בלי שני אלה ההוספה למסך הבית פותחת דפדפן רגיל -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="LARIK" />
     <title>LARIK — משחקי חברה לטלפון, בלי אפליקציה</title>
     <script type="application/ld+json">
     {

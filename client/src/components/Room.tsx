@@ -245,7 +245,9 @@ export default function Room({ code }: { code: string }) {
         <div style={{ flex: 1 }}>
           <b>{emoji} {name.trim() || "שחקן"} — אתה בפנים!</b>
           <div className="sub" style={{ fontSize: 12.5 }}>
-            חדר {code} · {connectedCount} {connectedCount === 1 ? "מחובר" : "מחוברים"}
+            {/* לחבורה שנשמרה יש שם — והוא עדיף על "חדר KFRT" בכל מקום שהוא מופיע */}
+            {room.group ? `🏅 ${room.group.name} · ערב ${Math.max(1, room.group.evenings + 1)}` : `חדר ${code}`}
+            {" · "}{connectedCount} {connectedCount === 1 ? "מחובר" : "מחוברים"}
             {isHost ? " · אתה המארח 👑" : ""}
           </div>
         </div>
