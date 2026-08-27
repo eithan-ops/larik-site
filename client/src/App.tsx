@@ -3,8 +3,9 @@ import Home from "./components/Home";
 import Room from "./components/Room";
 import Mapper from "./components/Mapper";
 import GamesShelf from "./components/GamesShelf";
+import Daily from "./components/Daily";
 
-/** ראוטר משחקים: / (בית) · /r/CODE (חדר). המופע עבר לאפליקציה נפרדת (/s) */
+/** ראוטר משחקים: / (בית) · /r/CODE (חדר) · /daily (סולו). המופע באפליקציה נפרדת (/s) */
 export default function App() {
   const [path, setPath] = useState(location.pathname);
 
@@ -24,6 +25,7 @@ export default function App() {
   if (path === "/mapper") return <Mapper />;
   // ‎/games שמור לעמוד ה-SEO הסטטי — מדף המשחקים באפליקציה חי ב-/play
   if (path === "/play") return <GamesShelf />;
+  if (path === "/daily") return <Daily />;
   return <Home />;
 }
 

@@ -12,7 +12,9 @@ import { join, extname, resolve } from "path";
 import { randomUUID } from "crypto";
 import { RoomManager, Transport } from "./engine";
 import { Groups } from "./groups";
-import { generateAiDeck, aiDeckAvailable } from "./aideck";
+import { generateAiDeck, aiDeckAvailable, askModel } from "./aideck";
+import { getStore } from "./store";
+import { getTriviaBank } from "./triviaBank";
 import { statRoomCreated, statPlayerJoined, statGameStarted, statConcurrent, statsPage, STATS_KEY, stats } from "./stats";
 import { CATALOG } from "../../shared/protocol";
 import { createForehead } from "./games/forehead";
@@ -100,6 +102,55 @@ const http = createServer((req, res) => {
   }
   if (url.pathname === "/api/health") {
     res.writeHead(200); res.end("ok"); return;
+  }
+  /**
+   * מצב האחסון — בלי סודות, רק איזה ספק מחובר והאם כתיבה+קריאה עוברות.
+   * זה מה שמאפשר לוודא מבחוץ שמשתני הסביבה נדבקו נכון, בלי לנחש.
+   */
+  if (url.pathname === "/api/store-status") {
+    const store = getStore();
+    const probe = `probe:${Date.now()}`;
+    store.put(probe, { ok: true })
+      .then(() => store.get<{ ok: boolean }>(probe))
+      .then((back) => {
+        res.writeHead(200, { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" });
+        res.end(JSON.stringify({
+          kind: store.kind,
+          writable: back?.ok === true,
+          persists: store.kind !== "memory",
+          triviaBank: getTriviaBank().size(),
+        }));
+      })
+      .catch((e) => {
+        res.writeHead(200, { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" });
+        res.end(JSON.stringify({ kind: store.kind, writable: false, persists: false, error: String(e).slice(0, 200) }));
+      });
+    return;
+  }
+  /** הטריוויה היומית — אותן שאלות לכל השחקנים באותו יום */
+  if (url.pathname === "/api/daily-trivia") {
+    const day = (url.searchParams.get("d") || "").match(/^\d{4}-\d{2}-\d{2}$/)
+      ? url.searchParams.get("d")!
+      : new Date().toISOString().slice(0, 10);
+    const bank = getTriviaBank();
+    bank.load().then(() => {
+      res.writeHead(200, { "Content-Type": "application/json; charset=utf-8", "Access-Control-Allow-Origin": "*" });
+      res.end(JSON.stringify({ date: day, questions: bank.daily(day, 10), bankSize: bank.size() }));
+    });
+    return;
+  }
+  /** מפעל השאלות — מוגן במפתח הסטטיסטיקות, כדי שלא כל אחד ישרוף לך מכסת מודל */
+  if (url.pathname === "/api/trivia/grow") {
+    if (url.searchParams.get("k") !== STATS_KEY) { res.writeHead(403); res.end("no"); return; }
+    const n = Math.min(50, Math.max(1, Number(url.searchParams.get("n")) || 20));
+    const cat = (url.searchParams.get("cat") || "world") as "israel" | "world" | "science";
+    getTriviaBank().grow(n, cat, askModel)
+      .then((r) => {
+        res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify(r));
+      })
+      .catch((e) => { res.writeHead(500); res.end(String(e).slice(0, 200)); });
+    return;
   }
   // חפיסה אישית ✨ — פרוקסי ל-LLM (המפתח נשאר בשרת). GET /api/ai-deck?topic=...
   if (url.pathname === "/api/ai-deck") {

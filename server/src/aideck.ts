@@ -112,6 +112,15 @@ async function askGroq(prompt: string): Promise<string> {
   return data.choices?.[0]?.message?.content ?? "";
 }
 
+/**
+ * שאילתה גנרית למודל — Gemini ואם הוא נופל אז Groq.
+ * חשוף כדי שמפעל השאלות ישתמש באותם מפתחות ובאותה נפילה, במקום לשכפל.
+ */
+export async function askModel(prompt: string): Promise<string> {
+  try { return await askGemini(prompt); }
+  catch { return await askGroq(prompt); }
+}
+
 /* ---------- ה-API ---------- */
 export interface AiDeckResult {
   status: number;

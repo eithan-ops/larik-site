@@ -109,7 +109,8 @@ export interface RoomSnapshot {
 
 /* ---- לקוח → שרת ---- */
 export type ClientMsg =
-  | { t: "join"; name: string; emoji: string; rejoinId?: string; gpid?: string }
+  /** `seen` = סט ביטים ב-base64 של שאלות שהמכשיר כבר ראה (ראו server/src/bitset.ts) */
+  | { t: "join"; name: string; emoji: string; rejoinId?: string; gpid?: string; seen?: string }
   | { t: "save_group"; name: string }   // מארח בלבד: הפיכת הערב הזה לחבורה שנשמרת
   | { t: "rename_group"; name: string } // מארח בלבד
   | { t: "arm" } // הטלפון חומש (אודיו+חיישנים)
@@ -248,7 +249,8 @@ export type TriviaClientMsg =
 
 export type TriviaServerMsg =
   | { a: "tv_begin"; total: number }
-  | { a: "tv_q"; qId: number; q: string; options: string[]; index: number; total: number; at: number; until: number } // cue
+  /** `bankId` = המזהה היציב של השאלה במאגר; הלקוח מסמן אותו כ"נראה" כדי שלא יחזור */
+  | { a: "tv_q"; qId: number; bankId?: number; q: string; options: string[]; index: number; total: number; at: number; until: number } // cue
   | { a: "tv_answered"; count: number; total: number }
   | { a: "tv_reveal"; qId: number; correct: number; tally: number[]; scores: Record<string, number>; gained: Record<string, number> };
 

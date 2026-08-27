@@ -4,6 +4,7 @@ import { createRoom } from "../lib/connection";
 import { track } from "../lib/analytics";
 import QRScanner from "./QRScanner";
 import { myGroups, openRoomForGroup, type SavedGroup } from "../lib/group";
+import { loadStreak } from "../lib/daily";
 
 /**
  * מסך הבית — "אלבום המדבקות קם לחיים" 🎪
@@ -23,6 +24,7 @@ export default function Home() {
   const [shared, setShared] = useState("");
   // נקרא פעם אחת — רשימת החבורות לא משתנה תוך כדי שהמסך פתוח
   const [groups] = useState<SavedGroup[]>(() => myGroups());
+  const [streak] = useState(() => loadStreak());
 
   /** שיתוף: תמונת ההירו + משפט + קישור. נופל ברכות לוואטסאפ / העתקה. */
   async function share() {
@@ -123,6 +125,11 @@ export default function Home() {
 
         <button className="join-cta" onClick={() => { setErr(""); setJoining(!joining); }}>
           📷 הצטרפו לחברים
+        </button>
+
+        {/* סולו: שלוש דקות לבד, וסיבה לפתוח את האפליקציה גם בלי חבורה בסלון */}
+        <button className="join-cta" onClick={() => navigate("/daily")}>
+          🧠 הטריוויה היומית{streak.days > 0 && <> · רצף {streak.days} 🔥</>}
         </button>
       </div>
 

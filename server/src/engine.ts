@@ -11,6 +11,7 @@ import type {
 import { CATALOG } from "../../shared/protocol";
 import { mergeFacts, computeAwards } from "./awards";
 import { Groups } from "./groups";
+import { decodeSeen } from "../../shared/bitset";
 import type { GroupSummary } from "../../shared/protocol";
 
 export interface Transport {
@@ -49,6 +50,8 @@ export interface GameCtx {
    * שרץ בסיבובים עד שהמארח יוצא). בלי זה הם לא היו מזינים תארים בכלל.
    */
   reportFacts(facts: Record<string, PlayerFacts>): void;
+  /** איחוד השאלות שכל משתתפי המשחק כבר ראו — כדי שלא נשאל אותן שוב */
+  seenUnion(): Set<number>;
   config: unknown;
 }
 
@@ -97,6 +100,7 @@ export class Room {
   private timers = new Set<NodeJS.Timeout>();
   private gamePids: string[] = []; // משתתפי המשחק הרץ — ננעל ברגע ההתחלה
   private gotIt = new Set<string>(); // מי אישר "הבנתי" על המשחק שנבחר
+  private seen = new Map<string, Set<number>>(); // מה כל מכשיר כבר ראה (לא משודר — זה גדול ופרטי)
 
   private transport: Transport;
   private gameFactories: Record<string, GameFactory>;
@@ -133,7 +137,8 @@ export class Room {
 
   /* ---------- חיבור שחקנים ---------- */
 
-  join(pid: string, name: string, emoji: string, gpid?: string): void {
+  join(pid: string, name: string, emoji: string, gpid?: string, seen?: string): void {
+    if (seen) this.seen.set(pid, decodeSeen(seen));
     const existing = this.players.get(pid);
     if (existing) {
       existing.connected = true;
@@ -310,6 +315,12 @@ export class Room {
         return h;
       },
       end: (result) => this.endGame(result),
+      seenUnion: () => {
+        const out = new Set<number>();
+        const ids = this.gamePids.length ? this.gamePids : [...this.players.keys()];
+        for (const pid of ids) for (const q of this.seen.get(pid) ?? []) out.add(q);
+        return out;
+      },
       reportFacts: (facts) => {
         for (const [pid, add] of Object.entries(facts)) {
           if (!this.players.has(pid)) continue;

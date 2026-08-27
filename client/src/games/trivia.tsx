@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import type { TriviaServerMsg } from "../../../shared/protocol";
 import type { GameViewProps } from "./registry";
 import { Sfx, vibrate } from "../lib/audio";
+import { markSeen } from "../lib/seen";
 
 interface Q { qId: number; q: string; options: string[]; index: number; total: number; at: number; until: number }
 const OPT_COLORS = ["#ff4d9d", "#5c8aff", "#ffce3c", "#34e89e"];
@@ -26,6 +27,8 @@ export default function TriviaView({ room, me, conn, hub }: GameViewProps) {
     const m = d as TriviaServerMsg;
     switch (m.a) {
       case "tv_q":
+        // מסמנים את השאלה כנראתה — כדי שלא תחזור בסולו או בערב הבא
+        if (typeof m.bankId === "number") markSeen(m.bankId);
         setQ({ qId: m.qId, q: m.q, options: m.options, index: m.index, total: m.total, at, until: at + ANSWER_MS });
         setChosen(null); setReveal(null); setAnswered(0);
         Sfx.goBeep(); vibrate(40);

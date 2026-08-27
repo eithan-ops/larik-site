@@ -11,6 +11,7 @@
  */
 import type { ClientMsg, ServerMsg, RoomSnapshot, GameServerMsg } from "../../../shared/protocol";
 import { myGpid } from "./group";
+import { seenBlob } from "./seen";
 
 export type CueHandler = (d: GameServerMsg, at: number) => void;
 
@@ -64,7 +65,7 @@ export class Connection {
     this.ws.onopen = () => {
       this.events.onStatus("open");
       // gpid = הזהות היציבה של המכשיר, מה שמאפשר לעונה של החבורה לזכור אותו
-      this.send({ t: "join", name, emoji, gpid: myGpid() });
+      this.send({ t: "join", name, emoji, gpid: myGpid(), seen: seenBlob() });
       this.syncClock();
       this.pingTimer = window.setInterval(() => this.syncClock(), PING_INTERVAL);
     };
