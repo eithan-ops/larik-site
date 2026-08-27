@@ -22,7 +22,20 @@ export interface BankQ extends TriviaQ { id: number }
  * `disabled` = מזהים שהוצאו משימוש. *לא* מוחקים, כי מזהה הוא מיקום במערך
  * ומחיקה הייתה הופכת את זיכרון ה"נראה" של כל השחקנים לשקר.
  */
-interface GrownBank { questions: TriviaQ[]; disabled?: number[]; updatedAt: number }
+interface GrownBank { questions: TriviaQ[]; disabled?: number[]; pending?: PendingQ[]; updatedAt: number }
+
+/**
+ * שאלה שנוצרה ומחכה לאישור אנושי.
+ *
+ * למה תור ולא כניסה ישירה: שלושה סבבים מול הלייב הראו שהמודל לא יכול
+ * לשמש גם כמקור וגם כבודק — ההמצאות שלו יציבות, ולכן גם שני סבבי אימות
+ * בלתי תלויים מאשרים אותן. שאלה שגויה שנכנסת נשארת במאגר לנצח, ולכן
+ * שום שאלה לא מגיעה לשחקנים לפני שאדם קרא אותה.
+ *
+ * `pid` יציב לאורך חיי התור, כדי שאישור לא יפגע בשאלה אחרת אם הרשימה
+ * השתנתה בין הקריאה לאישור.
+ */
+export interface PendingQ extends TriviaQ { pid: string }
 
 const BANK_KEY = "trivia:bank";
 const CATS: TriviaQ["cat"][] = ["israel", "world", "science", "weird"];
@@ -48,6 +61,11 @@ const BORING = [
   /^מהו הים הנמוך/, /^מהי הנקודה הנמוכה/,
 ];
 
+/** מזהה קצר ויציב לשאלה בתור — נגזר מהטקסט, כך שאותה שאלה לא תיכפל */
+function pendingId(q: string): string {
+  return hash(norm(q)).toString(36).slice(0, 8);
+}
+
 /** גיבוב יציב לבחירה דטרמיניסטית (אותו יום ⇐ אותן שאלות לכולם) */
 function hash(s: string): number {
   let h = 2166136261;
@@ -59,6 +77,7 @@ export class TriviaBank {
   private store?: Store;
   private grown: TriviaQ[] = [];
   private disabled = new Set<number>();
+  private pending: PendingQ[] = [];
   private loaded = false;
 
   constructor(store?: Store) {
@@ -73,6 +92,7 @@ export class TriviaBank {
       const b = await this.store.get<GrownBank>(BANK_KEY);
       if (b?.questions?.length) this.grown = b.questions;
       if (b?.disabled?.length) this.disabled = new Set(b.disabled);
+      if (b?.pending?.length) this.pending = b.pending;
     } catch { /* אין אחסון — ממשיכים עם הזרע */ }
   }
 
@@ -123,9 +143,9 @@ export class TriviaBank {
     n: number,
     cat: TriviaQ["cat"],
     ask: (prompt: string, maxTokens?: number) => Promise<string>
-  ): Promise<{ added: number; skipped: number; size: number; rejected?: string[]; error?: string; sample?: string }> {
+  ): Promise<{ added: number; skipped: number; size: number; pending?: number; rejected?: string[]; error?: string; sample?: string }> {
     await this.load();
-    const seen = new Set(this.all().map((q) => norm(q.q)));
+    const seen = new Set([...this.all(), ...this.pending].map((q) => norm(q.q)));
     const sample = this.all().filter((q) => q.cat === cat).slice(-6).map((q) => q.q);
 
     const prompt = [
@@ -199,11 +219,15 @@ export class TriviaBank {
       const key = norm(q.q);
       if (seen.has(key)) { skipped++; rejected.push(`כפולה: ${q.q.slice(0, 40)}`); continue; }
       seen.add(key);
-      this.grown.push({ q: q.q.trim(), options: q.options.map((o) => String(o).trim()), correct: q.correct, cat });
+      // לתור, לא למאגר. רק אישור אנושי מכניס שאלה למשחק.
+      this.pending.push({
+        pid: pendingId(q.q),
+        q: q.q.trim(), options: q.options.map((o) => String(o).trim()), correct: q.correct, cat,
+      });
       added++;
     }
     if (added) await this.save();
-    return { added, skipped, size: this.size(), rejected };
+    return { added, skipped, size: this.size(), pending: this.pending.length, rejected };
   }
 
   /**
@@ -264,10 +288,45 @@ export class TriviaBank {
     if (!this.store) return;
     try {
       await this.store.put<GrownBank>(BANK_KEY, {
-        questions: this.grown, disabled: [...this.disabled], updatedAt: Date.now(),
+        questions: this.grown, disabled: [...this.disabled], pending: this.pending, updatedAt: Date.now(),
       });
     } catch { /* לא נשמר — השינוי יחיה עד הריסטארט הבא */ }
   }
+
+  /** מה מחכה לאישור — זה מה שהאדם קורא לפני שהוא מחליט */
+  async pendingList(): Promise<PendingQ[]> {
+    await this.load();
+    return [...this.pending];
+  }
+
+  /**
+   * מאשר שאלות מהתור והכניס אותן למאגר. רק כאן שאלה מקבלת מזהה קבוע
+   * ומתחילה להופיע לשחקנים.
+   */
+  async approve(pids: string[]): Promise<{ approved: number; pending: number; size: number }> {
+    await this.load();
+    const wanted = new Set(pids);
+    const taking = this.pending.filter((p) => wanted.has(p.pid));
+    if (!taking.length) return { approved: 0, pending: this.pending.length, size: this.size() };
+    for (const p of taking) {
+      this.grown.push({ q: p.q, options: p.options, correct: p.correct, cat: p.cat });
+    }
+    this.pending = this.pending.filter((p) => !wanted.has(p.pid));
+    await this.save();
+    return { approved: taking.length, pending: this.pending.length, size: this.size() };
+  }
+
+  /** דחיית שאלות מהתור — הן פשוט נעלמות, כי מעולם לא קיבלו מזהה */
+  async rejectPending(pids: string[]): Promise<{ rejected: number; pending: number }> {
+    await this.load();
+    const wanted = new Set(pids);
+    const before = this.pending.length;
+    this.pending = this.pending.filter((p) => !wanted.has(p.pid));
+    await this.save();
+    return { rejected: before - this.pending.length, pending: this.pending.length };
+  }
+
+  pendingCount(): number { return this.pending.length; }
 
   /**
    * מוציא שאלות משימוש בלי למחוק אותן.
@@ -303,6 +362,9 @@ export class TriviaBank {
     if (!Array.isArray(q.options) || q.options.length !== 4) return "לא 4 תשובות";
     const opts = q.options.map((o) => String(o ?? "").trim());
     if (opts.some((o) => !o)) return "תשובה ריקה";
+    // הבדיקה הזאת הייתה על השאלה בלבד, ו"פלמינגو" עם ואו ערבית עברה כתשובה.
+    // תו זר בתשובה נראה תקין למי שסורק מהר, ונשאר במאגר לנצח.
+    if (opts.some((o) => !/^[\u0590-\u05FFa-zA-Z0-9\s.,;:!?'"()\-–—״׳%/+&]+$/.test(o))) return "תווים זרים בתשובה";
     if (new Set(opts).size !== 4) return "תשובות כפולות";
     if (!Number.isInteger(q.correct) || q.correct < 0 || q.correct > 3) return "אינדקס לא חוקי";
 

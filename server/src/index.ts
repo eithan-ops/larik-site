@@ -119,6 +119,7 @@ const http = createServer((req, res) => {
           persists: store.kind !== "memory" && ok,
           triviaBank: getTriviaBank().size(),
           triviaActive: getTriviaBank().active(),
+          triviaPending: getTriviaBank().pendingCount(),
         }));
       })
       .catch((e) => {
@@ -147,6 +148,30 @@ const http = createServer((req, res) => {
     getTriviaBank().grow(n, cat, askModel)
       .then((r) => {
         res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify(r));
+      })
+      .catch((e) => { res.writeHead(500); res.end(String(e).slice(0, 200)); });
+    return;
+  }
+  /**
+   * תור האישור — שום שאלה שנוצרה לא מגיעה לשחקנים לפני שאדם קרא אותה.
+   * GET /api/trivia/pending?k=...            → מה מחכה
+   * GET /api/trivia/approve?k=...&pids=a,b   → להכניס למאגר
+   * GET /api/trivia/drop?k=...&pids=a,b      → למחוק מהתור
+   */
+  if (url.pathname.startsWith("/api/trivia/pending")
+   || url.pathname.startsWith("/api/trivia/approve")
+   || url.pathname.startsWith("/api/trivia/drop")) {
+    if (url.searchParams.get("k") !== STATS_KEY) { res.writeHead(403); res.end("no"); return; }
+    const bank = getTriviaBank();
+    const pids = (url.searchParams.get("pids") || "").split(",").map((x) => x.trim()).filter(Boolean);
+    const action =
+      url.pathname.endsWith("/approve") ? bank.approve(pids)
+      : url.pathname.endsWith("/drop") ? bank.rejectPending(pids)
+      : bank.pendingList();
+    action
+      .then((r) => {
+        res.writeHead(200, { "Content-Type": "application/json; charset=utf-8", "Access-Control-Allow-Origin": "*" });
         res.end(JSON.stringify(r));
       })
       .catch((e) => { res.writeHead(500); res.end(String(e).slice(0, 200)); });

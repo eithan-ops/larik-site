@@ -70,9 +70,14 @@ await test("מפעל השאלות מוסיף, מדלג על כפילויות, ו
   const r = await b.grow(6, "world", fake);
   assert.equal(r.added, 1, `נוספו ${r.added} במקום 1`);
   assert.equal(r.skipped, 5);
+  // added = נכנסה לתור, לא למאגר. המאגר משתנה רק באישור.
+  assert.equal(b.size(), before, "שאלה נכנסה למאגר בלי אישור");
+  assert.equal(b.pendingCount(), 1);
+  const [waiting] = await b.pendingList();
+  assert.equal(waiting.q, "איזו חיה ישנה בממוצע רק שעתיים ביממה?");
+  await b.approve([waiting.pid]);
   assert.equal(b.size(), before + 1);
-  assert.equal(b.all()[before].q, "איזו חיה ישנה בממוצע רק שעתיים ביממה?");
-  assert.equal(b.all()[before].id, before, "השאלה החדשה קיבלה את המזהה הבא");
+  assert.equal(b.all()[before].id, before, "השאלה שאושרה קיבלה את המזהה הבא");
 });
 
 await test("מודל שמחזיר זבל לא מפיל ולא מזהם את המאגר", async () => {
@@ -273,6 +278,78 @@ await test("שני הסבבים נפלו — לא פוסלים כלום", async 
     return JSON.stringify({ questions: [goodQ] });
   });
   assert.equal(r.added, 1);
+});
+
+
+
+await test("תו זר בתשובה נפסל (הבאג של 'פלמינגו' עם ואו ערבית)", async () => {
+  const r = await growOne({
+    q: "איזה בעל חיים מייצר חלב ורוד?",
+    options: ["היפופוטם", "פלמינגو", "דוב קוטב", "תמנון"],
+    correct: 0,
+  });
+  assert.equal(r.added, 0);
+  assert.match(r.rejected![0], /תווים זרים בתשובה/);
+});
+
+
+
+console.log("\nתור אישור:");
+
+const twoQs = {
+  questions: [
+    goodQ,
+    { q: "איזה מין עטלפים יודע ללכת על הקרקע?", options: ["ערפד מצוי", "עטלף פירות", "עטלף חרקים", "עטלף ענק"], correct: 0 },
+  ],
+};
+const growTwo = async () => {
+  const b = makeTriviaBank(makeMemoryStore());
+  await b.grow(2, "weird", async (p) => p.includes('"reject"') ? JSON.stringify({ reject: [] }) : JSON.stringify(twoQs));
+  return b;
+};
+
+await test("שאלה שנוצרה מחכה בתור ולא מגיעה לשחקנים", async () => {
+  const b = await growTwo();
+  const before = b.size();
+  assert.equal(b.pendingCount(), 2);
+  assert.equal(b.size(), before, "שאלה נכנסה למאגר בלי אישור");
+  const picked = b.pick(100, {});
+  assert.ok(!picked.some((q) => q.q === goodQ.q), "שאלה שממתינה לאישור כבר נבחרת למשחק");
+});
+
+await test("אישור מכניס למאגר ומוציא מהתור", async () => {
+  const b = await growTwo();
+  const before = b.size();
+  const list = await b.pendingList();
+  const r = await b.approve([list[0].pid]);
+  assert.equal(r.approved, 1);
+  assert.equal(r.pending, 1, "השאלה השנייה עדיין צריכה לחכות");
+  assert.equal(b.size(), before + 1);
+  assert.equal(b.all()[before].q, list[0].q);
+  assert.equal(b.all()[before].id, before, "השאלה שאושרה קיבלה את המזהה הבא");
+});
+
+await test("דחייה מוחקת מהתור בלי לגעת במאגר", async () => {
+  const b = await growTwo();
+  const before = b.size();
+  const list = await b.pendingList();
+  const r = await b.rejectPending([list[0].pid, list[1].pid]);
+  assert.equal(r.rejected, 2);
+  assert.equal(r.pending, 0);
+  assert.equal(b.size(), before, "דחייה שינתה את המאגר");
+});
+
+await test("מזהה תור לא קיים לא עושה כלום", async () => {
+  const b = await growTwo();
+  const r = await b.approve(["לא-קיים"]);
+  assert.equal(r.approved, 0);
+  assert.equal(r.pending, 2);
+});
+
+await test("שאלה שכבר בתור לא נכנסת אליו פעמיים", async () => {
+  const b = await growTwo();
+  await b.grow(2, "weird", async (p) => p.includes('"reject"') ? JSON.stringify({ reject: [] }) : JSON.stringify(twoQs));
+  assert.equal(b.pendingCount(), 2, "אותה שאלה נכנסה לתור פעמיים");
 });
 
 console.log(`\n${passed}/${total} עברו`);
