@@ -8,6 +8,7 @@
  * ארבעה מימושים מאחורי אותו ממשק, נבחרים לפי משתני הסביבה שקיימים:
  *   - **Supabase**  — SUPABASE_URL + SUPABASE_SERVICE_KEY   (טבלת kv דרך PostgREST)
  *   - **Upstash**   — UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN
+ *                    (או KV_REST_API_URL + KV_REST_API_TOKEN — כך וורסל מייצר אותם)
  *   - **libSQL/Turso** — LIBSQL_URL + LIBSQL_TOKEN
  *   - **זיכרון** אם אין אף אחד — כדי שהפיצ'ר יעבוד מיד בפיתוח ובבדיקות,
  *     וגם בפרודקשן לפני שהמפתחות הודבקו (מתנהג נכון, פשוט לא שורד ריסטארט).
@@ -241,6 +242,22 @@ class ResilientStore implements Store {
   }
 }
 
+/**
+ * וורסל מייצר את המשתנים של Upstash בשמות `KV_*` ולא בשמות של Upstash עצמה,
+ * ומי שמדביק אותם כמו שהם היה מגלה שרת שממשיך לרוץ מהזיכרון בלי להתלונן.
+ * מקבלים את שתי הצורות.
+ *
+ * ⚠️ במפורש *לא* KV_REST_API_READ_ONLY_TOKEN — הוא לקריאה בלבד,
+ * וכל כתיבה של חבורה או שאלה חדשה הייתה נכשלת בשקט.
+ */
+function upstashUrl(env: NodeJS.ProcessEnv): string | undefined {
+  return env.UPSTASH_REDIS_REST_URL || env.KV_REST_API_URL;
+}
+
+function upstashToken(env: NodeJS.ProcessEnv): string | undefined {
+  return env.UPSTASH_REDIS_REST_TOKEN || env.KV_REST_API_TOKEN;
+}
+
 let instance: Store | null = null;
 
 /**
@@ -253,9 +270,9 @@ export function getStore(): Store {
   if (env.SUPABASE_URL && env.SUPABASE_SERVICE_KEY) {
     console.log("[store] Supabase מחובר");
     instance = new ResilientStore(new SupabaseStore(env.SUPABASE_URL, env.SUPABASE_SERVICE_KEY));
-  } else if (env.UPSTASH_REDIS_REST_URL && env.UPSTASH_REDIS_REST_TOKEN) {
+  } else if (upstashUrl(env) && upstashToken(env)) {
     console.log("[store] Upstash מחובר");
-    instance = new ResilientStore(new UpstashStore(env.UPSTASH_REDIS_REST_URL, env.UPSTASH_REDIS_REST_TOKEN));
+    instance = new ResilientStore(new UpstashStore(upstashUrl(env)!, upstashToken(env)!));
   } else if (env.LIBSQL_URL && env.LIBSQL_TOKEN) {
     console.log("[store] libSQL מחובר");
     instance = new ResilientStore(new LibsqlStore(env.LIBSQL_URL, env.LIBSQL_TOKEN));
