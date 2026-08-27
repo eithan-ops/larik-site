@@ -9,12 +9,46 @@ import QRScanner from "./QRScanner";
  * כפתור ענק אחד ששולט במסך (פתח חדר), מדף המשחקים ("מה משחקים כאן?"),
  * והצטרפות לחברים בעדיפות שלישית. הרקע חי: דמויות המשחקים מציצות מהקצוות.
  */
+/** הטקסט שנשלח לחברים עם הקישור — בקול של המותג */
+const SHARE_TEXT = "ערב משחקים שלם בטלפון 🎉 בלי קופסה, בלי הורדות, בלי תירוצים. משחקים. צוחקים. מתחברים 👇";
+const SHARE_URL = "https://larik.ai";
+
 export default function Home() {
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [joining, setJoining] = useState(false);
   const [err, setErr] = useState("");
+  const [shared, setShared] = useState("");
+
+  /** שיתוף: תמונת ההירו + משפט + קישור. נופל ברכות לוואטסאפ / העתקה. */
+  async function share() {
+    track("share_click");
+    try {
+      // ניסיון לצרף את תמונת ההירו לשיתוף עצמו (נתמך ברוב הטלפונים)
+      let files: File[] | undefined;
+      try {
+        const blob = await (await fetch("/og-share.jpg")).blob();
+        const f = new File([blob], "larik.jpg", { type: "image/jpeg" });
+        if (navigator.canShare?.({ files: [f] })) files = [f];
+      } catch { /* בלי תמונה — עדיין משתפים */ }
+      if (navigator.share) {
+        await navigator.share({ title: "LARIK", text: `${SHARE_TEXT}\n${SHARE_URL}`, url: SHARE_URL, ...(files ? { files } : {}) });
+        track("share_done");
+        return;
+      }
+    } catch { /* המשתמש ביטל או שהשיתוף נכשל — לא נורא */ return; }
+    // דפדפן בלי Web Share — וואטסאפ, ואם לא אז העתקה
+    const wa = `https://wa.me/?text=${encodeURIComponent(`${SHARE_TEXT}\n${SHARE_URL}`)}`;
+    const w = window.open(wa, "_blank");
+    if (!w) {
+      try {
+        await navigator.clipboard.writeText(`${SHARE_TEXT}\n${SHARE_URL}`);
+        setShared("הקישור הועתק! 📋 שלחו לחברים");
+        setTimeout(() => setShared(""), 2500);
+      } catch { /* אין מה לעשות */ }
+    }
+  }
 
   async function host() {
     setBusy(true);
@@ -44,8 +78,13 @@ export default function Home() {
         🕯️<small>מופע</small>
       </button>
 
+      <button className="share-corner" onClick={share} aria-label="שתפו חברים">
+        📤<small>שתפו</small>
+      </button>
+      {shared && <div className="share-toast popin">{shared}</div>}
+
       <div className="home-hero">
-        <div className="logo-sticker">LARIK</div>
+        <img className="logo-sticker" src="/stickers/logo-larik.webp" alt="LARIK" />
         <p className="logo-sub">משחקים. צוחקים. מתחברים.</p>
         <p className="home-pitch">
           ערב משחקים שלם — בלי קופסה, בלי חלקים, בלי הורדות.
