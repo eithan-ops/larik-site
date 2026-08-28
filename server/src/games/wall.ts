@@ -101,6 +101,7 @@ interface Hero {
   lastSwing: number; lastShot: number; cannonReadyAt: number;
   lastXpMsg: number;
   lastChainFx: number; lastBlastFx: number; // סינון אפקטים — הנזק תמיד מוחל
+  fxTurn: number;   // תור האפקט: כל פגיעה מציגה תכונה *אחת*, בסבב
 }
 
 /* ---- קלפי הדראפט ----
@@ -469,7 +470,7 @@ export function createWall(ctx: GameCtx): GameInstance {
    * כל התכונות חיות כאן, בצינור אחד, ולא בקוד נפרד לכל תפקיד — ככה הן עובדות
    * אוטומטית לארבעת התפקידים, וגם ל-DoT ולשרשרת. `kind` נשלח ללקוח כדי שידע
    * לצבוע את מספר הנזק ולירות את החלקיק הנכון. */
-  type HitKind = "hit" | "burn" | "poison" | "chain" | "blast";
+  type HitKind = "hit" | "burn" | "poison" | "chain" | "blast" | "frost" | "pierce" | "vamp";
 
   /** מכפיל הנזק של המגברים שתלויים במצב (שריון/גסיסה/מומנטום) */
   function ampMul(h: Hero | undefined, e: Enemy): number {
@@ -540,9 +541,16 @@ export function createWall(ctx: GameCtx): GameInstance {
       }
     }
 
+    // 🎯 כלל הקריאוּת: פגיעה ישירה מציגה את האפקט של *תכונה אחת*, בסבב מחזורי —
+    // ולא ערבוב של כל התכונות יחד (שמתכנס לכתם לבן ולא אומר כלום).
+    let showKind: HitKind = kind;
+    if (h && kind === "hit") {
+      const owned = TRAIT_IDS.filter((t) => h.traits[t] > 0);
+      if (owned.length) showKind = owned[h.fxTurn++ % owned.length] as HitKind;
+    }
     if (e.hp <= 0) {
       enemies.delete(e.id);
-      ctx.broadcast({ a: "wl_hit", id: e.id, hp: 0, by, crit, k: kind });
+      ctx.broadcast({ a: "wl_hit", id: e.id, hp: 0, by, crit, k: showKind });
       st(by).kills++;
       if (h) {
         // XP מסקיילי עם הגל — בלי זה אויב בגל 15 שווה כמו בגל 1 והפרוגרסיה נעצרת
@@ -575,7 +583,7 @@ export function createWall(ctx: GameCtx): GameInstance {
         }
       }
     } else {
-      ctx.broadcast({ a: "wl_hit", id: e.id, hp: Math.round(e.hp), by, crit, k: kind });
+      ctx.broadcast({ a: "wl_hit", id: e.id, hp: Math.round(e.hp), by, crit, k: showKind });
     }
   }
 
@@ -778,7 +786,7 @@ export function createWall(ctx: GameCtx): GameInstance {
           mods: baseMods(), level: 1, xp: 0, tier: 1, picks: {},
           traits: baseTraits(), evos: [], momoUntil: 0, momoStacks: 0, sentryUsed: false,
           firing: false, aimX: GATE_X, heat: 0, jamUntil: 0,
-          lastSwing: 0, lastShot: 0, cannonReadyAt: 0, lastXpMsg: 0, lastChainFx: 0, lastBlastFx: 0,
+          lastSwing: 0, lastShot: 0, cannonReadyAt: 0, lastXpMsg: 0, lastChainFx: 0, lastBlastFx: 0, fxTurn: 0,
         });
       }
     });
@@ -811,7 +819,7 @@ export function createWall(ctx: GameCtx): GameInstance {
           mods: baseMods(), level: 1, xp: 0, tier: 1, picks: {},
           traits: baseTraits(), evos: [], momoUntil: 0, momoStacks: 0, sentryUsed: false,
           firing: false, aimX: 500, heat: 0, jamUntil: 0,
-          lastSwing: 0, lastShot: 0, cannonReadyAt: 0, lastXpMsg: 0, lastChainFx: 0, lastBlastFx: 0,
+          lastSwing: 0, lastShot: 0, cannonReadyAt: 0, lastXpMsg: 0, lastChainFx: 0, lastBlastFx: 0, fxTurn: 0,
         });
       });
       assignSlots();
@@ -844,7 +852,7 @@ export function createWall(ctx: GameCtx): GameInstance {
           mods: baseMods(), level: 1, xp: 0, tier: 1, picks: {},
           traits: baseTraits(), evos: [], momoUntil: 0, momoStacks: 0, sentryUsed: false,
           firing: false, aimX: GATE_X, heat: 0, jamUntil: 0,
-          lastSwing: 0, lastShot: 0, cannonReadyAt: 0, lastXpMsg: 0, lastChainFx: 0, lastBlastFx: 0,
+          lastSwing: 0, lastShot: 0, cannonReadyAt: 0, lastXpMsg: 0, lastChainFx: 0, lastBlastFx: 0, fxTurn: 0,
         };
         heroes.set(pid, h);
       }

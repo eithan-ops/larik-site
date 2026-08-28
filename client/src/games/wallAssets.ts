@@ -34,6 +34,14 @@ export const WL_IMG = {
   slash: "/wall/slash.webp",
   muzzle: "/wall/muzzle.webp",
   hit: "/wall/hit.webp",
+  // אפקטי תכונה — כל שדרוג מקבל חתימה ויזואלית משלו, שנראית על האויב ברגע הפגיעה
+  fxBurn: "/wall/fx-burn.webp",
+  fxFrost: "/wall/fx-frost.webp",
+  fxChain: "/wall/fx-chain.webp",
+  fxPoison: "/wall/fx-poison.webp",
+  fxBlast: "/wall/fx-blast.webp",
+  fxPierce: "/wall/fx-pierce.webp",
+  fxVamp: "/wall/fx-vamp.webp",
 } as const;
 
 export type WlImgKey = keyof typeof WL_IMG;

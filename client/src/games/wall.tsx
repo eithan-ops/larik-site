@@ -48,6 +48,11 @@ const TRAIT_EMOJI: Record<string, string> = {
   burn: "🔥", frost: "❄️", chain: "⚡", poison: "☠️", blast: "💥", pierce: "🗡️", multi: "✨", vamp: "🩸",
 };
 const TRAIT_ORDER = ["burn", "frost", "chain", "poison", "blast", "pierce", "multi", "vamp"];
+/** נכס אפקט ייעודי לכל תכונה — זה מה שהופך כל שדרוג לחד-משמעי ברגע הפגיעה */
+const TRAIT_FX: Record<string, WlImgKey> = {
+  burn: "fxBurn", frost: "fxFrost", chain: "fxChain", poison: "fxPoison",
+  blast: "fxBlast", pierce: "fxPierce", vamp: "fxVamp",
+};
 /** צבע מספר הנזק לפי מקור הפגיעה — DoT ושרשרת נראים אחרת מפגיעה ישירה */
 const KIND_COLOR: Record<string, string> = { burn: "#ff9a3c", poison: "#8ee34a", chain: "#bfe8ff", blast: "#ff6b4d" };
 interface WStyle { traits: Record<string, number>; tier: number; evos: string[] }
@@ -74,7 +79,7 @@ interface EnemyV {
   deadAt?: number;
 }
 interface Proj { kind: "arrow" | "shell"; fx: number; fy: number; tx: number; ty: number; t0: number; T: number; fire?: boolean; by: string }
-interface Fx { kind: "boom" | "slash" | "spark" | "levelup" | "dmg"; x: number; y: number; t0: number; r?: number; dir?: number; color?: string; txt?: string; big?: boolean }
+interface Fx { kind: "boom" | "slash" | "spark" | "levelup" | "dmg" | "trait"; x: number; y: number; t0: number; r?: number; dir?: number; color?: string; txt?: string; big?: boolean; trait?: string; sz?: number }
 interface HeroV { role: WallRole; slot: [number, number]; x: number; y: number; hp: number; max: number; down: boolean; tier: number }
 
 export default function WallView({ room, me, conn, hub }: GameViewProps) {
@@ -215,6 +220,14 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
           e.hp = m.hp;
           const [ex, ey] = posOf(e, conn.serverNow());
           // מספר נזק קופץ — כל פגיעה נראית
+          // 🔥❄️⚡ חותמת התכונה על האויב — תכונה אחת בכל פגיעה (השרת בוחר בסבב)
+          if (m.k && m.k !== "hit" && TRAIT_FX[m.k] && fxs.current.length < FX_CAP) {
+            const st = styles.current.get(m.by)?.traits?.[m.k] ?? 1;
+            fxs.current.push({
+              kind: "trait", trait: m.k, x: ex, y: ey - 10, t0: performance.now(),
+              sz: 46 + Math.min(34, st * 7),
+            });
+          }
           if (delta > 0 && fxs.current.length < FX_CAP) {
             const kc = m.k && m.k !== "hit" ? KIND_COLOR[m.k] : undefined;
             fxs.current.push({
@@ -635,13 +648,6 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
         ctx.beginPath();
         ctx.ellipse(wx(hx), wy(hy + size * 0.3), size * (0.46 + 0.08 * hv.glow) * scale, size * (0.2 + 0.05 * hv.glow) * scale, 0, 0, 7);
         ctx.stroke();
-        if (hv.second) {
-          ctx.strokeStyle = hexA(hv.second, 0.22 * pulse);
-          ctx.lineWidth = 1.4 * scale;
-          ctx.beginPath();
-          ctx.ellipse(wx(hx), wy(hy + size * 0.3), size * 0.56 * scale, size * 0.24 * scale, 0, 0, 7);
-          ctx.stroke();
-        }
         ctx.globalCompositeOperation = "source-over";
       }
       if (im.complete && im.naturalWidth) {
@@ -744,17 +750,19 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
       const pv = visOf(p.by);
       if (p.kind === "arrow") {
         const dirAng = Math.atan2(p.ty - p.fy, p.tx - p.fx) + (f - 0.5) * 0.6;
+        // תכונה דומיננטית אחת בלבד צובעת את הקליע — ערבוב שני צבעים ב-lighter
+        // מתכנס מתמטית ללבן, וזה בדיוק מה שהפך את הנשקים לבלתי-מובחנים.
         const core = pv.color ?? (p.fire ? "#ffb347" : "#e8fff2");
-        const tail = pv.second ?? pv.color ?? (p.fire ? "#ff7a2f" : "#34e89e");
+        const tail = core;
         const gw = pv.size;
         // שובל זוהר — מתארך ומתעבה עם כל ערימה שאספת
         ctx.globalCompositeOperation = "lighter";
-        const segs = Math.min(7, 3 + Math.round(pv.total * 0.6));
+        const segs = Math.min(6, 3 + Math.round(pv.top.length ? 2 : 0));
         for (let g = 1; g <= segs; g++) {
           const gf = Math.max(0, f - g * 0.045);
           const gx = p.fx + (p.tx - p.fx) * gf;
           const gy = p.fy + (p.ty - p.fy) * gf - Math.sin(gf * Math.PI) * arc;
-          ctx.fillStyle = hexA(g % 2 ? core : tail, Math.max(0, 0.34 - g * 0.045) * (0.7 + pv.glow * 0.6));
+          ctx.fillStyle = hexA(core, Math.max(0, 0.34 - g * 0.05) * (0.7 + pv.glow * 0.6));
           ctx.beginPath(); ctx.arc(wx(gx), wy(gy), Math.max(1, 7 - g * 0.8) * gw * scale, 0, 7); ctx.fill();
         }
         // גוף החץ — שאפט בולט + ראש
@@ -878,6 +886,18 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
         ctx.strokeStyle = `rgba(255,206,60,${1 - ft})`;
         ctx.lineWidth = 3;
         ctx.beginPath(); ctx.arc(wx(f.x), wy(f.y), 30 + ft * 120, 0, 7); ctx.stroke();
+      } else if (f.kind === "trait") {
+        // גדל מהר, דוהה — נקרא מיד ולא נשאר לטנף את המסך
+        const tf = Math.min(1, (pnow - f.t0) / 420);
+        const im3 = wlImg(TRAIT_FX[f.trait!]);
+        if (im3.complete && im3.naturalWidth) {
+          const sz = (f.sz ?? 52) * (0.55 + tf * 0.75) * scale;
+          ctx.globalAlpha = Math.max(0, 1 - tf * tf);
+          ctx.globalCompositeOperation = "screen";
+          ctx.drawImage(im3, wx(f.x) - sz / 2, wy(f.y) - sz / 2 - tf * 14 * scale, sz, sz);
+          ctx.globalCompositeOperation = "source-over";
+          ctx.globalAlpha = 1;
+        }
       } else if (f.kind === "dmg") {
         // מספר נזק צף — עולה ודוהה
         const fsz = (f.big ? 24 : 15) * scale;
