@@ -249,18 +249,17 @@ await test("האימות פוסל שאלה משעממת", async () => {
 
 
 
-console.log("\nאימות כפול:");
+console.log("\nאימות:");
 
-await test("מספיק שסבב אימות אחד פוסל כדי שהשאלה תיפסל", async () => {
+await test("האימות רץ סבב אחד — התור הוא רשת הביטחון, לא הוא", async () => {
   const b = makeTriviaBank(makeMemoryStore());
-  let call = 0;
-  const r = await b.grow(1, "weird", async (prompt) => {
+  let verifyCalls = 0;
+  await b.grow(1, "weird", async (prompt) => {
     if (!prompt.includes('"reject"')) return JSON.stringify({ questions: [goodQ] });
-    call++;
-    return JSON.stringify({ reject: call === 1 ? [] : [0] }); // רק השני פוסל
+    verifyCalls++;
+    return JSON.stringify({ reject: [] });
   });
-  assert.equal(r.added, 0, "עובדה שרק סבב אחד פסל עדיין נכנסה");
-  assert.match(r.rejected![0], /נפסלה באימות/);
+  assert.equal(verifyCalls, 1, "שני סבבי אימות פסלו גם שאלות טובות; חזרנו לאחד");
 });
 
 await test("שני סבבים שמאשרים — השאלה עוברת", async () => {

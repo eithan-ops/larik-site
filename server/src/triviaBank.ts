@@ -255,7 +255,9 @@ export class TriviaBank {
       "- **שמות מקצועיים בעברית**. ודא שהמונח בתשובה הוא באמת מה שהשאלה מתארת",
       "  (למשל 'כסף' ו'כסף חי' הם שני חומרים שונים לגמרי).",
       "",
-      "אם אינך בטוח בעובדה — פסול. עדיף לוותר על שאלה מאשר לשאול שאלה שגויה.",
+      "",
+      "פסול רק כשאתה די בטוח שיש בעיה — אדם יקרא את כל מה שיעבור ממילא,",
+      "ואין טעם לזרוק שאלה טובה רק כי אינך זוכר את העובדה בוודאות מלאה.",
       "",
       list,
       "",
@@ -263,25 +265,21 @@ export class TriviaBank {
     ].join("\n");
 
     /**
-     * שתי בדיקות בלתי תלויות, ופסילה אם *אחת* מהן פסלה.
-     * הרציונל: עובדה אמיתית יציבה — המודל יאשר אותה פעמיים. עובדה מומצאת
-     * לא יציבה, ולכן די בכך שסבב אחד ייפול עליה. זה עולה קריאה אחת נוספת
-     * לאצווה שלמה, וזה מחיר זניח מול שאלה שגויה שנשארת במאגר לנצח.
+     * סבב אחד, לא שניים.
+     *
+     * שני סבבים עם "אם אינך בטוח — פסול" פסלו 14 מתוך 16, כולל שאלות
+     * טובות ("איזה חלק בגוף אינו מקבל אספקת דם" — הקרנית). זה היה מוצדק
+     * כשהאימות היה הקו האחרון; מרגע שיש תור אישור אנושי, תפקידו השתנה:
+     * לחתוך את הזבל הברור, לא להיות השופט האחרון. אדם קורא הכול ממילא.
      */
     const budget = Math.min(4000, 300 + qs.length * 60);
-    const runs = await Promise.all([
-      ask(prompt, budget).catch(() => ""),
-      ask(prompt, budget).catch(() => ""),
-    ]);
-    const out = new Set<number>();
-    for (const raw of runs) {
-      if (!raw) continue;
-      try {
-        const parsed = JSON.parse(extractJson(raw)) as { reject?: number[] };
-        for (const i of parsed.reject ?? []) if (Number.isInteger(i)) out.add(i);
-      } catch { /* סבב שנפל לא פוסל כלום — הסבב השני עדיין קובע */ }
+    try {
+      const raw = await ask(prompt, budget);
+      const parsed = JSON.parse(extractJson(raw)) as { reject?: number[] };
+      return new Set((parsed.reject ?? []).filter((i) => Number.isInteger(i)));
+    } catch {
+      return new Set(); // האימות נפל — התור עדיין מגן
     }
-    return out;
   }
 
   private async save(): Promise<void> {

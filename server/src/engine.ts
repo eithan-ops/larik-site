@@ -31,6 +31,8 @@ export interface GameEndResult {
    * העובדות הבסיסיות (ניצחונות, ליצן, נקודות) נצברות אוטומטית ולא צריך לדווח אותן.
    */
   facts?: Record<string, PlayerFacts>;
+  /** ריצה של האתגר היומי — הניקוד מגיע מכאן, מהשרת, ולכן אינו ניתן לזיוף */
+  daily?: { seed: string; wave: number };
 }
 
 export interface GameCtx {
@@ -73,6 +75,8 @@ export type GameFactory = (ctx: GameCtx) => GameInstance;
 export interface StatHooks {
   playerJoined?: () => void;
   gameStarted?: (gameId: string) => void;
+  /** ריצה יומית הסתיימה — מי ששומע את זה רושם אותה בטבלה */
+  dailyRun?: (r: { seed: string; wave: number; players: { name: string; emoji: string; score: number }[] }) => void;
 }
 
 const CUE_LEAD_MS = 350; // מרווח ביטחון מינימלי כדי שה-cue יגיע לכולם לפני זמן הביצוע
@@ -100,6 +104,7 @@ export class Room {
   private timers = new Set<NodeJS.Timeout>();
   private gamePids: string[] = []; // משתתפי המשחק הרץ — ננעל ברגע ההתחלה
   private gotIt = new Set<string>(); // מי אישר "הבנתי" על המשחק שנבחר
+  private soloDaily = false;   // חדר אתגר יומי — מתחיל לבד עם השחקן הראשון
   private seen = new Map<string, Set<number>>(); // מה כל מכשיר כבר ראה (לא משודר — זה גדול ופרטי)
 
   private transport: Transport;
@@ -121,6 +126,17 @@ export class Room {
     this.clock = clock;
     this.hooks = hooks;
     this.groups = groups;
+  }
+
+  /**
+   * חדר של האתגר היומי: המשחק והקונפיג נבחרים מראש, והוא מתחיל מעצמו
+   * ברגע שהשחקן היחיד נכנס. כל הלוגיקה כאן ולא בלקוח, כדי שהאתגר היומי
+   * לא יהיה תלוי בכך שמישהו יזכור ללחוץ על הכפתורים הנכונים.
+   */
+  armSoloDaily(gameId: string, config: unknown) {
+    this.gameId = gameId;
+    this.gameConfig = config;
+    this.soloDaily = true;
   }
 
   /** שיוך החדר לחבורה קיימת — נקרא מיצירת החדר (`/api/create-room?g=...`) */
@@ -172,6 +188,11 @@ export class Room {
     }
     this.transport.send(pid, { t: "welcome", playerId: pid, room: this.snapshot() });
     this.broadcastRoom();
+    // אתגר יומי: מתחילים מיד, בלי לובי ובלי מסך בחירה
+    if (this.soloDaily && this.phase === "lobby" && this.gameId) {
+      this.soloDaily = false;
+      setTimeout(() => this.onMessage(pid, { t: "start_game" }), 400);
+    }
   }
 
   disconnect(pid: string) {
@@ -251,7 +272,9 @@ export class Room {
         // אכיפת מינימום שחקנים גם בשרת — לא סומכים רק על הלקוח
         const meta = CATALOG.find((g) => g.id === this.gameId);
         const connected = [...this.players.values()].filter((x) => x.connected);
-        if (meta && connected.length < meta.minPlayers) {
+        // מצב סולו עוקף את מינימום השחקנים — האתגר היומי הוא שחקן אחד בהגדרה
+        const solo = (this.gameConfig as { solo?: boolean } | undefined)?.solo === true;
+        if (meta && !solo && connected.length < meta.minPlayers) {
           this.transport.send(pid, { t: "error", msg: `צריך לפחות ${meta.minPlayers} שחקנים` });
           return;
         }
@@ -342,6 +365,17 @@ export class Room {
       this.eveningScores[p.id] = base + gain;
     }
     this.collectFacts(result, winners, endedGameId);
+    if (result.daily) {
+      const took = this.gamePids.length ? this.gamePids : [...this.players.keys()];
+      this.hooks.dailyRun?.({
+        seed: result.daily.seed,
+        wave: result.daily.wave,
+        players: took
+          .map((pid) => this.players.get(pid))
+          .filter((p): p is PlayerInfo => !!p)
+          .map((p) => ({ name: p.name, emoji: p.emoji, score: result.scores?.[p.id] ?? 0 })),
+      });
+    }
     this.ceremony = {
       title: result.title,
       winnerId: winners[0],

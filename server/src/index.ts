@@ -15,6 +15,7 @@ import { Groups } from "./groups";
 import { generateAiDeck, aiDeckAvailable, askModel } from "./aideck";
 import { getStore } from "./store";
 import { getTriviaBank } from "./triviaBank";
+import { WallDaily, dailyDate, dailySeed } from "./wallDaily";
 import { statRoomCreated, statPlayerJoined, statGameStarted, statConcurrent, statsPage, STATS_KEY, stats } from "./stats";
 import { CATALOG } from "../../shared/protocol";
 import { createForehead } from "./games/forehead";
@@ -46,6 +47,7 @@ const transport: Transport = {
 };
 
 const groups = new Groups();
+const wallDaily = new WallDaily();
 
 const manager = new RoomManager(transport, {
   forehead: createForehead,
@@ -61,7 +63,17 @@ const manager = new RoomManager(transport, {
   show: createShow,
   impostor: createImpostor,
   wall: createWall,
-}, { playerJoined: statPlayerJoined, gameStarted: statGameStarted }, groups);
+}, {
+  playerJoined: statPlayerJoined,
+  gameStarted: statGameStarted,
+  dailyRun: (r) => {
+    // הניקוד הגיע מהשרת שהריץ את המשחק — אין כאן קלט מהלקוח
+    const date = r.seed.replace(/^wall:/, "");
+    for (const p of r.players) {
+      void wallDaily.submit({ name: p.name, emoji: p.emoji, score: p.score, wave: r.wave }, date);
+    }
+  },
+}, groups);
 setInterval(() => manager.cleanup(), 60_000);
 
 /* ---------- HTTP: יצירת חדר + הגשת לקוח ---------- */
@@ -98,6 +110,29 @@ const http = createServer((req, res) => {
         res.end(JSON.stringify(g ? groups.summarize(g) : { error: "לא נמצאה חבורה כזו" }));
       })
       .catch(() => { res.writeHead(503); res.end(JSON.stringify({ error: "האחסון לא זמין" })); });
+    return;
+  }
+  /**
+   * האתגר היומי של החומה.
+   * GET /api/wall-daily        → הזרע של היום והטבלה
+   * GET /api/wall-daily/room   → פותח חדר סולו שמתחיל מעצמו, מחזיר קוד
+   */
+  if (url.pathname === "/api/wall-daily" || url.pathname === "/api/wall-daily/room") {
+    const date = dailyDate();
+    if (url.pathname.endsWith("/room")) {
+      const room = manager.createRoom();
+      room.armSoloDaily("wall", { seed: dailySeed(date), solo: true, difficulty: "normal" });
+      res.writeHead(200, { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" });
+      res.end(JSON.stringify({ code: room.code, date }));
+      statRoomCreated();
+      return;
+    }
+    wallDaily.board(date)
+      .then((b) => {
+        res.writeHead(200, { "Content-Type": "application/json; charset=utf-8", "Access-Control-Allow-Origin": "*" });
+        res.end(JSON.stringify({ date, runs: b.runs, top: b.entries.slice(0, 20) }));
+      })
+      .catch(() => { res.writeHead(200, { "Content-Type": "application/json" }); res.end(JSON.stringify({ date, runs: 0, top: [] })); });
     return;
   }
   if (url.pathname === "/api/health") {

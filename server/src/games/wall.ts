@@ -15,7 +15,32 @@ import type {
   GameClientMsg, WallClientMsg, WallRole, WallEnemyType, WallCard, WallStats,
 } from "../../../shared/protocol";
 
-interface Config { difficulty?: "normal" | "brutal" }
+interface Config {
+  difficulty?: "normal" | "brutal";
+  /** זרע לאתגר היומי — כשהוא קיים כל האקראיות דטרמיניסטית, ואותו יום נותן
+   *  לכל השחקנים בעולם בדיוק את אותם גלים. בלעדיו המשחק אקראי כרגיל. */
+  seed?: string;
+  /** מצב סולו — עוקף את מינימום השחקנים */
+  solo?: boolean;
+}
+
+/**
+ * mulberry32 — מחולל אקראי קטן ודטרמיניסטי.
+ * בלי זה "אותו אתגר לכולם" הוא סיסמה: הגלים, המסלולים, הקריטים והדראפט
+ * היו שונים לכל שחקן, ושום טבלה יומית לא הייתה אומרת כלום.
+ */
+export function makeRng(seed?: string): () => number {
+  if (!seed) return Math.random;
+  let h = 2166136261;
+  for (let i = 0; i < seed.length; i++) { h ^= seed.charCodeAt(i); h = Math.imul(h, 16777619); }
+  let a = h >>> 0;
+  return () => {
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
 
 /* ---- עולם ---- */
 const W = 1000;
@@ -154,7 +179,9 @@ const tierOf = (level: number) => 1 + Math.floor(level / 3);
 const tierMult = (tier: number) => 1 + 0.45 * (tier - 1);
 
 export function createWall(ctx: GameCtx): GameInstance {
-  const brutal = ((ctx.config ?? {}) as Config).difficulty === "brutal";
+  const cfg = (ctx.config ?? {}) as Config;
+  const brutal = cfg.difficulty === "brutal";
+  const rnd = makeRng(cfg.seed);
   const diff = brutal ? 1.3 : 1;
 
   let phase: "setup" | "wave" | "breath" | "over" | "done" = "setup";
@@ -243,8 +270,8 @@ export function createWall(ctx: GameCtx): GameInstance {
     const count = waveCount(w);
     spawnsLeft = count + (w % 5 === 0 ? 1 : 0);
     for (let i = 0; i < count; i++) {
-      const delay = at - now() + 1200 + (duration * 0.72 * i) / count + Math.random() * 900;
-      const type = mix[Math.floor(Math.random() * mix.length)];
+      const delay = at - now() + 1200 + (duration * 0.72 * i) / count + rnd() * 900;
+      const type = mix[Math.floor(rnd() * mix.length)];
       ctx.timer(delay, () => { if (token === t && phase === "wave") spawn(type, t); else spawnsLeft--; });
     }
     if (w % 5 === 0) ctx.timer(at - now() + duration * 0.35, () => { if (token === t && phase === "wave") spawn("boss", t); else spawnsLeft--; });
@@ -278,8 +305,8 @@ export function createWall(ctx: GameCtx): GameInstance {
     const hp = Math.round(base.hp * hpScale(wave));
     const e: Enemy = {
       id, type, hp, maxHp: hp,
-      x0: 60 + Math.random() * (W - 120), y0: -60,
-      speed: base.speed * (0.9 + Math.random() * 0.2),
+      x0: 60 + rnd() * (W - 120), y0: -60,
+      speed: base.speed * (0.9 + rnd() * 0.2),
       wob: type === "runner" ? 70 : type === "swarm" ? 45 : 20,
       at: now() + 400, state: "walk", lastHit: 0,
     };
@@ -313,7 +340,7 @@ export function createWall(ctx: GameCtx): GameInstance {
         if (e.type === "sniper" && ey >= 470) {
           const targets = fighters().filter((p) => !heroes.get(p)!.down);
           if (targets.length) {
-            const target = targets[Math.floor(Math.random() * targets.length)];
+            const target = targets[Math.floor(rnd() * targets.length)];
             e.target = target; e.sniperFireAt = tn + 3200;
             setPath(e, ex, 470, "fight");
             ctx.broadcast({ a: "wl_sniper", id: e.id, target, fireAt: e.sniperFireAt });
@@ -499,7 +526,7 @@ export function createWall(ctx: GameCtx): GameInstance {
     if (!enemies.has(e.id)) return;
     const h = heroes.get(by);
     dmg *= ampMul(h, e);
-    if (h && kind === "hit" && Math.random() < h.mods.crit) { dmg *= 2; crit = true; }
+    if (h && kind === "hit" && rnd() < h.mods.crit) { dmg *= 2; crit = true; }
     e.hp -= dmg;
     st(by).dmg += dmg;
     if (h?.mods.lifesteal && h.role === "infantry" && !h.down) h.hp = Math.min(h.max, h.hp + 3 * h.mods.lifesteal);
@@ -662,7 +689,7 @@ export function createWall(ctx: GameCtx): GameInstance {
     const pool = [...cardsFor(h.role)];
     const cards: WallCard[] = [];
     while (cards.length < 3 && pool.length) {
-      const c = pool.splice(Math.floor(Math.random() * pool.length), 1)[0];
+      const c = pool.splice(Math.floor(rnd() * pool.length), 1)[0];
       const tier = (h.picks[c.id] ?? 0) + 1;
       // תכונה שעל סף אבולוציה מסומנת — זה מה שגורם לרדוף אחרי בילד
       const nextIsEvo = c.kind === "trait" && tier >= EVO_STACKS && h.tier >= EVO_TIER && !h.evos.includes(c.id as TraitId);
@@ -773,6 +800,8 @@ export function createWall(ctx: GameCtx): GameInstance {
       winnerId: winner,
       loserId: loser !== winner ? loser : undefined,
       scores,
+      // ריצה יומית — הניקוד מגיע מהשרת, ולכן אין מה לזייף בלקוח
+      daily: cfg.seed ? { seed: cfg.seed, wave: bestWave } : undefined,
     });
   }
 

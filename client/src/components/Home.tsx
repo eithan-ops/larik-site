@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { navigate } from "../App";
 import { createRoom } from "../lib/connection";
 import { track } from "../lib/analytics";
 import QRScanner from "./QRScanner";
 import { myGroups, openRoomForGroup, type SavedGroup } from "../lib/group";
 import { loadStreak } from "../lib/daily";
+import { openDailyRoom, dailyBoard, myDailyRun, type DailyBoard } from "../lib/wallDaily";
 
 /**
  * מסך הבית — "אלבום המדבקות קם לחיים" 🎪
@@ -25,6 +26,11 @@ export default function Home() {
   // נקרא פעם אחת — רשימת החבורות לא משתנה תוך כדי שהמסך פתוח
   const [groups] = useState<SavedGroup[]>(() => myGroups());
   const [streak] = useState(() => loadStreak());
+  const [board, setBoard] = useState<DailyBoard | null>(null);
+  const [mine] = useState(() => myDailyRun());
+
+  // הטבלה נטענת ברקע — היא נחמדה, אבל אסור שהיא תעכב את מסך הבית
+  useEffect(() => { void dailyBoard().then(setBoard); }, []);
 
   /** שיתוף: תמונת ההירו + משפט + קישור. נופל ברכות לוואטסאפ / העתקה. */
   async function share() {
@@ -65,6 +71,17 @@ export default function Home() {
     } catch {
       setErr("השרת מתעורר... נסו שוב עוד כמה שניות 😴");
     }
+    setBusy(false);
+  }
+
+  /** האתגר היומי — השרת פותח חדר סולו שמתחיל מעצמו */
+  async function wallDaily() {
+    setBusy(true);
+    setErr("");
+    track("wall_daily_open");
+    const c = await openDailyRoom();
+    if (c) navigate(`/r/${c}`);
+    else setErr("השרת מתעורר... נסו שוב עוד כמה שניות 😴");
     setBusy(false);
   }
 
@@ -127,7 +144,13 @@ export default function Home() {
           📷 הצטרפו לחברים
         </button>
 
-        {/* סולו: שלוש דקות לבד, וסיבה לפתוח את האפליקציה גם בלי חבורה בסלון */}
+        {/* סולו: הסיבה לפתוח את האפליקציה גם כשאין חבורה בסלון.
+            החומה קודמת לטריוויה כי היא לא צורכת תוכן ואינסופית מעצם היותה משחק. */}
+        <button className="join-cta" onClick={wallDaily} disabled={busy}>
+          🏰 האתגר היומי של החומה
+          {mine?.date === board?.date && mine && <> · השיא שלך היום {mine.score}</>}
+        </button>
+
         <button className="join-cta" onClick={() => navigate("/daily")}>
           🧠 הטריוויה היומית{streak.days > 0 && <> · רצף {streak.days} 🔥</>}
         </button>
@@ -158,6 +181,24 @@ export default function Home() {
         <p className="sub popin" style={{ textAlign: "center", marginTop: 10, color: "#ff8a8a", fontWeight: 700 }}>
           {err}
         </p>
+      )}
+
+      {/* שלושת הראשונים של היום — הוכחה חברתית קטנה שמישהו כבר שיחק */}
+      {board && board.top.length > 0 && (
+        <div className="card popin" style={{ marginTop: 12, width: "100%", maxWidth: 340 }}>
+          <div className="sub" style={{ marginBottom: 4 }}>
+            🏰 האתגר של היום · {board.runs} {board.runs === 1 ? "ריצה" : "ריצות"}
+          </div>
+          {board.top.slice(0, 3).map((e, i) => (
+            <div key={i} style={{
+              display: "flex", justifyContent: "space-between", fontSize: 14,
+              padding: "3px 8px", fontWeight: i === 0 ? 800 : 500,
+            }}>
+              <span>{["🥇", "🥈", "🥉"][i]} {e.emoji} {e.name}</span>
+              <b style={{ color: i === 0 ? "var(--gold)" : "var(--money)" }}>{e.score}</b>
+            </div>
+          ))}
+        </div>
       )}
 
       <p className="sub home-foot">⚡ בלי התקנה · 🔒 בלי הרשמה · חינם</p>
