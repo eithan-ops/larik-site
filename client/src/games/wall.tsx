@@ -49,6 +49,7 @@ const TRAIT_EMOJI: Record<string, string> = {
 };
 const TRAIT_ORDER = ["burn", "frost", "chain", "poison", "blast", "pierce", "multi", "vamp"];
 /** נכס אפקט ייעודי לכל תכונה — זה מה שהופך כל שדרוג לחד-משמעי ברגע הפגיעה */
+const EVO_ART = (t: string) => `/wall/evo-${t}.webp`;
 const TRAIT_FX: Record<string, WlImgKey> = {
   burn: "fxBurn", frost: "fxFrost", chain: "fxChain", poison: "fxPoison",
   blast: "fxBlast", pierce: "fxPierce", vamp: "fxVamp",
@@ -129,7 +130,7 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
   const wideUntil = useRef(0);   // אבולוציה — המצלמה של כולם נפתחת לרוחב מלא
   const parade = useRef(-1e9);   // מצעד הנשקים בסוף גל
   const chains = useRef<{ x1: number; y1: number; x2: number; y2: number; t0: number; c: string }[]>([]);
-  const [evoBanner, setEvoBanner] = useState<{ name: string; emoji: string; who: string } | null>(null);
+  const [evoBanner, setEvoBanner] = useState<{ name: string; emoji: string; who: string; trait: string } | null>(null);
   const [myStyle, setMyStyle] = useState<WStyle>({ traits: {}, tier: 1, evos: [] });
   const lastAlarm = useRef(0);
   // קלט
@@ -340,8 +341,8 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
           return;
         case "wl_evo": {
           // הרגע הגדול: המצלמה של *כולם* נפתחת לרוחב מלא, באנר, וריזר
-          setEvoBanner({ name: m.name, emoji: m.emoji, who: m.pid === me ? "" : nameOf(m.pid) });
-          window.setTimeout(() => setEvoBanner(null), 2600);
+          setEvoBanner({ name: m.name, emoji: m.emoji, who: m.pid === me ? "" : nameOf(m.pid), trait: m.trait });
+          window.setTimeout(() => setEvoBanner(null), 3000);
           wideUntil.current = performance.now() + 1800;
           surge.current = { t0: performance.now(), color: TRAIT_COLOR[m.trait] ?? "#ffd24a", big: true };
           shake.current = Math.max(shake.current, 14);
@@ -1205,9 +1206,11 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
 
       {evoBanner && (
         <div className="wl-evobanner popin">
-          <span style={{ fontSize: 40 }}>{evoBanner.emoji}</span>
+          <img className="wl-evoart" src={EVO_ART(evoBanner.trait)} alt=""
+            style={{ "--ec": TRAIT_COLOR[evoBanner.trait] ?? "#ffce3c" } as React.CSSProperties}
+            onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
           <b>{evoBanner.who ? `${evoBanner.who} פיתח:` : "פיתחת:"}</b>
-          <span className="wl-evoname">{evoBanner.name}</span>
+          <span className="wl-evoname">{evoBanner.emoji} {evoBanner.name}</span>
         </div>
       )}
       {banner && <div className="wl-banner popin">{banner}</div>}
@@ -1257,6 +1260,10 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
                   <span>{ROLE_ICON[roles[pid] ?? "infantry"]} {nameOf(pid)} {over.mvp === pid && "👑"}</span>
                   {/* 🗡️ כרטיס הנשק — הבילד שנבנה בריצה הזאת, וזה מה ששולחים לחברים */}
                   <span className="wl-weapon">
+                    {(st2?.evos ?? []).slice(0, 2).map((ev) => (
+                      <img key={ev} className="wl-evomini" src={EVO_ART(ev)} alt=""
+                        onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                    ))}
                     <span className="wl-tierchip">🔩{st2?.tier ?? 1}</span>
                     {list.slice(0, 4).map((k) => (
                       <span key={k} className={"wl-tchip" + (st2?.evos?.includes(k) ? " evo" : "")}

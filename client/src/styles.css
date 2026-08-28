@@ -542,6 +542,10 @@ input{font-family:inherit}
 .wl-evobanner{position:absolute;top:26%;left:0;right:0;z-index:60;display:flex;flex-direction:column;align-items:center;gap:2px;
   pointer-events:none;text-shadow:0 2px 14px rgba(0,0,0,.95)}
 .wl-evobanner b{font-size:15px;opacity:.9}
+.wl-evoart{width:172px;height:172px;object-fit:contain;margin-bottom:-6px;
+  filter:drop-shadow(0 0 22px var(--ec)) drop-shadow(0 0 40px var(--ec));animation:wlEvoArt .9s cubic-bezier(.2,1.4,.4,1)}
+@keyframes wlEvoArt{0%{transform:scale(.35) rotate(-14deg);opacity:0}60%{transform:scale(1.12) rotate(3deg);opacity:1}100%{transform:scale(1) rotate(0)}}
+.wl-evomini{width:26px;height:26px;object-fit:contain;filter:drop-shadow(0 0 5px #ffce3c)}
 .wl-evoname{font-size:29px;font-weight:900;letter-spacing:.5px;
   background:linear-gradient(90deg,#ffe9a8,#ffce3c,#fff);-webkit-background-clip:text;background-clip:text;color:transparent}
 .wl-banner{position:absolute;top:20%;left:0;right:0;text-align:center;font-size:30px;font-weight:900;z-index:40;

@@ -42,6 +42,15 @@ export const WL_IMG = {
   fxBlast: "/wall/fx-blast.webp",
   fxPierce: "/wall/fx-pierce.webp",
   fxVamp: "/wall/fx-vamp.webp",
+  // אמבלמות האבולוציה — הרגע הגדול, מוצגות גדול בבאנר ובכרטיס הנשק
+  evoBurn: "/wall/evo-burn.webp",
+  evoFrost: "/wall/evo-frost.webp",
+  evoChain: "/wall/evo-chain.webp",
+  evoPoison: "/wall/evo-poison.webp",
+  evoBlast: "/wall/evo-blast.webp",
+  evoPierce: "/wall/evo-pierce.webp",
+  evoMulti: "/wall/evo-multi.webp",
+  evoVamp: "/wall/evo-vamp.webp",
 } as const;
 
 export type WlImgKey = keyof typeof WL_IMG;
