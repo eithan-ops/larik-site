@@ -52,6 +52,12 @@ export interface GameCtx {
    * שרץ בסיבובים עד שהמארח יוצא). בלי זה הם לא היו מזינים תארים בכלל.
    */
   reportFacts(facts: Record<string, PlayerFacts>): void;
+  /**
+   * רישום ריצה יומית ברגע שהיא נגמרה, בלי לחכות לסיום המשחק.
+   * קיים כי בסולו אין מי שילחץ "סיימנו": שחקן שמת וסוגר את הלשונית היה
+   * מאבד את הריצה, כלומר דווקא ההתנהגות הרגילה של שחקן מזדמן לא נספרה.
+   */
+  reportDaily(d: { seed: string; wave: number; scores?: Record<string, number> }): void;
   /** איחוד השאלות שכל משתתפי המשחק כבר ראו — כדי שלא נשאל אותן שוב */
   seenUnion(): Set<number>;
   config: unknown;
@@ -103,6 +109,8 @@ export class Room {
   private gamesPlayed = 0;
   private timers = new Set<NodeJS.Timeout>();
   private gamePids: string[] = []; // משתתפי המשחק הרץ — ננעל ברגע ההתחלה
+  private runToken = 0;          // עולה בכל התחלת משחק — "עוד פעם" הוא ריצה חדשה
+  private dailySent = "";        // איזו ריצה יומית כבר נרשמה, כדי לא לספור פעמיים
   private gotIt = new Set<string>(); // מי אישר "הבנתי" על המשחק שנבחר
   private soloDaily = false;   // חדר אתגר יומי — מתחיל לבד עם השחקן הראשון
   private seen = new Map<string, Set<number>>(); // מה כל מכשיר כבר ראה (לא משודר — זה גדול ופרטי)
@@ -281,6 +289,7 @@ export class Room {
         this.phase = "game";
         this.ceremony = undefined;
         this.gamePids = connected.map((x) => x.id);
+        this.runToken++;
         this.game = factory(this.makeCtx());
         this.hooks.gameStarted?.(this.gameId);
         this.broadcastRoom();
@@ -350,6 +359,7 @@ export class Room {
           mergeFacts((this.eveningFacts[pid] ??= {}), add);
         }
       },
+      reportDaily: (d) => this.sendDailyRun(d.seed, d.wave, d.scores),
       config: this.gameConfig,
     };
   }
@@ -365,17 +375,7 @@ export class Room {
       this.eveningScores[p.id] = base + gain;
     }
     this.collectFacts(result, winners, endedGameId);
-    if (result.daily) {
-      const took = this.gamePids.length ? this.gamePids : [...this.players.keys()];
-      this.hooks.dailyRun?.({
-        seed: result.daily.seed,
-        wave: result.daily.wave,
-        players: took
-          .map((pid) => this.players.get(pid))
-          .filter((p): p is PlayerInfo => !!p)
-          .map((p) => ({ name: p.name, emoji: p.emoji, score: result.scores?.[p.id] ?? 0 })),
-      });
-    }
+    if (result.daily) this.sendDailyRun(result.daily.seed, result.daily.wave, result.scores);
     this.ceremony = {
       title: result.title,
       winnerId: winners[0],
@@ -440,6 +440,26 @@ export class Room {
    * צובר את עובדות הערב: קודם מה שנגזר אוטומטית מכל משחק (ניצחון/ליצן/נקודות/רצף),
    * ואז מה שהמשחק עצמו טרח לדווח. משחק שלא מדווח כלום עדיין מייצר תארים.
    */
+  /**
+   * מוסר ריצה יומית להוק שרושם אותה בטבלה.
+   * שני מסלולים מגיעים לכאן — סוף ריצה (סולו) וסיום משחק (קבוצתי) — ולכן
+   * הרישום מוגן מכפילות: ריצה נרשמת פעם אחת, גם אם המארח לחץ "סיימנו" אחריה.
+   */
+  private sendDailyRun(seed: string, wave: number, scores?: Record<string, number>) {
+    const stamp = `${seed}|${this.runToken}`;
+    if (this.dailySent === stamp) return;
+    this.dailySent = stamp;
+    const took = this.gamePids.length ? this.gamePids : [...this.players.keys()];
+    this.hooks.dailyRun?.({
+      seed,
+      wave,
+      players: took
+        .map((pid) => this.players.get(pid))
+        .filter((p): p is PlayerInfo => !!p)
+        .map((p) => ({ name: p.name, emoji: p.emoji, score: scores?.[p.id] ?? 0 })),
+    });
+  }
+
   private collectFacts(result: GameEndResult, winners: string[], gameId: string) {
     // רק מי שבאמת השתתף במשחק שנגמר — מי שהצטרף באמצע לא מקבל עליו נתונים
     const took = this.gamePids.length ? this.gamePids : [...this.players.keys()];

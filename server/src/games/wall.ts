@@ -776,6 +776,13 @@ export function createWall(ctx: GameCtx): GameInstance {
     ctx.broadcast({ a: "wl_wall", hp: 0, max: wallMax });
     const remainS = Math.ceil(Math.max(0, waveEndsAt - now()) / 1000);
     const nearMiss = remainS > 0 && remainS <= 12 ? `עוד ${remainS} שניות והייתם שורדים את גל ${wave}! 😩` : undefined;
+    // ריצה יומית נרשמת כאן ולא ב-finish(): בסולו אין מי שילחץ "סיימנו",
+    // ושחקן שמת וסגר את הלשונית היה מאבד בדיוק את הריצה שבאנו לספור.
+    if (cfg.seed) {
+      const sc: Record<string, number> = {};
+      for (const p of alive()) sc[p] = Math.round(Math.max(0, score(p)));
+      ctx.reportDaily({ seed: cfg.seed, wave: bestWave, scores: sc });
+    }
     ctx.timer(2600, () => {
       if (phase !== "over") return;
       ctx.broadcast({

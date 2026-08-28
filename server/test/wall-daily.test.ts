@@ -117,4 +117,48 @@ await test("מסד שנפל מחזיר טבלה ריקה ולא מפיל את ה
   await assert.doesNotReject(() => d.submit({ name: "א", emoji: "🙂", score: 1, wave: 1 }, "2026-09-01"));
 });
 
+
+/* ---------------------------------------------------------------------------
+ * 28.8, מול הלייב: הריצה נגמרה (wl_over, גל 1) — והטבלה נשארה על runs:0.
+ * הסיבה: `finish()` רץ רק כשהמארח לוחץ "סיימנו" ממסך הסיום. בערב קבוצתי
+ * מישהו באמת לוחץ; בסולו השחקן פשוט סוגר את הלשונית, ודווקא ההתנהגות
+ * הרגילה של שחקן מזדמן לא נספרה. הריצה נרשמת עכשיו ברגע שהיא נגמרת.
+ * ------------------------------------------------------------------------- */
+import { Room as Room2, type Transport as T2, type GameCtx as C2, type GameInstance as I2 } from "../src/engine";
+
+await test("ריצה יומית נרשמת בלי שאף אחד לחץ 'סיימנו'", async () => {
+  const runs: { seed: string; wave: number }[] = [];
+  const transport: T2 = { send() {} };
+  // משחק שרק "נגמרה בו ריצה" — בלי ctx.end, בדיוק כמו החומה אחרי מוות
+  const game = (ctx: C2): I2 => ({
+    onStart() { ctx.reportDaily({ seed: "wall:2026-08-28", wave: 4, scores: {} }); },
+    onMessage() {}, dispose() {},
+  });
+  const room = new Room2("SOLO", transport, { wall: game }, undefined,
+    { dailyRun: (r) => runs.push({ seed: r.seed, wave: r.wave }) });
+  room.armSoloDaily("wall", { solo: true, seed: "wall:2026-08-28" });
+  room.join("p1", "לבד", "🙂", "dev-1");
+  await new Promise((r) => setTimeout(r, 700));
+  assert.equal(runs.length, 1, "הריצה לא נרשמה בלי לחיצה על 'סיימנו'");
+  assert.equal(runs[0].wave, 4);
+});
+
+await test("אותה ריצה לא נספרת פעמיים גם אם המארח כן לחץ 'סיימנו'", async () => {
+  const runs: { wave: number }[] = [];
+  const transport: T2 = { send() {} };
+  const game = (ctx: C2): I2 => ({
+    onStart() {
+      ctx.reportDaily({ seed: "wall:2026-08-28", wave: 4, scores: {} });   // סוף הריצה
+      ctx.end({ title: "החומה", scores: {}, daily: { seed: "wall:2026-08-28", wave: 4 } }); // "סיימנו"
+    },
+    onMessage() {}, dispose() {},
+  });
+  const room = new Room2("SOLO", transport, { wall: game }, undefined,
+    { dailyRun: (r) => runs.push({ wave: r.wave }) });
+  room.armSoloDaily("wall", { solo: true, seed: "wall:2026-08-28" });
+  room.join("p1", "לבד", "🙂", "dev-1");
+  await new Promise((r) => setTimeout(r, 700));
+  assert.equal(runs.length, 1, `נספר ${runs.length} פעמים במקום פעם אחת`);
+});
+
 console.log(`\n${passed}/${total} עברו`);
