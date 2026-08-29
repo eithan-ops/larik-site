@@ -336,7 +336,7 @@ export type ReactorServerMsg =
  *   y(t) = y0 + speed*(t-at)/1000 · x(t) = x0 + wob*sin((t-at)/700)
  * כל הטלפונים מציירים מהנוסחה; שינויי מצב (עצירה/קרב/מוות) = אירועי שרת.
  */
-export type WallRole = "infantry" | "archer" | "cannon" | "mg";
+export type WallRole = "heli" | "archer" | "cannon" | "mg";
 export type WallEnemyType = "swarm" | "runner" | "armored" | "bomber" | "sniper" | "digger" | "boss";
 export interface WallCard { id: string; name: string; emoji: string; desc: string; tier?: number }
 export interface WallStats { kills: number; dmg: number; saves: number; deaths: number }
@@ -345,31 +345,32 @@ export type WallClientMsg =
   | { a: "wl_role"; role: WallRole }                          // בחירת תפקיד במסך ההיערכות
   | { a: "wl_go" }                                            // מארח: פותחים את הקרב
   | { a: "wl_pos"; x: number; y: number }                     // חלוץ: מיקום (5-8Hz)
-  | { a: "wl_swing"; dir: number }                            // חלוץ: מכת להב לכיוון (רדיאנים)
-  | { a: "wl_shield"; on: boolean }                           // חלוץ: נעילת מגן
+  | { a: "wl_bomb" }                                          // 🚁 הליקופטר: הטלת פצצה (השרת שוער את הקצב)
+  | { a: "wl_shield"; on: boolean }                           // (שמור — לא בשימוש מאז מעבר להליקופטר)
   | { a: "wl_shot"; tx: number; ty: number; power: number }   // קשת: חץ לנקודה (power 0-1)
   | { a: "wl_boom"; tx: number; ty: number }                  // תותחן: פגז לנקודה
   | { a: "wl_fire"; on: boolean }                             // מקלען: התחלת/הפסקת צרור
-  | { a: "wl_aim"; x: number }                                // מקלען: כיוון הזרם (בזמן ירי)
+  | { a: "wl_aim"; x: number; y?: number }                    // מקלען: נקודת הכיוון (מניפה מהעמדה אליה)
   | { a: "wl_pick"; cardId: string }                          // דראפט אישי
   | { a: "wl_again" }                                         // מארח: ריצה חדשה מיד
   | { a: "wl_finish" };                                       // מארח: סיום → טקס
 
 export type WallServerMsg =
   | { a: "wl_setup"; roles: Record<string, WallRole>; slots: Record<string, [number, number]> } // מסך היערכות (slots = עמדות שהוקצו)
-  | { a: "wl_wave"; wave: number; wallHp: number; wallMax: number; duration: number }           // cue — פתיחת גל
+  | { a: "wl_wave"; wave: number; wallHp: number; wallMax: number; duration: number; pushes?: number } // cue — פתיחת גל (pushes = כמה דחיפות בו-זמניות)
   | { a: "wl_spawn"; id: number; type: WallEnemyType; x0: number; y0: number; speed: number; wob: number; hp: number; maxHp: number; at: number }
   | { a: "wl_estate"; id: number; state: "walk" | "fight" | "wall" | "burrow"; x: number; y: number; at: number; speed?: number } // שינוי מצב/מסלול
   | { a: "wl_hit"; id: number; hp: number; by: string; crit?: boolean; k?: "hit" | "burn" | "poison" | "chain" | "blast" | "frost" | "pierce" | "vamp" } // פגיעה באויב (hp<=0 = מוות); k = מקור הנזק, לצביעה ולחלקיקים
   | { a: "wl_chain"; x1: number; y1: number; x2: number; y2: number; by: string }                // קשת ברק בין שני אויבים
-  | { a: "wl_style"; pid: string; traits: Record<string, number>; tier: number; evos: string[] } // איך הנשק של השחקן נראה — כל החדר מקבל
+  | { a: "wl_style"; pid: string; traits: Record<string, number>; tier: number; evos: string[]; amps?: Record<string, number> } // איך הנשק של השחקן נראה — כל החדר מקבל (amps = כמה פעמים נבחר כל מגבר)
   | { a: "wl_evo"; pid: string; trait: string; name: string; emoji: string }                     // 🌟 אבולוציה — הרגע שכל החדר עוצר בשבילו
   | { a: "wl_arrow"; fx: number; fy: number; tx: number; ty: number; T: number; by: string; fire?: boolean } // cue — חץ באוויר
   | { a: "wl_shell"; fx: number; fy: number; tx: number; ty: number; T: number; by: string }      // cue — פגז באוויר
   | { a: "wl_boomfx"; x: number; y: number; r: number }                                          // פיצוץ (בזמן הפגיעה)
-  | { a: "wl_stream"; by: string; x: number; on: boolean }                                       // זרם המקלע (ויזואלי)
+  | { a: "wl_stream"; by: string; x: number; y?: number; on: boolean }                           // זרם המקלע (ויזואלי) — x,y = נקודת הכיוון
   | { a: "wl_jam"; by: string; ms: number }                                                      // התחממות-יתר
-  | { a: "wl_slash"; pid: string; x: number; y: number; dir: number }                            // הנפת חרב — לכולם
+  | { a: "wl_drop"; pid: string; x: number; y: number; fall: number; r: number; n: number }        // פצצה בדרך למטה — לכולם
+  | { a: "wl_flak"; id: number; x: number; y: number; at: number }                               // אש נגד-מטוסים: פגז בדרך אל נקודה, מתפוצץ ב-at
   | { a: "wl_ppos"; ps: [string, number, number][] }                                             // מיקומי גיבורים (3Hz)
   | { a: "wl_hero"; pid: string; hp: number; max: number; down?: boolean; upAt?: number }        // חיי גיבור / נפילה
   | { a: "wl_wall"; hp: number; max: number }                                                    // חיי החומה

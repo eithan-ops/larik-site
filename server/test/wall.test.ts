@@ -43,7 +43,7 @@ async function testWall() {
   check("מסך היערכות", game("p1", "wl_setup").length === 1);
 
   // p1 = חלוץ (יחטוף), p3 = מקלען (בשביל wl_heat)
-  room.onMessage("p1", { t: "game", d: { a: "wl_role", role: "infantry" } });
+  room.onMessage("p1", { t: "game", d: { a: "wl_role", role: "heli" } });
   room.onMessage("p2", { t: "game", d: { a: "wl_role", role: "archer" } });
   room.onMessage("p3", { t: "game", d: { a: "wl_role", role: "mg" } });
   room.onMessage("p1", { t: "game", d: { a: "wl_go" } });
@@ -186,7 +186,207 @@ async function testTraits() {
   console.log(`    (רמה שהושגה: ${xp?.level ?? "?"}, הצעות: ${offers}, אירועי DoT: ${dots.length})`);
 }
 
+/**
+ * המחפר 🐛 — הבאג שהשאיר "יצורים תקועים שאי אפשר להרוג".
+ * המחפר צלל ב-y=560, צף ב-y=1150, ואיפס את resurfaceAt — ואז התנאי (ey>=560)
+ * התקיים שוב מיד והוא קפץ חזרה ל-560. לנצח, ובלתי-פגיע (כל המסננים פוסלים burrow),
+ * כך שהגל לא הסתיים לעולם אלא דרך רשת הביטחון של 25 שניות.
+ * הבדיקה: אף אויב לא נשאר במצב burrow לאורך זמן, ואף אחד לא חוזר לצלול.
+ */
+async function testDigger() {
+  console.log("\n— המחפר: צלילה אחת בלבד 🐛 —");
+  const { transport, game } = makeTransport();
+  const room = new Room("DIGG", transport, { wall: createWall });
+  ["d1", "d2"].forEach((p, i) => room.join(p, "חופר" + i, "🙂"));
+  // startWave=5 — שם המחפר נפתח. בלי זה הבדיקה מחכה ~5 דקות לגלים 1-4.
+  room.onMessage("d1", { t: "select_game", gameId: "wall", config: { difficulty: "normal", startWave: 5 } });
+  room.onMessage("d1", { t: "start_game" });
+  room.onMessage("d1", { t: "game", d: { a: "wl_role", role: "archer" } });
+  room.onMessage("d2", { t: "game", d: { a: "wl_role", role: "cannon" } });
+  room.onMessage("d1", { t: "game", d: { a: "wl_go" } });
+
+  // דוגמים wl_estate לאורך זמן: כמה פעמים כל אויב נכנס ל-burrow, וכמה זמן נשאר שם
+  const burrowAt = new Map<number, number>();  // id → מתי צלל (פתוח כרגע)
+  const dives = new Map<number, number>();     // id → כמה פעמים צלל בסך הכול
+  let maxBurrowMs = 0, cursor = 0;             // cursor: game() מחזיר את *כל* ההיסטוריה — קוראים רק את החדש
+  const sample = setInterval(() => {
+    const all = game("d1", "wl_estate") as any[];
+    for (; cursor < all.length; cursor++) {
+      const s = all[cursor];
+      if (s.state === "burrow") {
+        if (!burrowAt.has(s.id)) burrowAt.set(s.id, room.now());
+        dives.set(s.id, (dives.get(s.id) ?? 0) + 1);
+      } else if (burrowAt.has(s.id)) {
+        maxBurrowMs = Math.max(maxBurrowMs, room.now() - burrowAt.get(s.id)!);
+        burrowAt.delete(s.id);
+      }
+    }
+    // מי שעדיין למטה — סופרים את הזמן שחלף, אחרת אויב שנתקע לנצח לא ייספר
+    for (const [, t0] of burrowAt) maxBurrowMs = Math.max(maxBurrowMs, room.now() - t0);
+  }, 400);
+
+  // מגיעים לגל 5 — שם המחפר נפתח. הבוטים מכוונים לאויבים אמיתיים כדי שהגלים יתנקו מהר.
+  const killed = new Set<number>();
+  const posOf = (e: any, t: number): [number, number] => [
+    e.x0 + e.wob * Math.sin((t - e.at) / 700),
+    Math.min(1205, e.y0 + (e.speed * (t - e.at)) / 1000),
+  ];
+  const bot = setInterval(() => {
+    for (const h of game("d1", "wl_hit") as any[]) if (h.hp <= 0) killed.add(h.id);
+    const live = (game("d1", "wl_spawn") as any[]).filter((e) => !killed.has(e.id));
+    live.slice(0, 8).forEach((e) => {
+      const [x, y] = posOf(e, room.now());
+      if (y < 60) return;
+      room.onMessage("d1", { t: "game", d: { a: "wl_shot", tx: Math.round(x), ty: Math.round(y), power: 1 } });
+      room.onMessage("d2", { t: "game", d: { a: "wl_boom", tx: Math.round(x), ty: Math.round(y) } });
+    });
+    for (const pid of ["d1", "d2"]) {
+      const lv = (game(pid, "wl_levelup") as any[]).at(-1);
+      if (lv) room.onMessage(pid, { t: "game", d: { a: "wl_pick", cardId: lv.cards[0].id } });
+    }
+  }, 200);
+
+  console.log("    ...מריצים מגל 5 (עד ~150 שנ')");
+  for (let i = 0; i < 150; i++) {
+    await sleep(1000);
+    const w = (game("d1", "wl_wave") as any[]).at(-1);
+    // מספיק מחפרים שנולדו + זמן לצלול, לצוף, ולהגיע לחומה
+    if ((w?.wave ?? 0) >= 7) break;
+    if ((game("d1", "wl_over") as any[]).length) break;
+  }
+  clearInterval(bot); clearInterval(sample);
+
+  const spawned = (game("d1", "wl_spawn") as any[]).filter((s) => s.type === "digger");
+  const reDivers = [...dives.entries()].filter(([, n]) => n > 1); // כל צלילה = הודעת estate אחת. יותר מאחת = הלולה חזרה
+  const wave = ((game("d1", "wl_wave") as any[]).at(-1)?.wave ?? 0);
+  console.log(`    (הגיע לגל ${wave}, מחפרים שנולדו: ${spawned.length}, burrow ארוך ביותר: ${Math.round(maxBurrowMs)}ms)`);
+  check("מחפרים אכן נולדו בריצה", spawned.length > 0);
+  check("כל מחפר צלל פעם אחת בלבד (הלולה האינסופית)", reDivers.length === 0);
+  check("מחפרים אכן צללו (המנגנון חי, לא רק 'לא נשבר')", dives.size > 0);
+  check("burrow לעולם לא עובר את רשת הביטחון (4 שנ')", maxBurrowMs < 4600);
+}
+
+/**
+ * שכבת הדחיפות + ההיגיינה: השער שבו מספר השחקנים פותח עומק.
+ *  · הגל מודיע כמה דחיפות יש בו, והמספר גדל עם הגל.
+ *  · צופה בלי גיבור לא מנפח את הקושי (היה alive() במקום fighters()).
+ *  · תקרת הנזק לדחיפה — חומה לא נמחקת בשנייה מדחיפה אחת שהוחמצה.
+ */
+async function testPushes() {
+  console.log("\n— דחיפות, שער ומאזן 🌊 —");
+  const { transport, game } = makeTransport();
+  const room = new Room("PUSH", transport, { wall: createWall });
+  ["s1", "s2"].forEach((p, i) => room.join(p, "ש" + i, "🙂"));
+  room.onMessage("s1", { t: "select_game", gameId: "wall", config: { startWave: 12 } });
+  room.onMessage("s1", { t: "start_game" });
+  room.onMessage("s1", { t: "game", d: { a: "wl_role", role: "archer" } });
+  room.onMessage("s2", { t: "game", d: { a: "wl_role", role: "cannon" } });
+  room.onMessage("s1", { t: "game", d: { a: "wl_go" } });
+  await sleep(600);
+
+  const w0 = (game("s1", "wl_wave") as any[]).at(-1);
+  check("startWave מכובד — הריצה פותחת בגל 12", w0?.wave === 12);
+  check("הגל מודיע כמה דחיפות יש בו", typeof w0?.pushes === "number" && w0.pushes > 1);
+  // pushes(12) = 1 + floor(10/2.5) = 5
+  check("מספר הדחיפות תואם לנוסחה המכוילת", w0?.pushes === 5);
+
+  check("החומה מחושבת מהלוחמים (600+190×2)", w0?.wallMax === 600 + 190 * 2);
+
+  // צופה שמצטרף באמצע ריצה: מחובר, בלי גיבור. קודם הוא ניפח את waveCount/hpScale
+  // (alive() במקום fighters()) — קושי של 3 שחקנים עם כוח אש של 2.
+  room.join("spec", "צופה", "👀");
+  await sleep(300);
+  const before = (game("s1", "wl_spawn") as any[]).length;
+
+  // נותנים לחומה לספוג בלי לירות בכלל — הכל דולף. עם תקרת הדחיפה זה לחץ, לא מחיקה.
+  const hpStart = w0.wallHp;
+  await sleep(30000);
+  const spawnsAfter = (game("s1", "wl_spawn") as any[]).length - before;
+  // גל 12 עם 2 לוחמים: round((8+72)*1)=80. עם 3 היה 98 — פער שאפשר למדוד.
+  console.log(`    (ספאונים אחרי הצטרפות צופה: ${spawnsAfter})`);
+  check("מצטרף-באמצע לא הופך ללוחם ולא מנפח את הגל", spawnsAfter <= 90);
+  const hps = (game("s1", "wl_wall") as any[]).map((m) => m.hp);
+  const lowest = hps.length ? Math.min(...hps) : hpStart;
+  const over = (game("s1", "wl_over") as any[]).length > 0;
+  console.log(`    (חומה: ${hpStart} → ${lowest} תוך 30 שנ' בלי לירות; over=${over})`);
+  check("החומה ספגה נזק אמיתי (הדחיפות מגיעות)", lowest < hpStart);
+  check("אבל לא נמחקה מיד — תקרת הדחיפה עובדת", lowest > 0 || !over);
+}
+
+/**
+ * 🚁 ההליקופטר: טס, מטיל פצצות אוטומטית, ואין לו חסימת גוף.
+ * המתח מגיע מאש נגד-מטוסים שאפשר להתחמק ממנה.
+ */
+async function testHeli() {
+  console.log("\n— ההליקופטר 🚁 —");
+  const { transport, game } = makeTransport();
+  const room = new Room("HELI", transport, { wall: createWall });
+  ["h1", "h2"].forEach((p, i) => room.join(p, "טייס" + i, "🙂"));
+  room.onMessage("h1", { t: "select_game", gameId: "wall", config: { startWave: 4 } });
+  room.onMessage("h1", { t: "start_game" });
+  room.onMessage("h1", { t: "game", d: { a: "wl_role", role: "heli" } });
+  room.onMessage("h2", { t: "game", d: { a: "wl_role", role: "archer" } });
+  room.onMessage("h1", { t: "game", d: { a: "wl_go" } });
+  await sleep(400);
+
+  // הדראפט של ההליקופטר מציע קלפי פצצות ואף קלף שאינו שלו
+  let sawBombCard = false, sawForeign = false, offers = 0;
+  const BOMB = ["payload", "salvo", "blastr", "fuse", "napalm", "guided", "cluster", "shock", "plating"];
+  const FOREIGN = ["heatc", "tracer", "radius", "sentry"];
+  const seen = new Set<string>();
+
+  const bot = setInterval(() => {
+    // טס ומטיל בלי הפסקה
+    room.onMessage("h1", { t: "game", d: { a: "wl_pos", x: 300 + Math.round(Math.random() * 400), y: 500 + Math.round(Math.random() * 500) } });
+    room.onMessage("h1", { t: "game", d: { a: "wl_bomb" } });
+    for (const pid of ["h1", "h2"]) {
+      const lv = (game(pid, "wl_levelup") as any[]).at(-1);
+      if (!lv) continue;
+      const key = pid + ":" + lv.level;
+      if (seen.has(key)) continue;
+      seen.add(key); offers++;
+      if (pid === "h1") for (const c of lv.cards) {
+        if (BOMB.includes(c.id)) sawBombCard = true;
+        if (FOREIGN.includes(c.id)) sawForeign = true;
+      }
+      // מעדיפים קלף פצצות — כדי שהמנגנונים באמת ירוצו
+      const want = lv.cards.find((c: any) => BOMB.includes(c.id)) ?? lv.cards[0];
+      room.onMessage(pid, { t: "game", d: { a: "wl_pick", cardId: want.id } });
+    }
+  }, 200);
+
+  console.log("    ...טס ומפציץ (~60 שנ')");
+  for (let i = 0; i < 60; i++) {
+    await sleep(1000);
+    if ((game("h1", "wl_flak") as any[]).length >= 3 && offers >= 5) break;
+    if ((game("h1", "wl_over") as any[]).length) break;
+  }
+  clearInterval(bot);
+
+  const drops = game("h2", "wl_drop") as any[];
+  const flak = game("h1", "wl_flak") as any[];
+  const hits = (game("h1", "wl_hit") as any[]).filter((x) => x.by === "h1");
+  console.log(`    (הטלות: ${drops.length}, הצעות: ${offers}, אש נגד-מטוסים: ${flak.length}, פגיעות של הטייס: ${hits.length})`);
+
+  check("ההליקופטר מטיל פצצות", drops.length > 0);
+  check("ההטלה משודרת לכל החדר (החבר רואה אותה)", drops.length > 0 && drops[0].pid === "h1");
+  check("להטלה יש זמן נפילה ורדיוס", drops.length > 0 && drops[0].fall > 0 && drops[0].r > 0);
+  check("הפצצות באמת הורגות — הטייס צובר נזק", hits.length > 0);
+  check("אש נגד-מטוסים נפתחה (המתח של ההליקופטר)", flak.length > 0);
+  check("לאש נגד-מטוסים יש התראה מראש — אפשר להתחמק", flak.length > 0 && flak[0].at > 0);
+  check("הדראפט של ההליקופטר מציע קלפי פצצות", sawBombCard);
+  check("ולא מציע קלפים של תפקידים אחרים", !sawForeign);
+
+  // אין יותר חסימת גוף — אויב אף פעם לא נכנס למצב fight מול הליקופטר
+  const fights = (game("h1", "wl_estate") as any[]).filter((s) => s.state === "fight");
+  const snipers = (game("h1", "wl_sniper") as any[]).length;
+  check("אין חסימת גוף — רק צלפים נעצרים (fight)", fights.length === 0 || snipers > 0);
+}
+
 await testWall();
 await testTraits();
+await testDigger();
+await testPushes();
+await testHeli();
 console.log(failed ? `\n${failed} בדיקות נכשלו ✗` : "\nהכול עבר ✓");
 process.exit(failed ? 1 : 0);

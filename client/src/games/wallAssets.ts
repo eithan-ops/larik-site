@@ -3,7 +3,7 @@
  * החלפת נכס = החלפת קובץ ב-public/wall, אפס שינויי קוד.
  */
 export const WL_IMG = {
-  heroInfantry: "/wall/hero-infantry.webp",
+  heroHeli: "/wall/hero-heli.webp",
   heroArcher: "/wall/hero-archer.webp",
   heroCannon: "/wall/hero-cannon.webp",
   heroMg: "/wall/hero-mg.webp",
