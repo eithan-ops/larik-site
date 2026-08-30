@@ -637,7 +637,7 @@ export function createWall(ctx: GameCtx): GameInstance {
     if (wave < 3 || !helis.length) return;
     // תקרה: לכל היותר 3 סימונים לטייס בו-זמנית. בגלים מאוחרים יש עשרות משוריינים,
     // ובלי התקרה המסך מתמלא בעיגולי אזהרה ואי אפשר להתחמק משום דבר.
-    if (flakLive.size >= 3 * helis.length) return;
+    if (flakLive.size >= 2 * helis.length) return;
     for (const e of enemies.values()) {
       if (e.state === "burrow") continue;
       if (e.type !== "armored" && e.type !== "boss" && e.type !== "sniper") continue;
@@ -681,13 +681,17 @@ export function createWall(ctx: GameCtx): GameInstance {
   }
 
   /* ---- 🚁 הליקופטר: הפצצות ----
-   * הפצצה נופלת מהגובה של ההליקופטר אל הקרקע ומתפוצצת שם. כל הנזק עובר
-   * ב-damageEnemy, ולכן **כל 8 התכונות חלות על הפצצה בחינם** (בעירה/כפור/
-   * שרשרת/רעל/נפץ/חדירה/כפילות/ערפד) — ומעליהן 9 קלפי הפצצות הייעודיים. */
+   * ⚠️ הפצצה מתפוצצת **מתחת להליקופטר**, לא ליד החומה. קודם היא תמיד ירדה עד
+   * WALL_Y-90 והנזק נבדק רק לפי המרחק האופקי — כלומר עמוד אנכי אינסופי שפגע
+   * בכל מה שנמצא באותו x, וההתפוצצות תמיד צוירה על החומה. עכשיו זו פגיעה
+   * *עגולה* סביב הנקודה שמתחת לטייס, כך שהוא באמת מפציץ לאן שהוא טס.
+   * כל הנזק עובר ב-damageEnemy, ולכן 8 התכונות חלות על הפצצה בחינם. */
+  const BOMB_DROP = 40;   // כמה מתחת להליקופטר הפצצה נוחתת
   function dropBombs(pid: string, h: Hero) {
     const n = 1 + h.mods.salvo + h.traits.multi;   // ✨ כפילות = עוד פצצה
     const fall = Math.max(180, 520 * h.mods.fuse); // ⏱️ פתיל מהיר
-    const r = 92 * h.mods.blastr * h.mods.range * (1 + 0.10 * (h.tier - 1));
+    const r = 120 * h.mods.blastr * h.mods.range * (1 + 0.10 * (h.tier - 1)); // עגול עכשיו, לא עמוד אינסופי — צריך רדיוס אמיתי
+    const by = Math.max(60, Math.min(WALL_Y - 45, h.y + BOMB_DROP));
     ctx.broadcast({ a: "wl_drop", pid, x: Math.round(h.x), y: Math.round(h.y), fall: Math.round(fall), r: Math.round(r), n });
     const t0 = token;
     for (let i = 0; i < n; i++) {
@@ -696,27 +700,31 @@ export function createWall(ctx: GameCtx): GameInstance {
       const bx0 = Math.max(20, Math.min(W - 20, h.x + off));
       ctx.timer(fall, () => {
         if (token !== t0 || phase !== "wave") return;
-        // 🧲 מונחית — נמשכת לאויב הקרוב תוך כדי נפילה
-        let bx = bx0;
+        // 🧲 מונחית — נמשכת לאויב הקרוב (במרחק אמיתי, לא רק אופקי) תוך כדי נפילה
+        let bx = bx0, by2 = by;
         if (h.mods.guided > 0) {
           const tn2 = now();
           let best: [number, number] | null = null, bd = 1e9;
           for (const e of enemies.values()) {
             if (e.state === "burrow") continue;
             const p2 = posOf(e, tn2);
-            const d = Math.abs(p2[0] - bx0);
+            const d = Math.hypot(p2[0] - bx0, p2[1] - by);
             if (d < bd) { bd = d; best = p2; }
           }
-          if (best && bd < 130 + 90 * h.mods.guided) bx += (best[0] - bx0) * Math.min(1, 0.45 * h.mods.guided);
+          if (best && bd < 150 + 90 * h.mods.guided) {
+            const pull = Math.min(1, 0.45 * h.mods.guided);
+            bx += (best[0] - bx0) * pull;
+            by2 += (best[1] - by) * pull;
+          }
         }
-        detonate(pid, h, bx, r, 1);
+        detonate(pid, h, bx, by2, r, 1);
         // 💥 מצרר — שלוש פצצות משנה סביב הפגיעה
         if (h.mods.cluster > 0) {
           for (let c = 0; c < 3; c++) {
             const cx = Math.max(20, Math.min(W - 20, bx + (c - 1) * (r * 0.75)));
             ctx.timer(150, () => {
               if (token !== t0 || phase !== "wave") return;
-              detonate(pid, h, cx, r * 0.6, 0.45 * h.mods.cluster);
+              detonate(pid, h, cx, by2, r * 0.6, 0.45 * h.mods.cluster);
             });
           }
         }
@@ -724,22 +732,24 @@ export function createWall(ctx: GameCtx): GameInstance {
     }
   }
 
-  /** פיצוץ יחיד בעמוד x — פוגע בכל מה שקרוב אליו לרוחב, ליד הקרקע ומעליה */
-  function detonate(pid: string, h: Hero, bx: number, r: number, mul: number) {
+  /** פיצוץ עגול בנקודה (bx,by) — מתחת להליקופטר, לא על החומה */
+  function detonate(pid: string, h: Hero, bx: number, by: number, r: number, mul: number) {
     const tn = now();
     const dmg = 52 * h.mods.dmg * h.mods.payload * tierMult(h.tier) * mul;
     // אפקט מסונן: מצרר×מטח×כפילות מגיע ל-~16 פיצוצים להטלה ו-~25 בשנייה.
     // הנזק תמיד מוחל — רק הציור מסונן, כמו בשרשרת ובנפץ.
     if (tn - h.lastBoomFx > 120) {
       h.lastBoomFx = tn;
-      ctx.broadcast({ a: "wl_boomfx", x: Math.round(bx), y: Math.round(WALL_Y - 90), r: Math.round(r) });
+      ctx.broadcast({ a: "wl_boomfx", x: Math.round(bx), y: Math.round(by), r: Math.round(r) });
     }
     for (const e of [...enemies.values()]) {
       if (e.state === "burrow") continue;
       const [ex, ey] = posOf(e, tn);
-      // הפצצה נופלת אנכית: מה שקובע הוא המרחק לרוחב, עם עדיפות לקרובים לחומה
-      if (Math.abs(ex - bx) > r) continue;
-      const falloff = 1 - 0.45 * (Math.abs(ex - bx) / r);
+      // ⚠️ מרחק אמיתי, לא רק אופקי. הבדיקה האופקית יצרה עמוד אנכי אינסופי
+      // שפגע בכל מה שנמצא באותו x — מקצה המסך ועד החומה.
+      const d = Math.hypot(ex - bx, ey - by);
+      if (d > r) continue;
+      const falloff = 1 - 0.45 * (d / r);
       damageEnemy(e, dmg * falloff, pid);
       // 🔥 נפאלם — שלולית אש. ⚠️ קובעים ערך, לא מוסיפים: עם מצרר יש ~4 פיצוצים
       // לפצצה, וצבירה (‎+=) הפכה את ה-DPS למאות תוך שניות ומחקה את כל המגרש.
@@ -1036,12 +1046,20 @@ export function createWall(ctx: GameCtx): GameInstance {
       h.heat = 0; h.firing = false; h.jamUntil = 0;
       h.sentryUsed = false; // המוצב טעון מחדש בכל גל
     }
+    // ⚠️ הגל נגמר = המגרש נקי. בלי זה אויב ששרד (בעיקר כזה שנצמד לחומה מחוץ
+    // לחלון של מישהו) ממשיך לגל הבא, נערם, ונראה כמו "אויב שאי אפשר להרוג".
+    for (const e of [...enemies.values()]) {
+      enemies.delete(e.id);
+      ctx.broadcast({ a: "wl_hit", id: e.id, hp: 0, by: "" });
+    }
     // תיקון קטן בין גלים — קודם מרפאים, ואז משדרים את המספר האמיתי
     wallHp = Math.min(wallMax, wallHp + wallMax * 0.10);
     ctx.broadcast({ a: "wl_clear", wave, wallHp: Math.round(wallHp) });
     ctx.broadcast({ a: "wl_wall", hp: Math.round(wallHp), max: wallMax });
     const t = token;
-    ctx.timer(9000, () => { if (token === t && phase === "breath") startWave(wave + 1, 2500); });
+    // נשימה קצרה: 3 שניות + 1.5 להכרזה = ~4.5 במקום 11.5. הקצב בין גלים היה
+    // ארוך מדי — הכותרת נשארה על המסך והמשחק פשוט חיכה.
+    ctx.timer(3000, () => { if (token === t && phase === "breath") startWave(wave + 1, 1500); });
   }
 
   function gameOver() {

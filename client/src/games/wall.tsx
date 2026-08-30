@@ -424,7 +424,7 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
         case "wl_clear":
           setPhase("breath"); setWallHp(m.wallHp);
           parade.current = performance.now(); // 🎖️ מצעד הנשקים — 2 שניות שרואים את כל הצוות
-          showBanner(`🌊 גל ${m.wave} הושרד! ✨`, 2600);
+          showBanner(`🌊 גל ${m.wave} הושלם! ✨`, 2200);
           Sfx.fanfare(); vibrate([40, 30, 40, 30, 100]);
           return;
         case "wl_over":
@@ -947,7 +947,9 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
     bombs.current = bombs.current.filter((b) => pnow - b.t0 < b.fall + 120);
     for (const b of bombs.current) {
       const f = Math.min(1, (pnow - b.t0) / b.fall);
-      const gy = WALL_Y - 90;                       // גובה הקרקע שאליו נופלת הפצצה
+      // ⚠️ הפצצה נוחתת ממש מתחת להליקופטר, לא על החומה. קודם היא תמיד ירדה
+      // ל-WALL_Y-90, אז נראה היה שהוא מפציץ רק צמוד לחומה בכל מקום שהוא טס.
+      const gy = Math.min(WALL_Y - 45, b.y0 + 40);
       const by = b.y0 + (gy - b.y0) * (f * f);      // תאוצה — נופל, לא מרחף
       const bv = visOf(b.by);
       // סמן נחיתה: טבעת שמתכווצת אל נקודת הפגיעה — הקריאה הכי חשובה לכולם
