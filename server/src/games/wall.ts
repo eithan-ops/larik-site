@@ -75,6 +75,8 @@ interface Enemy {
   push?: number;            // לאיזו דחיפה הוא שייך — תקרת הנזק לחומה היא לכל דחיפה
   flakAt?: number;          // מתי מותר לו לירות שוב אש נגד-מטוסים
   lastHeliX?: number;       // המיקום הקודם של המטרה — בשביל חיזוי הובלה
+  shockAt?: number;         // 🌀 גל הדף — מסנן הדיפה, אחרת כל פיצוץ משדר מסלול חדש
+  wallAt?: number;          // מתי הגיע לחומה — אויב שמיצה את מכסת הדחיפה מפונה
   // ---- מצבים מתכונות נשק ----
   burnUntil?: number; burnDps?: number; burnBy?: string;
   poisonUntil?: number; poisonStacks?: number; poisonBy?: string;
@@ -135,7 +137,7 @@ interface Hero {
   // קצבים
   lastSwing: number; lastShot: number; cannonReadyAt: number;
   lastXpMsg: number;
-  lastChainFx: number; lastBlastFx: number; // סינון אפקטים — הנזק תמיד מוחל
+  lastChainFx: number; lastBlastFx: number; lastBoomFx: number; // סינון אפקטים — הנזק תמיד מוחל
   fxTurn: number;   // תור האפקט: כל פגיעה מציגה תכונה *אחת*, בסבב
 }
 
@@ -281,7 +283,9 @@ export function createWall(ctx: GameCtx): GameInstance {
    * אחת = עוד ~7 גלים, שתיים = ~2.5. אפשר "לאגרוף" גל-שניים מעל ה-k שלך. */
   // המקדמים כויילו ב-test/wall-balance.ts (סריקה על K_DIV × PUSH_CAP) —
   // סולם היעד סולו-8 · זוג-12 · 3-15 · 4-18 · 6-25 · 8-30 · 10-35 מושג בסטייה ≤2 גלים.
-  const pushes = (w: number) => Math.min(14, 1 + Math.floor((w - 2) / 2.5));
+  // ⚠️ Math.max(1, …) חובה: בגל 1 הביטוי נותן 0, ואז perPush=Infinity והמרווח
+  // בין הספאונים יוצא NaN — כל הגל נולד באותה מילישנייה, ובחלון של 6 שניות.
+  const pushes = (w: number) => Math.max(1, Math.min(14, 1 + Math.floor((w - 2) / 2.5)));
   const PUSH_CAP = 0.20;              // חלק מחיי החומה שדחיפה אחת יכולה להוריד
   const pushDealt = new Map<number, number>();  // דחיפה → כמה נזק כבר גרמה בגל הזה
   /** מחיל נזק לחומה תחת תקרת הדחיפה. מחזיר כמה נזק באמת נגרם. */
@@ -327,10 +331,14 @@ export function createWall(ctx: GameCtx): GameInstance {
     const t = ++token;
     const k = pushes(w);
     pushDealt.clear();
+    flakLive.clear();   // טיימרים של הגל הקודם נזנחים לפי token — בלי איפוס התקרה נסתמת
     // משך הגל גדל עם מספר הדחיפות ולא נחתך בתקרה: קודם הוא נעצר ב-45 שניות בזמן
     // שהכמות המשיכה לגדול, אז המרווח בין ספאונים שאף לאפס (60ms בגל 20 עם 10 שחקנים) —
     // זה כבר לא גל אלא מרקם. עכשיו הגל נעשה *רחב* יותר, לא מהיר יותר.
-    const duration = 6000 + 4200 * k;
+    // בסיס 18 שניות + 4.2 לכל דחיפה. הבסיס הקודם (6000) נתן גל פתיחה של 10 שניות
+    // במקום 30 — הגלים המוקדמים הרגישו קטועים. הסימולטור מראה שהבסיס כמעט לא
+    // משפיע על סולם העומק, אז אפשר לבחור אותו לפי תחושה: w1=22ש' · w20=52 · w35=77.
+    const duration = 18_000 + 4200 * k;
     const at = ctx.cue(delayMs, { a: "wl_wave", wave, wallHp: Math.round(wallHp), wallMax, duration, pushes: k });
     waveEndsAt = at + duration;
     // לוח ספאונים — k דחיפות, כל אחת על נתיב משלה, עם לולה ביניהן
@@ -487,13 +495,25 @@ export function createWall(ctx: GameCtx): GameInstance {
         }
       }
 
-      if (e.state === "wall" && tn - e.lastHit > 1000) {
-        e.lastHit = tn;
-        // תחת תקרת הדחיפה: אויב מדחיפה שכבר מיצתה את המכסה עדיין חוסם וחייב
-        // להיהרג — אבל כבר לא מכרסם. זה מה שהופך דחיפה שהוחמצה מצוק ללחץ.
-        if (hurtWall(ETYPES[e.type].wallDps * diff, e.push) > 0) {
-          if (wallHp <= 0) return gameOver();
-          ctx.broadcast({ a: "wl_wall", hp: Math.round(Math.max(0, wallHp)), max: wallMax });
+      if (e.state === "wall") {
+        if (e.wallAt === undefined) e.wallAt = tn;
+        if (tn - e.lastHit > 1000) {
+          e.lastHit = tn;
+          // תחת תקרת הדחיפה: דחיפה שמיצתה את המכסה כבר לא מכרסמת —
+          // זה מה שהופך החמצה מצוק ללחץ.
+          if (hurtWall(ETYPES[e.type].wallDps * diff, e.push) > 0) {
+            if (wallHp <= 0) return gameOver();
+            ctx.broadcast({ a: "wl_wall", hp: Math.round(Math.max(0, wallHp)), max: wallMax });
+          }
+        }
+        // ⚠️ אויב שנצמד לחומה לא מת מעצמו ולא הולך לשום מקום: הוא חוסם את סוף
+        // הגל (enemies.size לעולם לא מתאפס, אז הגל מסתיים רק דרך רשת הביטחון)
+        // ונערם בין גלים — נמדד בדפדפן 80 אויבים על החומה בשלב הנשימה.
+        // אחרי 12 שניות הוא "פורץ פנימה" ונעלם; עד אז עדיין אפשר להרוג אותו,
+        // כך שמי שמפנה את החומה בזמן מקבל את ה-XP.
+        if (tn - e.wallAt > 12_000) {
+          enemies.delete(e.id);
+          ctx.broadcast({ a: "wl_hit", id: e.id, hp: 0, by: "" });
         }
       }
     }
@@ -511,22 +531,23 @@ export function createWall(ctx: GameCtx): GameInstance {
           ctx.broadcast({ a: "wl_jam", by: p, ms: 3000 });
           ctx.broadcast({ a: "wl_stream", by: p, x: h.aimX, y: h.aimY, on: false });
         } else {
-          // מניפה מהעמדה אל נקודת הכיוון — כל השדה נגיש (במקום עמודה אנכית צרה,
-          // שהשאירה אויבים בקצה החזית בלתי-ניתנים לפגיעה). רוחב המניפה גדל עם 📏 טווח.
+          // 🔫 קו ירי אחד אל נקודת הכיוון — לא מניפה.
+          // הכיוון חופשי בכל החזית, אבל *הכדורים* נוסעים בקו צר. מניפה רחבה הפכה
+          // את המקלען למוחק-מגרש: הוא בחר את האויב הקדמי בכל מקום בחרוט, 10 פעמים
+          // בשנייה, כך שכל אויב על המסך היה בטווח שלו.
           const canArmor = h.traits.pierce > 0; // 🗡️ חדירה = סוף-סוף אפשר לפגוע במשוריין
-          const aimAng = Math.atan2(h.aimY - h.y, h.aimX - h.x);
-          // ‎±0.34rad ≈ מניפה של 39° בבסיס, ונפתחת עד 180° מלאים עם 📏 טווח.
-          // רוחב המניפה לא מוסיף DPS (עדיין נפגעים 1+multi הקדמיים) — הוא מוסיף הגעה,
-          // ולכן זו גם החתימה הוויזואלית של "טווח" למקלען.
-          const halfArc = Math.min(Math.PI / 2, 0.34 * h.mods.range);
+          const adx = h.aimX - h.x, ady = h.aimY - h.y;
+          const al = Math.max(1, Math.hypot(adx, ady));
+          const ux = adx / al, uy = ady / al;      // וקטור יחידה לאורך קו הירי
+          const halfW = 46 * h.mods.range;         // חצי רוחב הקרן (~92px) — קו ברור, אבל סלחני לאצבע על טלפון
           const targets = [...enemies.values()]
             .filter((e) => (canArmor || e.type !== "armored") && e.state !== "burrow")
             .map((e) => ({ e, pos: posOf(e, tn) }))
             .filter(({ pos }) => {
               if (!(pos[1] > 0 && pos[1] < WALL_Y)) return false;
-              let d = Math.abs(Math.atan2(pos[1] - h.y, pos[0] - h.x) - aimAng);
-              if (d > Math.PI) d = 2 * Math.PI - d;
-              return d < halfArc;
+              const vx = pos[0] - h.x, vy = pos[1] - h.y;
+              if (vx * ux + vy * uy <= 0) return false;    // רק קדימה, לא מאחורי הקנה
+              return Math.abs(vx * uy - vy * ux) < halfW;  // מרחק ניצב מהקו
             })
             .sort((a, b) => b.pos[1] - a.pos[1]);
           if (targets.length) {
@@ -610,9 +631,13 @@ export function createWall(ctx: GameCtx): GameInstance {
    * יורים למעלה אל *נקודה חזויה*, עם השהיה שמאפשרת להתחמק — משחק של תזוזה,
    * לא של ספיגה. נפתח בגל 3 כדי שהגלים הראשונים יישארו רכים. */
   let flakSeq = 0;
+  const flakLive = new Set<number>();   // סימונים פעילים — תקרה כדי שהמסך לא יתמלא
   const FLAK_R = 78;
   function tickFlak(tn: number, helis: string[]) {
     if (wave < 3 || !helis.length) return;
+    // תקרה: לכל היותר 3 סימונים לטייס בו-זמנית. בגלים מאוחרים יש עשרות משוריינים,
+    // ובלי התקרה המסך מתמלא בעיגולי אזהרה ואי אפשר להתחמק משום דבר.
+    if (flakLive.size >= 3 * helis.length) return;
     for (const e of enemies.values()) {
       if (e.state === "burrow") continue;
       if (e.type !== "armored" && e.type !== "boss" && e.type !== "sniper") continue;
@@ -636,15 +661,20 @@ export function createWall(ctx: GameCtx): GameInstance {
       const py = hh.y;
       e.lastHeliX = hh.x;
       const id = ++flakSeq;
+      flakLive.add(id);
       ctx.broadcast({ a: "wl_flak", id, x: Math.round(px), y: Math.round(py), at });
       const t0 = token;
       ctx.timer(at - tn, () => {
+        flakLive.delete(id);
         if (token !== t0 || phase !== "wave") return;
         for (const p of fighters()) {
           const h2 = heroes.get(p)!;
           if (h2.role !== "heli" || h2.down) continue;
           if (Math.hypot(h2.x - px, h2.y - py) > FLAK_R) continue;   // התחמק ✓
-          hurtHero(p, Math.round(26 * (1 - 0.30 * Math.min(2, h2.mods.plating)) * hpScale(wave) ** 0.3));
+          // 26·s^0.3 הגיע ל-60 נזק בגל 20 — שלוש פגיעות והטייס על הרצפה, והוא
+          // בילה את הריצה מת במקום להפציץ. 13·s^0.22 = 6-12 פגיעות, כך שהחמצה
+          // אחת עולה אבל לא מוציאה אותך מהמשחק.
+          hurtHero(p, Math.round(13 * (1 - 0.30 * Math.min(2, h2.mods.plating)) * hpScale(wave) ** 0.22));
         }
       });
     }
@@ -698,7 +728,12 @@ export function createWall(ctx: GameCtx): GameInstance {
   function detonate(pid: string, h: Hero, bx: number, r: number, mul: number) {
     const tn = now();
     const dmg = 52 * h.mods.dmg * h.mods.payload * tierMult(h.tier) * mul;
-    ctx.broadcast({ a: "wl_boomfx", x: Math.round(bx), y: Math.round(WALL_Y - 90), r: Math.round(r) });
+    // אפקט מסונן: מצרר×מטח×כפילות מגיע ל-~16 פיצוצים להטלה ו-~25 בשנייה.
+    // הנזק תמיד מוחל — רק הציור מסונן, כמו בשרשרת ובנפץ.
+    if (tn - h.lastBoomFx > 120) {
+      h.lastBoomFx = tn;
+      ctx.broadcast({ a: "wl_boomfx", x: Math.round(bx), y: Math.round(WALL_Y - 90), r: Math.round(r) });
+    }
     for (const e of [...enemies.values()]) {
       if (e.state === "burrow") continue;
       const [ex, ey] = posOf(e, tn);
@@ -706,16 +741,21 @@ export function createWall(ctx: GameCtx): GameInstance {
       if (Math.abs(ex - bx) > r) continue;
       const falloff = 1 - 0.45 * (Math.abs(ex - bx) / r);
       damageEnemy(e, dmg * falloff, pid);
-      // 🔥 נפאלם — שלולית אש: מציתים ישירות דרך צינור הבעירה הקיים
+      // 🔥 נפאלם — שלולית אש. ⚠️ קובעים ערך, לא מוסיפים: עם מצרר יש ~4 פיצוצים
+      // לפצצה, וצבירה (‎+=) הפכה את ה-DPS למאות תוך שניות ומחקה את כל המגרש.
       if (h.mods.napalm > 0 && enemies.has(e.id)) {
         e.burnUntil = tn + 2600 + 700 * h.mods.napalm;
-        e.burnDps = (e.burnDps ?? 0) + 4 * h.mods.napalm * tierMult(h.tier);
+        e.burnDps = Math.max(e.burnDps ?? 0, 4 * h.mods.napalm * tierMult(h.tier));
         e.burnBy = pid;
       }
-      // 🌀 גל הדף — דוחף אחורה מהחומה, קונה זמן במקום חסימת גוף
-      if (h.mods.shock > 0 && enemies.has(e.id)) {
+      // 🌀 גל הדף — קונה זמן ליד החומה. ⚠️ מוגבל בשלושה אופנים:
+      // רק על אויב שכבר מאיים (למטה), עצירה ב-y=620 כדי שלא ייעלם מהמסך,
+      // ולא יותר מפעם ב-800ms לאויב — אחרת כל פיצוץ שידר wl_estate לכל אויב
+      // ברדיוס, מאות הודעות בשנייה, והאויבים נתקעו מחוץ למסך והגל לא נגמר.
+      if (h.mods.shock > 0 && enemies.has(e.id) && ey > 780 && tn - (e.shockAt ?? 0) > 800) {
+        e.shockAt = tn;
         const push = 55 * h.mods.shock;
-        setPath(e, ex, Math.max(-40, ey - push), e.state === "wall" ? "walk" : e.state, e.speed);
+        setPath(e, ex, Math.max(620, ey - push), e.state === "wall" ? "walk" : e.state, e.speed);
       }
     }
   }
@@ -1059,7 +1099,7 @@ export function createWall(ctx: GameCtx): GameInstance {
           mods: baseMods(), level: 1, xp: 0, tier: 1, picks: {},
           traits: baseTraits(), evos: [], momoUntil: 0, momoStacks: 0, sentryUsed: false,
           firing: false, aimX: GATE_X, aimY: 700, heat: 0, jamUntil: 0,
-          lastSwing: 0, lastShot: 0, cannonReadyAt: 0, lastXpMsg: 0, lastChainFx: 0, lastBlastFx: 0, fxTurn: 0,
+          lastSwing: 0, lastShot: 0, cannonReadyAt: 0, lastXpMsg: 0, lastChainFx: 0, lastBlastFx: 0, lastBoomFx: 0, fxTurn: 0,
         });
       }
     });
@@ -1093,7 +1133,7 @@ export function createWall(ctx: GameCtx): GameInstance {
           mods: baseMods(), level: 1, xp: 0, tier: 1, picks: {},
           traits: baseTraits(), evos: [], momoUntil: 0, momoStacks: 0, sentryUsed: false,
           firing: false, aimX: 500, aimY: 700, heat: 0, jamUntil: 0,
-          lastSwing: 0, lastShot: 0, cannonReadyAt: 0, lastXpMsg: 0, lastChainFx: 0, lastBlastFx: 0, fxTurn: 0,
+          lastSwing: 0, lastShot: 0, cannonReadyAt: 0, lastXpMsg: 0, lastChainFx: 0, lastBlastFx: 0, lastBoomFx: 0, fxTurn: 0,
         });
       });
       assignSlots();
@@ -1126,7 +1166,7 @@ export function createWall(ctx: GameCtx): GameInstance {
           mods: baseMods(), level: 1, xp: 0, tier: 1, picks: {},
           traits: baseTraits(), evos: [], momoUntil: 0, momoStacks: 0, sentryUsed: false,
           firing: false, aimX: GATE_X, aimY: 700, heat: 0, jamUntil: 0,
-          lastSwing: 0, lastShot: 0, cannonReadyAt: 0, lastXpMsg: 0, lastChainFx: 0, lastBlastFx: 0, fxTurn: 0,
+          lastSwing: 0, lastShot: 0, cannonReadyAt: 0, lastXpMsg: 0, lastChainFx: 0, lastBlastFx: 0, lastBoomFx: 0, fxTurn: 0,
         };
         heroes.set(pid, h);
       }

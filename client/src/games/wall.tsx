@@ -147,6 +147,7 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
   const lunges = useRef(new Map<string, { t0: number; dir: number }>()); // זינוק החלוץ בהנפה
   const joyRef = useRef({ active: false, ox: 0, oy: 0, kx: 0, ky: 0 }); // ג'ויסטיק צף (מסך)
   const lastAutoSwing = useRef(0);
+  const lastBoomSfx = useRef(0);   // מגביל קול/רטט של פיצוצים — ההליקופטר מפוצץ עשרות פעמים בשנייה
   const bombs = useRef<{ x: number; y0: number; t0: number; fall: number; r: number; by: string }[]>([]); // 🚁 פצצות באוויר
   const flaks = useRef<{ id: number; x: number; y: number; at: number }[]>([]);                            // 🎯 סימוני אש נגד-מטוסים
   const lastAutoShot = useRef(0);
@@ -303,11 +304,19 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
           projs.current.push({ kind: "shell", fx: m.fx, fy: m.fy, tx: m.tx, ty: m.ty, t0: performance.now(), T: m.T, by: m.by });
           if (m.by === me) { Sfx.boom(); vibrate(60); }
           return;
-        case "wl_boomfx":
-          fxs.current.push({ kind: "boom", x: m.x, y: m.y, t0: performance.now(), r: m.r });
-          shake.current = Math.max(shake.current, 12);
-          Sfx.boom(); vibrate(80);
+        case "wl_boomfx": {
+          // ⚠️ קול+רטט על *כל* פיצוץ הקפיא טלפונים: פצצות ההליקופטר (מצרר×מטח)
+          // מגיעות לעשרות בשנייה, וזה עשרות צלילי Web Audio ורטט רצוף.
+          // הציור מכבד את תקציב החלקיקים; הקול והרטט מוגבלים ל-~5 בשנייה.
+          if (fxs.current.length < FX_CAP) fxs.current.push({ kind: "boom", x: m.x, y: m.y, t0: performance.now(), r: m.r });
+          const bt = performance.now();
+          if (bt - lastBoomSfx.current > 190) {
+            lastBoomSfx.current = bt;
+            shake.current = Math.max(shake.current, 12);
+            Sfx.boom(); vibrate(80);
+          }
           return;
+        }
         case "wl_stream":
           if (m.on) streams.current.set(m.by, { x: m.x, y: m.y ?? 100 }); else streams.current.delete(m.by);
           return;
@@ -886,29 +895,31 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
       const mx = hh.x, my = hh.y - 24; // קצה הקנה
       const ax = aim.x, ay = aim.y;
       const colC = sv.color ?? "#5c8aff";
-      // המניפה שהשרת באמת מכסה: זווית מהעמדה אל הכוונת, ± חצי-מניפה
+      // קו הירי שהשרת באמת מכסה: רצועה צרה מהקנה אל הכוונת (לא מניפה)
       const ang = Math.atan2(ay - my, ax - mx);
-      const halfArc = Math.min(Math.PI / 2, 0.34 + 0.03 * sv.total); // תואם לשרת: 0.34 * mods.range
-      const reach = Math.hypot(W, WALL_Y); // עד קצה השדה — המניפה לא נחתכת באמצע
+      const halfW = 46 * (1 + 0.06 * sv.total);   // תואם לשרת: 46 * mods.range
+      const reach = Math.hypot(W, WALL_Y);        // עד קצה השדה — הקו לא נחתך באמצע
       ctx.save();
-      ctx.beginPath();
-      ctx.moveTo(wx(mx), wy(my));
-      ctx.arc(wx(mx), wy(my), reach * scale, ang - halfArc, ang + halfArc);
-      ctx.closePath();
-      const cg = ctx.createRadialGradient(wx(mx), wy(my), 0, wx(mx), wy(my), reach * scale);
-      cg.addColorStop(0, hexA(colC, 0.20)); cg.addColorStop(1, hexA(colC, 0.02));
-      ctx.fillStyle = cg; ctx.fill();
-      ctx.strokeStyle = hexA(colC, 0.22); ctx.lineWidth = 1; ctx.stroke();
+      ctx.translate(wx(mx), wy(my));
+      ctx.rotate(ang);
+      const lg = ctx.createLinearGradient(0, 0, reach * scale, 0);
+      lg.addColorStop(0, hexA(colC, 0.26)); lg.addColorStop(1, hexA(colC, 0.02));
+      ctx.fillStyle = lg;
+      ctx.fillRect(0, -halfW * scale, reach * scale, halfW * 2 * scale);
+      ctx.strokeStyle = hexA(colC, 0.22); ctx.lineWidth = 1;
+      ctx.strokeRect(0, -halfW * scale, reach * scale, halfW * 2 * scale);
       ctx.restore();
-      // נותבים — קליעים בהירים שנוסעים לאורך ציר הכיוון, בפיזור בתוך המניפה
+      // נותבים — קליעים בהירים שנוסעים לאורך הקו
       ctx.globalCompositeOperation = "lighter";
       const trLen = Math.min(reach, Math.hypot(ax - mx, ay - my) * 1.6 + 220);
       for (let t = 0; t < Math.min(9, 5 + sv.total); t++) {
         const seed = ((pnow * 0.0022 + t * 0.2) % 1); // 0..1 לאורך המסלול
-        const a2 = ang + (((t * 2654435761) % 1000) / 1000 - 0.5) * halfArc * 1.5;
+        // פיזור קטן *לרוחב הקו*, לא בזווית — הכדורים נוסעים במקביל
+        const off = (((t * 2654435761) % 1000) / 1000 - 0.5) * halfW * 1.3;
+        const px0 = mx - Math.sin(ang) * off, py0 = my + Math.cos(ang) * off;
         const d0 = trLen * seed, d1 = trLen * Math.min(1, seed + 0.055);
-        const bx = mx + Math.cos(a2) * d0, by = my + Math.sin(a2) * d0;
-        const nx2 = mx + Math.cos(a2) * d1, ny2 = my + Math.sin(a2) * d1;
+        const bx = px0 + Math.cos(ang) * d0, by = py0 + Math.sin(ang) * d0;
+        const nx2 = px0 + Math.cos(ang) * d1, ny2 = py0 + Math.sin(ang) * d1;
         const tg = ctx.createLinearGradient(wx(bx), wy(by), wx(nx2), wy(ny2));
         tg.addColorStop(0, hexA(colC, 0.12)); tg.addColorStop(1, colC);
         ctx.strokeStyle = tg; ctx.lineWidth = 3 * sv.size * scale;

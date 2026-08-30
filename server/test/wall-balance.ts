@@ -27,8 +27,8 @@ const WAVE_HEAL = 0.10;
 const K_DIV = Number(process.env.K_DIV ?? 2.5);          // כל כמה גלים נוספת דחיפה
 const PUSH_CAP = Number(process.env.PUSH_CAP ?? 0.20); // חלק מהחומה שדחיפה שהוחמצה מורידה
 const PER_PLAYER_CAP = 1.15;                           // כמה דחיפות שחקן יחיד יכול להחזיק
-const pushesOf = (w: number) => Math.min(14, 1 + Math.floor((w - 2) / K_DIV));
-const waveDurationNew = (w: number) => 6000 + Number(process.env.DUR ?? 4200) * pushesOf(w);
+const pushesOf = (w: number) => Math.max(1, Math.min(14, 1 + Math.floor((w - 2) / K_DIV)));
+const waveDurationNew = (w: number) => Number(process.env.DUR0 ?? 6000) + Number(process.env.DUR ?? 4200) * pushesOf(w);
 const firstWaveOf = (n: number) => 1 + Math.floor(2.4 * Math.log(Math.max(1, n)));
 
 /** השקית הקפואה מגל 6 — ממוצעי חיים / נזק-לחומה / XP */

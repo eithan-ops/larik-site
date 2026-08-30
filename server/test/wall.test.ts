@@ -56,6 +56,14 @@ async function testWall() {
   check("wl_heat זורם למקלען", game("p3", "wl_heat").length >= 5);
   check("אויבים נולדו", game("p1", "wl_spawn").length > 0);
 
+  // ⚠️ גל 1 האמיתי. הנוסחה נתנה k=0 (‎floor(-1/2.5)=-1) ⇒ perPush=Infinity ⇒
+  // delay=NaN ⇒ *כל* הגל נולד באותה מילישנייה, בחלון של 6 שניות. הסימולטור
+  // פספס כי קבוצה מתחילה בגל 2 — זה נתפס רק בפרודקשן.
+  const w1 = (game("p1", "wl_wave") as any[])[0];
+  check("גל 1: יש לפחות דחיפה אחת", (w1?.pushes ?? 0) >= 1);
+  check("גל 1: משך הגל שפוי (לא 6 שניות)", (w1?.duration ?? 0) >= 10000);
+  console.log(`    (גל 1: דחיפות=${w1?.pushes} משך=${w1?.duration}ms)`);
+
   // בוטים: הקשת והמקלען יורים על אויבים חיים (אותה נוסחת מסלול כמו השרת/הלקוח),
   // החלוץ לא נוגע — כך הוא חוטף ונופל, וזו בדיוק הבדיקה.
   const dead = new Set<number>();
@@ -82,6 +90,13 @@ async function testWall() {
     if (cleared && prev) hpBeforeClear = prev.hp;
   }
   clearInterval(bot);
+
+  // עכשיו שכל הגל נולד: הספאונים חייבים להיות פרוסים בזמן. עם k=0 הם קיבלו
+  // delay=NaN וכולם נולדו באותה מילישנייה — זה מה שהיה חי בפרודקשן.
+  const ats = (game("p1", "wl_spawn") as any[]).map((s) => s.at).sort((a, b) => a - b);
+  const spreadMs = ats.length > 1 ? ats[ats.length - 1] - ats[0] : 0;
+  check("גל 1: הספאונים פרוסים בזמן ולא נולדים יחד", !ats.some(Number.isNaN) && spreadMs > 3000);
+  console.log(`    (פריסת ספאונים בגל 1: ${Math.round(spreadMs)}ms על ${ats.length} אויבים)`);
 
   const heroMsgs = game("p1", "wl_hero") as any[];
   const fellAt = heroMsgs.findIndex((m) => m.down === true);
@@ -286,6 +301,11 @@ async function testPushes() {
 
   const w0 = (game("s1", "wl_wave") as any[]).at(-1);
   check("startWave מכובד — הריצה פותחת בגל 12", w0?.wave === 12);
+  // ⚠️ גל 1 נתן k=0 (‎floor(-1/2.5)=-1) ⇒ perPush=Infinity ⇒ delay=NaN ⇒ כל הגל
+  // נולד באותה מילישנייה. הסימולטור פספס כי קבוצה מתחילה בגל 2. נתפס רק בפרודקשן.
+  const kOf = (w: number) => Math.max(1, Math.min(14, 1 + Math.floor((w - 2) / 2.5)));
+  check("מספר הדחיפות לעולם ≥1, גם בגל 1", [1, 2, 3, 5, 10, 40].every((w) => kOf(w) >= 1));
+  check("ובגל 1 בפרט הוא בדיוק 1", kOf(1) === 1);
   check("הגל מודיע כמה דחיפות יש בו", typeof w0?.pushes === "number" && w0.pushes > 1);
   // pushes(12) = 1 + floor(10/2.5) = 5
   check("מספר הדחיפות תואם לנוסחה המכוילת", w0?.pushes === 5);
@@ -311,6 +331,18 @@ async function testPushes() {
   console.log(`    (חומה: ${hpStart} → ${lowest} תוך 30 שנ' בלי לירות; over=${over})`);
   check("החומה ספגה נזק אמיתי (הדחיפות מגיעות)", lowest < hpStart);
   check("אבל לא נמחקה מיד — תקרת הדחיפה עובדת", lowest > 0 || !over);
+
+  // ⚠️ אויבים שמיצו את מכסת הדחיפה שלהם לא עושים כלום, אבל הם *נשארו* על
+  // החומה: enemies.size לא התאפס, הגל נגמר רק דרך רשת הביטחון, והמסך התמלא.
+  // נמדד בדפדפן: 47 אויבים תקועים על החומה גם בשלב הנשימה.
+  await sleep(25000); // נותנים לדחיפות המוקדמות למצות את המכסה ולהתפנות
+  const gone = new Set((game("s1", "wl_hit") as any[]).filter((h) => h.hp <= 0).map((h) => h.id));
+  // מי שהגיע לחומה מוקדם ועדיין שם = זומבי: לא מזיק, לא מת, וחוסם את סוף הגל
+  const reachedWall = (game("s1", "wl_estate") as any[]).filter((s) => s.state === "wall");
+  const early = [...new Set(reachedWall.slice(0, Math.ceil(reachedWall.length * 0.5)).map((s) => s.id))];
+  const zombies = early.filter((id) => !gone.has(id));
+  console.log(`    (הגיעו לחומה מוקדם: ${early.length}, מהם עדיין תקועים: ${zombies.length})`);
+  check("אויבים שמיצו את המכסה מתפנים ולא נערמים על החומה", early.length === 0 || zombies.length <= early.length * 0.34);
 }
 
 /**
@@ -322,7 +354,7 @@ async function testHeli() {
   const { transport, game } = makeTransport();
   const room = new Room("HELI", transport, { wall: createWall });
   ["h1", "h2"].forEach((p, i) => room.join(p, "טייס" + i, "🙂"));
-  room.onMessage("h1", { t: "select_game", gameId: "wall", config: { startWave: 4 } });
+  room.onMessage("h1", { t: "select_game", gameId: "wall", config: { startWave: 4, seed: "test-heli-v1" } });
   room.onMessage("h1", { t: "start_game" });
   room.onMessage("h1", { t: "game", d: { a: "wl_role", role: "heli" } });
   room.onMessage("h2", { t: "game", d: { a: "wl_role", role: "archer" } });
@@ -355,12 +387,13 @@ async function testHeli() {
     }
   }, 200);
 
-  console.log("    ...טס ומפציץ (~60 שנ')");
-  for (let i = 0; i < 60; i++) {
+  console.log("    ...טס ומפציץ (75 שנ' — צריך זמן כדי לערום מצרר+מטח ולמדוד הצפה)");
+  const t0 = Date.now();
+  for (let i = 0; i < 75; i++) {
     await sleep(1000);
-    if ((game("h1", "wl_flak") as any[]).length >= 3 && offers >= 5) break;
     if ((game("h1", "wl_over") as any[]).length) break;
   }
+  const secs = Math.max(1, (Date.now() - t0) / 1000);
   clearInterval(bot);
 
   const drops = game("h2", "wl_drop") as any[];
@@ -376,6 +409,33 @@ async function testHeli() {
   check("לאש נגד-מטוסים יש התראה מראש — אפשר להתחמק", flak.length > 0 && flak[0].at > 0);
   check("הדראפט של ההליקופטר מציע קלפי פצצות", sawBombCard);
   check("ולא מציע קלפים של תפקידים אחרים", !sawForeign);
+
+  /* ⚠️ מבחן הצפה — זה מה שהקפיא את המשחק בפרודקשן.
+   * מצרר×מטח×כפילות = ~16 פיצוצים להטלה. בלי סינון זה היה עשרות wl_boomfx
+   * בשנייה (וכל אחד = צליל+רטט בלקוח), ו-🌀 גל הדף שידר wl_estate לכל אויב
+   * ברדיוס בכל פיצוץ — מאות הודעות בשנייה. */
+  const style = (game("h2", "wl_style") as any[]).filter((s) => s.pid === "h1").at(-1);
+  console.log(`    (הבילד של הטייס: ${JSON.stringify(style?.amps ?? {})} דרגה ${style?.tier})`);
+  const rate = (a: string) => (game("h2", a) as any[]).length / secs;
+  const boomRate = rate("wl_boomfx"), estateRate = rate("wl_estate"), flakRate = rate("wl_flak");
+  console.log(`    (הודעות לשנייה — פיצוצים: ${boomRate.toFixed(1)} · מסלולים: ${estateRate.toFixed(1)} · נגד-מטוסים: ${flakRate.toFixed(1)})`);
+  check("אפקטי פיצוץ מסוננים (≤10 בשנייה — בלי הסינון נמדד 12.3)", boomRate <= 10);
+  check("שידורי מסלול לא מוצפים (≤40 בשנייה)", estateRate <= 40);
+  check("אש נגד-מטוסים מוגבלת (≤6 בשנייה)", flakRate <= 6);
+
+  // 🌀 גל הדף לא מעיף אויבים אל מחוץ למסך — שם הם לא מתים והגל לא נגמר.
+  // מסתכלים על *נסיגה* אמיתית (y יורד משמעותית), לא על y נמוך כשלעצמו:
+  // כפור משדר מסלול חדש במיקום הנוכחי, וזה לגיטימי גם על אויב שרק נולד.
+  const lastY = new Map<number, number>();
+  for (const s of game("h2", "wl_spawn") as any[]) lastY.set(s.id, s.y0);
+  let badPush = 0, worstY = 1e9;
+  for (const s of game("h2", "wl_estate") as any[]) {
+    const prev = lastY.get(s.id);
+    if (prev !== undefined && s.y < prev - 100 && s.y < 600) { badPush++; worstY = Math.min(worstY, s.y); }
+    lastY.set(s.id, s.y);
+  }
+  check("🌀 גל הדף לא מעיף אויבים מעבר לתקרה (620)", badPush === 0);
+  if (badPush) console.log(`    (${badPush} הדיפות חרגו — הנמוכה ביותר y=${worstY})`);
 
   // אין יותר חסימת גוף — אויב אף פעם לא נכנס למצב fight מול הליקופטר
   const fights = (game("h1", "wl_estate") as any[]).filter((s) => s.state === "fight");
