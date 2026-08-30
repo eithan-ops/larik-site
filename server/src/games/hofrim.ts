@@ -17,7 +17,7 @@ import {
 } from "../../../shared/hofrim";
 
 const TICK = 50;                    // 20Hz סימולציה
-const POS_EVERY = 100;              // 10Hz שידור מיקומים
+const POS_EVERY = 66;               // 15Hz שידור מיקומים — מרווח קטן יותר לאינטרפולציה
 const PLAYER_SPD = 5.6;             // תאים לשנייה
 const BAG_FALL = 11;                // מהיר מהשחקן — בורחים הצידה, לא למטה
 const WOBBLE = 1.0;
