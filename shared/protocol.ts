@@ -403,6 +403,8 @@ export interface GameMeta {
   minPlayers: number;
   maxPlayers: number;
   configOptions?: { key: string; label: string; values: { v: string; label: string }[] }[];
+  /** משחק שחי כעמוד נפרד ולא כחדר — המדף שולח לכאן במקום לפתוח חדר */
+  external?: string;
 }
 
 export const CATALOG: GameMeta[] = [
@@ -593,5 +595,15 @@ export const CATALOG: GameMeta[] = [
         ],
       },
     ],
+  },
+  {
+    id: "hofrim",
+    name: "החופרים",
+    icon: "⛏️",
+    tagline: "חופרים למטה, מפילים שקי זהב על מפלצות, ובונים נשק משוגע.",
+    howTo: "בשלב הזה משחקים לבד — גרסת החברים בדרך. חופרים מנהרות בכיוון האגודל ואוספים גבישים וזהב. שק זהב מתנדנד שנייה לפני שהוא נופל — בורחים הצידה, והוא מוחץ כל מפלצת שמתחתיו. חוזרים למעלית להפקיד, וכל הפקדה מעלה רמה ופותחת שדרוג. ככל שיורדים עמוק יותר החומר קשה יותר והשלל שווה יותר.",
+    minPlayers: 1,
+    maxPlayers: 8,
+    external: "/hofrim",
   },
 ];

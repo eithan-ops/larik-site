@@ -38,6 +38,7 @@ export const GAME_COLORS: Record<string, string> = {
   show: "#E8A33D",        // זהב חם
   impostor: "#C05CE8",    // לילך
   wall: "#E0521B",        // חלודה
+  hofrim: "#FF8A3D",      // כתום מנורה
 };
 
 export const GAME_VIEWS: Record<string, ComponentType<GameViewProps>> = {

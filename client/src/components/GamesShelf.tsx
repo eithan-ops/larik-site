@@ -13,7 +13,7 @@ import { GAME_COLORS } from "../games/registry";
 /** משחקים שיש להם פוסטר מצויר ב-public/stickers — לשאר מציגים אייקון ענק על צבע החתימה */
 const POSTER_IDS = new Set([
   "whomost", "wall", "alias", "bombs", "forehead", "deathtouch",
-  "demons", "trivia", "colorrules", "impostor", "simon",
+  "demons", "trivia", "colorrules", "impostor", "simon", "hofrim",
 ]);
 
 export default function GamesShelf() {
@@ -72,7 +72,8 @@ export default function GamesShelf() {
                   <button className="btn wa poster-play" disabled={busy}
                     onClick={(e) => {
                       e.stopPropagation();
-                      // המופע הוא אפליקציה נפרדת — לא חדר רגיל
+                      // משחק שחי כעמוד נפרד (המופע, החופרים) — לא חדר רגיל
+                      if (g.external) { location.href = g.external; return; }
                       if (g.id === "show") { location.href = "/s"; return; }
                       host();
                     }}>

@@ -397,7 +397,7 @@ function HostCatalog({ room, onSelect, onStart }: {
   const shown = sel ?? reco; // הפאנל הגדול: המשחק הנבחר, או ההמלצה
 
   function surprise() {
-    const pool = suitable.length ? suitable : CATALOG.filter((g) => g.id !== "show");
+    const pool = suitable.length ? suitable : CATALOG.filter((g) => g.id !== "show" && !g.external);
     const pick = pool[Math.floor(Math.random() * pool.length)];
     onSelect(pick.id, config);
   }
