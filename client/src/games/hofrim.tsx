@@ -313,14 +313,16 @@ export default function HofrimView({ room, me, conn, hub }: GameViewProps) {
 
   /* ---- הלולאה ---- */
   useEffect(() => {
-    const cv = cvRef.current; if (!cv) return;
+    const cv0 = cvRef.current; if (!cv0) return;
+    const cv: HTMLCanvasElement = cv0;                 // מקבע את הצמצום גם בתוך הלולאה
     const ctx2 = cv.getContext("2d", { alpha: false })!;
     let raf = 0, last = 0, W = 0, H = 0, DPR = 1, digT = 0;
     const g = G.current;
 
     const resize = () => {
       DPR = Math.min(2, window.devicePixelRatio || 1);
-      W = cv.clientWidth; H = cv.clientHeight;
+      W = cv.clientWidth || window.innerWidth;
+      H = cv.clientHeight || window.innerHeight;
       cv.width = Math.floor(W * DPR); cv.height = Math.floor(H * DPR);
     };
     resize();
@@ -346,6 +348,8 @@ export default function HofrimView({ room, me, conn, hub }: GameViewProps) {
     function frame(ts: number) {
       raf = requestAnimationFrame(frame);
       if (!last) last = ts;
+      const wantW = cv.clientWidth || window.innerWidth, wantH = cv.clientHeight || window.innerHeight;
+      if (wantW && wantH && (Math.abs(wantW - W) > 1 || Math.abs(wantH - H) > 1)) resize();
       let dt = Math.min(0.05, (ts - last) / 1000); last = ts;
       if (g.stop > 0) { g.stop -= dt; dt *= 0.06; }
       if (!g.ready) { ctx2.setTransform(DPR, 0, 0, DPR, 0, 0); ctx2.fillStyle = "#0B0908"; ctx2.fillRect(0, 0, W, H); return; }
@@ -398,7 +402,7 @@ export default function HofrimView({ room, me, conn, hub }: GameViewProps) {
       g.cam.x = Math.max(0, Math.min(COLS * TS - W, g.cam.x)); g.cam.y = Math.max(-40, Math.min(ROWS * TS - H, g.cam.y));
 
       /* ציור */
-      if (ctx2.reset) ctx2.reset(); else { const el = cvRef.current; if (el) el.width = el.width; }
+      if (ctx2.reset) ctx2.reset(); else { cv.width = cv.width; }
       ctx2.setTransform(DPR, 0, 0, DPR, 0, 0);
       ctx2.fillStyle = "#0B0908"; ctx2.fillRect(0, 0, W, H);
       const sx = g.shake > 0 ? (Math.random() - 0.5) * g.shake : 0, sy = g.shake > 0 ? (Math.random() - 0.5) * g.shake : 0;
@@ -542,8 +546,8 @@ export default function HofrimView({ room, me, conn, hub }: GameViewProps) {
   const nearly = pct >= 85;
 
   return (
-    <div className="hf-wrap">
-      <canvas ref={cvRef} className="hf-cv" />
+    <div className="hf-wrap" style={{ position: "fixed", inset: 0, width: "100vw", height: "100dvh", zIndex: 60, background: "#0B0908", overflow: "hidden", touchAction: "none" }}>
+      <canvas ref={cvRef} className="hf-cv" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block" }} />
 
       {/* מד הצוות — מספר מוחלט, בלי דירוג */}
       <div className="hf-quota">

@@ -1,5 +1,5 @@
 /* ===== החופרים ⛏️ ===== */
-.hf-wrap{position:fixed; inset:0; background:#0B0908; overflow:hidden; touch-action:none; user-select:none;}
+.hf-wrap{position:fixed; inset:0; width:100vw; height:100dvh; z-index:60; background:#0B0908; overflow:hidden; touch-action:none; user-select:none;}
 .hf-cv{position:absolute; inset:0; width:100%; height:100%; display:block;}
 
 /* מד הצוות — מספר מוחלט וגדול, בלי דירוג ובלי מקום אחרון */
