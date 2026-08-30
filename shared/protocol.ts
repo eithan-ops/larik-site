@@ -385,12 +385,54 @@ export type WallServerMsg =
   | { a: "wl_over"; wave: number; bestWave: number; nearMiss?: string; mvp?: string; stats: Record<string, WallStats> }
   | { a: "wl_state"; wave: number; roles: Record<string, WallRole>; slots: Record<string, [number, number]>; wallHp: number; wallMax: number; phase: "setup" | "wave" | "breath" | "over"; tiers: Record<string, number> }; // rejoin
 
+
+/* ---------- החופרים ⛏️ ---------- */
+export interface HofrimCard { id: string; ic: string; t: string; d: string; b: string; wow: boolean }
+
+export type HofrimClientMsg =
+  | { a: "hf_dir"; dx: number; dy: number }        // כיוון מוחזק — נשלח רק כשהוא משתנה
+  | { a: "hf_call" }                               // 📣 קריאה לחברים
+  | { a: "hf_bomb" }
+  | { a: "hf_pick"; card: string };                // בחירה בדראפט
+
+export type HofrimServerMsg =
+  | { a: "hf_init"; seed: string; cols: number; rows: number; lift: number; players: string[] } // הזרע — הלקוח מייצר ממנו את אותה מפה
+  | { a: "hf_sync"; dug: number[]; bags: [number, number, number][]; mons: [number, string, number][] } // למצטרף חוזר
+  | { a: "hf_shift"; n: number; target: number; endsAt: number; of: number }
+  | { a: "hf_shiftend"; ok: boolean; partial: boolean; banked: number; target: number; misses: number }
+  | { a: "hf_quota" }                              // עמדנו במכסה — 3 שניות אחרונות
+  | { a: "hf_pos"; ps: [string, number, number, number, number][]; ms: [number, number, number][]; left: number; banked: number }
+  | { a: "hf_dig"; c: number; r: number; by: string; mat: number; lit: number }
+  | { a: "hf_item"; id: number; x: number; y: number; k: number }
+  | { a: "hf_take"; id: number; pid: string; bag: number; slots: number }
+  | { a: "hf_gone"; id: number }
+  | { a: "hf_bag"; id: number; c: number; y: number; st: number }          // 0 מנוחה · 1 מתנדנד · 2 נופל
+  | { a: "hf_bagland"; id: number; c: number; y: number; broke: number }
+  | { a: "hf_mon"; id: number; k: string; c: number; r: number; hp: number; max: number }
+  | { a: "hf_mhit"; id: number; hp: number; by?: string; k?: string; res?: number } // res=1 → 🛡️ חסין
+  | { a: "hf_mdie"; id: number; x: number; y: number; k: string }
+  | { a: "hf_chain"; x1: number; y1: number; x2: number; y2: number }
+  | { a: "hf_shot"; x: number; y: number; dx: number; dy: number; by: string }
+  | { a: "hf_hp"; pid: string; hp: number; max: number; why: string }
+  | { a: "hf_down"; pid: string }
+  | { a: "hf_up"; pid: string; hp: number }
+  | { a: "hf_bank"; pid: string; v: number; total: number; team: number; share?: string }
+  | { a: "hf_stats"; pow: number; slots: number; light: number; magnet: number; spd: number; bomb: number; xray: number; glow: number; level: number }
+  | { a: "hf_build"; pid: string; picks: string[]; level: number }
+  | { a: "hf_draft"; cards: HofrimCard[]; ms: number }
+  | { a: "hf_draftopen"; ids: string[] }
+  | { a: "hf_took"; pid: string; card: HofrimCard }
+  | { a: "hf_called"; pid: string; x: number; y: number; why: string }
+  | { a: "hf_bombset"; c: number; r: number; R: number; by: string }
+  | { a: "hf_boom"; c: number; r: number; R: number }
+  | { a: "hf_left"; pid: string };
+
 export type GameClientMsg = ForeheadClientMsg | PodsClientMsg | BombsClientMsg
   | ColorRulesClientMsg | SimonClientMsg | DeathTouchClientMsg | DemonsClientMsg | AliasClientMsg | TriviaClientMsg
-  | WhoMostClientMsg | ShowClientMsg | ImpostorClientMsg | ReactorClientMsg | WallClientMsg;
+  | WhoMostClientMsg | ShowClientMsg | ImpostorClientMsg | ReactorClientMsg | WallClientMsg | HofrimClientMsg;
 export type GameServerMsg = ForeheadServerMsg | PodsServerMsg | BombsServerMsg
   | ColorRulesServerMsg | SimonServerMsg | DeathTouchServerMsg | DemonsServerMsg | AliasServerMsg | TriviaServerMsg
-  | WhoMostServerMsg | ShowServerMsg | ImpostorServerMsg | ReactorServerMsg | WallServerMsg;
+  | WhoMostServerMsg | ShowServerMsg | ImpostorServerMsg | ReactorServerMsg | WallServerMsg | HofrimServerMsg;
 
 /* ---- קטלוג ---- */
 export interface GameMeta {
@@ -601,9 +643,8 @@ export const CATALOG: GameMeta[] = [
     name: "החופרים",
     icon: "⛏️",
     tagline: "חופרים למטה, מפילים שקי זהב על מפלצות, ובונים נשק משוגע.",
-    howTo: "בשלב הזה משחקים לבד — גרסת החברים בדרך. חופרים מנהרות בכיוון האגודל ואוספים גבישים וזהב. שק זהב מתנדנד שנייה לפני שהוא נופל — בורחים הצידה, והוא מוחץ כל מפלצת שמתחתיו. חוזרים למעלית להפקיד, וכל הפקדה מעלה רמה ופותחת שדרוג. ככל שיורדים עמוק יותר החומר קשה יותר והשלל שווה יותר.",
-    minPlayers: 1,
+    howTo: "חופרים מנהרות בכיוון האגודל ואוספים גבישים וזהב. שק זהב מתנדנד שנייה לפני שהוא נופל — בורחים הצידה, והוא מוחץ כל מפלצת שמתחתיו. חוזרים למעלית להפקיד, וכל הפקדה מעלה רמה ופותחת שדרוג. ככל שיורדים עמוק יותר החומר קשה יותר והשלל שווה יותר.",
+    minPlayers: 2,
     maxPlayers: 8,
-    external: "/hofrim",
   },
 ];

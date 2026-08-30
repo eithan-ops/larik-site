@@ -358,11 +358,11 @@ function ShareRow({ code }: { code: string }) {
 const CATEGORIES: { icon: string; name: string; ids: string[] }[] = [
   { icon: "🎉", name: "מסיבה", ids: ["whomost", "impostor", "alias", "forehead"] },
   { icon: "⚡", name: "אקשן", ids: ["colorrules", "pods", "demons"] },
-  { icon: "🤝", name: "ביחד נגד המכונה", ids: ["wall", "bombs", "simon"] },
+  { icon: "🤝", name: "ביחד נגד המכונה", ids: ["wall", "hofrim", "bombs", "simon"] },
   { icon: "🧠", name: "מוח", ids: ["trivia", "deathtouch"] },
 ];
 /* סדר ההמלצה של "המנחה" — הכי חברתיים קודם */
-const RECO_ORDER = ["impostor", "whomost", "alias", "wall", "bombs", "colorrules", "trivia", "forehead", "demons", "simon", "pods", "deathtouch"];
+const RECO_ORDER = ["impostor", "whomost", "alias", "wall", "hofrim", "bombs", "colorrules", "trivia", "forehead", "demons", "simon", "pods", "deathtouch"];
 
 function HostCatalog({ room, onSelect, onStart }: {
   room: RoomSnapshot;

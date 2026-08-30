@@ -16,6 +16,7 @@ import TriviaView from "./trivia";
 import WhoMostView from "./whomost";
 import ImpostorView from "./impostor";
 import WallView from "./wall";
+import HofrimView from "./hofrim";
 
 // GameHub עבר ל-lib/gamehub (משותף לאפליקציית המופע) — מייצאים מחדש לתאימות
 export { GameHub };
@@ -55,4 +56,5 @@ export const GAME_VIEWS: Record<string, ComponentType<GameViewProps>> = {
   // show — עבר לאפליקציית המופע הנפרדת (/s)
   impostor: ImpostorView,
   wall: WallView,
+  hofrim: HofrimView,
 };

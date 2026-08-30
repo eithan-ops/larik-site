@@ -8,6 +8,7 @@ import "@fontsource-variable/assistant";    // גוף הטקסט
 import "./styles.css";
 import "./tokens.css";     // הפלטה — חייב לבוא אחרי styles.css
 import "./stickers.css";   // שכבת המראה — חייבת לבוא אחרונה
+import "./hofrim.css";     // מסך החופרים (מסך מלא משלו)
 import { initAnalytics } from "./lib/analytics";
 
 initAnalytics();
