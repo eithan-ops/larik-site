@@ -84,6 +84,7 @@ interface Miner {
   bomb: number; bombR: number; bombPow: number; bombCd: number; alchemy: number;
   shotCd: number; level: number; xp: number; banked: number; picks: string[];
   digC: number; digR: number; callAt: number;
+  deep: number; depos: number; kills: number; digs: number; downs: number;
 }
 interface Mon { id: number; k: Kind; c: number; r: number; x: number; y: number; tc: number; tr: number; mv: boolean; hp: number; max: number; slow: number; burn: number; dot: number }
 interface Bag { id: number; c: number; y: number; st: 0 | 1 | 2; w: number; from: number }
@@ -139,6 +140,7 @@ export function createHofrim(ctx: GameCtx): GameInstance {
       bomb: 0, bombR: 1, bombPow: 6, bombCd: 0, alchemy: 0,
       shotCd: 0, level: 1, xp: 0, banked: 0, picks: [],
       digC: -1, digR: -1, callAt: 0,
+      deep: 3, depos: 0, kills: 0, digs: 0, downs: 0,
     };
   }
 
@@ -222,6 +224,7 @@ export function createHofrim(ctx: GameCtx): GameInstance {
     if (was === AIR || was === WALL || was === LIFT) return;
     grid[i] = AIR; prog[i] = 0; item[i] = 0;
     const m = miners.get(by);
+    if (m) m.digs++;
     if (m?.glow) lit[i] = 1;
     ctx.broadcast({ a: "hf_dig", c, r, by, mat: was, lit: m?.glow ? 1 : 0 });
     if (it) {
@@ -260,6 +263,7 @@ export function createHofrim(ctx: GameCtx): GameInstance {
     if (mo.hp <= 0) {
       const i = mons.indexOf(mo); if (i >= 0) mons.splice(i, 1);
       ctx.broadcast({ a: "hf_mdie", id: mo.id, x: Math.round(mo.x * 10) / 10, y: Math.round(mo.y * 10) / 10, k: mo.k });
+      if (m) m.kills++;
       if (rng() < 0.6) dropPick(mo.x + 0.5, mo.y + 0.5, 1);
       if (mo.k === "golem" || mo.k === "armo") dropPick(mo.x + 0.5, mo.y + 0.5, 0);
       if (m && m.chain > 0) chain(mo, m.chain, by);
@@ -281,7 +285,7 @@ export function createHofrim(ctx: GameCtx): GameInstance {
     m.hp--; m.inv = 1.4;
     ctx.broadcast({ a: "hf_hp", pid, hp: m.hp, max: m.maxhp, why });
     if (m.hp <= 0) {
-      m.down = 3; m.hp = 0;
+      m.down = 3; m.hp = 0; m.downs++;
       // התיק נשאר בשטח — כל אחד יכול לאסוף ולהציל את השלל
       if (m.bag > 0) {
         const per = 60 * depthMul(Math.round(m.y));                      // התיק נופל בערכו האמיתי — כזהב
@@ -326,6 +330,7 @@ export function createHofrim(ctx: GameCtx): GameInstance {
     if (m.bag <= 0) return;
     const v = Math.round(m.bagVal * m.depoMul);
     m.banked += v; banked += v; m.bag = 0; m.bagVal = 0;
+    m.depos++;
     m.xp += v;
     while (m.xp >= xpNeed(m.level)) { m.xp -= xpNeed(m.level); m.level++; }
     if (m.share) {
@@ -380,6 +385,7 @@ export function createHofrim(ctx: GameCtx): GameInstance {
         }
       } else if (!m.dx && !m.dy) { m.digC = -1; m.digR = -1; }
 
+      if (m.r > m.deep) m.deep = m.r;
       if (onLift(m)) deposit(pid, m);
 
       // ירי אוטומטי לאורך מנהרה פתוחה
@@ -523,7 +529,8 @@ export function createHofrim(ctx: GameCtx): GameInstance {
       title: won ? `⛏️ המכרה נכבש — ${banked.toLocaleString()} זהב` : "💥 המכרה קרס",
       winnerId: won ? best?.[0] : undefined,
       scores,
-      facts: Object.fromEntries([...miners.entries()].map(([pid, m]) => [pid, { points: m.banked }])),
+      facts: Object.fromEntries([...miners.entries()].map(([pid, m]) => [pid,
+        { points: m.banked, hfDeepest: m.deep, hfDeposits: m.depos, hfKills: m.kills, hfDigs: m.digs, hfDowns: m.downs }])),
     });
   }
 

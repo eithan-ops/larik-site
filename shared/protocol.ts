@@ -41,6 +41,11 @@ export interface PlayerFacts {
   impostorSafe?: number;    // המתחזה — כמה פעמים לא נחשף
   peeks?: number;           // על המצח — נתפס מציץ
   guessed?: number;         // על המצח — ניחש נכון
+  hfDeepest?: number;       // החופרים — השורה הכי עמוקה שהגיע אליה (מקס)
+  hfDeposits?: number;      // החופרים — כמה הפקדות במעלית
+  hfKills?: number;         // החופרים — מפלצות שחיסל
+  hfDigs?: number;          // החופרים — תאים ששבר
+  hfDowns?: number;         // החופרים — כמה פעמים נפל
 }
 
 /** התואר האישי שמופיע על כרטיס הסיום של השחקן */

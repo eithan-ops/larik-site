@@ -8,6 +8,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { HofrimServerMsg, HofrimCard } from "../../../shared/protocol";
 import type { GameViewProps } from "./registry";
+import { unlockIosAudio } from "../lib/unmute";
 import {
   HF_COLS as COLS, HF_ROWS as ROWS, HF_AIR as AIR, HF_VEIN as VEIN, HF_WALL as WALL, HF_LIFT as LIFT,
   HF_HARDNESS as HARDNESS, hfGenerate, hfIdx as idx,
@@ -85,6 +86,7 @@ export default function HofrimView({ room, me, conn, hub }: GameViewProps) {
   /* ---- סאונד ---- */
   const audio = useRef<{ ctx: AudioContext | null; buf: Record<string, AudioBuffer>; note: number; noteT: number }>({ ctx: null, buf: {}, note: 0, noteT: 0 });
   function aInit() {
+    unlockIosAudio();                     // אייפון: עוקף את מתג ההשתקה דרך ערוץ המדיה
     const ex = audio.current.ctx;
     if (ex) { if (ex.state === "suspended") ex.resume().catch(() => {}); return; }  // חוזרים מרקע/נעילה — מחיים
     try {
@@ -621,6 +623,31 @@ export default function HofrimView({ room, me, conn, hub }: GameViewProps) {
           ctx2.fill(); ctx2.stroke(); ctx2.restore(); ctx2.globalAlpha = 1;
           ctx2.font = "15px sans-serif"; ctx2.textAlign = "center"; ctx2.fillText("📣", W / 2, 80);
         }
+      }
+      // חיצי חברים — מי שמחוץ למסך מקבל חץ בצבע שלו על שפת המסך, עם שם ומרחק.
+      // בלי זה 8 שחקנים במפה של 46×110 הם 8 משחקי יחיד.
+      for (const [pid, o] of g.others.entries()) {
+        const fx2 = o.x * TS - g.cam.x + TS / 2, fy2 = o.y * TS - g.cam.y + TS / 2;
+        if (fx2 > -TS && fx2 < W + TS && fy2 > -TS && fy2 < H + TS) continue;
+        const col = PCOL[(g.players.findIndex((p) => p.id === pid) + 1) % PCOL.length];
+        const cx = W / 2, cy = H / 2, ddx2 = fx2 - cx, ddy2 = fy2 - cy;
+        const pad = 30;
+        const tX = ddx2 !== 0 ? ((ddx2 > 0 ? W - pad : pad) - cx) / ddx2 : Infinity;
+        const tY = ddy2 !== 0 ? ((ddy2 > 0 ? H - pad : pad) - cy) / ddy2 : Infinity;
+        const tt = Math.min(tX, tY);
+        const ex2 = cx + ddx2 * tt, ey2 = cy + ddy2 * tt;
+        const dist = Math.round(Math.hypot(o.x - m.x, o.y - m.y));
+        ctx2.save(); ctx2.translate(ex2, ey2); ctx2.rotate(Math.atan2(ddy2, ddx2));
+        ctx2.globalAlpha = o.down ? 0.5 : 0.9;
+        ctx2.fillStyle = col; ctx2.strokeStyle = "#000"; ctx2.lineWidth = 2;
+        ctx2.beginPath(); ctx2.moveTo(12, 0); ctx2.lineTo(-7, -7); ctx2.lineTo(-4, 0); ctx2.lineTo(-7, 7); ctx2.closePath();
+        ctx2.fill(); ctx2.stroke(); ctx2.restore();
+        const nm2 = (g.players.find((p) => p.id === pid)?.name ?? "").slice(0, 6);
+        const lbl = (o.down ? "💀 " : "") + nm2 + " · " + dist;
+        ctx2.font = "800 10px Assistant, sans-serif"; ctx2.textAlign = "center";
+        ctx2.fillStyle = "#000"; ctx2.fillText(lbl, ex2 + 1, ey2 + 18);
+        ctx2.fillStyle = col; ctx2.fillText(lbl, ex2, ey2 + 17);
+        ctx2.globalAlpha = 1;
       }
       if (joy.current.on) {
         ctx2.strokeStyle = "rgba(243,231,211,.35)"; ctx2.lineWidth = 3;

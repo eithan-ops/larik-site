@@ -21,6 +21,7 @@ type MergePolicy = "sum" | "min" | "max";
 const FACT_MERGE: Partial<Record<keyof PlayerFacts, MergePolicy>> = {
   bestReactionMs: "min",
   bestStreak: "max",
+  hfDeepest: "max",
 };
 
 /** ממזג עובדות של משחק בודד לתוך הצבירה של הערב */
@@ -204,6 +205,56 @@ const CATALOG: AwardDef[] = [
       const g = f.games ?? 0;
       if (g < 2 || (f.impostorRounds ?? 0) > 0 || (f.wins ?? 0) > 0) return null;
       return { score: 320, detail: "תמיד חשוד, אף פעם אשם", headline: "לא עשה כלום, שילם על הכול" };
+    },
+  },
+  {
+    id: "hf_deep", emoji: "🕳️", title: "שיאן העומק", priority: 79,
+    test: (f, all) => {
+      const d = f.hfDeepest ?? 0;
+      if (d < 30) return null;
+      const best = Math.max(...all.map((x) => x.hfDeepest ?? 0));
+      if (d < best) return null;
+      return { score: 600 + d, detail: `שורה ${d} במכרה`, headline: "ירד לאן שאף אחד לא העז" };
+    },
+  },
+  {
+    id: "hf_banker", emoji: "🏦", title: "עמוד התווך", priority: 77,
+    test: (f, all) => {
+      const n = f.hfDeposits ?? 0;
+      if (n < 3) return null;
+      const best = Math.max(...all.map((x) => x.hfDeposits ?? 0));
+      if (n < best) return null;
+      return { score: 580 + n * 5, detail: `${n} הפקדות במעלית`, headline: "המכסה עברה בזכותו" };
+    },
+  },
+  {
+    id: "hf_hunter", emoji: "⚔️", title: "צייד המכרה", priority: 75,
+    test: (f, all) => {
+      const n = f.hfKills ?? 0;
+      if (n < 5) return null;
+      const best = Math.max(...all.map((x) => x.hfKills ?? 0));
+      if (n < best) return null;
+      return { score: 560 + n * 4, detail: `${n} מפלצות`, headline: "שמר על המנהרות נקיות" };
+    },
+  },
+  {
+    id: "hf_pick", emoji: "⛏️", title: "מלך המכוש", priority: 73,
+    test: (f, all) => {
+      const n = f.hfDigs ?? 0;
+      if (n < 120) return null;
+      const best = Math.max(...all.map((x) => x.hfDigs ?? 0));
+      if (n < best) return null;
+      return { score: 540 + Math.min(300, Math.round(n / 2)), detail: `${n} סלעים נשברו`, headline: "לא הניח את המכוש לרגע" };
+    },
+  },
+  {
+    id: "hf_cat", emoji: "😼", title: "תשע נשמות", priority: 58,
+    test: (f, all) => {
+      const n = f.hfDowns ?? 0;
+      if (n < 2) return null;
+      const worst = Math.max(...all.map((x) => x.hfDowns ?? 0));
+      if (n < worst) return null;
+      return { score: 300 + n * 10, detail: `נפל ${times(n)} — וקם`, headline: "המכרה ניסה. הוא חזר" };
     },
   },
   {
