@@ -61,6 +61,7 @@ export default function HofrimView({ room, me, conn, hub }: GameViewProps) {
     chips: [] as { x: number; y: number; t: number }[],
     fuses: [] as { c: number; r: number; R: number; t: number }[],
     ping: null as { x: number; y: number; col: string; t: number } | null,
+    pending: [] as { i: number; mat: number; it: number; t: number }[],   // שבירות מנובאות שמחכות לאישור השרת
     stats: { pow: 2, slots: 8, light: 5.2, magnet: 1.3, spd: 1, bomb: 0, xray: 0, glow: 0, level: 1 },
     cam: { x: 0, y: 0 }, dir: { x: 0, y: 0 }, digPunch: 0, shake: 0, stop: 0, flash: 0, flashCol: "#fff",
     call: 0, gold: new Map<string, number>(), builds: new Map<string, string[]>(),
@@ -130,7 +131,7 @@ export default function HofrimView({ room, me, conn, hub }: GameViewProps) {
           const mine = hfGenerate(d.seed);
           // init חוזר (reconnect בלי טעינת דף) — מנקים הכל לפני בנייה מחדש
           g.mons.clear(); g.items.clear(); g.bags.clear(); g.others.clear();
-          g.booms.length = 0; g.flies.length = 0; g.shots.length = 0; g.parts.length = 0; g.chips.length = 0; g.pops.length = 0; g.fuses.length = 0;
+          g.booms.length = 0; g.flies.length = 0; g.shots.length = 0; g.parts.length = 0; g.chips.length = 0; g.pops.length = 0; g.fuses.length = 0; g.pending.length = 0;
           g.prog.fill(0); g.lit.fill(0);
           g.grid = new Uint8Array(mine.grid); g.item = new Uint8Array(mine.item); g.liftC = d.lift; g.ready = true;
           for (const b of mine.bags) g.bags.set(b.id, { id: b.id, c: b.c, y: b.r, st: 0, vy: 0 });
@@ -150,6 +151,8 @@ export default function HofrimView({ room, me, conn, hub }: GameViewProps) {
         case "hf_dig": {
           const i = idx(d.c, d.r);
           const predicted = d.by === me && g.grid[i] === AIR;   // נשבר כבר בניבוי — האפקט הורגש
+          const pi2 = g.pending.findIndex((p) => p.i === i);
+          if (pi2 >= 0) g.pending.splice(pi2, 1);                // השרת אישר — הניבוי סופי
           g.grid[i] = AIR; g.item[i] = 0; g.prog[i] = 0;
           if (d.lit) g.lit[i] = 1;
           if (predicted) break;
@@ -422,6 +425,7 @@ export default function HofrimView({ room, me, conn, hub }: GameViewProps) {
               // וזה בדיוק ה"דילאי" שמרגישים. השרת לעולם לא איטי מאיתנו (כוחו שווה
               // או גדול יותר בזכות חבר שחופר איתנו), ולכן ניבוי כזה לא סוטה קדימה.
               if (g.prog[i] >= 1) {
+                g.pending.push({ i, mat: g.grid[i], it: g.item[i], t: 0 });   // הפיך עד אישור השרת
                 g.grid[i] = AIR; g.item[i] = 0; g.prog[i] = 0;
                 burst(g, nc + 0.5, nr + 0.5, MAT[h >= 6 ? 5 : h >= 4 ? 3 : 1]?.col ?? "#888", 6);
                 play("break", 0.4);
@@ -450,6 +454,13 @@ export default function HofrimView({ room, me, conn, hub }: GameViewProps) {
       for (let i = g.booms.length - 1; i >= 0; i--) { g.booms[i].t += dt; if (g.booms[i].t > 0.4) g.booms.splice(i, 1); }
       for (let i = g.chips.length - 1; i >= 0; i--) { g.chips[i].t += dt; if (g.chips[i].t > 0.22) g.chips.splice(i, 1); }
       for (let i = g.fuses.length - 1; i >= 0; i--) { g.fuses[i].t += dt; if (g.fuses[i].t > 1.3) g.fuses.splice(i, 1); }
+      for (let i = g.pending.length - 1; i >= 0; i--) {
+        const p = g.pending[i]; p.t += dt;
+        if (p.t > 1.6) {                                        // השרת לא אישר — מחזירים את התא (כמעט גמור)
+          if (g.grid[p.i] === AIR) { g.grid[p.i] = p.mat; g.item[p.i] = p.it; g.prog[p.i] = 0.9; }
+          g.pending.splice(i, 1);
+        }
+      }
       if (g.ping) { g.ping.t -= dt; if (g.ping.t <= 0) g.ping = null; }
       for (let i = g.flies.length - 1; i >= 0; i--) { g.flies[i].t += dt; if (g.flies[i].t > 0.42) g.flies.splice(i, 1); }
       for (let i = g.pops.length - 1; i >= 0; i--) { g.pops[i].l -= dt; g.pops[i].y -= dt * 1.4; if (g.pops[i].l <= 0) g.pops.splice(i, 1); }
@@ -672,7 +683,7 @@ export default function HofrimView({ room, me, conn, hub }: GameViewProps) {
       {/* מד הצוות — מספר מוחלט, בלי דירוג */}
       <div className="hf-quota">
         <div className="hf-qbar"><div className="hf-qfill" style={{ width: pct + "%" }} /></div>
-        <b>{nearly ? `עוד ${(hud.target - hud.banked).toLocaleString()}` : `${hud.banked.toLocaleString()} / ${hud.target.toLocaleString()}`}</b>
+        <b>{nearly ? `עוד ${(hud.target - hud.banked).toLocaleString()}` : <span dir="ltr">{`${hud.banked.toLocaleString()} / ${hud.target.toLocaleString()}`}</span>}</b>
         <span>משמרת {hud.shift}/{hud.of} · {Math.floor(hud.left / 60)}:{String(hud.left % 60).padStart(2, "0")}</span>
       </div>
 

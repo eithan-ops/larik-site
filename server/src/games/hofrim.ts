@@ -562,7 +562,17 @@ export function createHofrim(ctx: GameCtx): GameInstance {
     onMessage(pid: string, d: GameClientMsg) {
       const m = miners.get(pid);
       const msg = d as { a: string; dx?: number; dy?: number; card?: string };
-      if (msg.a === "hf_dir" && m) { m.dx = Math.sign(msg.dx ?? 0); m.dy = Math.sign(msg.dy ?? 0); }
+      if (msg.a === "hf_dir" && m) {
+        const ndx = Math.sign(msg.dx ?? 0), ndy = Math.sign(msg.dy ?? 0);
+        // סגירת חוב: הלקוח מנבא שבירה מעט לפני השרת (לטנציה). אם עזב את
+        // הכיוון כשהתא כמעט גמור — משלימים את השבירה, אחרת התא נשאר פתוח
+        // רק אצל החופר וסגור אצל כל השאר.
+        if (m.digC >= 0 && (ndx !== m.dx || ndy !== m.dy)) {
+          const di = idx(m.digC, m.digR);
+          if (grid[di] !== AIR && HARDNESS[grid[di]] < 999 && prog[di] >= 0.5) breakTile(m.digC, m.digR, pid);
+        }
+        m.dx = ndx; m.dy = ndy;
+      }
       else if (msg.a === "hf_pick" && msg.card) choose(pid, msg.card);
       else if (msg.a === "hf_call" && m) {
         if (ctx.now() - m.callAt < 8000) return;
