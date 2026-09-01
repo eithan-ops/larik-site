@@ -18,7 +18,7 @@ const waveCount = (w: number, n: number) => Math.round((8 + 6 * w) * Math.sqrt(n
 const waveDuration = (w: number) => Math.min(45_000, 28_000 + w * 2500);
 const tierOf = (level: number) => 1 + Math.floor(level / 3);
 const tierMult = (tier: number) => 1 + 0.45 * (tier - 1);
-const xpNeed = (lvl: number) => Math.round(10 * Math.pow(1.16, lvl - 1));
+const xpNeed = (lvl: number) => Math.round(14 * Math.pow(1.2, lvl - 1)); // מסונכרן עם השרת (1.9)
 const xpPerKill = (baseXp: number, w: number, n: number) =>
   baseXp * (1 + 0.12 * (w - 1)) * Math.sqrt(n / 2);
 const wallMaxOf = (n: number) => 600 + 190 * n;
@@ -26,9 +26,16 @@ const WAVE_HEAL = 0.10;
 /* ---- כפתורי הכיול. TUNE=1 מריץ סריקה על השניים הראשונים ---- */
 const K_DIV = Number(process.env.K_DIV ?? 2.5);          // כל כמה גלים נוספת דחיפה
 const PUSH_CAP = Number(process.env.PUSH_CAP ?? 0.20); // חלק מהחומה שדחיפה שהוחמצה מורידה
-const PER_PLAYER_CAP = 1.15;                           // כמה דחיפות שחקן יחיד יכול להחזיק
+/* ⚠️⚠️ יושרת המדידה (תוקן 1.9.2026): PER_PLAYER_CAP — "שחקן מחזיק ~דחיפה אחת" —
+ * היה קבוע 1.15 שקיים *רק בסימולטור*. בשרת אין שום אכיפת כיסוי: קשת/תותחן/מקלען
+ * מכוונים לכל נקודה מיידית, וטייס עם AoE מכסה הכול. ברירת המחדל עכשיו Infinity —
+ * בלי התקרה הפיקטיבית השער היחיד שנשאר הוא DPS גולמי, והסולם משתטח (+9 גלים מעל
+ * היעד בסולו/זוג). להחזיר תקרה (PER_PLAYER_CAP=1.15) רק כשנבנה מנגנון קשב/כיסוי
+ * אמיתי בשרת (חסינויות, מד דלק). וזכרו: ROLE_DPS.heli=65 קבוע מנמיך מאוד את
+ * הטייס המאוחר (רדיוס² ומטרות בלי תקרה) — בפועל סולו-הליקופטר הגיע רחוק מהנמדד. */
+const PER_PLAYER_CAP = Number(process.env.PER_PLAYER_CAP ?? Infinity);
 const pushesOf = (w: number) => Math.max(1, Math.min(14, 1 + Math.floor((w - 2) / K_DIV)));
-const waveDurationNew = (w: number) => Number(process.env.DUR0 ?? 6000) + Number(process.env.DUR ?? 4200) * pushesOf(w);
+const waveDurationNew = (w: number) => Number(process.env.DUR0 ?? 18_000) + Number(process.env.DUR ?? 4200) * pushesOf(w); // DUR0 מסונכרן עם השרת
 const firstWaveOf = (n: number) => 1 + Math.floor(2.4 * Math.log(Math.max(1, n)));
 
 /** השקית הקפואה מגל 6 — ממוצעי חיים / נזק-לחומה / XP */
@@ -106,7 +113,10 @@ function simulate(n: number, roles: Role[], power = 1): Sim {
 /* ---- דוח ---- */
 const TARGET: Record<number, number> = { 1: 8, 2: 12, 3: 15, 4: 18, 6: 25, 8: 30, 10: 35 };
 const rolesFor = (n: number): Role[] => {
-  const order: Role[] = ["archer", "mg", "cannon", "heli"];
+  // ⚠️ הליקופטר ראשון: קודם הסדר התחיל בקשת, אז "תקרת הסולו" נמדדה עם קשת —
+  // בזמן שכל שחקן סולו אמיתי לוקח את התפקיד החזק. איתן הגיע לגל 23 עם הליקופטר
+  // בזמן שהסימולטור טען שסולו נעצר ב-8. מודדים את המקרה החזק, לא את הנוח.
+  const order: Role[] = ["heli", "archer", "mg", "cannon"];
   return Array.from({ length: Math.max(1, n) }, (_, i) => order[i % 4]);
 };
 

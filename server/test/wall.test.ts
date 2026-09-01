@@ -101,8 +101,11 @@ async function testWall() {
   const heroMsgs = game("p1", "wl_hero") as any[];
   const fellAt = heroMsgs.findIndex((m) => m.down === true);
   if (fellAt >= 0) {
-    const revived = heroMsgs.slice(fellAt + 1).some((m) => m.down === false && m.hp > 0);
-    check("גיבור שנפל קם בחזרה (ולא נתקע מת עד סוף הריצה)", revived);
+    const reviveMsg = heroMsgs.slice(fellAt + 1).find((m) => m.down === false && m.hp > 0);
+    check("גיבור שנפל קם בחזרה (ולא נתקע מת עד סוף הריצה)", !!reviveMsg);
+    // A7: הקמה היא *לא* ריפוי מלא (50% בטיק, 60% בסוף גל) — קודם מוות היה
+    // ריפוי חינם ולטייס פצוע היה עדיף למות בכוונה.
+    if (reviveMsg) check("ההקמה אינה ריפוי מלא", reviveMsg.hp <= Math.round(reviveMsg.max * 0.6) + 1);
   } else {
     console.log("  ~ הגיבור לא נפל בגל הזה — בדיקת ההקמה לא נבחנה");
   }
@@ -248,7 +251,9 @@ async function testDigger() {
   ];
   const bot = setInterval(() => {
     for (const h of game("d1", "wl_hit") as any[]) if (h.hp <= 0) killed.add(h.id);
-    const live = (game("d1", "wl_spawn") as any[]).filter((e) => !killed.has(e.id));
+    // ⚠️ לא יורים על מחפרים לפני שצללו: מאז רמות-הפתיחה (A9) הבוטים חזקים מספיק
+    // להרוג אותם לפני y=560 — ואז אין אף צלילה והבדיקה לא בודקת כלום.
+    const live = (game("d1", "wl_spawn") as any[]).filter((e) => !killed.has(e.id) && e.type !== "digger");
     live.slice(0, 8).forEach((e) => {
       const [x, y] = posOf(e, room.now());
       if (y < 60) return;

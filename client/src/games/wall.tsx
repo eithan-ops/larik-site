@@ -144,7 +144,6 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
   const viewWRef = useRef(VIEW_W);
   const dbgTick = useRef(0);
   const camTopRef = useRef(320);
-  const lunges = useRef(new Map<string, { t0: number; dir: number }>()); // זינוק החלוץ בהנפה
   const joyRef = useRef({ active: false, ox: 0, oy: 0, kx: 0, ky: 0 }); // ג'ויסטיק צף (מסך)
   const lastAutoSwing = useRef(0);
   const lastBoomSfx = useRef(0);   // מגביל קול/רטט של פיצוצים — ההליקופטר מפוצץ עשרות פעמים בשנייה
@@ -171,7 +170,6 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
   const aimRef = useRef<{ tx: number; ty: number; power: number } | null>(null); // קשת/תותחן
   const heat = useRef(0);
   const firing = useRef(false);
-  const shielding = useRef(false);
   const lastPosSend = useRef(0);
   const lastAimSend = useRef(0);
   const cannonReady = useRef(0);
@@ -206,6 +204,10 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
       motes: n("xp"),
     };
   };
+
+  /** משחזר את mods.range של השרת ממספר בחירות 📏 טווח — אותה נוסחת amp
+   *  (תשואה פוחתת ‎1+0.12·0.88^(k-1) לעותק). משמש לצייר את קרן המקלען ברוחב האמיתי. */
+  const rangeMulOf = (k: number) => { let m2 = 1; for (let i = 1; i <= k; i++) m2 *= 1 + 0.12 * Math.pow(0.88, i - 1); return m2; };
 
   const myRole = (): WallRole => rolesRef.current[me] ?? "heli";
   const myHero = () => heroes.current.get(me);
@@ -286,11 +288,15 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
           }
           if (m.hp <= 0) {
             e.deadAt = conn.serverNow();
-            fxs.current.push({ kind: "spark", x: ex, y: ey, t0: performance.now(), color: m.by === me ? "#ffce3c" : "#fff" });
-            // צליל-הריגה אישי: פיץ' לפי השחקן — כולם שומעים מי קוטל 🎵
-            const ki = room.players.findIndex((p) => p.id === m.by);
-            Sfx.killNote(ki < 0 ? 0 : ki, m.by === me);
-            if (m.by === me) vibrate(20);
+            // ⚠️ by ריק = ניקוי מערכתי (סוף גל / רשת ביטחון), לא הריגה של שחקן.
+            // בלי הסינון, סוף גל עם 30 שורדים ניגן 30 צלילי-הריגה באותו פריים.
+            if (m.by) {
+              fxs.current.push({ kind: "spark", x: ex, y: ey, t0: performance.now(), color: m.by === me ? "#ffce3c" : "#fff" });
+              // צליל-הריגה אישי: פיץ' לפי השחקן — כולם שומעים מי קוטל 🎵
+              const ki = room.players.findIndex((p) => p.id === m.by);
+              Sfx.killNote(ki < 0 ? 0 : ki, m.by === me);
+              if (m.by === me) vibrate(20);
+            }
             window.setTimeout(() => enemies.current.delete(m.id), 400);
           } else if (m.crit && m.by === me) {
             fxs.current.push({ kind: "spark", x: ex, y: ey, t0: performance.now(), color: "#ff5c5c" });
@@ -488,7 +494,7 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
       const r0 = myRole();
       const inWave = phaseRef.current === "wave" && !downRef.current;
       // חלוץ: תנועה בג'ויסטיק
-      if (r0 === "heli" && inWave && joyRef.current.active && !shielding.current) {
+      if (r0 === "heli" && inWave && joyRef.current.active) {
         const j = joyRef.current;
         const dx = j.kx - j.ox, dy = j.ky - j.oy;
         const d = Math.hypot(dx, dy);
@@ -522,7 +528,11 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
         const h2 = myHero();
         projs.current.push({
           kind: "arrow", fx: h2?.slot[0] ?? 500, fy: h2?.slot[1] ?? WALL_Y + 60, tx: a.tx, ty: a.ty, t0: pn,
-          T: 280 + Math.hypot(a.tx - (h2?.slot[0] ?? 500), a.ty - (h2?.slot[1] ?? 0)) * 0.35,
+          // ⚠️ אותה נוסחת זמן-טיסה כמו בשרת (wl_shot). כאן נשארה הנוסחה הישנה
+          // (280+dist·0.35) אחרי שהשרת קוצר ל-120+dist·0.14 — והפגיעה קפצה
+          // על האויב לפני שהחץ המצויר הגיע אליו. הלקוח מסנן wl_arrow של עצמו,
+          // אז זו התחזית היחידה שהקשת רואה.
+          T: 120 + Math.hypot(a.tx - (h2?.slot[0] ?? 500), a.ty - (h2?.slot[1] ?? 0)) * 0.14,
           fire: (h2?.tier ?? 1) >= 2, by: me,
         });
         Sfx.tick(); vibrate(12);
@@ -680,17 +690,8 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
       // הנשק גדל עם הדרגה — לכל התפקידים, כולל החלוץ והקשת שעד היום לא השתנו בכלל
       const tg2 = Math.min(6, hh.tier);
       const size = role === "cannon" ? 95 + tg2 * 12 : role === "mg" ? 85 + tg2 * 8 : 72 + (tg2 - 1) * 5;
-      // זינוק בהנפת חרב
-      let hx = hh.x, hy = hh.y, lungeRot = 0;
-      const lg = lunges.current.get(pid);
-      if (lg) {
-        const lf = (pnow - lg.t0) / 220;
-        if (lf < 1) {
-          const k = Math.sin(lf * Math.PI) * 30;
-          hx += Math.cos(lg.dir) * k; hy += Math.sin(lg.dir) * k;
-          lungeRot = Math.sin(lf * Math.PI) * 0.28 * (Math.cos(lg.dir) >= 0 ? 1 : -1);
-        } else lunges.current.delete(pid);
-      }
+      // (זינוק-החרב של החלוץ הוסר יחד עם התפקיד — ההליקופטר לא מזנק)
+      const hx = hh.x, hy = hh.y;
       ctx.globalAlpha = hh.down ? 0.35 : 1;
       // צל מגע + טבעת בצבע התפקיד (על דשא בהיר טבעת קוראת טוב מהילה מלאה)
       ctx.save();
@@ -764,13 +765,7 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
         ctx.globalCompositeOperation = "source-over";
       }
       if (im.complete && im.naturalWidth) {
-        if (lungeRot !== 0) {
-          ctx.save(); ctx.translate(wx(hx), wy(hy)); ctx.rotate(lungeRot);
-          ctx.drawImage(im, -size / 2 * scale, -size / 2 * scale, size * scale, size * scale);
-          ctx.restore();
-        } else {
-          ctx.drawImage(im, wx(hx - size / 2), wy(hy - size / 2), size * scale, size * scale);
-        }
+        ctx.drawImage(im, wx(hx - size / 2), wy(hy - size / 2), size * scale, size * scale);
       } else {
         ctx.font = `${28 * scale}px sans-serif`; ctx.textAlign = "center";
         ctx.fillText(ROLE_ICON[role], wx(hx), wy(hy));
@@ -862,11 +857,6 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
         ctx.globalCompositeOperation = "source-over";
       }
       ctx.globalAlpha = 1;
-      // מגן פעיל
-      if (mine && shielding.current) {
-        ctx.strokeStyle = "#ffffffcc"; ctx.lineWidth = 3;
-        ctx.beginPath(); ctx.arc(wx(hx), wy(hy), size * 0.55 * scale, 0, 7); ctx.stroke();
-      }
       // 🏷️ שבב הבנייה — שתי התכונות החזקות + כתר לאבולוציה. זה מה שמייצר קנאה.
       if (hv.top.length) {
         const chip = (hv.evo ? "👑" : "") + hv.top.slice(0, 2).map((k) => TRAIT_EMOJI[k]).join("");
@@ -897,7 +887,10 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
       const colC = sv.color ?? "#5c8aff";
       // קו הירי שהשרת באמת מכסה: רצועה צרה מהקנה אל הכוונת (לא מניפה)
       const ang = Math.atan2(ay - my, ax - mx);
-      const halfW = 46 * (1 + 0.06 * sv.total);   // תואם לשרת: 46 * mods.range
+      // ⚠️ תואם לשרת *באמת*: 46·mods.range. קודם צוירה ‎46·(1+0.06·סך־תכונות) —
+      // תכונות לא משנות רוחב בשרת, וקלף 📏 טווח (שכן משנה) לא צויר. התוצאה:
+      // מקלען עם טווח פגע הרבה מחוץ לקרן, ומקלען עם תכונות ראה קרן שחציה לא פוגע.
+      const halfW = 46 * rangeMulOf(sv.reach);
       const reach = Math.hypot(W, WALL_Y);        // עד קצה השדה — הקו לא נחתך באמצע
       ctx.save();
       ctx.translate(wx(mx), wy(my));
@@ -1351,7 +1344,7 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
       lastAutoShot.current = 0;
     } else if (role === "cannon") {
       aimRef.current = { tx: wx0, ty: Math.min(wy0, WALL_Y - 60), power: 0.7 };
-    } else if (role === "heli" && !shielding.current) {
+    } else if (role === "heli") {
       // ג'ויסטיק צף: הבסיס נולד איפה שנגעת
       joyRef.current = { active: true, ox: e.clientX, oy: e.clientY, kx: e.clientX, ky: e.clientY };
     }

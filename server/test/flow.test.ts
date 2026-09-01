@@ -136,7 +136,10 @@ async function testWall() {
   room.onMessage("w1", { t: "game", d: { a: "wl_go" } });
   await sleep(3600);
   const wv = allGame("w1", "wl_wave").at(-1);
-  check("גל 1 נפתח (cue)", wv?.t === "cue" && wv.d.wave === 1 && wv.d.wallHp > 0);
+  // גל הפתיחה תלוי בגודל הקבוצה (1+floor(2.4·ln(n)) — 4 שחקנים פותחים בגל 4).
+  // הציפייה הישנה "גל 1" התיישנה כשנכנסה עקומת הקושי, והבדיקה נכשלה מאז בשקט.
+  const expWave = 1 + Math.floor(2.4 * Math.log(4));
+  check("גל הפתיחה נפתח (cue)", wv?.t === "cue" && wv.d.wave === expWave && wv.d.wallHp > 0);
   await sleep(2500);
   const sp = allGame("w1", "wl_spawn");
   check("אויבים נולדים", sp.length >= 1);

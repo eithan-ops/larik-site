@@ -131,6 +131,7 @@ interface Hero {
   evos: TraitId[];
   momoUntil: number; momoStacks: number; // מומנטום פעיל
   sentryUsed: boolean;
+  healSec: number; healAcc: number; // תקרת ריפוי-לשנייה (ערפד/גזילת-חיים)
   picks: Record<string, number>;
   // מקלען
   firing: boolean; aimX: number; aimY: number; heat: number; jamUntil: number; tracerRamp?: number;
@@ -367,7 +368,10 @@ export function createWall(ctx: GameCtx): GameInstance {
       ctx.timer(delay, () => { if (token === t && phase === "wave") spawn(type, t, p, x0); else spawnsLeft--; });
     }
     lastSpawnRef = lastSpawnAt;
-    if (w % 5 === 0) ctx.timer(at - now() + duration * 0.35, () => { if (token === t && phase === "wave") spawn("boss", t); else spawnsLeft--; });
+    // הבוס מקבל "דחיפה" משלו (אינדקס k, מעבר לדחיפות הרגילות 0..k-1) — בלעדיה
+    // hurtWall שלו לא חסום בכלל: 30dps × עד 12 שניות על החומה = 360 נזק חופשי
+    // גם כשכל שאר הדחיפות מוצו. עכשיו גם הוא תחת תקרת ה-20%.
+    if (w % 5 === 0) ctx.timer(at - now() + duration * 0.35, () => { if (token === t && phase === "wave") spawn("boss", t, k); else spawnsLeft--; });
     // טיק — עמיד לשגיאות: חריגה בפריים אחד לעולם לא מקפיאה את המשחק
     ctx.timer(at - now(), function tick() {
       if (token !== t || phase !== "wave") return;
@@ -476,7 +480,7 @@ export function createWall(ctx: GameCtx): GameInstance {
               if (h.mods.sentry > 0 && !h.sentryUsed) {
                 h.sentryUsed = true; // 🎖️ המוצב ספג — הבזק במקום נזק
                 ctx.broadcast({ a: "wl_boomfx", x: Math.round(h.x), y: Math.round(h.y), r: 50 });
-              } else hurtHero(e.target!, 38);
+              } else hurtHero(e.target!, Math.round(30 * hpScale(wave) ** 0.22)); // מסקייל כמו הנג"מ: 30 בגל 1 → ~58 בגל 23. קודם 38 קבוע — בגל מאוחר הצלף היה בדיחה
             }
             e.sniperFireAt = tn + 4000; // טוען שוב
           }
@@ -601,8 +605,10 @@ export function createWall(ctx: GameCtx): GameInstance {
     }
   }
 
-  /** מקים גיבור שנפל (בטיק או בסוף גל) */
-  function reviveHero(pid: string, h: Hero, hpFrac = 1) {
+  /** מקים גיבור שנפל (בטיק או בסוף גל).
+   *  ⚠️ ברירת המחדל 50%, לא 100% — הקמה מלאה הפכה מוות לריפוי חינם: לטייס פצוע
+   *  היה עדיף *למות בכוונה* ולחזור מלא אחרי 3.5 שניות. (בסוף גל קמים על 60%.) */
+  function reviveHero(pid: string, h: Hero, hpFrac = 0.5) {
     h.down = false;
     h.hp = Math.max(1, Math.round(h.max * hpFrac));
     if (h.role === "heli") { h.x = GATE_X; h.y = 1180; }
@@ -782,6 +788,19 @@ export function createWall(ctx: GameCtx): GameInstance {
     setPath(e, ex, ey, "walk", e.fullSpeed * mul);
   }
 
+  /** ריפוי מהריגות/פגיעות — תחת תקרה של 6% מה-max לשנייה.
+   *  בלי התקרה, ערפד (2·ערימות להריגה) על AoE שקוטל 15-25 אויבים בשנייה
+   *  = ‎+50-100 חיים לשנייה — שום איום על הטייס לא שורד את זה, והוא בן-אלמוות. */
+  function healHero(h: Hero, amt: number): number {
+    const sec = Math.floor(now() / 1000);
+    if (h.healSec !== sec) { h.healSec = sec; h.healAcc = 0; }
+    const a = Math.min(amt, Math.max(0, 0.06 * h.max - h.healAcc));
+    if (a <= 0) return 0;
+    h.healAcc += a;
+    h.hp = Math.min(h.max, h.hp + a);
+    return a;
+  }
+
   function damageEnemy(e: Enemy, dmg: number, by: string, crit = false, kind: HitKind = "hit", depth = 0) {
     if (!enemies.has(e.id)) return;
     const h = heroes.get(by);
@@ -789,7 +808,7 @@ export function createWall(ctx: GameCtx): GameInstance {
     if (h && kind === "hit" && rnd() < h.mods.crit) { dmg *= 2; crit = true; }
     e.hp -= dmg;
     st(by).dmg += dmg;
-    if (h?.mods.lifesteal && h.role === "heli" && !h.down) h.hp = Math.min(h.max, h.hp + 3 * h.mods.lifesteal);
+    if (h?.mods.lifesteal && h.role === "heli" && !h.down) healHero(h, 3 * h.mods.lifesteal);
 
     // ---- תכונות שנדלקות על פגיעה ישירה ----
     if (h && kind === "hit" && depth < 2) {
@@ -853,8 +872,7 @@ export function createWall(ctx: GameCtx): GameInstance {
           h.momoStacks = Math.min(12, (now() < h.momoUntil ? h.momoStacks : 0) + h.mods.momentum);
           h.momoUntil = now() + 4000;
         }
-        if (t.vamp > 0 && !h.down) {
-          h.hp = Math.min(h.max, h.hp + 2 * t.vamp * evo("vamp"));
+        if (t.vamp > 0 && !h.down && healHero(h, 2 * t.vamp * evo("vamp")) > 0) {
           ctx.broadcast({ a: "wl_hero", pid: by, hp: Math.round(h.hp), max: h.max, down: false });
         }
         if (t.blast > 0 && depth < 2) {
@@ -904,9 +922,11 @@ export function createWall(ctx: GameCtx): GameInstance {
     if (!h) return;
     ctx.sendTo(pid, { a: "wl_mods", rate: h.mods.rate, speed: h.mods.speed });
   }
-  /** עקומה מתונה (1.16 במקום 1.35): בריצת ערב מגיעים לרמה ~20 במקום ~9,
-   *  כלומר פי 2 בחירות שדרוג — בלי זה אין מספיק ערימות בשביל שהתכונות יורגשו. */
-  const xpNeed = (lvl: number) => Math.round(10 * Math.pow(1.16, lvl - 1));
+  /** עקומת ה-XP. ‎10·1.16 הקודם נתן מבול: סולו סיים את גל 1 ברמה 5 — ארבעה
+   *  חלונות דראפט ב-22 שניות, בזמן שהוא אמור ללמוד לטוס — ורמה 20 עד גל 6.
+   *  ‎14·1.20 נותן ~5 דראפטים עד גל 3 (במקום 11) ועדיין ~20 בריצת ערב —
+   *  היעד שהוגדר במנוע השדרוגים. */
+  const xpNeed = (lvl: number) => Math.round(14 * Math.pow(1.2, lvl - 1));
 
   /** משדר לכל החדר איך הנשק של השחקן נראה — מכאן הלקוח מרכיב את המראה */
   function sendStyle(pid: string) {
@@ -1030,6 +1050,23 @@ export function createWall(ctx: GameCtx): GameInstance {
     if (pending > 0) { pendingLevels.set(pid, pending - 1); queueDraft(pid); }
   }
 
+  /** קבוצה גדולה פותחת בגל גבוה (firstWave) — אבל קודם היא נזרקה לשם ברמה 1 עם
+   *  0 קלפים: 10 שחקנים מול אויבים ×3.5 בלי שום שדרוג (בסימולציות זה מה שהרג
+   *  קבוצות בגל 5-6). עכשיו כל גל שדולג = 2 רמות פתיחה עם הדראפטים שלהן,
+   *  דרך אותו מנגנון pendingLevels של עליות רמה רגילות. */
+  function grantStartLevels(fw: number) {
+    const bonus = 2 * (fw - 1);
+    if (bonus <= 0) return;
+    for (const p of fighters()) {
+      const h = heroes.get(p)!;
+      for (let i = 0; i < bonus; i++) { h.level++; queueDraft(p); }
+      const nt = tierOf(h.level);
+      if (nt > h.tier) { h.tier = nt; ctx.broadcast({ a: "wl_tier", pid: p, tier: h.tier }); }
+      sendStyle(p);
+      ctx.sendTo(p, { a: "wl_xp", xp: Math.round(h.xp), level: h.level, next: xpNeed(h.level) });
+    }
+  }
+
   /* ---- סוף גל / משחק ---- */
   function waveClear() {
     phase = "breath";
@@ -1115,7 +1152,7 @@ export function createWall(ctx: GameCtx): GameInstance {
           role: defaultRole(i), slot: [GATE_X, 1100], x: GATE_X, y: 1100,
           hp: 150, max: 150, down: false, upAt: 0, shield: false,
           mods: baseMods(), level: 1, xp: 0, tier: 1, picks: {},
-          traits: baseTraits(), evos: [], momoUntil: 0, momoStacks: 0, sentryUsed: false,
+          traits: baseTraits(), evos: [], momoUntil: 0, momoStacks: 0, sentryUsed: false, healSec: 0, healAcc: 0,
           firing: false, aimX: GATE_X, aimY: 700, heat: 0, jamUntil: 0,
           lastSwing: 0, lastShot: 0, cannonReadyAt: 0, lastXpMsg: 0, lastChainFx: 0, lastBlastFx: 0, lastBoomFx: 0, fxTurn: 0,
         });
@@ -1149,7 +1186,7 @@ export function createWall(ctx: GameCtx): GameInstance {
           role: defaultRole(i), slot: [500, 1100], x: 500, y: 1100,
           hp: 150, max: 150, down: false, upAt: 0, shield: false,
           mods: baseMods(), level: 1, xp: 0, tier: 1, picks: {},
-          traits: baseTraits(), evos: [], momoUntil: 0, momoStacks: 0, sentryUsed: false,
+          traits: baseTraits(), evos: [], momoUntil: 0, momoStacks: 0, sentryUsed: false, healSec: 0, healAcc: 0,
           firing: false, aimX: 500, aimY: 700, heat: 0, jamUntil: 0,
           lastSwing: 0, lastShot: 0, cannonReadyAt: 0, lastXpMsg: 0, lastChainFx: 0, lastBlastFx: 0, lastBoomFx: 0, fxTurn: 0,
         });
@@ -1170,6 +1207,8 @@ export function createWall(ctx: GameCtx): GameInstance {
       }
       for (const [p2, h2] of heroes.entries()) {
         ctx.sendTo(pid, { a: "wl_style", pid: p2, traits: { ...h2.traits }, tier: h2.tier, evos: [...h2.evos], amps: { ...h2.picks } });
+        // גם חיי *שאר* השחקנים — קודם החוזר ראה לכולם 100/100 עד הפגיעה הבאה שלהם
+        if (p2 !== pid) ctx.sendTo(pid, { a: "wl_hero", pid: p2, hp: Math.round(h2.hp), max: h2.max, down: h2.down, upAt: h2.upAt });
       }
     },
 
@@ -1182,7 +1221,7 @@ export function createWall(ctx: GameCtx): GameInstance {
           role: defaultRole(heroes.size), slot: [GATE_X, 1100], x: GATE_X, y: 1100,
           hp: 150, max: 150, down: false, upAt: 0, shield: false,
           mods: baseMods(), level: 1, xp: 0, tier: 1, picks: {},
-          traits: baseTraits(), evos: [], momoUntil: 0, momoStacks: 0, sentryUsed: false,
+          traits: baseTraits(), evos: [], momoUntil: 0, momoStacks: 0, sentryUsed: false, healSec: 0, healAcc: 0,
           firing: false, aimX: GATE_X, aimY: 700, heat: 0, jamUntil: 0,
           lastSwing: 0, lastShot: 0, cannonReadyAt: 0, lastXpMsg: 0, lastChainFx: 0, lastBlastFx: 0, lastBoomFx: 0, fxTurn: 0,
         };
@@ -1204,7 +1243,9 @@ export function createWall(ctx: GameCtx): GameInstance {
           resetRun();
           assignSlots();
           ctx.broadcast({ a: "wl_setup", roles: rolesMsg(), slots: slotsMsg() });
-          startWave(firstWave(), 3000);
+          const fw = firstWave();
+          grantStartLevels(fw);
+          startWave(fw, 3000);
           return;
         }
         case "wl_pos": {
@@ -1216,7 +1257,8 @@ export function createWall(ctx: GameCtx): GameInstance {
         case "wl_bomb": {
           if (phase !== "wave" || h.role !== "heli" || h.down) return;
           const tn = now();
-          if (tn - h.lastSwing < 620 / h.mods.rate) return;
+          // שער רך ב-~11% מקצב הלקוח (620) — הלקוח הוא השוער; ג'יטר בלע הטלות
+          if (tn - h.lastSwing < 550 / h.mods.rate) return;
           h.lastSwing = tn;
           dropBombs(pid, h);
           return;
@@ -1225,8 +1267,13 @@ export function createWall(ctx: GameCtx): GameInstance {
         case "wl_shot": {
           if (phase !== "wave" || h.role !== "archer" || h.down) return;
           const tn = now();
-          if (tn - h.lastShot < 650 / h.mods.rate) return;
+          // שער רך ב-~12% מהלקוח (660): הלקוח הוא השוער האמיתי, וג'יטר רשת
+          // גרם להודעות להגיע "מוקדם מדי" ולהיבלע בשקט — קצב אפקטיבי נמוך ואקראי.
+          if (tn - h.lastShot < 580 / h.mods.rate) return;
           h.lastShot = tn;
+          // ⚠️ אימות קלט: הלקוח שולח תמיד power=1, אבל בלי clamp לקוח עוין יכול
+          // לשלוח 100 (פי 50 נזק) או מספר שלילי — שנהיה נזק שלילי ו*מרפא* אויבים.
+          const power = Math.max(0, Math.min(1, m.power));
           const shots = 1 + h.traits.multi;
           for (let s = 0; s < shots; s++) {
             const tx = Math.max(0, Math.min(W, m.tx + (s ? (s % 2 ? 70 : -70) * Math.ceil(s / 2) : 0)));
@@ -1247,7 +1294,7 @@ export function createWall(ctx: GameCtx): GameInstance {
                 .sort((a, b) => Math.hypot(a.pos[0] - tx, a.pos[1] - ty) - Math.hypot(b.pos[0] - tx, b.pos[1] - ty));
               for (const { e } of near) {
                 if (hitsLeft-- <= 0) break;
-                damageEnemy(e, 26 * h.mods.dmg * tierMult(h.tier) * (0.5 + 0.5 * m.power), pid);
+                damageEnemy(e, 26 * h.mods.dmg * tierMult(h.tier) * (0.5 + 0.5 * power), pid);
                 // צלף שנוטרל לפני הירייה = הצלה
                 if (e.type === "sniper") st(pid).saves++;
               }
@@ -1259,7 +1306,10 @@ export function createWall(ctx: GameCtx): GameInstance {
           if (phase !== "wave" || h.role !== "cannon" || h.down) return;
           const tn = now();
           if (tn < h.cannonReadyAt) return;
-          h.cannonReadyAt = tn + 3600 / h.mods.rate;
+          // הקולדאון האמיתי הוא בלקוח (3600). השרת שוער רך ב-~10% — קודם הם היו
+          // זהים, וג'יטר של 30-80ms בלע פגזים בשקט: הלקוח התחיל קולדאון והפגז
+          // לא נורה. "לחצתי ולא קרה כלום" — וכל פגז הוא הרי החלטה.
+          h.cannonReadyAt = tn + 3250 / h.mods.rate;
           const shots = 1 + h.traits.multi;
           for (let s = 0; s < shots; s++) {
             const tx = Math.max(0, Math.min(W, m.tx + (s ? (s % 2 ? 90 : -90) : 0)));
