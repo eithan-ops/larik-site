@@ -37,7 +37,7 @@ interface Mon extends Ent { id: number; k: string; hp: number; max: number; flas
 interface Bag { id: number; c: number; y: number; st: number; vy: number }
 interface Item { id: number; x: number; y: number; k: number; held: number }
 interface Boom { x: number; y: number; t: number; s: number }
-interface Fly { x: number; y: number; t: number; k: number; tx: number; ty: number }
+interface Fly { x: number; y: number; t: number; k: number; tx: number; ty: number; pid: string }
 interface Pop { x: number; y: number; t: string; col: string; l: number; sz: number }
 
 export default function HofrimView({ room, me, conn, hub }: GameViewProps) {
@@ -53,11 +53,13 @@ export default function HofrimView({ room, me, conn, hub }: GameViewProps) {
     grid: new Uint8Array(0), item: new Uint8Array(0), prog: new Float32Array(COLS * ROWS), lit: new Uint8Array(COLS * ROWS),
     liftC: Math.floor(COLS / 2), ready: false,
     me: { c: 23, r: 3, x: 23, y: 3, tc: 23, tr: 3, mv: false, dir: 2, dead: false } as Ent & { c: number; r: number; tc: number; tr: number; mv: boolean; dir: number; dead: boolean },
-    others: new Map<string, Ent & { dir: number; dig: number }>(),
+    others: new Map<string, Ent & { dir: number; dig: number; down?: number }>(),
     mons: new Map<number, Mon>(), bags: new Map<number, Bag>(), items: new Map<number, Item>(),
     booms: [] as Boom[], flies: [] as Fly[], pops: [] as Pop[], parts: [] as { x: number; y: number; vx: number; vy: number; l: number; col: string }[],
     shots: [] as { x: number; y: number; dx: number; dy: number; l: number }[],
     chips: [] as { x: number; y: number; t: number }[],
+    fuses: [] as { c: number; r: number; R: number; t: number }[],
+    ping: null as { x: number; y: number; col: string; t: number } | null,
     stats: { pow: 2, slots: 8, light: 5.2, magnet: 1.3, spd: 1, bomb: 0, xray: 0, glow: 0, level: 1 },
     cam: { x: 0, y: 0 }, dir: { x: 0, y: 0 }, digPunch: 0, shake: 0, stop: 0, flash: 0, flashCol: "#fff",
     call: 0, gold: new Map<string, number>(), builds: new Map<string, string[]>(),
@@ -83,7 +85,8 @@ export default function HofrimView({ room, me, conn, hub }: GameViewProps) {
   /* ---- סאונד ---- */
   const audio = useRef<{ ctx: AudioContext | null; buf: Record<string, AudioBuffer>; note: number; noteT: number }>({ ctx: null, buf: {}, note: 0, noteT: 0 });
   function aInit() {
-    if (audio.current.ctx) return;
+    const ex = audio.current.ctx;
+    if (ex) { if (ex.state === "suspended") ex.resume().catch(() => {}); return; }  // חוזרים מרקע/נעילה — מחיים
     try {
       const AC = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       const c = new AC(); audio.current.ctx = c;
@@ -123,6 +126,10 @@ export default function HofrimView({ room, me, conn, hub }: GameViewProps) {
       switch (d.a) {
         case "hf_init": {
           const mine = hfGenerate(d.seed);
+          // init חוזר (reconnect בלי טעינת דף) — מנקים הכל לפני בנייה מחדש
+          g.mons.clear(); g.items.clear(); g.bags.clear(); g.others.clear();
+          g.booms.length = 0; g.flies.length = 0; g.shots.length = 0; g.parts.length = 0; g.chips.length = 0; g.pops.length = 0; g.fuses.length = 0;
+          g.prog.fill(0); g.lit.fill(0);
           g.grid = new Uint8Array(mine.grid); g.item = new Uint8Array(mine.item); g.liftC = d.lift; g.ready = true;
           for (const b of mine.bags) g.bags.set(b.id, { id: b.id, c: b.c, y: b.r, st: 0, vy: 0 });
           g.me.c = d.lift; g.me.r = 3; g.me.x = d.lift; g.me.y = 3; g.me.tc = d.lift; g.me.tr = 3;
@@ -152,7 +159,7 @@ export default function HofrimView({ room, me, conn, hub }: GameViewProps) {
         case "hf_gone": g.items.delete(d.id); break;
         case "hf_take": {
           const it = g.items.get(d.id);
-          if (it) { g.flies.push({ x: it.x, y: it.y, t: 0, k: it.k, tx: 0, ty: 0 }); g.items.delete(d.id); }
+          if (it) { g.flies.push({ x: it.x, y: it.y, t: 0, k: it.k, tx: 0, ty: 0, pid: d.pid }); g.items.delete(d.id); }
           if (d.pid === me) {
             g.bag = d.bag;
             setHud((h) => ({ ...h, bag: d.bag, slots: d.slots }));
@@ -209,14 +216,19 @@ export default function HofrimView({ room, me, conn, hub }: GameViewProps) {
         case "hf_hp":
           if (d.pid === me) { setHud((h) => ({ ...h, hp: d.hp, maxhp: d.max })); g.shake = 12; g.flash = 0.16; g.flashCol = "#E5484D"; g.stop = 0.07; }
           break;
-        case "hf_down": if (d.pid === me) { g.me.dead = true; setToast("💀 נפלת — קמים בעוד רגע"); } break;
+        case "hf_down":
+          if (d.pid === me) { g.me.dead = true; setToast("💀 נפלת — קמים בעוד רגע"); }
+          else { const o = g.others.get(d.pid); if (o) o.down = 1; setToast(`💀 ${g.players.find((x) => x.id === d.pid)?.name ?? "חבר"} נפל!`); }
+          break;
         case "hf_up":
           if (d.pid === me) { g.me.dead = false; g.me.c = g.liftC; g.me.r = 3; g.me.x = g.liftC; g.me.y = 3; g.me.mv = false; setHud((h) => ({ ...h, hp: d.hp })); }
+          else { const o = g.others.get(d.pid); if (o) o.down = 0; }
           break;
         case "hf_bank": {
           g.gold.set(d.pid, d.total);
           setTeams((t) => t.map((x) => (x.pid === d.pid ? { ...x, gold: d.total } : x)));
-          pop(g, g.me.x, g.me.y - 0.5, "+" + d.v, "#F2C14E", 22);
+          const who = d.pid === me ? g.me : g.others.get(d.pid);        // מעל מי שהפקיד, לא מעליי
+          if (who) pop(g, who.x, who.y - 0.5, "+" + d.v, "#F2C14E", d.pid === me ? 22 : 16);
           if (d.pid === me) { g.bag = 0; play("deposit", 0.6); setHud((h) => ({ ...h, bag: 0, gold: d.total })); }
           break;
         }
@@ -231,10 +243,10 @@ export default function HofrimView({ room, me, conn, hub }: GameViewProps) {
         case "hf_shift":
           g.target = d.target;
           setHud((h) => ({ ...h, shift: d.n, target: d.target, of: d.of }));
-          setBanner({ ic: "⛏️", t: `משמרת ${d.n}`, s: `${d.target.toLocaleString()} זהב · ${Math.round((d.endsAt - Date.now()) / 1000)} שניות` });
+          setBanner({ ic: "⛏️", t: `משמרת ${d.n}`, s: `${d.target.toLocaleString()} זהב · ${d.secs} שניות` });
           setTimeout(() => setBanner(null), 2200);
           break;
-        case "hf_quota": setToast("🎉 עמדנו במכסה!"); break;
+        case "hf_quota": setToast("🎉 עמדנו במכסה!"); g.flash = 0.25; g.flashCol = "#F2C14E"; g.stop = Math.max(g.stop, 0.09); g.shake = Math.max(g.shake, 8); play("levelup", 0.6); break;
         case "hf_shiftend":
           setBanner(d.ok ? { ic: "✅", t: "המשמרת הושלמה", s: `${d.banked.toLocaleString()} מתוך ${d.target.toLocaleString()}` }
             : d.partial ? { ic: "😬", t: "כמעט", s: `${d.banked.toLocaleString()} מתוך ${d.target.toLocaleString()} — בחירת נחמה` }
@@ -247,15 +259,24 @@ export default function HofrimView({ room, me, conn, hub }: GameViewProps) {
             setDraft(null);
             setBanner({ ic: d.card.ic, t: d.card.t, s: d.card.d.replace(/<[^>]+>/g, "") });
             g.flash = 0.22; g.flashCol = "#FFD152"; play("levelup", 0.55);
-            setTimeout(() => setBanner(null), 1600);
+            setTimeout(() => { setBanner(null); setToast("⌛ ממתינים לשאר החברים…"); }, 1600);
           }
           break;
         case "hf_called": {
           const p = g.players.find((x) => x.id === d.pid);
-          if (d.pid !== me) { setToast(`📣 ${p?.name ?? "חבר"} קורא לך!`); tone(660, 0.13, "square", 0.24); }
+          if (d.pid !== me) {
+            const col = PCOL[(g.players.findIndex((x) => x.id === d.pid) + 1) % PCOL.length];
+            g.ping = { x: d.x, y: d.y, col, t: 6 };                     // המיקום שהשרת שולח — סוף סוף בשימוש
+            setToast(`📣 ${p?.name ?? "חבר"} קורא לך!`); tone(660, 0.13, "square", 0.24);
+          }
           break;
         }
+        case "hf_bombset":
+          g.fuses.push({ c: d.c, r: d.r, R: d.R, t: 0 });
+          tone(196, 0.12, "square", 0.22);
+          break;
         case "hf_boom":
+          g.fuses = g.fuses.filter((f) => f.c !== d.c || f.r !== d.r);
           g.booms.push({ x: d.c + 0.5, y: d.r + 0.5, t: 0, s: d.R * 1.6 });
           g.shake = 14; play("boom", 0.6);
           break;
@@ -288,6 +309,7 @@ export default function HofrimView({ room, me, conn, hub }: GameViewProps) {
     };
     const down = (e: TouchEvent | MouseEvent) => {
       aInit();
+      if (!document.fullscreenElement) document.documentElement.requestFullscreen?.().catch(() => {});  // אנדרואיד; אייפון מתעלם בשקט
       const el = e.target as HTMLElement;
       if (el?.closest("button")) return;
       const p = pos(e); joy.current = { on: true, ox: p.x, oy: p.y, dx: 0, dy: 0 };
@@ -323,6 +345,7 @@ export default function HofrimView({ room, me, conn, hub }: GameViewProps) {
       window.removeEventListener("touchend", up); window.removeEventListener("touchcancel", up);
       window.removeEventListener("mousedown", down); window.removeEventListener("mousemove", move); window.removeEventListener("mouseup", up);
       window.removeEventListener("keydown", kd); window.removeEventListener("keyup", ku);
+      if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
     };
   }, [conn]);
 
@@ -424,6 +447,8 @@ export default function HofrimView({ room, me, conn, hub }: GameViewProps) {
       for (let i = g.shots.length - 1; i >= 0; i--) { const s = g.shots[i]; s.x += s.dx * 11 * dt; s.y += s.dy * 11 * dt; s.l -= dt; if (s.l <= 0) g.shots.splice(i, 1); }
       for (let i = g.booms.length - 1; i >= 0; i--) { g.booms[i].t += dt; if (g.booms[i].t > 0.4) g.booms.splice(i, 1); }
       for (let i = g.chips.length - 1; i >= 0; i--) { g.chips[i].t += dt; if (g.chips[i].t > 0.22) g.chips.splice(i, 1); }
+      for (let i = g.fuses.length - 1; i >= 0; i--) { g.fuses[i].t += dt; if (g.fuses[i].t > 1.3) g.fuses.splice(i, 1); }
+      if (g.ping) { g.ping.t -= dt; if (g.ping.t <= 0) g.ping = null; }
       for (let i = g.flies.length - 1; i >= 0; i--) { g.flies[i].t += dt; if (g.flies[i].t > 0.42) g.flies.splice(i, 1); }
       for (let i = g.pops.length - 1; i >= 0; i--) { g.pops[i].l -= dt; g.pops[i].y -= dt * 1.4; if (g.pops[i].l <= 0) g.pops.splice(i, 1); }
       for (let i = g.parts.length - 1; i >= 0; i--) { const p = g.parts[i]; p.l -= dt; if (p.l <= 0) { g.parts.splice(i, 1); continue; } p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 9 * dt; }
@@ -431,7 +456,9 @@ export default function HofrimView({ room, me, conn, hub }: GameViewProps) {
       // מצלמה
       const tx = m.x * TS - W / 2, ty = m.y * TS - H / 2;
       g.cam.x += (tx - g.cam.x) * Math.min(1, dt * 7); g.cam.y += (ty - g.cam.y) * Math.min(1, dt * 7);
-      g.cam.x = Math.max(0, Math.min(COLS * TS - W, g.cam.x)); g.cam.y = Math.max(-40, Math.min(ROWS * TS - H, g.cam.y));
+      if (COLS * TS > W) g.cam.x = Math.max(0, Math.min(COLS * TS - W, g.cam.x));
+      else g.cam.x = -(W - COLS * TS) / 2;                              // מסך רחב מהמפה — ממרכזים
+      g.cam.y = Math.max(-40, Math.min(ROWS * TS - H, g.cam.y));
 
       /* ציור */
       if (ctx2.reset) ctx2.reset(); else { cv.width = cv.width; }
@@ -440,7 +467,8 @@ export default function HofrimView({ room, me, conn, hub }: GameViewProps) {
       const sx = g.shake > 0 ? (Math.random() - 0.5) * g.shake : 0, sy = g.shake > 0 ? (Math.random() - 0.5) * g.shake : 0;
       ctx2.save(); ctx2.translate(-g.cam.x + sx, -g.cam.y + sy);
 
-      const litR = g.stats.light + 3;      // מעבר לזה הפנס מכהה כמעט לגמרי — אין טעם במרקם
+      const lr = Math.max(TS * g.stats.light, Math.min(W, H) * 0.45);  // הפנס נגזר גם מגודל המסך — לא כהה בדסקטופ
+      const litR = lr / TS + 3;            // מעבר לזה הפנס מכהה כמעט לגמרי — אין טעם במרקם
       const c0 = Math.max(0, Math.floor(g.cam.x / TS)), c1 = Math.min(COLS - 1, Math.ceil((g.cam.x + W) / TS));
       const r0 = Math.max(0, Math.floor(g.cam.y / TS)), r1 = Math.min(ROWS - 1, Math.ceil((g.cam.y + H) / TS));
       for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) {
@@ -478,9 +506,11 @@ export default function HofrimView({ room, me, conn, hub }: GameViewProps) {
       }
       for (const f of g.flies) {
         const u = f.t / 0.42, e = u * u * (3 - 2 * u);
-        const fx = f.x * TS + ((m.x + 0.5) * TS - f.x * TS) * e, fy = f.y * TS + ((m.y + 0.5) * TS - f.y * TS) * e - Math.sin(u * 3.14) * 22;
+        const tg = f.pid === me ? m : g.others.get(f.pid);              // עף אל מי שאסף — לא תמיד אליי
+        const tx0 = ((tg ? tg.x : f.x) + 0.5) * TS, ty0 = ((tg ? tg.y : f.y) + 0.5) * TS;
+        const fx = f.x * TS + (tx0 - f.x * TS) * e, fy = f.y * TS + (ty0 - f.y * TS) * e - Math.sin(u * 3.14) * 22;
         spr(f.k === 2 ? "gem" : f.k === 0 ? "gold" : "crystal", fx, fy, TS * 0.55 * (1 - e * 0.55), u * 7, false, 1 - e * 0.3);
-        if (u > 0.72) glow("fx-coin", (m.x + 0.5) * TS, (m.y + 0.5) * TS, TS * (1.1 + (u - 0.72) * 3), 0, (1 - u) * 3);
+        if (u > 0.72) glow("fx-coin", tx0, ty0, TS * (1.1 + (u - 0.72) * 3), 0, (1 - u) * 3);
       }
       for (const ch of g.chips) glow("fx-chips", ch.x * TS, ch.y * TS, TS * (0.55 + (ch.t / 0.22) * 0.8), 0, 1 - ch.t / 0.22);
       for (const mo of g.mons.values()) {
@@ -493,12 +523,19 @@ export default function HofrimView({ room, me, conn, hub }: GameViewProps) {
       }
       for (const s of g.shots) glow("fx-shot", s.x * TS, s.y * TS, 26, Math.atan2(s.dy, s.dx));
       for (const b of g.booms) { const u = b.t / 0.4, f = Math.min(3, Math.floor(u * 4.2)); glow("boom" + (f + 1), b.x * TS, b.y * TS, TS * b.s * (1.5 + u * 1.9), u * 0.6, f === 3 ? (1 - u) * 2.2 : 1); }
+      for (const f of g.fuses) {
+        const bx = (f.c + 0.5) * TS, by = (f.r + 0.5) * TS, blink = 0.55 + 0.45 * Math.sin(f.t * 26);
+        if (!spr("bomb", bx, by, TS * 0.9, Math.sin(f.t * 20) * 0.15)) { ctx2.fillStyle = "#1c1c1c"; ctx2.beginPath(); ctx2.arc(bx, by, TS * 0.32, 0, 6.283); ctx2.fill(); }
+        ctx2.strokeStyle = `rgba(229,72,77,${(0.3 + 0.5 * blink).toFixed(2)})`; ctx2.lineWidth = 3; ctx2.setLineDash([6, 6]);
+        ctx2.beginPath(); ctx2.arc(bx, by, (f.R + 0.5) * TS, 0, 6.283); ctx2.stroke(); ctx2.setLineDash([]);
+      }
 
       // חברים
       let pi = 0;
       for (const [pid, o] of g.others.entries()) {
         const col = PCOL[(g.players.findIndex((p) => p.id === pid) + 1) % PCOL.length];
         const px = o.x * TS + TS / 2, py = o.y * TS + TS / 2;
+        if (o.down) ctx2.globalAlpha = 0.45;
         ctx2.strokeStyle = col; ctx2.lineWidth = 3; ctx2.beginPath(); ctx2.arc(px, py, TS * 0.55, 0, 6.283); ctx2.stroke();
         if (!spr(o.dir === 0 ? "miner-back" : o.dir === 2 ? "miner-front" : "miner-side", px, py, TS * 1.15, 0, o.dir === 3)) {
           ctx2.fillStyle = col; ctx2.fillRect(px - 11, py - 11, 22, 22);
@@ -507,6 +544,8 @@ export default function HofrimView({ room, me, conn, hub }: GameViewProps) {
         ctx2.font = "800 11px Assistant, sans-serif"; ctx2.textAlign = "center";
         ctx2.fillStyle = "#000"; ctx2.fillText(nm, px + 1, py - TS * 0.62 + 1);
         ctx2.fillStyle = col; ctx2.fillText(nm, px, py - TS * 0.62);
+        ctx2.globalAlpha = 1;
+        if (o.down) { ctx2.font = "16px sans-serif"; ctx2.fillText("💀", px, py - 2); }
         pi++;
       }
 
@@ -553,11 +592,16 @@ export default function HofrimView({ room, me, conn, hub }: GameViewProps) {
       ctx2.restore();
 
       // פנס
-      const lr = TS * g.stats.light;
       const lg = ctx2.createRadialGradient(m.x * TS - g.cam.x + TS / 2, m.y * TS - g.cam.y + TS / 2, TS * 1.2, m.x * TS - g.cam.x + TS / 2, m.y * TS - g.cam.y + TS / 2, lr);
       lg.addColorStop(0, "rgba(0,0,0,0)"); lg.addColorStop(0.55, "rgba(4,3,2,.3)"); lg.addColorStop(1, "rgba(3,2,2,.9)");
       ctx2.fillStyle = lg; ctx2.fillRect(0, 0, W, H);
       if (g.flash > 0) { ctx2.globalAlpha = Math.min(0.55, g.flash * 1.6); ctx2.fillStyle = g.flashCol; ctx2.fillRect(0, 0, W, H); ctx2.globalAlpha = 1; }
+      if (g.stats.xray) for (const mo of g.mons.values()) {              // הקלף מבטיח לראות מפלצות — מקיימים
+        const mx2 = mo.x * TS - g.cam.x + TS / 2, my2 = mo.y * TS - g.cam.y + TS / 2;
+        if (mx2 < 0 || mx2 > W || my2 < 0 || my2 > H) continue;
+        ctx2.globalAlpha = 0.55; ctx2.fillStyle = MON_COL[mo.k] ?? "#E5484D";
+        ctx2.beginPath(); ctx2.arc(mx2, my2, 4, 0, 6.283); ctx2.fill(); ctx2.globalAlpha = 1;
+      }
 
       // מצפן למעלית
       const lx = g.liftC * TS + TS / 2, ly = 4 * TS, ddx = lx - m.x * TS, ddy = ly - m.y * TS, dd2 = Math.hypot(ddx, ddy);
@@ -566,6 +610,17 @@ export default function HofrimView({ room, me, conn, hub }: GameViewProps) {
         ctx2.fillStyle = "rgba(242,193,78,.92)"; ctx2.strokeStyle = "#000"; ctx2.lineWidth = 2;
         ctx2.beginPath(); ctx2.moveTo(13, 0); ctx2.lineTo(-8, -8); ctx2.lineTo(-4, 0); ctx2.lineTo(-8, 8); ctx2.closePath();
         ctx2.fill(); ctx2.stroke(); ctx2.restore();
+      }
+      if (g.ping) {
+        const pdx = (g.ping.x + 0.5) * TS - (m.x + 0.5) * TS, pdy = (g.ping.y + 0.5) * TS - (m.y + 0.5) * TS;
+        if (Math.hypot(pdx, pdy) > TS * 3) {
+          ctx2.save(); ctx2.translate(W / 2, 96); ctx2.rotate(Math.atan2(pdy, pdx));
+          ctx2.globalAlpha = 0.6 + 0.4 * Math.abs(Math.sin(g.ping.t * 6));
+          ctx2.fillStyle = g.ping.col; ctx2.strokeStyle = "#000"; ctx2.lineWidth = 2;
+          ctx2.beginPath(); ctx2.moveTo(16, 0); ctx2.lineTo(-9, -9); ctx2.lineTo(-5, 0); ctx2.lineTo(-9, 9); ctx2.closePath();
+          ctx2.fill(); ctx2.stroke(); ctx2.restore(); ctx2.globalAlpha = 1;
+          ctx2.font = "15px sans-serif"; ctx2.textAlign = "center"; ctx2.fillText("📣", W / 2, 80);
+        }
       }
       if (joy.current.on) {
         ctx2.strokeStyle = "rgba(243,231,211,.35)"; ctx2.lineWidth = 3;

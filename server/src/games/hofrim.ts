@@ -116,6 +116,9 @@ export function createHofrim(ctx: GameCtx): GameInstance {
   const drafts = new Map<string, string[]>();
   const picked = new Set<string>();
   let draftTimer: NodeJS.Timeout | null = null;
+  const pend = new Set<NodeJS.Timeout>();     // כל טיימר חד-פעמי — כדי ש-dispose ינקה באמת הכל
+  function later(ms: number, fn: () => void) { const t = ctx.timer(ms, () => { pend.delete(t); fn(); }); pend.add(t); return t; }
+  let conn = new Set<string>();               // מי מחובר עכשיו — מחושב פעם בטיק
 
   const idx = hfIdx;
   const inB = (c: number, r: number) => c >= 0 && c < COLS && r >= 0 && r < ROWS;
@@ -153,7 +156,7 @@ export function createHofrim(ctx: GameCtx): GameInstance {
     banked = 0;
     shiftEndsAt = ctx.now() + shiftMs(shift);
     phase = "run";
-    ctx.broadcast({ a: "hf_shift", n: shift, target, endsAt: shiftEndsAt, of: TOTAL_SHIFTS });
+    ctx.broadcast({ a: "hf_shift", n: shift, target, endsAt: shiftEndsAt, of: TOTAL_SHIFTS, secs: Math.round(shiftMs(shift) / 1000) });
   }
 
   function closeShift() {
@@ -173,12 +176,13 @@ export function createHofrim(ctx: GameCtx): GameInstance {
     p.picks.forEach((id) => { const c = CARDS.find((x) => x.id === id); if (c) owned.set(c.b, (owned.get(c.b) ?? 0) + 1); });
     const pool = CARDS.filter((c) => (owned.get(c.b) ?? 0) >= c.rank && (c.id === "carbide" || c.id === "muzzle" || c.id === "sack" || c.id === "reload" || !p.picks.includes(c.id)));
     // הטיה למסלול שכבר השקעת בו — כך בילד מעמיק במקום להתפזר
-    pool.sort((a, b) => (Math.random() + (owned.get(b.b) ?? 0) * 0.22) - (Math.random() + (owned.get(a.b) ?? 0) * 0.22));
-    return pool.slice(0, n).map((c) => c.id);
+    const scored = pool.map((c) => ({ c, s: Math.random() + (owned.get(c.b) ?? 0) * 0.22 }));
+    scored.sort((x, y) => y.s - x.s);
+    return scored.slice(0, n).map((x) => x.c.id);
   }
   function openDraft(n: number) {
     drafts.clear(); picked.clear();
-    if (n === 0) { setTimeout(() => openShift(), 1200); return; }
+    if (n === 0) { later(1200, openShift); return; }
     for (const pid of alive()) {
       const m = miners.get(pid); if (!m) continue;
       const ids = offer(m, n);
@@ -200,7 +204,7 @@ export function createHofrim(ctx: GameCtx): GameInstance {
     if (m && card) { card.apply(m); m.picks.push(id); sendStats(pid); ctx.broadcast({ a: "hf_took", pid, card: cardMsg(id) }); }
     if (picked.size >= drafts.size) {
       if (draftTimer) clearTimeout(draftTimer);
-      ctx.timer(1600, () => openShift());
+      later(1600, openShift);
     }
   }
 
@@ -247,7 +251,7 @@ export function createHofrim(ctx: GameCtx): GameInstance {
     const K = MK[mo.k];
     const m = miners.get(by);
     if (K.armor > 0 && src !== "pierce" && src !== "blast" && src !== "crush" && !(m && m.heavy)) {
-      d = Math.max(K.armor > 1 ? 0 : 1, d - K.armor * 2);
+      d = Math.max(0, d - K.armor * 2);            // ירי רגיל לא עובר — בדיוק כמו שכתוב על הקלף
       if (d <= 0) { ctx.broadcast({ a: "hf_mhit", id: mo.id, hp: mo.hp, res: 1 }); return; }
     }
     mo.hp -= d;
@@ -279,7 +283,11 @@ export function createHofrim(ctx: GameCtx): GameInstance {
     if (m.hp <= 0) {
       m.down = 3; m.hp = 0;
       // התיק נשאר בשטח — כל אחד יכול לאסוף ולהציל את השלל
-      if (m.bag > 0) { for (let i = 0; i < Math.min(6, m.bag); i++) dropPick(m.x + 0.5 + (rng() - 0.5), m.y + 0.5, 1); }
+      if (m.bag > 0) {
+        const per = 60 * depthMul(Math.round(m.y));                      // התיק נופל בערכו האמיתי — כזהב
+        const n = Math.min(6, Math.max(1, Math.round(m.bagVal / per)));
+        for (let i = 0; i < n; i++) dropPick(m.x + 0.5 + (rng() - 0.5), m.y + 0.5, 0);
+      }
       m.bag = 0; m.bagVal = 0;
       ctx.broadcast({ a: "hf_down", pid });
     }
@@ -295,7 +303,7 @@ export function createHofrim(ctx: GameCtx): GameInstance {
   }
   function spawnMon(elapsed: number) {
     if (mons.length >= MON_CAP) return;
-    const ps = [...miners.entries()].filter(([, m]) => m.down <= 0);
+    const ps = [...miners.entries()].filter(([p, m]) => m.down <= 0 && conn.has(p));
     if (!ps.length) return;
     for (let tries = 0; tries < 200; tries++) {
       const c = 1 + Math.floor(rng() * (COLS - 2)), r = 9 + Math.floor(rng() * (ROWS - 12));
@@ -304,7 +312,8 @@ export function createHofrim(ctx: GameCtx): GameInstance {
       const seen = ps.some(([, m]) => Math.hypot(c - m.x, r - m.y) < 26);
       if (near || !seen) continue;
       const k = pickKind(elapsed), K = MK[k];
-      const mo: Mon = { id: nextId++, k, c, r, x: c, y: r, tc: c, tr: r, mv: false, hp: K.hp + Math.floor(elapsed / 80), max: K.hp + Math.floor(elapsed / 80), slow: 0, burn: 0, dot: 0 };
+      const extra = Math.min(4, Math.floor(elapsed / 150));            // תוספת חיים מוגבלת — לא ספוגים אינסופיים
+      const mo: Mon = { id: nextId++, k, c, r, x: c, y: r, tc: c, tr: r, mv: false, hp: K.hp + extra, max: K.hp + extra, slow: 0, burn: 0, dot: 0 };
       mons.push(mo);
       ctx.broadcast({ a: "hf_mon", id: mo.id, k, c, r, hp: mo.hp, max: mo.max });
       return;
@@ -337,10 +346,12 @@ export function createHofrim(ctx: GameCtx): GameInstance {
     lastTick = now;
     if (phase !== "run") { loop = ctx.timer(TICK, step); return; }
     const elapsed = (now - startedAt) / 1000;
+    conn = new Set(alive());
 
     for (const [pid, m] of miners.entries()) {
       if (m.down > 0) { m.down -= dt; if (m.down <= 0) { m.hp = m.maxhp; m.c = LIFT_C; m.r = 3; m.x = LIFT_C; m.y = 3; m.mv = false; m.inv = 2.5; ctx.broadcast({ a: "hf_up", pid, hp: m.hp }); } continue; }
       if (m.inv > 0) m.inv -= dt;
+      if (!conn.has(pid)) { m.dx = 0; m.dy = 0; m.digC = -1; m.digR = -1; continue; }  // מנותק — מקפיאים, לא הורגים
 
       // תנועה בצעדי תא
       if (m.mv) {
@@ -430,7 +441,7 @@ export function createHofrim(ctx: GameCtx): GameInstance {
       } else {
         b.y += BAG_FALL * dt;
         const nr = Math.round(b.y);
-        for (const [pid, m] of miners.entries()) if (m.down <= 0 && m.c === b.c && Math.abs(m.y - b.y) < 0.6) hitMiner(pid, m, "שק");
+        for (const [pid, m] of miners.entries()) if (m.down <= 0 && conn.has(pid) && m.c === b.c && Math.abs(m.y - b.y) < 0.6) hitMiner(pid, m, "שק");
         for (const mo of [...mons]) if (mo.c === b.c && Math.abs(mo.y - b.y) < 0.7) hurt(mo, 999, "", "crush");
         if (solid(b.c, nr + 1) || bagAt(b.c, nr + 1) || nr >= ROWS - 2) {
           b.y = nr; b.st = 0;
@@ -446,7 +457,7 @@ export function createHofrim(ctx: GameCtx): GameInstance {
       const p = picks[i]; p.life -= dt;
       if (p.life <= 0) { picks.splice(i, 1); ctx.broadcast({ a: "hf_gone", id: p.id }); continue; }
       for (const [pid, m] of miners.entries()) {
-        if (m.down > 0 || m.bag >= m.slots) continue;
+        if (m.down > 0 || m.bag >= m.slots || !conn.has(pid)) continue;
         if (Math.hypot(p.x - (m.x + 0.5), p.y - (m.y + 0.5)) < m.magnet) {
           const base = p.k === 2 ? 150 : p.k === 0 ? 60 : 10;
           m.bag++; m.bagVal += Math.round(base * depthMul(Math.round(p.y)));
@@ -468,7 +479,7 @@ export function createHofrim(ctx: GameCtx): GameInstance {
       }
       if (!mo.mv) {
         let tx = 0, ty = 0, bd = 1e9;
-        for (const m of miners.values()) if (m.down <= 0) { const d = Math.hypot(m.x - mo.c, m.y - mo.r); if (d < bd) { bd = d; tx = m.x; ty = m.y; } }
+        for (const [p2, m] of miners.entries()) if (m.down <= 0 && conn.has(p2)) { const d = Math.hypot(m.x - mo.c, m.y - mo.r); if (d < bd) { bd = d; tx = m.x; ty = m.y; } }
         if (bd < 1e9) {
           const dx = tx - mo.c, dy = ty - mo.r;
           const order: [number, number][] = Math.abs(dx) > Math.abs(dy)
@@ -482,7 +493,7 @@ export function createHofrim(ctx: GameCtx): GameInstance {
           }
         }
       }
-      for (const [pid, m] of miners.entries()) if (m.down <= 0 && Math.hypot(mo.x - m.x, mo.y - m.y) < 0.72) hitMiner(pid, m, mo.k);
+      for (const [pid, m] of miners.entries()) if (m.down <= 0 && conn.has(pid) && Math.hypot(mo.x - m.x, mo.y - m.y) < 0.72) hitMiner(pid, m, mo.k);
     }
 
     if (elapsed > nextSpawn) { nextSpawn = elapsed + Math.max(3, 8 - elapsed / 45); spawnMon(elapsed); }
@@ -490,7 +501,7 @@ export function createHofrim(ctx: GameCtx): GameInstance {
     if (now - lastPos >= POS_EVERY) {
       lastPos = now;
       ctx.broadcast({ a: "hf_pos",
-        ps: [...miners.entries()].map(([pid, m]) => [pid, Math.round(m.x * 10) / 10, Math.round(m.y * 10) / 10, m.dir, m.digC >= 0 ? 1 : 0] as [string, number, number, number, number]),
+        ps: [...miners.entries()].filter(([p]) => conn.has(p)).map(([pid, m]) => [pid, Math.round(m.x * 10) / 10, Math.round(m.y * 10) / 10, m.dir, m.digC >= 0 ? 1 : 0] as [string, number, number, number, number]),
         ms: mons.map((mo) => [mo.id, Math.round(mo.x * 10) / 10, Math.round(mo.y * 10) / 10] as [number, number, number]),
         left: Math.max(0, Math.round((shiftEndsAt - now) / 1000)), banked });
     }
@@ -537,7 +548,7 @@ export function createHofrim(ctx: GameCtx): GameInstance {
       for (let i = 0; i < grid.length; i++) if (grid[i] === AIR && i >= 3 * COLS) dug.push(i);
       ctx.sendTo(pid, { a: "hf_sync", dug, bags: bags.map((b) => [b.id, b.c, Math.round(b.y)] as [number, number, number]),
         mons: mons.map((m) => [m.id, m.k, Math.round(m.hp), m.max, Math.round(m.x), Math.round(m.y)] as [number, string, number, number, number, number]) });
-      ctx.sendTo(pid, { a: "hf_shift", n: shift, target, endsAt: shiftEndsAt, of: TOTAL_SHIFTS });
+      ctx.sendTo(pid, { a: "hf_shift", n: shift, target, endsAt: shiftEndsAt, of: TOTAL_SHIFTS, secs: Math.max(0, Math.round((shiftEndsAt - ctx.now()) / 1000)) });
       sendStats(pid);
     },
 
@@ -555,7 +566,8 @@ export function createHofrim(ctx: GameCtx): GameInstance {
         m.bombCd = Math.max(2.2, 6 - m.bomb * 1.2);
         const bc = m.c, br = m.r, R = m.bombR;
         ctx.broadcast({ a: "hf_bombset", c: bc, r: br, R, by: pid });
-        ctx.timer(1100, () => {
+        later(1100, () => {
+          if (phase !== "run") return;
           for (let dc = -R; dc <= R; dc++) for (let dr = -R; dr <= R; dr++) {
             if (Math.hypot(dc, dr) > R + 0.3) continue;
             const c2 = bc + dc, r2 = br + dr;
@@ -568,9 +580,10 @@ export function createHofrim(ctx: GameCtx): GameInstance {
     },
 
     onLeave(pid: string, permanent?: boolean) {
-      if (permanent) { miners.delete(pid); ctx.broadcast({ a: "hf_left", pid }); }
+      if (permanent) miners.delete(pid);
+      ctx.broadcast({ a: "hf_left", pid });   // גם ניתוק זמני — שלא יישאר כורה קפוא על מסכי החברים
     },
 
-    dispose() { if (loop) clearTimeout(loop); if (draftTimer) clearTimeout(draftTimer); },
+    dispose() { if (loop) clearTimeout(loop); if (draftTimer) clearTimeout(draftTimer); pend.forEach((t) => clearTimeout(t)); pend.clear(); },
   };
 }
