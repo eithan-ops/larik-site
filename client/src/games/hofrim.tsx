@@ -644,7 +644,7 @@ export default function HofrimView({ room, me, conn, hub }: GameViewProps) {
         const cx = W / 2, cy = H / 2, ddx2 = fx2 - cx, ddy2 = fy2 - cy;
         const pad = 30;
         const tX = ddx2 !== 0 ? ((ddx2 > 0 ? W - pad : pad) - cx) / ddx2 : Infinity;
-        const tY = ddy2 !== 0 ? ((ddy2 > 0 ? H - pad : pad) - cy) / ddy2 : Infinity;
+        const tY = ddy2 !== 0 ? ((ddy2 > 0 ? H - pad : 78) - cy) / ddy2 : Infinity;   // 78 — מתחת למד המכסה
         const tt = Math.min(tX, tY);
         const ex2 = cx + ddx2 * tt, ey2 = cy + ddy2 * tt;
         const dist = Math.round(Math.hypot(o.x - m.x, o.y - m.y));
