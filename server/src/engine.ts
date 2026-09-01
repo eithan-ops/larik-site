@@ -546,7 +546,16 @@ export class RoomManager {
 
   get(code: string) { return this.rooms.get(code.toUpperCase()); }
 
+  private emptySince = new Map<string, number>();
   cleanup() {
-    for (const [code, room] of this.rooms) if (room.isEmpty) this.rooms.delete(code);
+    // חסד של 5 דקות: חדר טרי שהמארח עוד לא הספיק להיכנס אליו, או חדר שכולם
+    // התנתקו ממנו לרגע (נעילת טלפון), לא נמחק בטיק הראשון — רק אחרי 5 דקות ריקות.
+    const now = Date.now();
+    for (const [code, room] of this.rooms) {
+      if (!room.isEmpty) { this.emptySince.delete(code); continue; }
+      const since = this.emptySince.get(code);
+      if (since === undefined) { this.emptySince.set(code, now); continue; }
+      if (now - since > 5 * 60_000) { this.rooms.delete(code); this.emptySince.delete(code); }
+    }
   }
 }
