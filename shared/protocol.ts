@@ -431,12 +431,35 @@ export type HofrimServerMsg =
   | { a: "hf_boom"; c: number; r: number; R: number }
   | { a: "hf_left"; pid: string };
 
+/* ---------- הגנבים 🥷 ---------- */
+export type ThievesClientMsg =
+  | { a: "th_dir"; dx: number; dy: number }        // וקטור אנלוגי ‎-1..1 — נשלח רק כשהוא משתנה
+  | { a: "th_steal" };                             // כפתור הפעולה — גניבה מהמאורה שאתה עומד בה
+
+export type ThievesServerMsg =
+  | { a: "th_init"; w: number; h: number; mtn: { x: number; y: number; total: number }; dens: [string, number, number][]; players: string[]; endsAt: number }
+  | { a: "th_pos"; ps: [string, number, number, number, number, number, number][]; mtn: number; left: number } // [pid,x,y,צ'אנקים,סוחב-שלל,זהב,זעם]
+  | { a: "th_mine"; pid: string; carry: number; left: number }                        // צ'אנק נחצב מההר
+  | { a: "th_dep"; pid: string; ids: number[] }                                       // הפקדה — צ'אנקים הפכו לגבישים
+  | { a: "th_ripen"; id: number; den: string; lvl: number }                           // גביש עלה דרגת הבשלה
+  | { a: "th_grab"; id: number; by: string; from: string; lvl: number }               // גניבה ממאורה (הדרגה אחרי ההורדה)
+  | { a: "th_tackle"; by: string; carrier: string }                                   // מגע הפיל את הסוחב
+  | { a: "th_drop"; id: number; x: number; y: number; lvl: number }                   // שלל על הרצפה — מי שמגיע ראשון
+  | { a: "th_pick"; id: number; by: string }                                          // הרמה מהרצפה
+  | { a: "th_home"; id: number; by: string; from: string; lvl: number }               // השלל הגיע לבית של הגנב — עכשיו שלו
+  | { a: "th_rage"; pid: string; secs: number }                                       // 🔥 הזעם של הנשדד
+  | { a: "th_empty" }                                                                 // ההר נגמר — המלחמה
+  | { a: "th_alarm"; secs: number }                                                   // 🚨 הדקה האחרונה — הכנסות ×3
+  | { a: "th_first"; by: string; from: string }                                       // הגניבה הראשונה של הסבב
+  | { a: "th_sync"; mtn: number; items: [number, string, number, number][]; ground: [number, number, number, number][]; carried: [number, string, number][]; endsAt: number }
+  | { a: "th_left"; pid: string };
+
 export type GameClientMsg = ForeheadClientMsg | PodsClientMsg | BombsClientMsg
   | ColorRulesClientMsg | SimonClientMsg | DeathTouchClientMsg | DemonsClientMsg | AliasClientMsg | TriviaClientMsg
-  | WhoMostClientMsg | ShowClientMsg | ImpostorClientMsg | ReactorClientMsg | WallClientMsg | HofrimClientMsg;
+  | WhoMostClientMsg | ShowClientMsg | ImpostorClientMsg | ReactorClientMsg | WallClientMsg | HofrimClientMsg | ThievesClientMsg;
 export type GameServerMsg = ForeheadServerMsg | PodsServerMsg | BombsServerMsg
   | ColorRulesServerMsg | SimonServerMsg | DeathTouchServerMsg | DemonsServerMsg | AliasServerMsg | TriviaServerMsg
-  | WhoMostServerMsg | ShowServerMsg | ImpostorServerMsg | ReactorServerMsg | WallServerMsg | HofrimServerMsg;
+  | WhoMostServerMsg | ShowServerMsg | ImpostorServerMsg | ReactorServerMsg | WallServerMsg | HofrimServerMsg | ThievesServerMsg;
 
 /* ---- קטלוג ---- */
 export interface GameMeta {
@@ -641,6 +664,15 @@ export const CATALOG: GameMeta[] = [
         ],
       },
     ],
+  },
+  {
+    id: "thieves",
+    name: "הגנבים",
+    icon: "🥷",
+    tagline: "ההר נגמר. הזהב היחיד שנשאר — אצל החברים שלכם.",
+    howTo: "חוצבים זהב מההר שבמרכז וסוחבים הביתה — גביש שהופקד במאורה מבשיל ומייצר זהב כל שנייה. אבל ההר נגמר, ואז הזהב היחיד נמצא בבתים של החברים: נכנסים למאורה של מישהו, גונבים גביש — וכל החדר רואה אתכם בורחים איתו. מגע בגנב מפיל את השלל, ומי שמגיע ראשון לוקח. בדקה האחרונה הכל שווה פי 3.",
+    minPlayers: 2,
+    maxPlayers: 8,
   },
   {
     id: "hofrim",

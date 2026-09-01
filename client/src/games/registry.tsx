@@ -17,6 +17,7 @@ import WhoMostView from "./whomost";
 import ImpostorView from "./impostor";
 import WallView from "./wall";
 import HofrimView from "./hofrim";
+import ThievesView from "./thieves";
 
 // GameHub עבר ל-lib/gamehub (משותף לאפליקציית המופע) — מייצאים מחדש לתאימות
 export { GameHub };
@@ -40,6 +41,7 @@ export const GAME_COLORS: Record<string, string> = {
   impostor: "#C05CE8",    // לילך
   wall: "#E0521B",        // חלודה
   hofrim: "#FF8A3D",      // כתום מנורה
+  thieves: "#9B6BFF",     // סגול לילה
 };
 
 export const GAME_VIEWS: Record<string, ComponentType<GameViewProps>> = {
@@ -57,4 +59,5 @@ export const GAME_VIEWS: Record<string, ComponentType<GameViewProps>> = {
   impostor: ImpostorView,
   wall: WallView,
   hofrim: HofrimView,
+  thieves: ThievesView,
 };

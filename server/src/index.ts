@@ -32,6 +32,7 @@ import { createShow } from "./games/show";
 import { createImpostor } from "./games/impostor";
 import { createWall } from "./games/wall";
 import { createHofrim } from "./games/hofrim";
+import { createThieves } from "./games/thieves";
 import type { ClientMsg } from "../../shared/protocol";
 
 const PORT = Number(process.env.PORT || 8787);
@@ -65,6 +66,7 @@ const manager = new RoomManager(transport, {
   impostor: createImpostor,
   wall: createWall,
   hofrim: createHofrim,
+  thieves: createThieves,
 }, {
   playerJoined: statPlayerJoined,
   gameStarted: statGameStarted,
