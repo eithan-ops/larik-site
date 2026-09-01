@@ -129,13 +129,21 @@ export default function HofrimView({ room, me, conn, hub }: GameViewProps) {
           g.cam.x = d.lift * TS; g.cam.y = 3 * TS;
           break;
         }
-        case "hf_sync":
+        case "hf_sync": {
           for (const i of d.dug) { g.grid[i] = AIR; g.item[i] = 0; }
+          // המצב החי — בלעדיו מצטרף חוזר רואה שקים במקומות הישנים וחוטף ממפלצות בלתי-נראות
+          g.bags.clear();
+          for (const [bid, bc, by] of d.bags) g.bags.set(bid, { id: bid, c: bc, y: by, st: 0, vy: 0 });
+          g.mons.clear();
+          for (const [mid, mk, mhp, mmax, mc, mr] of d.mons) g.mons.set(mid, { id: mid, k: mk, x: mc, y: mr, tx: mc, ty: mr, hp: mhp, max: mmax, flash: 0 });
           break;
+        }
         case "hf_dig": {
           const i = idx(d.c, d.r);
+          const predicted = d.by === me && g.grid[i] === AIR;   // נשבר כבר בניבוי — האפקט הורגש
           g.grid[i] = AIR; g.item[i] = 0; g.prog[i] = 0;
           if (d.lit) g.lit[i] = 1;
+          if (predicted) break;
           burst(g, d.c + 0.5, d.r + 0.5, MAT[d.mat]?.col ?? "#888", 7);
           if (d.by === me) { g.chips.push({ x: d.c + 0.5, y: d.r + 0.5, t: 0 }); play("break", 0.45); }
           break;

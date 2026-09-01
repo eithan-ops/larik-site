@@ -396,7 +396,7 @@ export type HofrimClientMsg =
 
 export type HofrimServerMsg =
   | { a: "hf_init"; seed: string; cols: number; rows: number; lift: number; players: string[] } // הזרע — הלקוח מייצר ממנו את אותה מפה
-  | { a: "hf_sync"; dug: number[]; bags: [number, number, number][]; mons: [number, string, number][] } // למצטרף חוזר
+  | { a: "hf_sync"; dug: number[]; bags: [number, number, number][]; mons: [number, string, number, number, number, number][] } // למצטרף חוזר: מפלצת = [id, סוג, חיים, מקס, עמודה, שורה]
   | { a: "hf_shift"; n: number; target: number; endsAt: number; of: number }
   | { a: "hf_shiftend"; ok: boolean; partial: boolean; banked: number; target: number; misses: number }
   | { a: "hf_quota" }                              // עמדנו במכסה — 3 שניות אחרונות

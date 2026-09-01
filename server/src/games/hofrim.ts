@@ -496,6 +496,7 @@ export function createHofrim(ctx: GameCtx): GameInstance {
     }
 
     if (now >= shiftEndsAt) closeShift();
+    if ((phase as "run" | "draft" | "done") === "done") return; // finish() ניקה את הטיימר — לא לחמש מחדש (cast כי TS צמצם ל-"run")
     loop = ctx.timer(TICK, step);
   }
 
@@ -535,7 +536,7 @@ export function createHofrim(ctx: GameCtx): GameInstance {
       const dug: number[] = [];
       for (let i = 0; i < grid.length; i++) if (grid[i] === AIR && i >= 3 * COLS) dug.push(i);
       ctx.sendTo(pid, { a: "hf_sync", dug, bags: bags.map((b) => [b.id, b.c, Math.round(b.y)] as [number, number, number]),
-        mons: mons.map((m) => [m.id, m.k, m.hp] as [number, string, number]) });
+        mons: mons.map((m) => [m.id, m.k, Math.round(m.hp), m.max, Math.round(m.x), Math.round(m.y)] as [number, string, number, number, number, number]) });
       ctx.sendTo(pid, { a: "hf_shift", n: shift, target, endsAt: shiftEndsAt, of: TOTAL_SHIFTS });
       sendStats(pid);
     },
