@@ -7,7 +7,7 @@
  * וגרירת כיוון עם מד חום. "עולם אחד, חלון אישי": מצלמה ממוקדת בעמדה שלך.
  */
 import { useEffect, useRef, useState } from "react";
-import type { WallServerMsg, WallRole, WallCard, WallStats, WallEnemyType } from "../../../shared/protocol";
+import type { WallServerMsg, WallRole, WallCard, WallStats, WallEnemyType, WallAffix } from "../../../shared/protocol";
 import type { GameViewProps } from "./registry";
 import { Sfx, vibrate } from "../lib/audio";
 import { wlImg, preloadWl, type WlImgKey } from "./wallAssets";
@@ -20,13 +20,13 @@ const ROLE_NAME: Record<WallRole, string> = { heli: "הליקופטר", archer: 
 const ROLE_ICON: Record<WallRole, string> = { heli: "🚁", archer: "🏹", cannon: "💣", mg: "🔫" };
 const ROLE_COLOR: Record<WallRole, string> = { heli: "#ff5c5c", archer: "#34e89e", cannon: "#ffce3c", mg: "#5c8aff" };
 const ROLE_DESC: Record<WallRole, string> = {
-  heli: "גרור לטוס בכל השדה — הוא מטיל פצצות לבד. היזהר מאש נגד-מטוסים!",
+  heli: "גרור לטוס — מטיל פצצות לבד. הדלק נגמר באוויר: חוזרים לחומה לתדלק!",
   archer: "גע והחזק על המטרה — הקשת יורה לבד. הזז את האצבע לכוון",
   cannon: "כוון ושחרר — פגז שטח. כל פגז הוא החלטה",
   mg: "החזק וגרור לרסס כדורים על כל השדה. היזהר מהתחממות!",
 };
 const ROLE_HINT: Record<WallRole, string> = {
-  heli: "🕹️ גרור בכל מקום כדי לטוס — הפצצות נופלות לבד · 🎯 התחמק מסימוני אש נגד-מטוסים",
+  heli: "🕹️ גרור לטוס — הפצצות נופלות לבד · ⛽ הדלק נשרף באוויר, רד לחומה לתדלק · 🎯 התחמק מאש נגד-מטוסים",
   archer: "👆 גע והחזק על אויב — הקשת יורה לבד · הזז את האצבע כדי לכוון",
   cannon: "🎯 גרור לכוון, שחרר — בום! כל פגז הוא החלטה",
   mg: "👆 החזק וגרור ימינה-שמאלה — מרסס על כל השדה · שים עין על מד החום",
@@ -35,6 +35,15 @@ const ETYPE_IMG: Record<WallEnemyType, WlImgKey> = {
   swarm: "eSwarm", runner: "eRunner", armored: "eArmored", bomber: "eBomber", sniper: "eSniper", digger: "eDigger", boss: "eBoss",
 };
 const ETYPE_SIZE: Record<WallEnemyType, number> = { swarm: 52, runner: 60, armored: 84, bomber: 64, sniper: 68, digger: 62, boss: 150 };
+
+/* ---- 🏷️ תכונות עילית — טבעת צבע + אימוג'י, אפס נכסים. באנר בהופעה הראשונה. ---- */
+const AFFIX_EMOJI: Record<WallAffix, string> = { roof: "🏠", healer: "💚", shield: "🌀" };
+const AFFIX_COLOR: Record<WallAffix, string> = { roof: "#e0b64e", healer: "#8ee34a", shield: "#6ec6ff" };
+const AFFIX_BANNER: Record<WallAffix, string> = {
+  roof: "🏠 גג מבוצר — פצצות לא עובדות עליו! תפקידי הקרקע, זה עליכם",
+  healer: "💚 מרפא — מרפא את הנחיל! תורידו אותו קודם",
+  shield: "🌀 מגן קינטי — רק אש רציפה שוברת אותו!",
+};
 
 /* ---- שפת המראה של הנשק ----
  * המראה לא נבחר מרשימה — הוא *מורכב* מהתכונות שאספת: צבע ליבה, צבע שובל, אורך
@@ -81,7 +90,7 @@ const AMP_COLOR: Record<string, string> = {
   tracer: "#fff2a8", shieldstr: "#cfe4ff", lifesteal: "#ff5c8a",
   // 🚁 פצצות
   payload: "#ff6b3d", salvo: "#ffb347", blastr: "#ffab5c", fuse: "#ffd24a",
-  napalm: "#ff7a2f", guided: "#8fd4ff", cluster: "#ff5c5c", shock: "#a0ffe0", plating: "#cfe4ff",
+  napalm: "#ff7a2f", guided: "#8fd4ff", cluster: "#ff5c5c", shock: "#a0ffe0", plating: "#cfe4ff", tank: "#e0c36a",
 };
 const TIER_BAND = ["#9aa4b2", "#c98a4b", "#dfe6ef", "#ffce3c", "#b07dff", "#ff7ad9"];
 const bandOf = (tier: number) =>
@@ -107,6 +116,7 @@ interface EnemyV {
   x0: number; y0: number; speed: number; wob: number; at: number;
   state: "walk" | "fight" | "wall" | "burrow";
   deadAt?: number;
+  affix?: WallAffix;
 }
 interface Proj { kind: "arrow" | "shell"; fx: number; fy: number; tx: number; ty: number; t0: number; T: number; fire?: boolean; by: string }
 interface Fx { kind: "boom" | "slash" | "spark" | "levelup" | "dmg" | "trait"; x: number; y: number; t0: number; r?: number; dir?: number; color?: string; txt?: string; big?: boolean; trait?: string; sz?: number }
@@ -165,6 +175,9 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
   const [evoBanner, setEvoBanner] = useState<{ name: string; emoji: string; who: string; trait: string } | null>(null);
   const [myStyle, setMyStyle] = useState<WStyle>({ traits: {}, tier: 1, evos: [] });
   const lastAlarm = useRef(0);
+  const fuelRef = useRef({ fuel: 100, max: 100 });   // ⛽ הדלק מהשרת (הליקופטר)
+  const lastFuelToast = useRef(0);
+  const seenAffixes = useRef(new Set<string>());     // 🏷️ באנר פעם אחת לכל תכונה בריצה
   // קלט
   const ptr = useRef<{ down: boolean; x0: number; y0: number; t0: number; x: number; y: number; moved: boolean }>({ down: false, x0: 0, y0: 0, t0: 0, x: 0, y: 0, moved: false });
   const aimRef = useRef<{ tx: number; ty: number; power: number } | null>(null); // קשת/תותחן
@@ -234,6 +247,7 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
           setPhase("setup"); setOver(null); setDraft(null);
           setRoles(m.roles);
           heroes.current.clear(); styles.current.clear(); chains.current = [];
+          seenAffixes.current.clear(); fuelRef.current = { fuel: 100, max: 100 };
           for (const [pid, role] of Object.entries(m.roles)) {
             const slot = m.slots[pid] ?? [500, 1100];
             heroes.current.set(pid, { role, slot, x: slot[0], y: slot[1], hp: 150, max: 150, down: false, tier: 1 });
@@ -253,8 +267,14 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
           Sfx.goBeep(); vibrate([60, 40, 60]);
           return;
         case "wl_spawn":
-          enemies.current.set(m.id, { id: m.id, type: m.type, hp: m.hp, maxHp: m.maxHp, x0: m.x0, y0: m.y0, speed: m.speed, wob: m.wob, at: m.at, state: "walk" });
+          enemies.current.set(m.id, { id: m.id, type: m.type, hp: m.hp, maxHp: m.maxHp, x0: m.x0, y0: m.y0, speed: m.speed, wob: m.wob, at: m.at, state: "walk", affix: m.affix });
           if (m.type === "boss") { showBanner("👹 הבוס מגיע!!!", 2600); Sfx.alarm(); vibrate([150, 80, 150]); }
+          // 🏷️ תכונה חדשה נכנסת למשחק — מכריזים פעם אחת, שכולם ידעו מה התשובה
+          if (m.affix && !seenAffixes.current.has(m.affix)) {
+            seenAffixes.current.add(m.affix);
+            showBanner(AFFIX_BANNER[m.affix], 3600);
+            Sfx.alarm(); vibrate([60, 40, 60]);
+          }
           return;
         case "wl_estate": {
           const e = enemies.current.get(m.id);
@@ -266,9 +286,21 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
         case "wl_hit": {
           const e = enemies.current.get(m.id);
           if (!e) return;
-          const delta = Math.max(0, e.hp - m.hp);
+          const prevHp = e.hp;
+          const delta = Math.max(0, prevHp - m.hp);
           e.hp = m.hp;
           const [ex, ey] = posOf(e, conn.serverNow());
+          // 🛡️ הפגיעה נחסמה (גג מבוצר / מגן קינטי) — פידבק במקום מספר נזק
+          if (m.blocked) {
+            if (fxs.current.length < FX_CAP) {
+              fxs.current.push({ kind: "dmg", x: ex, y: ey - 24, t0: performance.now(), txt: "🛡️", color: "#cfe4ff" });
+            }
+            return;
+          }
+          // 💚 המרפא — החיים עלו: מספר ירוק, שרואים את הבעיה
+          if (m.hp > prevHp + 0.5 && fxs.current.length < FX_CAP) {
+            fxs.current.push({ kind: "dmg", x: ex, y: ey - 24, t0: performance.now(), txt: `+${Math.round(m.hp - prevHp)}`, color: "#8ee34a" });
+          }
           // מספר נזק קופץ — כל פגיעה נראית
           // 🔥❄️⚡ חותמת התכונה על האויב — תכונה אחת בכל פגיעה (השרת בוחר בסבב)
           if (m.k && m.k !== "hit" && TRAIT_FX[m.k] && fxs.current.length < FX_CAP) {
@@ -427,6 +459,16 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
         case "wl_heat":
           heat.current = m.heat; // האמת מהשרת (מכבדת "קירור-על") — בין העדכונים ממשיכים להחליק מקומית
           return;
+        case "wl_fuel": {
+          const prevF = fuelRef.current.fuel;
+          fuelRef.current = { fuel: m.fuel, max: m.max };
+          if (m.fuel <= 1 && prevF > 1) { showToast("⛽ נגמר הדלק — רד לחומה לתדלק!"); vibrate([80, 50, 80]); }
+          else if (m.fuel <= 25 && prevF > 25 && performance.now() - lastFuelToast.current > 6000) {
+            lastFuelToast.current = performance.now();
+            showToast("⛽ הדלק אוזל — תתחיל לחזור לחומה!"); vibrate(30);
+          }
+          return;
+        }
         case "wl_clear":
           setPhase("breath"); setWallHp(m.wallHp);
           parade.current = performance.now(); // 🎖️ מצעד הנשקים — 2 שניות שרואים את כל הצוות
@@ -499,7 +541,8 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
         const dx = j.kx - j.ox, dy = j.ky - j.oy;
         const d = Math.hypot(dx, dy);
         if (d > 8) {
-          const sp = 360 * modsRef.current.speed * Math.min(1, d / 64); // "זריזות" באמת מזיזה
+          // ⛽ בלי דלק — טיסה איטית הביתה (לא עונש, תזכורת לתדלק)
+          const sp = 360 * modsRef.current.speed * (fuelRef.current.fuel <= 1 ? 0.5 : 1) * Math.min(1, d / 64); // "זריזות" באמת מזיזה
           const h2 = myHero();
           if (h2) {
             h2.x = Math.max(30, Math.min(W - 30, h2.x + (dx / d) * (sp * dtMs) / 1000));
@@ -513,7 +556,7 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
       }
       // 🚁 הליקופטר: מטיל פצצות לבד תוך כדי טיסה — אצבע אחת, בדיוק כמו שהחלוץ עבד.
       // אין תנאי קרבה: אתה טס לאן שצריך והפצצות נופלות. השרת שוער את הקצב.
-      if (r0 === "heli" && inWave && pn - lastAutoSwing.current > 620 / modsRef.current.rate) {
+      if (r0 === "heli" && inWave && fuelRef.current.fuel > 1 && pn - lastAutoSwing.current > 620 / modsRef.current.rate) {
         if (myHero()) {
           lastAutoSwing.current = pn;
           conn.sendGame({ a: "wl_bomb" });
@@ -666,6 +709,19 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
         // אדום/כתום — ירוק על דשא ירוק לא נקרא
         ctx.fillStyle = e.type === "armored" ? "#ffce3c" : "#ff4d4d";
         ctx.fillRect(wx(ex) - bw / 2, wy(ey - size / 2 - 10), bw * (e.hp / e.maxHp), 4);
+      }
+      // 🏷️ עילית: טבעת בצבע התכונה + אימוג'י מעל — קוראים את "הבעיה" ממרחק
+      if (e.affix && !dying && e.state !== "burrow") {
+        const ac = AFFIX_COLOR[e.affix];
+        const pulse = e.affix === "healer" ? 0.5 + 0.3 * Math.sin(pnow / 260) : 0.75;
+        ctx.strokeStyle = hexA(ac, pulse);
+        ctx.lineWidth = 2.4 * scale;
+        ctx.beginPath();
+        ctx.ellipse(wx(ex), wy(ey + size * 0.3), size * 0.52 * scale, size * 0.2 * scale, 0, 0, 7);
+        ctx.stroke();
+        ctx.font = `${14 * scale}px sans-serif`;
+        ctx.textAlign = "center";
+        ctx.fillText(AFFIX_EMOJI[e.affix], wx(ex), wy(ey - size / 2 - 14));
       }
     }
 
@@ -1283,6 +1339,18 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
       };
     }
 
+    // ⛽ רצועת התדלוק — קו מקווקו שמזכיר לטייס לאן לחזור, מופיע כשהדלק יורד
+    if (myRole() === "heli" && fuelRef.current.fuel < 55 && phaseRef.current === "wave") {
+      ctx.setLineDash([12 * scale, 9 * scale]);
+      ctx.strokeStyle = `rgba(255,206,60,${fuelRef.current.fuel <= 1 ? 0.8 : 0.4})`;
+      ctx.lineWidth = 2 * scale;
+      ctx.beginPath(); ctx.moveTo(wx(0), wy(1080)); ctx.lineTo(wx(W), wy(1080)); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.font = `${12 * scale}px sans-serif`; ctx.textAlign = "center";
+      ctx.fillStyle = `rgba(255,206,60,${fuelRef.current.fuel <= 1 ? 0.95 : 0.55})`;
+      ctx.fillText("⛽ אזור תדלוק ⛽", wx(500), wy(1080) - 6 * scale);
+    }
+
     // מיני-מפה: פס עליון של כל החזית
     const mmH = 34;
     ctx.fillStyle = "rgba(5,7,12,.82)";
@@ -1475,6 +1543,19 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
 
       {/* HUD תפקיד */}
       <div className="wl-rolehud">
+        {role === "heli" && (
+          <div className="wl-heatwrap">
+            {fuelRef.current.fuel <= 1
+              ? <b style={{ color: "#ffce3c" }}>⛽!</b>
+              : <span className="sub" style={{ fontSize: 10 }}>⛽ דלק</span>}
+            <div className="wl-heat">
+              <div style={{
+                height: `${Math.min(100, (fuelRef.current.fuel / Math.max(1, fuelRef.current.max)) * 100)}%`,
+                background: fuelRef.current.fuel <= 25 ? "#ff8a3c" : "#ffce3c",
+              }} />
+            </div>
+          </div>
+        )}
         {role === "mg" && (
           <div className="wl-heatwrap">
             {jamLeft > 0 ? <b style={{ color: "#ff5c5c" }}>🥵 {Math.ceil(jamLeft / 1000)}</b> : <span className="sub" style={{ fontSize: 10 }}>חום</span>}

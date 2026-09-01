@@ -12,7 +12,7 @@
  */
 import type { GameCtx, GameInstance } from "../engine";
 import type {
-  GameClientMsg, WallClientMsg, WallRole, WallEnemyType, WallCard, WallStats,
+  GameClientMsg, WallClientMsg, WallRole, WallEnemyType, WallCard, WallStats, WallAffix,
 } from "../../../shared/protocol";
 
 interface Config {
@@ -51,6 +51,25 @@ const WALL_Y = 1250;          // קו החומה
 const STRIP_TOP = 950;        // רצועת החלוץ
 const GATE_X = 500;
 
+/* ---- ⛽ דלק ההליקופטר (פלייטסט 1.9: "צריך לתת לו דלק קצובה, והוא צריך לחזור לחומה לתדלק") ----
+ * הדלק נשרף בטיסה מעל השדה ומתמלא רק ברצועת החומה — זה מיסוי-הקשב של הטייס,
+ * המקבילה לחום של המקלען ולקולדאון של התותחן: קצב של ~25 שניות הפצצה, ~3 שניות
+ * תדלוק. בלי דלק אין פצצות והטיסה איטית — לא עונש, תזכורת לחזור הביתה. */
+const FUEL_MAX = 100;
+const FUEL_STRIP_Y = 1080;    // מתחת לקו הזה (קרוב לחומה) מתדלקים
+const FUEL_BURN = 0.4;        // לטיק 100ms ⇒ 4/שנ' ⇒ ~25 שניות באוויר
+const FUEL_FILL = 3.2;        // לטיק ⇒ 32/שנ' ⇒ ~3 שניות תדלוק מלא
+
+/* ---- 🏷️ תכונות אויב — שכבת התוכן (מהמחקר: BTD6 = חסינות בינארית, לא אחוזים;
+ * RoR2 = עילית מחליפה צפיפות). כל תכונה מוצגת לבדה כמה גלים לפני שהבאות מגיעות,
+ * וכל אחת דורשת *תשובה* אחרת — זה מה שהופך "עוד גל" ל"גל מעניין":
+ * 🏠 גג מבוצר (גל 6+) — חסין לכל נזק מההליקופטר; תפקידי הקרקע חייבים לטפל בו.
+ * 💚 מרפא (גל 9+) — מרפא את הנחיל סביבו; מטרת עדיפות שמושכת קשב.
+ * 🌀 מגן קינטי (גל 12+) — סופג פגיעות בודדות ומתחדש; רק אש רציפה (מקלען) שוברת. */
+const AFFIX_HP = 1.5;         // אויב-תכונה הוא עילית: חיים ×1.5, XP ×2.5
+const AFFIX_XP = 2.5;
+const SHIELD_HITS = 6;        // כמה פגיעות המגן סופג; מתחדש +2/שנ' — קשת (1.5/שנ') לא שוברת לבד, מקלען (10/שנ') כן
+
 /* ---- אויבים ---- */
 const ETYPES: Record<WallEnemyType, { hp: number; speed: number; wallDps: number; heroHit: number; xp: number }> = {
   swarm:   { hp: 18,  speed: 95,  wallDps: 4,  heroHit: 6,  xp: 2 },
@@ -77,6 +96,10 @@ interface Enemy {
   lastHeliX?: number;       // המיקום הקודם של המטרה — בשביל חיזוי הובלה
   shockAt?: number;         // 🌀 גל הדף — מסנן הדיפה, אחרת כל פיצוץ משדר מסלול חדש
   wallAt?: number;          // מתי הגיע לחומה — אויב שמיצה את מכסת הדחיפה מפונה
+  affix?: WallAffix;        // 🏷️ תכונת עילית (גג מבוצר / מרפא / מגן קינטי)
+  shieldLeft?: number;      // 🌀 כמה פגיעות המגן עוד סופג
+  lastBlockMsg?: number;    // סינון הודעות "נחסם" — המקלען פוגע 10 פעמים בשנייה
+  lastHealAt?: number;      // 💚 שעון הריפוי של המרפא
   // ---- מצבים מתכונות נשק ----
   burnUntil?: number; burnDps?: number; burnBy?: string;
   poisonUntil?: number; poisonStacks?: number; poisonBy?: string;
@@ -115,8 +138,9 @@ interface Mods {
   // 🚁 פצצות
   payload: number; salvo: number; blastr: number; fuse: number;
   napalm: number; guided: number; cluster: number; shock: number; plating: number;
+  tank: number; // ⛽ קיבולת דלק
 }
-const baseMods = (): Mods => ({ dmg: 1, rate: 1, speed: 1, range: 1, crit: 0, xpMul: 1, radius: 1, heat: 1, tracer: 0, shieldStr: 0, lifesteal: 0, armor: 0, exec: 0, momentum: 0, sentry: 0, payload: 1, salvo: 0, blastr: 1, fuse: 1, napalm: 0, guided: 0, cluster: 0, shock: 0, plating: 0 });
+const baseMods = (): Mods => ({ dmg: 1, rate: 1, speed: 1, range: 1, crit: 0, xpMul: 1, radius: 1, heat: 1, tracer: 0, shieldStr: 0, lifesteal: 0, armor: 0, exec: 0, momentum: 0, sentry: 0, payload: 1, salvo: 0, blastr: 1, fuse: 1, napalm: 0, guided: 0, cluster: 0, shock: 0, plating: 0, tank: 1 });
 const baseTraits = (): Record<TraitId, number> => ({ burn: 0, frost: 0, chain: 0, poison: 0, blast: 0, pierce: 0, multi: 0, vamp: 0 });
 
 interface Hero {
@@ -132,6 +156,7 @@ interface Hero {
   momoUntil: number; momoStacks: number; // מומנטום פעיל
   sentryUsed: boolean;
   healSec: number; healAcc: number; // תקרת ריפוי-לשנייה (ערפד/גזילת-חיים)
+  fuel: number; // ⛽ הליקופטר בלבד
   picks: Record<string, number>;
   // מקלען
   firing: boolean; aimX: number; aimY: number; heat: number; jamUntil: number; tracerRamp?: number;
@@ -193,14 +218,19 @@ const ROLE_CARDS: Card[] = [
   { kind: "role", id: "cluster", name: "מצרר",        emoji: "💥", desc: "הפצצה מתפצלת ל-3 פצצות משנה", roles: ["heli"] },
   { kind: "role", id: "shock",   name: "גל הדף",      emoji: "🌀", desc: "הפיצוץ הודף אויבים אחורה מהחומה", roles: ["heli"] },
   { kind: "role", id: "plating", name: "שריון גחון",  emoji: "🛡️", desc: "‎-30% נזק מאש נגד-מטוסים", roles: ["heli"] },
+  { kind: "role", id: "tank",    name: "מיכל מורחב",  emoji: "🛢️", desc: "‎+25% קיבולת דלק — יותר זמן באוויר", roles: ["heli"] },
 ];
 
 const ALL_CARDS = [...AMPS, ...TRAIT_CARDS, ...ROLE_CARDS];
 const cardsFor = (role: WallRole) => ALL_CARDS.filter((c) => !c.roles || c.roles.includes(role));
 
-/* ---- דרגות נשק — בלי תקרה. כל 3 רמות הנשק מחליף גוף וגדל. ---- */
+/* ---- דרגות נשק — בלי תקרה על המראה, עם ריכוך על המספר. ----
+ * ‎+45% לדרגה בלי סוף היה שני-שליש ממה שסגר את עקומת הקושי: בגל 6 לבדו ×3.7.
+ * מעל דרגה 8 העלייה יורדת ל-+18% — הדרגה ממשיכה לנצוח ויזואלית (רצועות, גוף,
+ * אבולוציות) בלי להדביק לבדה את חיי האויב. */
 const tierOf = (level: number) => 1 + Math.floor(level / 3);
-const tierMult = (tier: number) => 1 + 0.45 * (tier - 1);
+const tierMult = (tier: number) =>
+  tier <= 8 ? 1 + 0.45 * (tier - 1) : 1 + 0.45 * 7 + 0.18 * (tier - 8);
 
 export function createWall(ctx: GameCtx): GameInstance {
   const cfg = (ctx.config ?? {}) as Config;
@@ -318,12 +348,28 @@ export function createWall(ctx: GameCtx): GameInstance {
     if (w >= 4) mix.push("sniper");
     if (w >= 5) mix.push("digger");
     if (w >= 6) mix.push("armored", "runner");
+    // התמהיל ממשיך להתפתח — קודם הוא קפא בגל 6 והגלים המאוחרים היו "עוד מאותו דבר"
+    if (w >= 8) mix.push("sniper", "armored");
+    if (w >= 10) mix.push("digger", "armored", "runner");
     return mix;
+  }
+  /** 🏷️ הגרלת תכונת עילית לאויב — כל תכונה נכנסת לבדה, והשיעור גדל עם הגל */
+  function rollAffix(w: number, type: WallEnemyType): WallAffix | undefined {
+    if (type === "bomber" || type === "sniper" || type === "digger" || type === "boss") return undefined;
+    if (w < 6) return undefined;
+    const share = Math.min(0.32, 0.06 + 0.028 * (w - 6));   // גל 6: ‏6% · גל 12: ‏23% · גל 15+: ‏32%
+    if (rnd() >= share) return undefined;
+    const pool: WallAffix[] = ["roof"];
+    if (w >= 9) pool.push("healer");
+    if (w >= 12) pool.push("shield", "roof");               // roof פעמיים — נשאר הנפוץ, כי הוא השער של הטייס
+    return pool[Math.floor(rnd() * pool.length)];
   }
   /** חיי האויב — על-לינאריים בגל, ו*בלי* גורם מספר-שחקנים.
    *  הגורם ‎(1+0.12(n-2)) היה מה שהפך חדר גדול לקשה יותר *לכל שחקן* — בדיוק הפוך
    *  ממה שרוצים. העומק לפי מספר שחקנים מגיע מהכמות התת-לינארית, לא מ-HP. */
-  const hpScale = (w: number) => Math.pow(1 + 0.22 * (w - 1), 1.7) * diff;
+  // מגל 8 מצטרף מדרג נוסף של ‎+5% לגל: עם התקרות על כוח השחקן (דרגות, פצצות)
+  // עקומה תלולה סוף-סוף מורגשת — "חזקים הרבה יותר ככל שעולים" (פלייטסט 1.9).
+  const hpScale = (w: number) => Math.pow(1 + 0.22 * (w - 1), 1.7) * Math.pow(1.05, Math.max(0, w - 8)) * diff;
 
   function startWave(w: number, delayMs: number) {
     wave = w; bestWave = Math.max(bestWave, w);
@@ -365,7 +411,8 @@ export function createWall(ctx: GameCtx): GameInstance {
       //  השער האמיתי הוא תקרת הנזק לכל דחיפה. הנתיב הוא כדי שאפשר יהיה *לראות* אותו.)
       const lane = 60 + ((p + 0.5) / k) * (W - 120);
       const x0 = Math.max(50, Math.min(W - 50, lane + (rnd() - 0.5) * 260));
-      ctx.timer(delay, () => { if (token === t && phase === "wave") spawn(type, t, p, x0); else spawnsLeft--; });
+      const affix = rollAffix(w, type);
+      ctx.timer(delay, () => { if (token === t && phase === "wave") spawn(type, t, p, x0, affix); else spawnsLeft--; });
     }
     lastSpawnRef = lastSpawnAt;
     // הבוס מקבל "דחיפה" משלו (אינדקס k, מעבר לדחיפות הרגילות 0..k-1) — בלעדיה
@@ -396,20 +443,22 @@ export function createWall(ctx: GameCtx): GameInstance {
     });
   }
 
-  function spawn(type: WallEnemyType, t: number, push?: number, x0?: number) {
+  function spawn(type: WallEnemyType, t: number, push?: number, x0?: number, affix?: WallAffix) {
     spawnsLeft--;
     const base = ETYPES[type];
     const id = ++eSeq;
-    const hp = Math.round(base.hp * hpScale(wave));
+    // אויב-תכונה הוא עילית (RoR2): פחות "עוד גוף", יותר "בעיה שצריך תשובה"
+    const hp = Math.round(base.hp * hpScale(wave) * (affix ? AFFIX_HP : 1));
     const e: Enemy = {
-      id, type, hp, maxHp: hp, push,
+      id, type, hp, maxHp: hp, push, affix,
+      shieldLeft: affix === "shield" ? SHIELD_HITS : undefined,
       x0: x0 ?? 60 + rnd() * (W - 120), y0: -60,
-      speed: base.speed * (0.9 + rnd() * 0.2),
+      speed: base.speed * (0.9 + rnd() * 0.2) * (affix ? 0.9 : 1),
       wob: type === "runner" ? 70 : type === "swarm" ? 45 : 20,
       at: now() + 400, state: "walk", lastHit: 0,
     };
     enemies.set(id, e);
-    ctx.cue(400, { a: "wl_spawn", id, type, x0: e.x0, y0: e.y0, speed: e.speed, wob: e.wob, hp, maxHp: hp, at: e.at });
+    ctx.cue(400, { a: "wl_spawn", id, type, x0: e.x0, y0: e.y0, speed: e.speed, wob: e.wob, hp, maxHp: hp, at: e.at, affix });
     void t;
   }
 
@@ -430,6 +479,12 @@ export function createWall(ctx: GameCtx): GameInstance {
     tickDots(tn);
     const helis = fighters().filter((p) => { const h = heroes.get(p); return h && h.role === "heli" && !h.down; });
     tickFlak(tn, helis);
+    // ⛽ דלק: נשרף מעל השדה, מתמלא רק ברצועת החומה (מתחת ל-FUEL_STRIP_Y)
+    for (const p of helis) {
+      const h = heroes.get(p)!;
+      const cap = FUEL_MAX * h.mods.tank;
+      h.fuel = h.y < FUEL_STRIP_Y ? Math.max(0, h.fuel - FUEL_BURN) : Math.min(cap, h.fuel + FUEL_FILL);
+    }
 
     for (const e of [...enemies.values()]) {
       const [ex, ey] = posOf(e, tn);
@@ -574,6 +629,7 @@ export function createWall(ctx: GameCtx): GameInstance {
       for (const p of fighters()) {
         const h = heroes.get(p)!;
         if (h.role === "mg") ctx.sendTo(p, { a: "wl_heat", heat: Math.round(h.heat) });
+        if (h.role === "heli") ctx.sendTo(p, { a: "wl_fuel", fuel: Math.round(h.fuel), max: Math.round(FUEL_MAX * h.mods.tank) });
       }
     }
   }
@@ -611,7 +667,7 @@ export function createWall(ctx: GameCtx): GameInstance {
   function reviveHero(pid: string, h: Hero, hpFrac = 0.5) {
     h.down = false;
     h.hp = Math.max(1, Math.round(h.max * hpFrac));
-    if (h.role === "heli") { h.x = GATE_X; h.y = 1180; }
+    if (h.role === "heli") { h.x = GATE_X; h.y = 1180; h.fuel = Math.max(h.fuel, FUEL_MAX * h.mods.tank * 0.5); }
     ctx.broadcast({ a: "wl_hero", pid, hp: h.hp, max: h.max, down: false });
   }
 
@@ -694,9 +750,15 @@ export function createWall(ctx: GameCtx): GameInstance {
    * כל הנזק עובר ב-damageEnemy, ולכן 8 התכונות חלות על הפצצה בחינם. */
   const BOMB_DROP = 40;   // כמה מתחת להליקופטר הפצצה נוחתת
   function dropBombs(pid: string, h: Hero) {
-    const n = 1 + h.mods.salvo + h.traits.multi;   // ✨ כפילות = עוד פצצה
+    // ✨ תקרת מטח: עד 3 פצצות נוספות; ערימות מעבר לזה הופכות ל-+10% נזק כל אחת.
+    // salvo/multi היו ‎+=1 גולמי — עקפו את בלם התשואה הפוחתת והכפילו זה את זה.
+    const extra = h.mods.salvo + h.traits.multi;
+    const n = 1 + Math.min(3, extra);
+    const overMult = 1 + 0.10 * Math.max(0, extra - 3);
     const fall = Math.max(180, 520 * h.mods.fuse); // ⏱️ פתיל מהיר
-    const r = 120 * h.mods.blastr * h.mods.range * (1 + 0.10 * (h.tier - 1)); // עגול עכשיו, לא עמוד אינסופי — צריך רדיוס אמיתי
+    // תקרת רדיוס — אותה תבנית כמו התותחן (300). בלי תקרה קשה אחת כיסתה את כל
+    // המגרש מגל 5; הבסיס ירד 120→105 ("פחות חזק, לפחות בהתחלה" — פלייטסט 1.9).
+    const r = Math.min(260, 105 * h.mods.blastr * h.mods.range * (1 + 0.10 * (h.tier - 1)));
     const by = Math.max(60, Math.min(WALL_Y - 45, h.y + BOMB_DROP));
     ctx.broadcast({ a: "wl_drop", pid, x: Math.round(h.x), y: Math.round(h.y), fall: Math.round(fall), r: Math.round(r), n });
     const t0 = token;
@@ -723,14 +785,17 @@ export function createWall(ctx: GameCtx): GameInstance {
             by2 += (best[1] - by) * pull;
           }
         }
-        detonate(pid, h, bx, by2, r, 1);
-        // 💥 מצרר — שלוש פצצות משנה סביב הפגיעה
+        detonate(pid, h, bx, by2, r, overMult);
+        // 💥 מצרר — שלוש פצצות משנה סביב הפגיעה. המכפיל קבוע (0.4) עם תוספת
+        // מתונה לערימה — קודם הוא היה 0.45·ערימות, כך שפצצות-המשנה נהיו חזקות
+        // מהפצצה הראשית וסקיילו ריבועית עם הבחירות.
         if (h.mods.cluster > 0) {
+          const cMul = 0.4 * (1 + 0.10 * (h.mods.cluster - 1)) * overMult;
           for (let c = 0; c < 3; c++) {
             const cx = Math.max(20, Math.min(W - 20, bx + (c - 1) * (r * 0.75)));
             ctx.timer(150, () => {
               if (token !== t0 || phase !== "wave") return;
-              detonate(pid, h, cx, by2, r * 0.6, 0.45 * h.mods.cluster);
+              detonate(pid, h, cx, by2, r * 0.6, cMul);
             });
           }
         }
@@ -741,20 +806,23 @@ export function createWall(ctx: GameCtx): GameInstance {
   /** פיצוץ עגול בנקודה (bx,by) — מתחת להליקופטר, לא על החומה */
   function detonate(pid: string, h: Hero, bx: number, by: number, r: number, mul: number) {
     const tn = now();
-    const dmg = 52 * h.mods.dmg * h.mods.payload * tierMult(h.tier) * mul;
+    // 52→42: "ההליקופטר משמעותית חזק יותר מהשאר... פחות חזק, לפחות בהתחלה" (פלייטסט 1.9)
+    const dmg = 42 * h.mods.dmg * h.mods.payload * tierMult(h.tier) * mul;
     // אפקט מסונן: מצרר×מטח×כפילות מגיע ל-~16 פיצוצים להטלה ו-~25 בשנייה.
     // הנזק תמיד מוחל — רק הציור מסונן, כמו בשרשרת ובנפץ.
     if (tn - h.lastBoomFx > 120) {
       h.lastBoomFx = tn;
       ctx.broadcast({ a: "wl_boomfx", x: Math.round(bx), y: Math.round(by), r: Math.round(r) });
     }
-    for (const e of [...enemies.values()]) {
-      if (e.state === "burrow") continue;
-      const [ex, ey] = posOf(e, tn);
-      // ⚠️ מרחק אמיתי, לא רק אופקי. הבדיקה האופקית יצרה עמוד אנכי אינסופי
-      // שפגע בכל מה שנמצא באותו x — מקצה המסך ועד החומה.
-      const d = Math.hypot(ex - bx, ey - by);
-      if (d > r) continue;
+    // תקרת מטרות: 7 הקרובות למרכז — הקשת חסומה ב-1+חדירה, המקלען ב-1+כפילות,
+    // התותחן ברדיוס; הפצצה הייתה היחידה בלי שום תקרה.
+    const inR = [...enemies.values()]
+      .filter((e) => e.state !== "burrow")
+      .map((e) => ({ e, d: Math.hypot(posOf(e, tn)[0] - bx, posOf(e, tn)[1] - by) }))
+      .filter(({ d }) => d <= r)
+      .sort((a, b) => a.d - b.d)
+      .slice(0, 7);
+    for (const { e, d } of inR) {
       const falloff = 1 - 0.45 * (d / r);
       damageEnemy(e, dmg * falloff, pid);
       // 🔥 נפאלם — שלולית אש. ⚠️ קובעים ערך, לא מוסיפים: עם מצרר יש ~4 פיצוצים
@@ -768,10 +836,13 @@ export function createWall(ctx: GameCtx): GameInstance {
       // רק על אויב שכבר מאיים (למטה), עצירה ב-y=620 כדי שלא ייעלם מהמסך,
       // ולא יותר מפעם ב-800ms לאויב — אחרת כל פיצוץ שידר wl_estate לכל אויב
       // ברדיוס, מאות הודעות בשנייה, והאויבים נתקעו מחוץ למסך והגל לא נגמר.
-      if (h.mods.shock > 0 && enemies.has(e.id) && ey > 780 && tn - (e.shockAt ?? 0) > 800) {
-        e.shockAt = tn;
-        const push = 55 * h.mods.shock;
-        setPath(e, ex, Math.max(620, ey - push), e.state === "wall" ? "walk" : e.state, e.speed);
+      if (h.mods.shock > 0 && enemies.has(e.id) && tn - (e.shockAt ?? 0) > 800) {
+        const [ex, ey] = posOf(e, tn);
+        if (ey > 780) {
+          e.shockAt = tn;
+          const push = 55 * h.mods.shock;
+          setPath(e, ex, Math.max(620, ey - push), e.state === "wall" ? "walk" : e.state, e.speed);
+        }
       }
     }
   }
@@ -801,9 +872,22 @@ export function createWall(ctx: GameCtx): GameInstance {
     return a;
   }
 
+  /** פגיעה שנחסמה (גג מבוצר / מגן קינטי) — פידבק מסונן, המקלען פוגע 10 פעמים בשנייה */
+  function blockedFx(e: Enemy, by: string) {
+    const tn = now();
+    if (tn - (e.lastBlockMsg ?? 0) < 300) return;
+    e.lastBlockMsg = tn;
+    ctx.broadcast({ a: "wl_hit", id: e.id, hp: Math.round(e.hp), by, blocked: true });
+  }
+
   function damageEnemy(e: Enemy, dmg: number, by: string, crit = false, kind: HitKind = "hit", depth = 0) {
     if (!enemies.has(e.id)) return;
     const h = heroes.get(by);
+    // 🏷️ חסימות עילית — חסינות בינארית (BTD6), לא אחוזים: או שיש לך תשובה או שאין.
+    // 🏠 גג מבוצר: חסין לכל נזק שמקורו בטייס (פצצות, נפאלם, תכונות — הכול).
+    // 🌀 מגן קינטי: סופג פגיעות בודדות ומתחדש +2/שנ' — נשבר רק תחת אש רציפה.
+    if (e.affix === "roof" && h?.role === "heli") return blockedFx(e, by);
+    if (e.affix === "shield" && (e.shieldLeft ?? 0) > 0) { e.shieldLeft!--; return blockedFx(e, by); }
     dmg *= ampMul(h, e);
     if (h && kind === "hit" && rnd() < h.mods.crit) { dmg *= 2; crit = true; }
     e.hp -= dmg;
@@ -864,7 +948,7 @@ export function createWall(ctx: GameCtx): GameInstance {
         // הוחזר לשחקן כרמות (‎~79% ממנו) — ולכן המשחק נעשה *קל* יותר כל גל.
         // ‎√(n/2) מקזז בדיוק את קנה-המידה התת-לינארי של כמות האויבים, כדי שקצב
         // העלייה ברמות לא יהיה תלוי בגודל הקבוצה.
-        giveXp(by, ETYPES[e.type].xp * (1 + 0.12 * (wave - 1)) * Math.sqrt(waveN / 2));
+        giveXp(by, ETYPES[e.type].xp * (e.affix ? AFFIX_XP : 1) * (1 + 0.12 * (wave - 1)) * Math.sqrt(waveN / 2));
         // ---- תכונות שנדלקות על הריגה ----
         const t = h.traits;
         const evo = (id: TraitId) => (h.evos.includes(id) ? 2 : 1);
@@ -899,6 +983,22 @@ export function createWall(ctx: GameCtx): GameInstance {
   /** DoT — רץ פעם בשנייה מתוך הטיק (ולא בטיימר לכל אויב) כדי לא להציף הודעות */
   function tickDots(tn: number) {
     for (const e of [...enemies.values()]) {
+      // 🌀 התחדשות המגן + 💚 ריפוי המרפא — פעם בשנייה (לאויב יש תכונה אחת, שעון משותף)
+      if (e.affix === "shield" && (e.shieldLeft ?? 0) < SHIELD_HITS && tn - (e.lastHealAt ?? 0) >= 1000) {
+        e.lastHealAt = tn;
+        e.shieldLeft = Math.min(SHIELD_HITS, (e.shieldLeft ?? 0) + 2);
+      }
+      if (e.affix === "healer" && e.state !== "burrow" && tn - (e.lastHealAt ?? 0) >= 1000) {
+        e.lastHealAt = tn;
+        const [cx, cy] = posOf(e, tn);
+        for (const o of enemies.values()) {
+          if (o.id === e.id || o.hp >= o.maxHp || o.state === "burrow") continue;
+          const [ox, oy] = posOf(o, tn);
+          if (Math.hypot(ox - cx, oy - cy) > 170) continue;
+          o.hp = Math.min(o.maxHp, o.hp + o.maxHp * 0.04);
+          ctx.broadcast({ a: "wl_hit", id: o.id, hp: Math.round(o.hp), by: "" });
+        }
+      }
       // שחרור האטה שפגה — קודם, ובלי תלות בשעון ה-DoT
       if (e.slowUntil && tn > e.slowUntil && e.fullSpeed !== undefined && e.state === "walk") {
         const [ex, ey] = posOf(e, tn);
@@ -1040,6 +1140,7 @@ export function createWall(ctx: GameCtx): GameInstance {
         case "cluster": m.cluster += 1; break;
         case "shock": m.shock += 1; break;
         case "plating": m.plating += 1; break;
+        case "tank": m.tank *= amp(0.25); break; // ⛽ קיבולת דלק
       }
     }
     sendMods(pid); // הלקוח חייב לדעת — אחרת שערי הקצב/מהירות שלו חוסמים את השדרוג
@@ -1081,6 +1182,7 @@ export function createWall(ctx: GameCtx): GameInstance {
         ctx.broadcast({ a: "wl_hero", pid: p, hp: Math.round(h.hp), max: h.max, down: false });
       }
       h.heat = 0; h.firing = false; h.jamUntil = 0;
+      h.fuel = FUEL_MAX * h.mods.tank; // ⛽ תדלוק מלא בין גלים
       h.sentryUsed = false; // המוצב טעון מחדש בכל גל
     }
     // ⚠️ הגל נגמר = המגרש נקי. בלי זה אויב ששרד (בעיקר כזה שנצמד לחומה מחוץ
@@ -1152,7 +1254,7 @@ export function createWall(ctx: GameCtx): GameInstance {
           role: defaultRole(i), slot: [GATE_X, 1100], x: GATE_X, y: 1100,
           hp: 150, max: 150, down: false, upAt: 0, shield: false,
           mods: baseMods(), level: 1, xp: 0, tier: 1, picks: {},
-          traits: baseTraits(), evos: [], momoUntil: 0, momoStacks: 0, sentryUsed: false, healSec: 0, healAcc: 0,
+          traits: baseTraits(), evos: [], momoUntil: 0, momoStacks: 0, sentryUsed: false, healSec: 0, healAcc: 0, fuel: FUEL_MAX,
           firing: false, aimX: GATE_X, aimY: 700, heat: 0, jamUntil: 0,
           lastSwing: 0, lastShot: 0, cannonReadyAt: 0, lastXpMsg: 0, lastChainFx: 0, lastBlastFx: 0, lastBoomFx: 0, fxTurn: 0,
         });
@@ -1162,7 +1264,7 @@ export function createWall(ctx: GameCtx): GameInstance {
       const h = heroes.get(p)!;
       const isInf = h.role === "heli";
       h.hp = h.max = isInf ? 150 : 100;
-      h.down = false; h.shield = false; h.firing = false; h.heat = 0; h.jamUntil = 0;
+      h.down = false; h.shield = false; h.firing = false; h.heat = 0; h.jamUntil = 0; h.fuel = FUEL_MAX;
       h.mods = baseMods(); h.level = 1; h.xp = 0; h.tier = 1; h.picks = {};
       h.traits = baseTraits(); h.evos = []; h.momoUntil = 0; h.momoStacks = 0; h.sentryUsed = false;
       [h.x, h.y] = h.slot;
@@ -1186,7 +1288,7 @@ export function createWall(ctx: GameCtx): GameInstance {
           role: defaultRole(i), slot: [500, 1100], x: 500, y: 1100,
           hp: 150, max: 150, down: false, upAt: 0, shield: false,
           mods: baseMods(), level: 1, xp: 0, tier: 1, picks: {},
-          traits: baseTraits(), evos: [], momoUntil: 0, momoStacks: 0, sentryUsed: false, healSec: 0, healAcc: 0,
+          traits: baseTraits(), evos: [], momoUntil: 0, momoStacks: 0, sentryUsed: false, healSec: 0, healAcc: 0, fuel: FUEL_MAX,
           firing: false, aimX: 500, aimY: 700, heat: 0, jamUntil: 0,
           lastSwing: 0, lastShot: 0, cannonReadyAt: 0, lastXpMsg: 0, lastChainFx: 0, lastBlastFx: 0, lastBoomFx: 0, fxTurn: 0,
         });
@@ -1221,7 +1323,7 @@ export function createWall(ctx: GameCtx): GameInstance {
           role: defaultRole(heroes.size), slot: [GATE_X, 1100], x: GATE_X, y: 1100,
           hp: 150, max: 150, down: false, upAt: 0, shield: false,
           mods: baseMods(), level: 1, xp: 0, tier: 1, picks: {},
-          traits: baseTraits(), evos: [], momoUntil: 0, momoStacks: 0, sentryUsed: false, healSec: 0, healAcc: 0,
+          traits: baseTraits(), evos: [], momoUntil: 0, momoStacks: 0, sentryUsed: false, healSec: 0, healAcc: 0, fuel: FUEL_MAX,
           firing: false, aimX: GATE_X, aimY: 700, heat: 0, jamUntil: 0,
           lastSwing: 0, lastShot: 0, cannonReadyAt: 0, lastXpMsg: 0, lastChainFx: 0, lastBlastFx: 0, lastBoomFx: 0, fxTurn: 0,
         };
@@ -1256,6 +1358,7 @@ export function createWall(ctx: GameCtx): GameInstance {
         }
         case "wl_bomb": {
           if (phase !== "wave" || h.role !== "heli" || h.down) return;
+          if (h.fuel <= 1) return; // ⛽ בלי דלק אין פצצות — חוזרים לחומה לתדלק
           const tn = now();
           // שער רך ב-~11% מקצב הלקוח (620) — הלקוח הוא השוער; ג'יטר בלע הטלות
           if (tn - h.lastSwing < 550 / h.mods.rate) return;

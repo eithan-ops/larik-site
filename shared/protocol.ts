@@ -343,6 +343,8 @@ export type ReactorServerMsg =
  */
 export type WallRole = "heli" | "archer" | "cannon" | "mg";
 export type WallEnemyType = "swarm" | "runner" | "armored" | "bomber" | "sniper" | "digger" | "boss";
+/** תכונת אויב (שכבת התוכן): 🏠 גג מבוצר — חסין לנזק מההליקופטר · 💚 מרפא — מרפא את הנחיל סביבו · 🌀 מגן קינטי — סופג פגיעות בודדות, נשבר רק מאש רציפה */
+export type WallAffix = "roof" | "healer" | "shield";
 export interface WallCard { id: string; name: string; emoji: string; desc: string; tier?: number }
 export interface WallStats { kills: number; dmg: number; saves: number; deaths: number }
 
@@ -363,9 +365,9 @@ export type WallClientMsg =
 export type WallServerMsg =
   | { a: "wl_setup"; roles: Record<string, WallRole>; slots: Record<string, [number, number]> } // מסך היערכות (slots = עמדות שהוקצו)
   | { a: "wl_wave"; wave: number; wallHp: number; wallMax: number; duration: number; pushes?: number } // cue — פתיחת גל (pushes = כמה דחיפות בו-זמניות)
-  | { a: "wl_spawn"; id: number; type: WallEnemyType; x0: number; y0: number; speed: number; wob: number; hp: number; maxHp: number; at: number }
+  | { a: "wl_spawn"; id: number; type: WallEnemyType; x0: number; y0: number; speed: number; wob: number; hp: number; maxHp: number; at: number; affix?: WallAffix }
   | { a: "wl_estate"; id: number; state: "walk" | "fight" | "wall" | "burrow"; x: number; y: number; at: number; speed?: number } // שינוי מצב/מסלול
-  | { a: "wl_hit"; id: number; hp: number; by: string; crit?: boolean; k?: "hit" | "burn" | "poison" | "chain" | "blast" | "frost" | "pierce" | "vamp" } // פגיעה באויב (hp<=0 = מוות); k = מקור הנזק, לצביעה ולחלקיקים
+  | { a: "wl_hit"; id: number; hp: number; by: string; crit?: boolean; k?: "hit" | "burn" | "poison" | "chain" | "blast" | "frost" | "pierce" | "vamp"; blocked?: boolean } // פגיעה באויב (hp<=0 = מוות); k = מקור הנזק; blocked = הפגיעה נחסמה (גג מבוצר/מגן קינטי)
   | { a: "wl_chain"; x1: number; y1: number; x2: number; y2: number; by: string }                // קשת ברק בין שני אויבים
   | { a: "wl_style"; pid: string; traits: Record<string, number>; tier: number; evos: string[]; amps?: Record<string, number> } // איך הנשק של השחקן נראה — כל החדר מקבל (amps = כמה פעמים נבחר כל מגבר)
   | { a: "wl_evo"; pid: string; trait: string; name: string; emoji: string }                     // 🌟 אבולוציה — הרגע שכל החדר עוצר בשבילו
@@ -386,6 +388,7 @@ export type WallServerMsg =
   | { a: "wl_xp"; xp: number; level: number; next: number }                                      // אישי — מד XP
   | { a: "wl_mods"; rate: number; speed: number }                                                // אישי — מכפילי קצב/מהירות (הלקוח מכייל איתם את שערי הקלט)
   | { a: "wl_heat"; heat: number }                                                               // אישי (מקלען) — החום האמיתי מהשרת, 5Hz
+  | { a: "wl_fuel"; fuel: number; max: number }                                                  // אישי (הליקופטר) — הדלק מהשרת, 5Hz; מתמלא רק ברצועת החומה
   | { a: "wl_clear"; wave: number; wallHp: number }                                              // הגל הוסתיים — נשימה
   | { a: "wl_over"; wave: number; bestWave: number; nearMiss?: string; mvp?: string; stats: Record<string, WallStats> }
   | { a: "wl_state"; wave: number; roles: Record<string, WallRole>; slots: Record<string, [number, number]>; wallHp: number; wallMax: number; phase: "setup" | "wave" | "breath" | "over"; tiers: Record<string, number> }; // rejoin
