@@ -6,6 +6,8 @@
  *  2. גניבה ממאורה של חבר: יורדת דרגה, נשלחת th_grab + th_first + th_rage.
  *  3. מרדף: מגע מפיל (th_tackle+th_drop), צד שלישי מרים (th_pick), הגעה הביתה (th_home) → הזהב עובר.
  *  4. ההר נגמר (th_empty), האזעקה בדקה האחרונה (th_alarm ×3), וסיום עם ניקוד = זהב.
+ *  5. סבב הזרימה: צאו!/מלחמה/ההר נגמר/אזעקה/צפירה כ-cue · th_pos ב-20Hz עם שעון ווקטור ·
+ *     חסד אחרי גניבה · th_nope לגניבה מרחוק · פעמון אחד למאורה · הטקס אחרי הצפירה.
  */
 import { Room, Transport } from "../src/engine";
 import { createThieves, TH_W, TH_H } from "../src/games/thieves";
@@ -20,18 +22,34 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 function makeTransport() {
   const inbox = new Map<string, ServerMsg[]>();
+  const times: { pid: string; a: string; at: number }[] = [];
+  const bells: { den: string; at: number }[] = [];
+  /** שני פעמונים לאותה מאורה לא מגיעים בתוך 8 שניות */
+  const bellsSpaced = () => { for (let i = 0; i < bells.length; i++) for (let j = i + 1; j < bells.length; j++) if (bells[i].den === bells[j].den && bells[j].at - bells[i].at < 7900) return false; return true; };
   const transport: Transport = {
-    send(pid, msg) { if (!inbox.has(pid)) inbox.set(pid, []); inbox.get(pid)!.push(msg); },
+    send(pid, msg) {
+      if (!inbox.has(pid)) inbox.set(pid, []); inbox.get(pid)!.push(msg);
+      const a = (msg as any).d?.a; if (a) times.push({ pid, a, at: Date.now() });
+      if (pid === "a" && a === "th_ripen" && (msg as any).d.bell) bells.push({ den: (msg as any).d.den, at: Date.now() });
+    },
+  };
+  /** אחרי כל th_pick, ה-th_tackle הבא של אותו נושא לא מגיע לפני 600ms */
+  const pickTackleGapOk = (pid: string) => {
+    const seq = times.filter((t) => t.pid === pid && (t.a === "th_pick" || t.a === "th_tackle"));
+    for (let i = 0; i < seq.length - 1; i++) if (seq[i].a === "th_pick" && seq[i + 1].a === "th_tackle" && seq[i + 1].at - seq[i].at < 580) return false;
+    return true;
   };
   const ev = (pid: string, a: string) =>
     (inbox.get(pid) ?? []).filter((m: any) => (m.t === "game" || m.t === "cue") && m.d?.a === a).map((m: any) => m.d);
   const last = (pid: string, a: string) => ev(pid, a).at(-1);
-  return { transport, ev, last };
+  const inboxHas = (pid: string, t: string, a: string) => (inbox.get(pid) ?? []).some((m: any) => m.t === t && m.d?.a === a);
+  const lastRoom = (pid: string) => (inbox.get(pid) ?? []).filter((m: any) => m.t === "room").at(-1) as any;
+  return { transport, ev, last, inboxHas, lastRoom, pickTackleGapOk, bellsSpaced, bells };
 }
 
 async function main() {
   console.log("\n— הגנבים 🥷 (גרייבוקס, 4 בוטים) —");
-  const { transport, ev, last } = makeTransport();
+  const { transport, ev, last, inboxHas, lastRoom, pickTackleGapOk, bellsSpaced, bells } = makeTransport();
   const room = new Room("THEV", transport, { thieves: createThieves });
   const P = ["a", "b", "c", "d"];
   P.forEach((p, i) => room.join(p, "גנב" + i, "🥷"));
@@ -42,7 +60,18 @@ async function main() {
 
   const init = last("a", "th_init") as any;
   check("th_init נשלח עם הר ומאורות", !!init && init.dens.length === 4, init ? `dens=${init.dens.length}` : "none");
+  check("0א. th_init נושא goAt (ספירה לאחור משותפת)", typeof init.goAt === "number" && init.goAt > 0);
   const dens = new Map<string, { x: number; y: number }>((init.dens as [string, number, number][]).map(([p, x, y]) => [p, { x, y }]));
+  // גניבה לפני "צאו!" / מרחוק — משוב th_nope במקום שתיקה
+  await sleep(1700);
+  room.onMessage("a", { t: "game", d: { a: "th_steal" } as any });
+  await sleep(120);
+  check("0ב. th_go הגיע כ-cue (כולם יוצאים יחד)", inboxHas("a", "cue", "th_go"));
+  check("0ג. גניבה מהבית = th_nope(far)", ev("a", "th_nope").some((n: any) => n.why === "far"));
+  {
+    const pos = last("a", "th_pos") as any;
+    check("0ד. th_pos נושא שעון-שרת ווקטור תנועה (9 שדות)", !!pos && typeof pos.t === "number" && pos.ps.every((r: any[]) => r.length === 9));
+  }
   const mtn = init.mtn as { x: number; y: number; total: number };
 
   // בוט: לך אל יעד, ושלח th_dir כשהכיוון משתנה מהותית. אנחנו מזיזים "ידנית" בשרת
@@ -99,6 +128,7 @@ async function main() {
   const grabbed = ev(robber, "th_grab").some((g: any) => g.by === robber);
   check("6. גניבה ממאורת חבר עובדת", grabbed, grabbed ? `${robber} גנב מ-${victim}` : "לא נגנב");
   check("7. th_first — הגניבה הראשונה משודרת", ev("a", "th_first").length === 1);
+  check("7א. th_first הגיע כ-cue (רגע משותף)", inboxHas("a", "cue", "th_first"));
   check("8. th_rage — הנשדד מקבל זעם", ev(victim, "th_rage").length >= 1 || ev("a", "th_rage").length >= 1);
 
   if (grabbed) {
@@ -154,19 +184,37 @@ async function main() {
         check("9ב. מגע מפיל את הסוחב (th_tackle)", ev("a", "th_tackle").length > tackBefore);
         check("10. שלל שהופל נופל לרצפה (th_drop)", ev("a", "th_drop").length > 0);
         check("10ב. צד שלישי מרים מהרצפה (th_pick)", ev("a", "th_pick").length > pickBefore);
+        // חסד: אחרי הרמה מהרצפה עוברות לפחות ~0.7 שניות עד שאפשר להפיל שוב (מרדף, לא ערימה)
+        check("10ג. th_tackle אחרי th_pick לא מיידי (חסד ≥600ms)", pickTackleGapOk("a"));
       }
     }
   }
 
   // --- שלב 4: ההר נגמר + אזעקה ---
   // מרוקנים את ההר: כולם חוצבים עד th_empty (צריך זמן נסיעה חזרה אל ההר)
-  for (let i = 0; i < 70 && ev("a", "th_empty").length === 0; i++) { P.forEach((p) => steer(p, mtn.x, mtn.y)); await sleep(100); }
+  for (let i = 0; i < 200 && ev("a", "th_empty").length === 0; i++) { P.forEach((p) => steer(p, mtn.x, mtn.y)); await sleep(100); }
   check("11. ההר נגמר (th_empty)", ev("a", "th_empty").length >= 1);
   check("12. אזעקת דקה אחרונה (th_alarm)", ev("a", "th_alarm").length >= 1);
 
   // הכנסות ×3 באזעקה — הזהב ממשיך לעלות
   const goldAlarm = (last("a", "th_pos") as any)?.ps ?? [];
   check("13. זהב ממשיך להיצבר לאורך הריצה", goldAlarm.some((r: any[]) => r[5] > 0), `זהב סופי: ${goldAlarm.map((r: any[]) => r[5]).join(",")}`);
+
+  check("11א. th_empty הגיע כ-cue", inboxHas("a", "cue", "th_empty"));
+  check("12א. th_alarm הגיע כ-cue", inboxHas("a", "cue", "th_alarm"));
+  {
+    // פעמון אחד למאורה לכמה שניות — לא אחד לכל גביש
+    const lvl2 = ev("a", "th_ripen").filter((r: any) => r.lvl === 2).length;
+    check("14. פעמון ההבשלה — לא יותר מאחד למאורה ב-8 שניות", bellsSpaced(), `פעמונים ${bells.length} מתוך ${lvl2} הבשלות מלאות`);
+  }
+  // --- שלב 5: הצפירה והטקס ---
+  {
+    const wait = Math.max(0, (init.endsAt as number) - Date.now()) + 1600;
+    await sleep(Math.min(wait, 80_000));
+    check("15. th_horn הגיע כ-cue לפני הטקס", inboxHas("a", "cue", "th_horn"));
+    const r = lastRoom("a");
+    check("16. הסבב נגמר בטקס עם ניקוד", r?.room?.phase === "ceremony" && !!r.room.ceremony?.scores, `phase=${r?.room?.phase}`);
+  }
 
   console.log(failed ? `\n✗ ${failed} כשלונות\n` : "\n✓ כל הבדיקות עברו\n");
   process.exit(failed ? 1 : 0);
