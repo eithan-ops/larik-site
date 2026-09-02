@@ -53,6 +53,8 @@ export class Connection {
 
   /* ---- שעון ---- */
   serverNow(): number { return performance.now() + this.offset; }
+  /** ה-RTT הטוב ביותר שנמדד (ms) — לניבוי: הקלט שלנו מגיע לשרת אחרי חצי מזה */
+  get rttMs(): number { return Number.isFinite(this.bestRtt) ? this.bestRtt : 80; }
   /** ms עד זמן-שרת נתון */
   untilServer(at: number): number { return at - this.serverNow(); }
 
