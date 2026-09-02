@@ -440,12 +440,15 @@ export type ThievesClientMsg =
   | { a: "th_steal" };                             // כפתור הפעולה — גניבה מהמאורה שאתה עומד בה
 
 export type ThievesServerMsg =
-  | { a: "th_init"; w: number; h: number; mtn: { x: number; y: number; total: number }; dens: [string, number, number][]; players: string[]; endsAt: number }
-  | { a: "th_pos"; ps: [string, number, number, number, number, number, number][]; mtn: number; left: number } // [pid,x,y,צ'אנקים,סוחב-שלל,זהב,זעם]
-  | { a: "th_mine"; pid: string; carry: number; left: number }                        // צ'אנק נחצב מההר
-  | { a: "th_dep"; pid: string; ids: number[] }                                       // הפקדה — צ'אנקים הפכו לגבישים
-  | { a: "th_ripen"; id: number; den: string; lvl: number }                           // גביש עלה דרגת הבשלה
-  | { a: "th_grab"; id: number; by: string; from: string; lvl: number }               // גניבה ממאורה (הדרגה אחרי ההורדה)
+  | { a: "th_init"; w: number; h: number; mtn: { x: number; y: number; total: number }; dens: [string, number, number][]; players: string[]; goAt: number; endsAt: number }
+  | { a: "th_pos"; t: number; ps: [string, number, number, number, number, number, number, number, number][]; mtn: number; left: number } // t=שעון השרת · [pid,x,y,צ'אנקים,סוחב-שלל,זהב,זעם,dx,dy] — dx/dy לניבוי האחרים
+  | { a: "th_go" }                                                                    // 🥷 צאו! — cue משותף, כולם יוצאים לדרך באותה שנייה
+  | { a: "th_horn" }                                                                  // 🔔 הצפירה — cue בזמן הסיום, לפני מסך הטקס
+  | { a: "th_nope"; why: "far" | "empty" | "busy" }                                   // הגניבה לא יצאה לפועל — משוב מיידי במקום שתיקה
+  | { a: "th_mine"; pid: string; carry: number; left: number; tier?: number }         // צ'אנק נחצב מההר · tier=שכבת ההר (1 רגיל · 2 עמוק · 3 ליבה)
+  | { a: "th_dep"; pid: string; ids: number[]; v?: number }                           // הפקדה — כל הצ'אנקים שביד הפכו לאבן אחת בערך v (סכום השכבות, 1–9)
+  | { a: "th_ripen"; id: number; den: string; lvl: number; bell?: boolean }           // גביש עלה דרגת הבשלה · bell=הפעמון הפומבי (אחד למאורה לכמה שניות)
+  | { a: "th_grab"; id: number; by: string; from: string; lvl: number; v?: number }   // גניבה ממאורה (הדרגה אחרי ההורדה) · v=ערך האבן
   | { a: "th_tackle"; by: string; carrier: string }                                   // מגע הפיל את הסוחב
   | { a: "th_drop"; id: number; x: number; y: number; lvl: number }                   // שלל על הרצפה — מי שמגיע ראשון
   | { a: "th_pick"; id: number; by: string }                                          // הרמה מהרצפה
@@ -454,7 +457,7 @@ export type ThievesServerMsg =
   | { a: "th_empty" }                                                                 // ההר נגמר — המלחמה
   | { a: "th_alarm"; secs: number }                                                   // 🚨 הדקה האחרונה — הכנסות ×3
   | { a: "th_first"; by: string; from: string }                                       // הגניבה הראשונה של הסבב
-  | { a: "th_sync"; mtn: number; items: [number, string, number, number][]; ground: [number, number, number, number][]; carried: [number, string, number][]; endsAt: number }
+  | { a: "th_sync"; mtn: number; items: [number, string, number, number, number][]; ground: [number, number, number, number, number][]; carried: [number, string, number, number][]; endsAt: number } // items=[id,den,lvl,sinceLvl,v] · ground=[id,x,y,lvl,v] · carried=[id,carrier,lvl,v]
   | { a: "th_left"; pid: string };
 
 export type GameClientMsg = ForeheadClientMsg | PodsClientMsg | BombsClientMsg
@@ -673,7 +676,7 @@ export const CATALOG: GameMeta[] = [
     name: "הגנבים",
     icon: "🥷",
     tagline: "ההר נגמר. הזהב היחיד שנשאר — אצל החברים שלכם.",
-    howTo: "חוצבים זהב מההר שבמרכז וסוחבים הביתה — גביש שהופקד במאורה מבשיל ומייצר זהב כל שנייה. אבל ההר נגמר, ואז הזהב היחיד נמצא בבתים של החברים: נכנסים למאורה של מישהו, גונבים גביש — וכל החדר רואה אתכם בורחים איתו. מגע בגנב מפיל את השלל, ומי שמגיע ראשון לוקח. בדקה האחרונה הכל שווה פי 3.",
+    howTo: "כל אחד הוא דביבון גנב עם מאורה משלו. חוצבים זהב מההר שבמרכז וסוחבים הביתה — אבן שהופקדה במאורה מבשילה ומייצרת זהב כל שנייה. אבל ההר נגמר, ואז הזהב היחיד נמצא בבתים של החברים: נכנסים למאורה של מישהו, גונבים גביש — וכל החדר רואה אתכם בורחים איתו. מגע בגנב מפיל את השלל, ומי שמגיע ראשון לוקח. בדקה האחרונה הכל שווה פי 3.",
     minPlayers: 2,
     maxPlayers: 8,
   },

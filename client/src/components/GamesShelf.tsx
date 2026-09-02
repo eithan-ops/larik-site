@@ -13,7 +13,7 @@ import { GAME_COLORS } from "../games/registry";
 /** משחקים שיש להם פוסטר מצויר ב-public/stickers — לשאר מציגים אייקון ענק על צבע החתימה */
 const POSTER_IDS = new Set([
   "whomost", "wall", "alias", "bombs", "forehead", "deathtouch",
-  "demons", "trivia", "colorrules", "impostor", "simon", "hofrim",
+  "demons", "trivia", "colorrules", "impostor", "simon", "hofrim", "thieves",
 ]);
 
 export default function GamesShelf() {
