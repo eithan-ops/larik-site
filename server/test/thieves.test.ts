@@ -70,7 +70,8 @@ async function main() {
   check("0ג. גניבה מהבית = th_nope(far)", ev("a", "th_nope").some((n: any) => n.why === "far"));
   {
     const pos = last("a", "th_pos") as any;
-    check("0ד. th_pos נושא שעון-שרת ווקטור תנועה (9 שדות)", !!pos && typeof pos.t === "number" && pos.ps.every((r: any[]) => r.length === 9));
+    check("0ד. th_pos נושא שעון-שרת, וקטור תנועה והאטה (10 שדות)", !!pos && typeof pos.t === "number" && pos.ps.every((r: any[]) => r.length === 10));
+    check("0ה. th_init נושא את פרמטרי המגדל וזווית הגב של כל מאורה", !!init.tower && init.tower.r > 0 && init.dens.every((d: any[]) => d.length === 4 && typeof d[3] === "number"));
   }
   const mtn = init.mtn as { x: number; y: number; total: number };
 

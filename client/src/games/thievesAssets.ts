@@ -11,15 +11,17 @@ export const TH_IMG = {
   mtn: Array.from({ length: 4 }, (_, i) => `${P}mtn${i}.webp`),       // מלא · חצי · ליבה · מכתש
   fx: { pow: `${P}fx0.webp`, sparkle: `${P}fx1.webp`, dust: `${P}fx2.webp`, ring: `${P}fx3.webp` },
   btn: `${P}btn.webp`,
+  tower: Array.from({ length: 3 }, (_, i) => `${P}tower${i}.webp`),   // 🗼 פעיל · כבוי (עשן, עיניים עצומות) · חורבה
 };
 
 export const TH_SFX: Record<string, string> = Object.fromEntries([
   "mine1", "mine2", "mine3", "mine_deep", "mine_core", "note", "bell", "chirp", "receipt", "horn", "whistle", "tick",
   "warsting", "rumble", "siren", "grab", "stolen", "pow", "bounce", "pick", "home", "rage", "nope", "gulp", "music",
+  "shot", "thud", "heat", "zap", "crumble", "hammer",   // 🗼 המגדל: ירייה · פגיעה · חימום · השבתה · הריסה · בנייה
 ].map((n) => [n, `${P}sfx/${n}.mp3`]));
 
 export interface ThImages {
-  thief: HTMLImageElement[]; den: HTMLImageElement[]; gem: HTMLImageElement[]; mtn: HTMLImageElement[];
+  thief: HTMLImageElement[]; den: HTMLImageElement[]; gem: HTMLImageElement[]; mtn: HTMLImageElement[]; tower: HTMLImageElement[];
   fx: Record<"pow" | "sparkle" | "dust" | "ring", HTMLImageElement>;
 }
 const okImg = (im: HTMLImageElement) => im.complete && im.naturalWidth > 0;
@@ -30,7 +32,7 @@ function img(src: string) { const im = new Image(); im.decoding = "async"; im.sr
 /** טוען את כל התמונות ברקע; כל ציור בודק ready() ונופל לצורות אם עוד לא הגיע */
 export function loadImages(): ThImages {
   return {
-    thief: TH_IMG.thief.map(img), den: TH_IMG.den.map(img), gem: TH_IMG.gem.map(img), mtn: TH_IMG.mtn.map(img),
+    thief: TH_IMG.thief.map(img), den: TH_IMG.den.map(img), gem: TH_IMG.gem.map(img), mtn: TH_IMG.mtn.map(img), tower: TH_IMG.tower.map(img),
     fx: { pow: img(TH_IMG.fx.pow), sparkle: img(TH_IMG.fx.sparkle), dust: img(TH_IMG.fx.dust), ring: img(TH_IMG.fx.ring) },
   };
 }
@@ -55,6 +57,7 @@ const GAIN: Record<string, number> = {
   mine1: 0.4, mine2: 0.4, mine3: 0.4, mine_deep: 0.5, mine_core: 0.6, note: 0.55, bell: 0.5, chirp: 0.5, receipt: 0.45, horn: 0.8,
   whistle: 0.55, tick: 0.4, warsting: 0.7, rumble: 0.6, siren: 0.35, grab: 0.55, stolen: 0.4, pow: 0.6, bounce: 0.45, pick: 0.5,
   home: 0.65, rage: 0.5, nope: 0.25, gulp: 0.6, music: 0.16,
+  shot: 0.3, thud: 0.55, heat: 0.4, zap: 0.55, crumble: 0.6, hammer: 0.45,
 };
 
 export class ThSfx {
