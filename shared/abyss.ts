@@ -298,17 +298,29 @@ export interface AbSim {
   got: Set<number>;        // גבישים שנאספו (וחתיכות פרץ כ-ids שליליים)
   taken: Set<number>;      // חפצים זרוקים שנצרכו
   invulnUntil: number;     // זמן שרת
+  trapGuard: number;       // 🧤 כפפת אבן — כמה מלכודות עוד נתפסות ביד בצניחה הזאת
+  lastNearAt: number;      // 👁️ עין הנץ — מתי זוכה לאחרונה (מניעת רצף)
 }
-export interface AbPerkMods { shieldStart: number; magnet: number; valueMul: number; xGain: number; py: number; helpPct: number; huntPct: number; cdMul: number }
+export interface AbPerkMods {
+  shieldStart: number; magnet: number; valueMul: number; xGain: number; py: number; helpPct: number; huntPct: number; cdMul: number;
+  bankMul: number;    // 🏦 ריבית — מכפיל על כל בנקאות (שרת)
+  trapGuard: number;  // 🧤 כפפת אבן — כמה מלכודות נתפסות ביד בכל צניחה
+  gemMul: number;     // 🌟 מלטש — מכפיל על אבני חן בלבד
+  nearBonus: number;  // 👁️ עין הנץ — גבישים על כמעט-פגיעה
+  giveShare: number;  // 🫂 נדיב — חלק מהבנקאות שעובר לעני בחבורה (שרת)
+  offerN: number;     // 🃏 ג'וקר — כמה קלפים הדראפט מציע
+}
 export interface AbAdvanceOut {
   crystals: AbCrystal[];
   burstTaken?: AbThrowObj; shieldTaken?: AbThrowObj;
   hit?: { o?: AbObstacle; th?: AbThrowObj };
   nearMiss?: boolean;
+  trapCaught?: AbThrowObj;  // 🧤 מלכודת שנתפסה ביד (כפפת אבן) — שווה גבישים
+  nearBonus?: number;       // 👁️ עין הנץ — גבישים שנוספו על כמעט-פגיעה
 }
 
-export function abNewSim(shield = 0): AbSim {
-  return { x: 50, depth: 0, crystals: 0, shield, alive: true, got: new Set(), taken: new Set(), invulnUntil: 0 };
+export function abNewSim(shield = 0, trapGuard = 0): AbSim {
+  return { x: 50, depth: 0, crystals: 0, shield, alive: true, got: new Set(), taken: new Set(), invulnUntil: 0, trapGuard, lastNearAt: 0 };
 }
 
 const circleHit = (px: number, py: number, cx: number, cy: number, r: number): boolean => {
@@ -353,7 +365,8 @@ export function abAdvance(
       if (c.d < fromDepth - pickR || c.d > toDepth + pickR) continue;
       if (Math.abs(c.x - sim.x) <= pickR) {
         sim.got.add(c.id);
-        sim.crystals += Math.round(c.v * mods.valueMul);
+        // 🌟 מלטש מכפיל אבני חן בלבד — הן ממילא צמודות לקצה, סיכון תמורת ערך
+        sim.crystals += Math.round(c.v * mods.valueMul * (c.v >= AB.GEM_VAL ? mods.gemMul : 1));
         out.crystals.push(c);
       }
     }
@@ -372,7 +385,12 @@ export function abAdvance(
     if (sim.taken.has(th.id)) continue;
     if (th.kind === "trap") {
       if (!invuln && !hit && th.d >= toDepth - AB.TRAP_R - AB.HIT_R && th.d <= toDepth + AB.TRAP_R + AB.HIT_R &&
-          circleHit(sim.x, toDepth, th.x, th.d, AB.TRAP_R * 0.85 + AB.HIT_R)) { hit = { th }; sim.taken.add(th.id); }
+          circleHit(sim.x, toDepth, th.x, th.d, AB.TRAP_R * 0.85 + AB.HIT_R)) {
+        sim.taken.add(th.id);
+        // 🧤 כפפת אבן: המלכודת הראשונה בצניחה נתפסת ביד — והופכת לגבישים
+        if (sim.trapGuard > 0) { sim.trapGuard--; sim.crystals += 15; out.trapCaught = th; }
+        else hit = { th };
+      }
     } else if (th.kind === "shield") {
       const r = AB.BUBBLE_R + AB.PLAYER_R;
       if (th.d >= fromDepth - r && th.d <= toDepth + r && Math.abs(th.x - sim.x) <= r) {
@@ -394,7 +412,16 @@ export function abAdvance(
       if (all) sim.taken.add(th.id);
     }
   }
-  if (hit) out.hit = hit; else if (near) out.nearMiss = true;
+  if (hit) out.hit = hit;
+  else if (near) {
+    out.nearMiss = true;
+    // 👁️ עין הנץ — כמעט-פגיעה מזכה בגבישים (לכל היותר פעם ב-700ms, שרצף התחככות לא יודפס)
+    if (mods.nearBonus > 0 && nowMs - sim.lastNearAt > 700) {
+      sim.lastNearAt = nowMs;
+      sim.crystals += mods.nearBonus;
+      out.nearBonus = mods.nearBonus;
+    }
+  }
   return out;
 }
 
@@ -435,7 +462,16 @@ export const AB_CARDS: AbyssCardDef[] = [
   { id: "patron",  ic: "🤝", t: "פטרון",     d: "בונוס עזרה כפול: 20% ממה שהחבר בנקאי" },
   { id: "hunter",  ic: "🏹", t: "צייד",      d: "בונוס מלכודת כפול: 30% ממה שהקורבן הפסיד" },
   { id: "haste",   ic: "⏱️", t: "יד מהירה",  d: "קולדאון זריקה 6 שניות במקום 10" },
+  /* ---- ההרחבה (3.9): כלכלה, הגנה חברתית ומטא — מגוון אמיתי בין צניחות ---- */
+  { id: "interest",  ic: "🏦", t: "ריבית",       d: "‎+8% על כל בנקאות (נערם!)" },
+  { id: "trapguard", ic: "🧤", t: "כפפת אבן",    d: "המלכודת הראשונה בכל צניחה נתפסת ביד — ושווה 15 גבישים" },
+  { id: "gemcut",    ic: "🌟", t: "מלטש",        d: "אבני חן שוות 50% יותר (נערם!)" },
+  { id: "hawk",      ic: "👁️", t: "עין הנץ",     d: "כמעט-פגיעה מזכה ב-3 גבישים — מרוויחים מלהתחכך" },
+  { id: "giver",     ic: "🫂", t: "נדיב",        d: "כשאתה בונק — העני בחבורה מקבל 10% מתנה" },
+  { id: "joker",     ic: "🃏", t: "ג'וקר",       d: "מעכשיו הדראפט מציע לך 4 קלפים במקום 3" },
 ];
+/** קלפים שמותר לקחת שוב (נערמים) */
+export const AB_STACKABLE = new Set(["greed", "magnet", "interest", "gemcut"]);
 
 export function abPerkMods(perks: readonly string[] | undefined): AbPerkMods {
   const p = perks ?? [];
@@ -449,5 +485,11 @@ export function abPerkMods(perks: readonly string[] | undefined): AbPerkMods {
     helpPct: count("patron") > 0 ? 0.20 : AB.HELP_PCT,
     huntPct: count("hunter") > 0 ? 0.30 : AB.HUNTER_PCT,
     cdMul: count("haste") > 0 ? 0.6 : 1,
+    bankMul: 1 + 0.08 * count("interest"),
+    trapGuard: count("trapguard") > 0 ? 1 : 0,
+    gemMul: Math.pow(1.5, count("gemcut")),
+    nearBonus: count("hawk") > 0 ? 3 : 0,
+    giveShare: count("giver") > 0 ? 0.10 : 0,
+    offerN: Math.min(4, 3 + count("joker")),
   };
 }

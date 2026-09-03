@@ -496,7 +496,7 @@ export type AbyssServerMsg =
   | ({ a: "ab_throw" } & AbThrowWire)
   | { a: "ab_throwok"; id: number; readyAt: number }                       // אישי — טבעת הקולדאון
   | { a: "ab_throwfail"; reason: "cooldown" | "busy" | "ledge" | "target" | "falling" }
-  | { a: "ab_bonus"; pid: string; kind: "hunter" | "help"; amount: number; from: string }
+  | { a: "ab_bonus"; pid: string; kind: "hunter" | "help" | "gift"; amount: number; from: string } // gift = 🫂 נדיב
   | { a: "ab_swallow"; pot: number; pid: string }
   | { a: "ab_results"; d: number; of: number; rows: { pid: string; banked: number; at: number; caught: boolean; pot: number; bonus: number }[]; totals: Record<string, number>; potLost: number }
   | { a: "ab_draft"; cards: AbyssCard[]; ms: number }                      // אישי

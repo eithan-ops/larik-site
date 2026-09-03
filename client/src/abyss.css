@@ -122,7 +122,11 @@
 .ab-pick:active{transform:translate(3px,4px); box-shadow:0 0 0 #0C0906;}
 .ab-pick.sel{background:#38C8E8; color:#0C0906;} .ab-pick.sel span{color:#0C0906;}
 .ab-pick:disabled:not(.sel){opacity:.45;}
-.ab-pick .ic{font-size:28px; width:36px; text-align:center; flex:none;}
+.ab-pick .ic{font-size:28px; width:52px; text-align:center; flex:none;}
+/* 🎨 אמנות קלף (Higgsfield) — האימוג'י חוזר רק אם הקובץ חסר (.noart) */
+.ab-pick .ab-cardart{width:52px; height:52px; object-fit:contain; display:block; margin:0 auto; filter:drop-shadow(-2px 3px 0 rgba(12,9,6,.6));}
+.ab-pick .ic .emo{display:none;}
+.ab-pick .ic.noart .emo{display:inline;}
 .ab-pick .tx{flex:1;} .ab-pick b{display:block; font-size:16px;} .ab-pick span span{font-size:12.5px; color:#C8B78E; line-height:1.35;}
 .ab-draft .wait{text-align:center; font-size:13px; color:#C8B78E;}
 @keyframes abpick{from{transform:translateX(30px) scale(.9); opacity:0;} to{transform:none; opacity:1;}}

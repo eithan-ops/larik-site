@@ -5,6 +5,7 @@
  */
 import { AB, abRng, abMovingX } from "../../../shared/abyss";
 import type { AbObstacle, AbCrystal, AbThrowObj } from "../../../shared/abyss";
+import { abImg, abReady, biomeOf } from "./abyssAssets";
 
 export const AB_WALL = 6;                 // רוחב הקיר המצויר בכל צד (יחידות)
 export const INK = "#0C0906";
@@ -24,11 +25,12 @@ export const sy = (v: AbView, D: number, depth: number) => v.py + (D - depth) * 
 export const visTop = (v: AbView, depth: number) => depth - v.py / v.ppu;
 export const visBottom = (v: AbView, depth: number) => depth + (v.H - v.py) / v.ppu;
 
-/* ---- פלטת עומק ---- */
+/* ---- פלטת עומק — עוגן לכל ביום: 🌱 שורשים → 💜 גבישים → 🧊 קרח → 🌋 לבה ---- */
 const PAL = [
-  { bg0: "#1B2246", bg1: "#141838", wall: "#262C5C", wallLo: "#1A1F45", wallHi: "#3A4380", back: "#10132C" },   // k0
-  { bg0: "#241A44", bg1: "#1A1233", wall: "#332457", wallLo: "#241A40", wallHi: "#4B3A7A", back: "#150E28" },   // k3
-  { bg0: "#100B16", bg1: "#0A070E", wall: "#1E1428", wallLo: "#140D1B", wallHi: "#33223F", back: "#080509" },   // k6+
+  { bg0: "#1B2246", bg1: "#141838", wall: "#262C5C", wallLo: "#1A1F45", wallHi: "#3A4380", back: "#10132C" },   // שורשים (k0-1)
+  { bg0: "#241A44", bg1: "#1A1233", wall: "#332457", wallLo: "#241A40", wallHi: "#4B3A7A", back: "#150E28" },   // מערת הגבישים (k2-3)
+  { bg0: "#0F2436", bg1: "#0A1826", wall: "#1C3A50", wallLo: "#122A3C", wallHi: "#3A6884", back: "#081420" },   // הקרח (k4-5)
+  { bg0: "#1A0B0B", bg1: "#0E0505", wall: "#2E1414", wallLo: "#1E0C0C", wallHi: "#6E2A1A", back: "#0A0404" },   // הלבה (k6+)
 ];
 function lerpHex(a: string, b: string, t: number): string {
   const pa = parseInt(a.slice(1), 16), pb = parseInt(b.slice(1), 16);
@@ -38,12 +40,13 @@ function lerpHex(a: string, b: string, t: number): string {
   return `rgb(${r},${g},${bl})`;
 }
 export function palette(kf: number) {
-  const t = Math.max(0, Math.min(6, kf)) / 3;               // 0..2
-  const i = Math.min(1, Math.floor(t)), f = Math.min(1, t - i);
-  const A = PAL[i], B = PAL[Math.min(2, i + 1)];
+  const { i, f } = biomeOf(kf);
+  const A = PAL[i], B = PAL[Math.min(3, i + 1)];
   const mix = (key: keyof typeof A) => lerpHex(A[key], B[key], f);
   return { bg0: mix("bg0"), bg1: mix("bg1"), wall: mix("wall"), wallLo: mix("wallLo"), wallHi: mix("wallHi"), back: mix("back") };
 }
+const BG_KEYS = ["bg0", "bg1", "bg2", "bg3"] as const;
+const WALL_KEYS = ["wallTex0", "wallTex1", "wallTex2", "wallTex3"] as const;
 
 /* ---- מטמון ספרייטים ---- */
 const sprites = new Map<string, HTMLCanvasElement>();
@@ -110,11 +113,27 @@ export function rockSprite(variant: number, r: number, dpr: number): HTMLCanvasE
 }
 
 /* ---- רקע וקירות ---- */
-export function drawBackdrop(c: CanvasRenderingContext2D, v: AbView, kf: number, dpr: number) {
+export function drawBackdrop(c: CanvasRenderingContext2D, v: AbView, kf: number, dpr: number, depth = 0) {
   const p = palette(kf);
   const g = c.createLinearGradient(0, 0, 0, v.H);
   g.addColorStop(0, p.bg0); g.addColorStop(1, p.bg1);
   c.fillStyle = g; c.fillRect(0, 0, v.W, v.H);
+  // 🖼️ רקע הביום (Higgsfield) — נגלל בפרלקסה איטית, עם מעבר הדרגתי לביום הבא
+  const { i, f } = biomeOf(kf);
+  const drawBg = (key: (typeof BG_KEYS)[number], alpha: number) => {
+    if (alpha <= 0.01 || !abReady(key)) return;
+    const im = abImg(key);
+    const scale = v.W / im.naturalWidth;
+    const ih = im.naturalHeight * scale;
+    const off = ((depth * v.ppu * 0.22) % ih + ih) % ih;   // פרלקסה: הרקע זז לאט מהעולם
+    c.save();
+    c.globalAlpha = alpha;
+    c.drawImage(im, 0, -off, v.W, ih);
+    c.drawImage(im, 0, -off + ih, v.W, ih);                // עטיפה אנכית
+    c.restore();
+  };
+  drawBg(BG_KEYS[i], 0.5 * (1 - f));
+  if (f > 0) drawBg(BG_KEYS[Math.min(3, i + 1)], 0.5 * f);
   // נקודות הדפסה עדינות
   const dots = sprite("dots", 26, 26, dpr, (cc) => { cc.fillStyle = "rgba(255,255,255,.045)"; cc.beginPath(); cc.arc(1.5, 1.5, 1.3, 0, Math.PI * 2); cc.fill(); cc.beginPath(); cc.arc(14.5, 14.5, 1.3, 0, Math.PI * 2); cc.fill(); });
   const pat = c.createPattern(dots, "repeat");
@@ -131,7 +150,7 @@ export function drawWalls(c: CanvasRenderingContext2D, v: AbView, seed: string, 
     const r = abRng(`${seed}|w${side}|${i}`);
     return (1.2 + r() * 3.2) * scale;   // כמה הקיר נכנס פנימה
   };
-  const poly = (side: -1 | 1, scale: number, depthScale: number, fill: string, stroke: string | null, hi: string | null) => {
+  const poly = (side: -1 | 1, scale: number, depthScale: number, fill: string | CanvasPattern, stroke: string | null, hi: string | null) => {
     const dsc = depth * depthScale;
     const t0 = Math.floor((top * depthScale - STEP) / STEP) * STEP, t1 = bottom * depthScale + STEP;
     c.beginPath();
@@ -162,6 +181,23 @@ export function drawWalls(c: CanvasRenderingContext2D, v: AbView, seed: string, 
   if (!reduced) { poly(-1, 1.9, 0.6, p.back, null, null); poly(1, 1.9, 0.6, p.back, null, null); }
   poly(-1, 1, 1, p.wall, INK, p.wallHi);
   poly(1, 1, 1, p.wall, INK, p.wallHi);
+  // 🧱 טקסטורת הביום על הקירות (Higgsfield) — נגללת עם העולם, מתחלפת בין ביומים
+  const { i: bi, f: bf } = biomeOf(kf);
+  const tex = (key: (typeof WALL_KEYS)[number], alpha: number) => {
+    if (alpha <= 0.01 || !abReady(key)) return;
+    const im = abImg(key);
+    const pat = c.createPattern(im, "repeat");
+    if (!pat) return;
+    const s = (v.W * 0.5) / im.naturalWidth;
+    const th = im.naturalHeight * s;
+    pat.setTransform(new DOMMatrix().translate(0, -(((depth * v.ppu) % th + th) % th)).scale(s));
+    c.save(); c.globalAlpha = alpha;
+    poly(-1, 1, 1, pat, null, null);
+    poly(1, 1, 1, pat, null, null);
+    c.restore();
+  };
+  tex(WALL_KEYS[bi], 0.38 * (1 - bf));
+  if (bf > 0) tex(WALL_KEYS[Math.min(3, bi + 1)], 0.38 * bf);
 }
 
 /** מדף הסלע — מדף strata לרוחב הפיר */
@@ -173,6 +209,14 @@ export function drawLedge(c: CanvasRenderingContext2D, v: AbView, depth: number,
   c.fillStyle = INK; c.fillRect(-4, y + 4, v.W + 8, h);
   c.fillStyle = floor ? "#2A5F66" : p.wallHi; c.fillRect(-4, y, v.W + 8, h);
   c.fillStyle = floor ? "#1E8FA6" : p.wall; c.fillRect(-4, y + h * 0.35, v.W + 8, h * 0.65);
+  // 🪨 טקסטורת מדף מצוירת (Higgsfield) — נמתחת לרוחב הפס
+  if (abReady("ledgeTex")) {
+    const im = abImg("ledgeTex");
+    const tw = h * (im.naturalWidth / im.naturalHeight);
+    c.save(); c.globalAlpha = 0.85;
+    for (let tx = -4; tx < v.W + 4; tx += tw) c.drawImage(im, tx, y, tw, h);
+    c.restore();
+  }
   c.lineWidth = LINE; c.strokeStyle = INK; c.beginPath(); c.moveTo(-4, y); c.lineTo(v.W + 4, y); c.stroke();
   // חריצים
   c.strokeStyle = "rgba(0,0,0,.35)"; c.lineWidth = 1.5;
@@ -191,12 +235,29 @@ export function drawObstacle(c: CanvasRenderingContext2D, v: AbView, o: AbObstac
   const x = sx(v, ox), y = sy(v, o.d, depth);
   if (o.kind === 0) {
     const r = o.w * v.ppu;
+    const key = (["rock0", "rock1", "rock2"] as const)[o.id % 3];
+    if (abReady(key)) {
+      // 🪨 סלע מצויר (Higgsfield) — סיבוב קבוע לפי id, שכל סלע ייראה קצת אחרת
+      const im = abImg(key);
+      const d2 = r * 2.3, rot = ((o.id * 137) % 360) * (Math.PI / 180);
+      c.save(); c.translate(x, y); c.rotate(rot);
+      c.drawImage(im, -d2 / 2, -d2 / 2 * (im.naturalHeight / im.naturalWidth), d2, d2 * (im.naturalHeight / im.naturalWidth));
+      c.restore();
+      return;
+    }
     const s = rockSprite(o.id % 3, Math.round(r), dpr);
     const half = s.width / dpr / 2;
     c.drawImage(s, x - half, y - half, s.width / dpr, s.height / dpr);
     return;
   }
   if (o.kind === 1) {
+    if (abReady("spike")) {
+      // 🧗 זיז סלע מצויר — נמתח למידות המכשול
+      const im = abImg("spike");
+      const w = o.w * v.ppu * 2.25, h = o.h * v.ppu * 2.25;
+      c.drawImage(im, x - w / 2, y - h / 2, w, h);
+      return;
+    }
     const w = o.w * v.ppu, h = o.h * v.ppu;
     c.fillStyle = INK; roundRect(c, x - w - 2, y - h + 4, w * 2, h * 2, 6); c.fill();
     c.fillStyle = "#3B3760"; roundRect(c, x - w, y - h, w * 2, h * 2, 6); c.fill();
@@ -206,6 +267,16 @@ export function drawObstacle(c: CanvasRenderingContext2D, v: AbView, o: AbObstac
     return;
   }
   if (o.kind === 2) {
+    if (abReady("bat")) {
+      // 🦇 עטלף מצויר — נפנוף במעיכת גובה קלה + הטיה
+      const im = abImg("bat");
+      const r = o.w * v.ppu, flap = Math.sin(time * 14 + o.id);
+      const w = r * 4.4, h = w * (im.naturalHeight / im.naturalWidth) * (1 - 0.14 * Math.abs(flap));
+      c.save(); c.translate(x, y); c.rotate(Math.sin(time * 3 + o.id) * 0.08);
+      c.drawImage(im, -w / 2, -h / 2, w, h);
+      c.restore();
+      return;
+    }
     // עטלף נייר: גוף + כנפיים מתנפנפות
     const r = o.w * v.ppu, flap = Math.sin(time * 14 + o.id) * 0.5;
     c.fillStyle = INK;
@@ -218,6 +289,20 @@ export function drawObstacle(c: CanvasRenderingContext2D, v: AbView, o: AbObstac
     return;
   }
   // מסור נייר — פס אנכי עם שיניים
+  if (abReady("saw")) {
+    // ⚙️ טור להבים מסתובבים לאורך הפס — הצללית תואמת את תיבת הפגיעה האמיתית
+    const im = abImg("saw");
+    const bw = o.w * v.ppu, bh = o.h * v.ppu;
+    const rr = bw * 1.35;
+    const n = Math.max(1, Math.round(bh / rr));
+    for (let bi2 = 0; bi2 < n; bi2++) {
+      const by = y - bh + rr + (bi2 * 2 * (bh - rr)) / Math.max(1, n - 1) - (n === 1 ? bh - rr : 0);
+      c.save(); c.translate(x, n === 1 ? y : by); c.rotate(time * 5 * (bi2 % 2 ? -1 : 1) + o.id);
+      c.drawImage(im, -rr, -rr, rr * 2, rr * 2);
+      c.restore();
+    }
+    return;
+  }
   const w = o.w * v.ppu, h = o.h * v.ppu;
   c.fillStyle = INK; c.fillRect(x - w - 2, y - h + 4, w * 2, h * 2);
   c.fillStyle = "#8E8FA8"; c.fillRect(x - w, y - h, w * 2, h * 2);
@@ -242,8 +327,20 @@ export function roundRect(c: CanvasRenderingContext2D, x: number, y: number, w: 
 export function drawCrystal(c: CanvasRenderingContext2D, v: AbView, cr: AbCrystal, depth: number, time: number, dpr: number) {
   const gem = cr.v >= AB.GEM_VAL;
   const r = (gem ? 4.2 : AB.CRYSTAL_R) * v.ppu;
-  const s = crystalSprite(gem, Math.round(r), dpr);
   const bob = Math.sin(time * 3 + cr.id) * 1.5;
+  const key = gem ? "gem" : "crystal";
+  if (abReady(key)) {
+    // 💎 גביש/אבן חן מצוירים (Higgsfield) — ההילה אפויה בקובץ, נצנוץ בסיבוב עדין
+    const im = abImg(key);
+    const w = r * 3.1, h = w * (im.naturalHeight / im.naturalWidth);
+    c.save();
+    c.translate(sx(v, cr.x), sy(v, cr.d, depth) + bob);
+    c.rotate(Math.sin(time * 2 + cr.id * 1.7) * 0.12);
+    c.drawImage(im, -w / 2, -h / 2, w, h);
+    c.restore();
+    return;
+  }
+  const s = crystalSprite(gem, Math.round(r), dpr);
   const w = s.width / dpr, h = s.height / dpr;
   c.drawImage(s, sx(v, cr.x) - w / 2, sy(v, cr.d, depth) - h / 2 + bob, w, h);
 }
@@ -258,10 +355,17 @@ export function drawThrow(c: CanvasRenderingContext2D, v: AbView, th: AbThrowObj
     c.setLineDash([6, 6]); c.lineDashOffset = -time * 40; c.strokeStyle = `rgba(255,68,56,${0.5 + 0.4 * pulse})`; c.lineWidth = 2.5;
     c.beginPath(); c.arc(x, y, r + 8, 0, Math.PI * 2); c.stroke(); c.setLineDash([]);
     if (landed) {
-      const s = rockSprite(1, Math.round(r), dpr); const half = s.width / dpr / 2;
-      c.drawImage(s, x - half, y - half, s.width / dpr, s.height / dpr);
-      c.fillStyle = RED; c.fillRect(x - r * 0.9, y - 3, r * 1.8, 6);
-      c.lineWidth = 1.5; c.strokeStyle = INK; c.strokeRect(x - r * 0.9, y - 3, r * 1.8, 6);
+      if (abReady("trap")) {
+        // 🪤 סלע המלכודת המצויר — פס האזהרה האדום כבר בקובץ
+        const im = abImg("trap");
+        const d2 = r * 2.4;
+        c.drawImage(im, x - d2 / 2, y - d2 / 2 * (im.naturalHeight / im.naturalWidth), d2, d2 * (im.naturalHeight / im.naturalWidth));
+      } else {
+        const s = rockSprite(1, Math.round(r), dpr); const half = s.width / dpr / 2;
+        c.drawImage(s, x - half, y - half, s.width / dpr, s.height / dpr);
+        c.fillStyle = RED; c.fillRect(x - r * 0.9, y - 3, r * 1.8, 6);
+        c.lineWidth = 1.5; c.strokeStyle = INK; c.strokeRect(x - r * 0.9, y - 3, r * 1.8, 6);
+      }
     } else {
       c.fillStyle = `rgba(255,68,56,${0.15 + 0.15 * pulse})`; c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fill();
     }

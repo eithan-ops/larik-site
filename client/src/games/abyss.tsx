@@ -19,6 +19,7 @@ import {
 } from "./abyssDraw";
 import type { Particle } from "./abyssDraw";
 import { abAudioInit, abAudioResume, abWhoosh, abSfx } from "./abyssAudio";
+import { preloadAb, cardArt } from "./abyssAssets";
 import { vibrate } from "../lib/audio";
 import { track } from "../lib/analytics";
 import { drawShaftCard, shareShaftCard } from "../lib/shaftcard";
@@ -84,7 +85,7 @@ export default function AbyssView({ room, me, conn, hub }: GameViewProps) {
 
   useEffect(() => { G.current.players = room.players.map((p) => ({ id: p.id, name: p.name, emoji: p.emoji })); }, [room.players]);
   // המשתמש כבר לחץ "מתחילים" בעמוד הזה — ההפעלה הדביקה מאפשרת ליצור AudioContext גם בלי מחווה נוספת (ובאייפון ישן — במגע הראשון)
-  useEffect(() => { abAudioInit(); }, []);
+  useEffect(() => { abAudioInit(); preloadAb(); }, []);
   useEffect(() => { if (!toast) return; const t = setTimeout(() => setToast(""), 2600); return () => clearTimeout(t); }, [toast]);
   useEffect(() => { if (!banner) return; const t = setTimeout(() => setBanner(null), banner.cls === "long" ? 3200 : banner.cls === "short" ? 1250 : 2200); return () => clearTimeout(t); }, [banner]);
   useEffect(() => { if (!flash) return; const t = setTimeout(() => setFlash(0), 260); return () => clearTimeout(t); }, [flash]);
@@ -146,7 +147,7 @@ export default function AbyssView({ room, me, conn, hub }: GameViewProps) {
     const applyDescent = (d: Extract<AbyssServerMsg, { a: "ab_descent" }> | Extract<AbyssServerMsg, { a: "ab_sync" }>) => {
       g.cfg = d.cfg; g.startAt = d.startAt; g.seed = d.seed; g.world = abWorld(d.seed, d.cfg);
       g.mods = abPerkMods(d.perks[me]); g.totals = d.totals; g.d = d.d; g.of = d.of;
-      g.sim = abNewSim(g.mods.shieldStart);
+      g.sim = abNewSim(g.mods.shieldStart, g.mods.trapGuard);
       g.others.clear(); g.throws.clear(); g.pstate.clear();
       g.fx.parts.length = 0; g.fx.pops.length = 0; g.fx.trail.length = 0; g.fx.shake = 0; g.fx.flash = 0;
       g.descentEnded = false; g.ledgeShown = -1; g.revealSeen = -1; g.k = 0; g.pot = 0; g.potSeg = false; g.potRunner = "";
@@ -263,8 +264,8 @@ export default function AbyssView({ room, me, conn, hub }: GameViewProps) {
           setToast(why); break;
         }
         case "ab_bonus": {
-          if (d.pid === me) { g.totals[me] = (g.totals[me] ?? 0) + d.amount; setHud((h) => ({ ...h, total: g.totals[me] ?? 0 })); abSfx.bonus(); setToast(d.kind === "hunter" ? `🏹 בונוס צייד +${fmt(d.amount)} — הפלת את ${pname(d.from)}` : `🤝 בונוס עזרה +${fmt(d.amount)} — ${pname(d.from)} בנקאי`); }
-          else { g.totals[d.pid] = (g.totals[d.pid] ?? 0) + d.amount; addFeed(d.kind === "hunter" ? `🏹 ${pname(d.pid)} +${fmt(d.amount)} על ${pname(d.from)}` : `🤝 ${pname(d.pid)} +${fmt(d.amount)} מ${pname(d.from)}`); }
+          if (d.pid === me) { g.totals[me] = (g.totals[me] ?? 0) + d.amount; setHud((h) => ({ ...h, total: g.totals[me] ?? 0 })); abSfx.bonus(); setToast(d.kind === "hunter" ? `🏹 בונוס צייד +${fmt(d.amount)} — הפלת את ${pname(d.from)}` : d.kind === "gift" ? `🫂 ${pname(d.from)} נתן לך מתנה +${fmt(d.amount)}!` : `🤝 בונוס עזרה +${fmt(d.amount)} — ${pname(d.from)} בנקאי`); }
+          else { g.totals[d.pid] = (g.totals[d.pid] ?? 0) + d.amount; addFeed(d.kind === "hunter" ? `🏹 ${pname(d.pid)} +${fmt(d.amount)} על ${pname(d.from)}` : d.kind === "gift" ? `🫂 ${pname(d.from)} העניק ל${pname(d.pid)} +${fmt(d.amount)}` : `🤝 ${pname(d.pid)} +${fmt(d.amount)} מ${pname(d.from)}`); }
           break;
         }
         case "ab_swallow": {
@@ -463,10 +464,21 @@ export default function AbyssView({ room, me, conn, hub }: GameViewProps) {
                 const gem = cr.v >= AB.GEM_VAL;
                 if (gem) abSfx.gem(); else abSfx.crystal();
                 burst(g.fx.parts, sx(v, cr.x), v.py, gem ? GOLD : CYAN, gem ? 14 : 7, 160, 2.5);
-                g.fx.pops.push({ x: sx(v, cr.x), y: v.py - 14, t: `+${Math.round(cr.v * g.mods.valueMul)}`, col: gem ? GOLD : CYAN, l: 0.8, sz: gem ? 18 : 14 });
+                g.fx.pops.push({ x: sx(v, cr.x), y: v.py - 14, t: `+${Math.round(cr.v * g.mods.valueMul * (gem ? g.mods.gemMul : 1))}`, col: gem ? GOLD : CYAN, l: 0.8, sz: gem ? 18 : 14 });
               }
               if (out.shieldTaken) { conn.sendGame({ a: "ab_took", th: out.shieldTaken.id }); abSfx.shieldTaken(); g.fx.flash = 0.5; g.fx.flashCol = CYAN; setToast(`🛡️ מגן מ${pname(out.shieldTaken.by)}!`); }
               if (out.burstTaken) { conn.sendGame({ a: "ab_took", th: out.burstTaken.id }); setToast(`💎 גבישים מ${pname(out.burstTaken.by)}!`); }
+              // 🧤 כפפת אבן — המלכודת נתפסה ביד והפכה לגבישים
+              if (out.trapCaught) {
+                conn.sendGame({ a: "ab_took", th: out.trapCaught.id });
+                abSfx.shieldPop(); vibrate(50); g.fx.flash = 0.5; g.fx.flashCol = GOLD; g.fx.stop = 0.06;
+                burst(g.fx.parts, sx(v, s.x), v.py, GOLD, 14, 200, 3);
+                setToast(`🧤 תפסת את הסלע של ${pname(out.trapCaught.by)} — ‎+15!`);
+              }
+              // 👁️ עין הנץ — כמעט-פגיעה שווה גבישים
+              if (out.nearBonus) {
+                g.fx.pops.push({ x: sx(v, s.x) + 22, y: v.py - 20, t: `+${out.nearBonus} 👁️`, col: GOLD, l: 0.8, sz: 15 });
+              }
               if (out.hit) {
                 if (s.shield > 0) {
                   s.shield--; s.invulnUntil = now + 800;
@@ -509,7 +521,7 @@ export default function AbyssView({ room, me, conn, hub }: GameViewProps) {
         const depth = T.depth;
         g.fx.shake = Math.max(0, g.fx.shake - realDt * 40);
         const shx = (Math.random() - 0.5) * g.fx.shake, shy = (Math.random() - 0.5) * g.fx.shake;
-        drawBackdrop(c, v, kf, DPR);
+        drawBackdrop(c, v, kf, DPR, depth);
         c.save(); c.translate(shx, shy);
         drawWalls(c, v, g.seed, depth, kf, g.reduced);
         const top = visTop(v, depth), bottom = visBottom(v, depth);
@@ -727,7 +739,12 @@ export default function AbyssView({ room, me, conn, hub }: GameViewProps) {
             <DraftBar until={draft.until} />
             {draft.cards.map((cd) => (
               <button key={cd.id} className={"ab-pick" + (draft.picked === cd.id ? " sel" : "")} disabled={!!draft.picked} onClick={() => { abAudioInit(); abSfx.pick(); conn.sendGame({ a: "ab_pick", card: cd.id }); setDraft((d) => (d ? { ...d, picked: cd.id } : d)); }}>
-                <span className="ic">{cd.ic}</span>
+                {/* 🎨 אמנות הקלף (Higgsfield); אם הקובץ חסר — האימוג'י חוזר */}
+                <span className="ic">
+                  <img className="ab-cardart" src={cardArt(cd.id)} alt="" loading="lazy"
+                    onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; (e.target as HTMLImageElement).parentElement!.classList.add("noart"); }} />
+                  <span className="emo">{cd.ic}</span>
+                </span>
                 <span className="tx"><b>{cd.t}</b><span>{cd.d}</span></span>
               </button>
             ))}

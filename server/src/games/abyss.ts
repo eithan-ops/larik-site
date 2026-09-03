@@ -11,7 +11,7 @@ import type { GameCtx, GameInstance } from "../engine";
 import type { GameClientMsg, AbyssCard, AbThrowWire, AbPlayerState, PlayerFacts } from "../../../shared/protocol";
 import {
   AB, abConfig, abTiming, abFreezeAt, abRevealAt, abResumeAt, abFallStart, abDepthAt, abLedgeDepth,
-  abWorld, abAvailableValue, abMult, abPotBounty, AB_CARDS, abPerkMods,
+  abWorld, abAvailableValue, abMult, abPotBounty, AB_CARDS, AB_STACKABLE, abPerkMods,
 } from "../../../shared/abyss";
 import type { AbyssConfig, AbWorld } from "../../../shared/abyss";
 
@@ -161,14 +161,15 @@ export function createAbyss(ctx: GameCtx): GameInstance {
     for (const f of wasFalling) {
       deepest[f.pid] = Math.max(deepest[f.pid] ?? 0, kk);
       if (potSeg && f.pid === potRunner) {
-        // שרד את פלח הקרן — לוקח הכול
-        const amt = pot + Math.round(f.crystals * abMult(kk));
+        // שרד את פלח הקרן — לוקח הכול (🏦 ריבית חלה על הגבישים שלו, לא על הקרן)
+        const amt = pot + Math.round(f.crystals * abMult(kk) * mods(f.pid).bankMul);
         f.potWon = pot; pots[f.pid]++;
         bank(f, amt); banked[f.pid] = amt; f.crystals = 0;
         f.state = "stopped"; f.stoppedK = kk; votes[f.pid] = "pot";
         potWon = { pid: f.pid, amount: amt };
         pot = 0;
         payHelpers(f, amt, bonus);
+        payGiver(f, amt, bonus);
         continue;
       }
       // שקט = לא דיווח כלום ב-staleMs שלפני ההקפאה (בזמן ההקפאה הלקוח לא מדווח בכוונה)
@@ -176,10 +177,11 @@ export function createAbyss(ctx: GameCtx): GameInstance {
       const v: Vote = f.vote ?? (silent || bottom ? "stop" : "go");
       votes[f.pid] = v;
       if (v === "stop") {
-        const amt = Math.round(f.crystals * abMult(kk));
+        const amt = Math.round(f.crystals * abMult(kk) * mods(f.pid).bankMul); // 🏦 ריבית
         bank(f, amt); banked[f.pid] = amt; best[f.pid] = Math.max(best[f.pid] ?? 0, amt);
         f.crystals = 0; f.state = "stopped"; f.stoppedK = kk; stops[f.pid]++;
         payHelpers(f, amt, bonus);
+        payGiver(f, amt, bonus);
       } else {
         goes[f.pid]++;
       }
@@ -213,6 +215,21 @@ export function createAbyss(ctx: GameCtx): GameInstance {
       at(resumeAt(kk), () => { phase = "fall"; k = kk + 1; });
       scheduleLedge(kk + 1);
     }
+  }
+
+  /** 🫂 נדיב — כשהנותן בונק, העני בחבורה מקבל חלק במתנה */
+  function payGiver(f: Faller, amt: number, bonus: Record<string, number>) {
+    const share = mods(f.pid).giveShare;
+    if (share <= 0 || amt <= 0) return;
+    const cands = [...fallers.values()].filter((x) => x.pid !== f.pid && x.state !== "spectator" && connected(x.pid));
+    if (!cands.length) return;
+    cands.sort((a, b) => (totals[a.pid] ?? 0) - (totals[b.pid] ?? 0));
+    const poor = cands[0];
+    const g = Math.round(amt * share);
+    if (g <= 0) return;
+    bank(poor, g); poor.bonusD += g;
+    bonus[poor.pid] = (bonus[poor.pid] ?? 0) + g;
+    ctx.broadcast({ a: "ab_bonus", pid: poor.pid, kind: "gift", amount: g, from: f.pid });
   }
 
   function payHelpers(f: Faller, amt: number, bonus: Record<string, number>) {
@@ -289,10 +306,11 @@ export function createAbyss(ctx: GameCtx): GameInstance {
   };
   function offer(pid: string): string[] {
     const owned = perks[pid] ?? [];
-    const pool = AB_CARDS.filter((c) => c.id === "greed" || c.id === "magnet" || !owned.includes(c.id));
+    // נערמים (AB_STACKABLE) מוצעים שוב; 🃏 ג'וקר מרחיב את היד ל-4
+    const pool = AB_CARDS.filter((c) => AB_STACKABLE.has(c.id) || !owned.includes(c.id));
     const scored = pool.map((c) => ({ c, s: Math.random() }));
     scored.sort((a, b) => b.s - a.s);
-    return scored.slice(0, 3).map((x) => x.c.id);
+    return scored.slice(0, abPerkMods(owned).offerN).map((x) => x.c.id);
   }
   function openDraft() {
     phase = "draft";
@@ -434,7 +452,14 @@ export function createAbyss(ctx: GameCtx): GameInstance {
         case "ab_took": {
           if (!f || f.state !== "falling") return;
           const th = throws.get(Number(m.th));
-          if (!th || th.target !== pid || th.kind === "trap") return;
+          if (!th || th.target !== pid) return;
+          if (th.kind === "trap") {
+            // 🧤 כפפת אבן: מלכודת שנתפסה ביד — רק למי שמחזיק את הקלף
+            if (mods(pid).trapGuard <= 0) return;
+            f.burstCredits += 15;   // ה-15 שהיד הרוויחה נכנסים לתקרת הסבירות
+            throws.delete(th.id);
+            return;
+          }
           if (th.by !== pid) f.helpers.set(th.by, (f.helpers.get(th.by) ?? 0) + 1);
           if (th.kind === "burst") f.burstCredits += AB.BURST_N * AB.BURST_VAL;
           else f.shield = Math.min(2, f.shield + 1);
