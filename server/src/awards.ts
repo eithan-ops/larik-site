@@ -22,6 +22,8 @@ const FACT_MERGE: Partial<Record<keyof PlayerFacts, MergePolicy>> = {
   bestReactionMs: "min",
   bestStreak: "max",
   hfDeepest: "max",
+  abLedge: "max",
+  abBest: "max",
 };
 
 /** ממזג עובדות של משחק בודד לתוך הצבירה של הערב */
@@ -255,6 +257,87 @@ const CATALOG: AwardDef[] = [
       const worst = Math.max(...all.map((x) => x.hfDowns ?? 0));
       if (n < worst) return null;
       return { score: 300 + n * 10, detail: `נפל ${times(n)} — וקם`, headline: "המכרה ניסה. הוא חזר" };
+    },
+  },
+  /* ---- התהום 🕳️ ---- */
+  {
+    id: "ab_pot", emoji: "🏆", title: "שודד הקרן", priority: 78,
+    test: (f, all) => {
+      const n = f.abPots ?? 0;
+      if (n < 1) return null;
+      const best = Math.max(...all.map((x) => x.abPots ?? 0));
+      if (n < best) return null;
+      return { score: 620 + n * 50, detail: n > 1 ? `לקח את הקרן ${times(n)}` : "נשאר אחרון ולקח את הקרן", headline: "כולם עצרו. הוא לא." };
+    },
+  },
+  {
+    id: "ab_deep", emoji: "🕳️", title: "הכי עמוק בתהום", priority: 76,
+    test: (f, all) => {
+      const k = f.abLedge ?? 0;
+      if (k < 2) return null;
+      const best = Math.max(...all.map((x) => x.abLedge ?? 0));
+      if (k < best) return null;
+      return { score: 590 + k * 10, detail: `הגיע למדף ${k + 1}`, headline: "ירד לאן שאף אחד לא העז" };
+    },
+  },
+  {
+    id: "ab_gambler", emoji: "🎰", title: "המהמר", priority: 74,
+    test: (f, all) => {
+      const n = f.abGoes ?? 0;
+      if (n < 3) return null;
+      const best = Math.max(...all.map((x) => x.abGoes ?? 0));
+      if (n < best) return null;
+      return { score: 570 + n * 5, detail: `המשיך ${times(n)}`, headline: "המדף היה שם. הוא לא עצר" };
+    },
+  },
+  {
+    id: "ab_hunter", emoji: "🪨", title: "הצייד מהמדף", priority: 72,
+    test: (f, all) => {
+      const n = f.abHunts ?? 0;
+      if (n < 1) return null;
+      const best = Math.max(...all.map((x) => x.abHunts ?? 0));
+      if (n < best) return null;
+      return { score: 550 + n * 20, detail: `הפיל ${n === 1 ? "חבר אחד" : `${n} חברים`} במלכודת`, headline: "עצר בזמן — וזרק סלעים" };
+    },
+  },
+  {
+    id: "ab_angel", emoji: "💎", title: "המלאך של התהום", priority: 70,
+    test: (f, all) => {
+      const n = f.abHelps ?? 0;
+      if (n < 1) return null;
+      const best = Math.max(...all.map((x) => x.abHelps ?? 0));
+      if (n < best) return null;
+      return { score: 530 + n * 15, detail: `${n === 1 ? "עזרה אחת" : `${n} עזרות`} שהשתלמו`, headline: "מלמעלה, שמר על החברים" };
+    },
+  },
+  {
+    id: "ab_banker", emoji: "🏦", title: "הידיים הבטוחות", priority: 62,
+    test: (f, all) => {
+      const b = f.abBest ?? 0;
+      if (b < 50 || (f.abCaught ?? 0) > 0) return null;
+      const best = Math.max(...all.map((x) => (x.abCaught ?? 0) > 0 ? 0 : (x.abBest ?? 0)));
+      if (b < best) return null;
+      return { score: 450 + Math.min(300, Math.round(b / 5)), detail: `בנקאות של ${b} בצניחה אחת, בלי להיתפס`, headline: "יצא תמיד ברווח" };
+    },
+  },
+  {
+    id: "ab_chicken", emoji: "🐔", title: "תפס מדף ראשון", priority: 60,
+    test: (f, all) => {
+      const n = f.abStops ?? 0;
+      if (n < 2 || (f.abGoes ?? 0) > 0) return null;
+      const best = Math.max(...all.map((x) => (x.abGoes ?? 0) > 0 ? 0 : (x.abStops ?? 0)));
+      if (n < best) return null;
+      return { score: 420 + n * 5, detail: `עצר במדף הראשון ${times(n)}`, headline: "לא סיכן גביש אחד" };
+    },
+  },
+  {
+    id: "ab_eaten", emoji: "💀", title: "התהום בלעה אותו", priority: 56,
+    test: (f, all) => {
+      const n = f.abCaught ?? 0;
+      if (n < 2) return null;
+      const worst = Math.max(...all.map((x) => x.abCaught ?? 0));
+      if (n < worst) return null;
+      return { score: 290 + n * 10, detail: `נתפס ${times(n)}`, headline: "הסלעים ידעו את שמו" };
     },
   },
   {

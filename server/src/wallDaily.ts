@@ -28,7 +28,7 @@ interface DailyBoard {
 }
 
 const TOP = 50;
-const key = (date: string) => `wall:daily:${date}`;
+const key = (date: string, game = "wall") => `${game}:daily:${date}`;
 
 /** התאריך של האתגר, לפי שעון ישראל — היום מתחלף בחצות המקומית ולא ב-UTC */
 export function dailyDate(now = new Date()): string {
@@ -44,15 +44,18 @@ export function dailySeed(date = dailyDate()): string {
 export class WallDaily {
   private store: Store;
   private now: () => number;
+  /** איזה משחק — הטבלאות של החומה ושל התהום חיות תחת מפתחות נפרדים (`<game>:daily:<date>`) */
+  private game: string;
 
-  constructor(store: Store = getStore(), now: () => number = () => Date.now()) {
+  constructor(store: Store = getStore(), now: () => number = () => Date.now(), game = "wall") {
     this.store = store;
     this.now = now;
+    this.game = game;
   }
 
   async board(date = dailyDate()): Promise<DailyBoard> {
     try {
-      const b = await this.store.get<DailyBoard>(key(date));
+      const b = await this.store.get<DailyBoard>(key(date, this.game));
       if (b) return b;
     } catch { /* אין אחסון — טבלה ריקה, המשחק עצמו לא נפגע */ }
     return { date, entries: [], runs: 0 };
@@ -84,7 +87,7 @@ export class WallDaily {
   }
 
   private async save(date: string, b: DailyBoard) {
-    try { await this.store.put(key(date), b); }
+    try { await this.store.put(key(date, this.game), b); }
     catch { /* לא נשמר — הריצה עדיין נספרה בזיכרון של הבקשה */ }
   }
 }

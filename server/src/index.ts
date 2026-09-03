@@ -33,6 +33,7 @@ import { createImpostor } from "./games/impostor";
 import { createWall } from "./games/wall";
 import { createHofrim } from "./games/hofrim";
 import { createThieves } from "./games/thieves";
+import { createAbyss } from "./games/abyss";
 import type { ClientMsg } from "../../shared/protocol";
 
 const PORT = Number(process.env.PORT || 8787);
@@ -50,6 +51,7 @@ const transport: Transport = {
 
 const groups = new Groups();
 const wallDaily = new WallDaily();
+const abyssDaily = new WallDaily(undefined, undefined, "abyss");   // התהום היומית — אותה מכניקה, טבלה נפרדת
 
 const manager = new RoomManager(transport, {
   forehead: createForehead,
@@ -67,14 +69,17 @@ const manager = new RoomManager(transport, {
   wall: createWall,
   hofrim: createHofrim,
   thieves: createThieves,
+  abyss: createAbyss,
 }, {
   playerJoined: statPlayerJoined,
   gameStarted: statGameStarted,
   dailyRun: (r) => {
-    // הניקוד הגיע מהשרת שהריץ את המשחק — אין כאן קלט מהלקוח
-    const date = r.seed.replace(/^wall:/, "");
+    // הניקוד הגיע מהשרת שהריץ את המשחק — אין כאן קלט מהלקוח. הזרע: `<game>:<date>`
+    const m = /^(wall|abyss):(\d{4}-\d{2}-\d{2})/.exec(r.seed);
+    if (!m) return;
+    const board = m[1] === "abyss" ? abyssDaily : wallDaily;
     for (const p of r.players) {
-      void wallDaily.submit({ name: p.name, emoji: p.emoji, score: p.score, wave: r.wave }, date);
+      void board.submit({ name: p.name, emoji: p.emoji, score: p.score, wave: r.wave }, m[2]);
     }
   },
 }, groups);
@@ -132,6 +137,29 @@ const http = createServer((req, res) => {
       return;
     }
     wallDaily.board(date)
+      .then((b) => {
+        res.writeHead(200, { "Content-Type": "application/json; charset=utf-8", "Access-Control-Allow-Origin": "*" });
+        res.end(JSON.stringify({ date, runs: b.runs, top: b.entries.slice(0, 20) }));
+      })
+      .catch(() => { res.writeHead(200, { "Content-Type": "application/json" }); res.end(JSON.stringify({ date, runs: 0, top: [] })); });
+    return;
+  }
+  /**
+   * התהום היומית 🕳️ — אותו פיר לכל הארץ, צניחה אחת, סולו.
+   * GET /api/abyss-daily        → הטבלה של היום
+   * GET /api/abyss-daily/room   → פותח חדר סולו שמתחיל מעצמו, מחזיר קוד
+   */
+  if (url.pathname === "/api/abyss-daily" || url.pathname === "/api/abyss-daily/room") {
+    const date = dailyDate();
+    if (url.pathname.endsWith("/room")) {
+      const room = manager.createRoom();
+      room.armSoloDaily("abyss", { seed: `abyss:${date}`, solo: true, descents: 1 });
+      res.writeHead(200, { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" });
+      res.end(JSON.stringify({ code: room.code, date }));
+      statRoomCreated();
+      return;
+    }
+    abyssDaily.board(date)
       .then((b) => {
         res.writeHead(200, { "Content-Type": "application/json; charset=utf-8", "Access-Control-Allow-Origin": "*" });
         res.end(JSON.stringify({ date, runs: b.runs, top: b.entries.slice(0, 20) }));

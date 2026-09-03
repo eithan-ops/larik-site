@@ -154,6 +154,8 @@ export class Groups {
     beat("brain", "הכי הרבה תשובות נכונות בערב", f.correct);
     beat("taps", "הכי הרבה פודים בערב", f.taps);
     beat("peeks", "הכי הרבה הצצות בערב", f.peeks);
+    beat("abLedge", "הכי עמוק בתהום (מדף)", f.abLedge === undefined ? undefined : f.abLedge + 1);
+    beat("abBest", "הבנקאות הגדולה בתהום", f.abBest);
   }
 
   /** מייצר את התקציר ללקוח — ממוין, חתוך, ובלי שדות פנימיים */

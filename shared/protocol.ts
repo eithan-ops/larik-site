@@ -46,6 +46,15 @@ export interface PlayerFacts {
   hfKills?: number;         // החופרים — מפלצות שחיסל
   hfDigs?: number;          // החופרים — תאים ששבר
   hfDowns?: number;         // החופרים — כמה פעמים נפל
+  abBanked?: number;        // התהום — סך הגבישים שבנקאי
+  abBest?: number;          // התהום — הבנקאות הגדולה ביותר בצניחה אחת (מקס)
+  abLedge?: number;         // התהום — המדף העמוק ביותר שהגיע אליו (מקס)
+  abPots?: number;          // התהום — כמה קרנות לקח
+  abCaught?: number;        // התהום — כמה פעמים נתפס
+  abHunts?: number;         // התהום — כמה חברים הפיל במלכודת
+  abHelps?: number;         // התהום — כמה עזרות שלו נאספו ותוגמלו
+  abStops?: number;         // התהום — כמה פעמים עצר במדף
+  abGoes?: number;          // התהום — כמה פעמים המשיך במדף
 }
 
 /** התואר האישי שמופיע על כרטיס הסיום של השחקן */
@@ -460,12 +469,51 @@ export type ThievesServerMsg =
   | { a: "th_sync"; mtn: number; items: [number, string, number, number, number][]; ground: [number, number, number, number, number][]; carried: [number, string, number, number][]; endsAt: number } // items=[id,den,lvl,sinceLvl,v] · ground=[id,x,y,lvl,v] · carried=[id,carrier,lvl,v]
   | { a: "th_left"; pid: string };
 
+/* ---------- התהום 🕳️ ---------- */
+export interface AbyssCard { id: string; ic: string; t: string; d: string }
+export interface AbTiming { segmentMs: number; voteMs: number; warnMs: number; revealOffsetMs: number; pauseMs: number; introMs: number; maxLedges: number }
+export interface AbThrowWire { id: number; by: string; target: string; kind: "trap" | "shield" | "burst"; d: number; x: number; at: number }
+export type AbPlayerState = "falling" | "stopped" | "caught" | "spectator" | "out";
+
+export type AbyssClientMsg =
+  | { a: "ab_state"; x: number; d: number; c: number; s: number }          // 10Hz בזמן נפילה: x, עומק, ערך גבישים, מגן
+  | { a: "ab_caught"; o?: number; th?: number }                            // נתפסתי (בלי מגן). o=מכשול, th=חפץ זרוק
+  | { a: "ab_shielded"; o?: number; th?: number }                          // המגן ספג פגיעה
+  | { a: "ab_took"; th: number }                                           // אספתי חפץ עזרה (בועה/פרץ)
+  | { a: "ab_vote"; k: number; v: "stop" | "go" }                          // הלחיצה האחרונה בתוך החלון קובעת
+  | { a: "ab_throw"; target: string; kind: "trap" | "shield" | "burst" }   // פעולת צופה
+  | { a: "ab_watch"; target: string }                                      // החלפת מבט
+  | { a: "ab_pick"; card: string };                                        // דראפט
+
+export type AbyssServerMsg =
+  | { a: "ab_descent"; d: number; of: number; seed: string; startAt: number; cfg: AbTiming; mult: number[]; players: [string, "fall" | "spec"][]; perks: Record<string, string[]>; totals: Record<string, number> }
+  | { a: "ab_pos"; ps: [string, number, number, number][] }                // 10Hz: [pid, x, גבישים, מגן] — נופלים בלבד; העומק נגזר מהזמן
+  | { a: "ab_ledge"; k: number; freezeAt: number; voteUntil: number; revealAt: number; resumeAt: number; pot: number; mult: number; falling: string[]; potSeg: boolean }   // cue ב-freezeAt−warnMs
+  | { a: "ab_votes"; n: number; of: number }                               // ספירה בלבד — הבחירות סודיות
+  | { a: "ab_reveal"; k: number; votes: Record<string, "stop" | "go" | "caught" | "pot">; banked: Record<string, number>; bonus: Record<string, number>; pot: number; potRunner?: string; potWon?: { pid: string; amount: number }; next: "fall" | "pot" | "end"; swallowed?: number; resumeAt: number }   // cue ב-revealAt
+  | { a: "ab_caught"; pid: string; k: number; lost: number; pot: number; by?: string; th?: number; why: "hit" | "lost" | "left" }
+  | { a: "ab_shielded"; pid: string }
+  | ({ a: "ab_throw" } & AbThrowWire)
+  | { a: "ab_throwok"; id: number; readyAt: number }                       // אישי — טבעת הקולדאון
+  | { a: "ab_throwfail"; reason: "cooldown" | "busy" | "ledge" | "target" | "falling" }
+  | { a: "ab_bonus"; pid: string; kind: "hunter" | "help"; amount: number; from: string }
+  | { a: "ab_swallow"; pot: number; pid: string }
+  | { a: "ab_results"; d: number; of: number; rows: { pid: string; banked: number; at: number; caught: boolean; pot: number; bonus: number }[]; totals: Record<string, number>; potLost: number }
+  | { a: "ab_draft"; cards: AbyssCard[]; ms: number }                      // אישי
+  | { a: "ab_draftopen"; ids: string[] }
+  | { a: "ab_took"; pid: string; card: AbyssCard }
+  | { a: "ab_perks"; pid: string; perks: string[] }
+  | { a: "ab_sync"; phase: "intro" | "fall" | "ledge" | "reveal" | "results" | "draft" | "over"; d: number; of: number; seed: string; startAt: number; cfg: AbTiming; mult: number[]; k: number; pot: number; potRunner: string; potSeg: boolean;
+      players: { pid: string; state: AbPlayerState; x: number; c: number; s: number; banked: number }[]; totals: Record<string, number>; perks: Record<string, string[]>;
+      you: { state: AbPlayerState; x: number; c: number; s: number; invulnMs: number }; throws: AbThrowWire[] }
+  | { a: "ab_left"; pid: string };
+
 export type GameClientMsg = ForeheadClientMsg | PodsClientMsg | BombsClientMsg
   | ColorRulesClientMsg | SimonClientMsg | DeathTouchClientMsg | DemonsClientMsg | AliasClientMsg | TriviaClientMsg
-  | WhoMostClientMsg | ShowClientMsg | ImpostorClientMsg | ReactorClientMsg | WallClientMsg | HofrimClientMsg | ThievesClientMsg;
+  | WhoMostClientMsg | ShowClientMsg | ImpostorClientMsg | ReactorClientMsg | WallClientMsg | HofrimClientMsg | ThievesClientMsg | AbyssClientMsg;
 export type GameServerMsg = ForeheadServerMsg | PodsServerMsg | BombsServerMsg
   | ColorRulesServerMsg | SimonServerMsg | DeathTouchServerMsg | DemonsServerMsg | AliasServerMsg | TriviaServerMsg
-  | WhoMostServerMsg | ShowServerMsg | ImpostorServerMsg | ReactorServerMsg | WallServerMsg | HofrimServerMsg | ThievesServerMsg;
+  | WhoMostServerMsg | ShowServerMsg | ImpostorServerMsg | ReactorServerMsg | WallServerMsg | HofrimServerMsg | ThievesServerMsg | AbyssServerMsg;
 
 /* ---- קטלוג ---- */
 export interface GameMeta {
@@ -688,5 +736,17 @@ export const CATALOG: GameMeta[] = [
     howTo: "חופרים מנהרות בכיוון האגודל ואוספים גבישים וזהב. שק זהב מתנדנד שנייה לפני שהוא נופל — בורחים הצידה, והוא מוחץ כל מפלצת שמתחתיו. חוזרים למעלית להפקיד, וכל הפקדה מעלה רמה ופותחת שדרוג. ככל שיורדים עמוק יותר החומר קשה יותר והשלל שווה יותר.",
     minPlayers: 2,
     maxPlayers: 8,
+  },
+  {
+    id: "abyss",
+    name: "התהום",
+    icon: "🕳️",
+    tagline: "כולם נופלים באותו פיר. במדף — עוצרים או ממשיכים. הקרן מחכה לאחרון.",
+    howTo: "כולם צונחים באותו פיר, כל אחד בטלפון שלו — מזיזים את האגודל כדי להתחמק מסלעים ולאסוף גבישים. כל 20 שניות מגיע מדף: הכול קופא ל-3 שניות וכל אחד בוחר בסתר — לעצור ולקחת את הגבישים בבטחה, או להמשיך ולהכפיל. ואז כולם חושפים יחד. מי שנתפס מאבד את השלל לקרן. מי שעצר צופה בחברים בשידור חי וזורק להם עזרה או מלכודת. האחרון שממשיך ושורד מדף נוסף — לוקח את כל הקרן.",
+    minPlayers: 2,
+    maxPlayers: 8,
+    configOptions: [
+      { key: "descents", label: "צניחות", values: [{ v: "3", label: "שלוש 🙂" }, { v: "1", label: "אחת ⚡" }, { v: "5", label: "חמש 🔥" }] },
+    ],
   },
 ];
