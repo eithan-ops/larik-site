@@ -17,9 +17,15 @@
  * נכסים (2.9): דביבונים גנבים ב-8 צבעים, 8 מאורות (מדבקות ניטרליות + שטיפת צבע השחקן), הר ב-4 מצבים,
  * אבנים ב-5 דרגות, אפקטים (POW/ניצוץ/אבק/טבעת) — כולם WEBP קטנים מ-public/thieves; בלי קובץ — הצורות נשארות.
  * סאונד "צעצוע השוד": דגימות MP3 מסונתזות (thievesAssets.ts); הסינתזה הישנה נשארת כגיבוי עד שהן נטענות.
+ *
+ * 🗼 שכבה 2/א (3.9) — המגדל: ליד כל מאורה מגדל ב-5 מצבים (פעיל/מתחמם/כבוי/חורבה/בבנייה). הטווח והשטח המת
+ * של המגדל *שלי* תמיד על המסך; של אחרים — טבעת אדומה חלשה רק כשאני בתוך הטווח (שלב B יוסיף סורק).
+ * החלוקים מונפשים לפי th_shot (הלקוח מציג, השרת מכריע), הפגיעה מאיטה — אותה נוסחה בניבוי. עמודת כפתורים
+ * קונטקסטואלית: לגנוב · להשבית/להרוס ליד מגדל זר · לבנות מחדש בבית. ערוץ פעולה = טבעת התקדמות על השחקן
+ * ופס במיני-מפה אצל כולם.
  */
 import { useEffect, useRef, useState } from "react";
-import type { ThievesServerMsg } from "../../../shared/protocol";
+import type { ThievesServerMsg, ThTowerSt } from "../../../shared/protocol";
 import type { GameViewProps } from "./registry";
 import { loadImages, ready as imgOk, tinted, ThSfx, TH_IMG } from "./thievesAssets";
 import type { ThImages } from "./thievesAssets";
@@ -29,14 +35,23 @@ const SPD = 6.0;                   // חייב להיות זהה לשרת
 const CARRY_SLOW = 0.05;
 const STOLEN_SLOW = 0.74;
 const RAGE_MUL = 1.4;
+const SLOW_MUL = 0.7;              // פגיעת מגדל — זהה לשרת
 const DEN_R = 2.0;
+const ACT_R = DEN_R + 0.9;         // מרחק פעולה על מגדל זר — זהה לשרת
 const PCOL = ["#FF8A3D", "#5AC8FA", "#46E0C0", "#F2C14E", "#E5484D", "#B37BE0", "#8ee34a", "#FF6FB5"];
 const LVL_SIZE = [6, 9, 12];       // גודל הגביש לפי דרגת הבשלה
-const RATE = [1, 3, 6];
+const RATE = [0.2, 0.6, 1.2];      // זהה לשרת (÷5) — לזוהר העושר של המאורה
 const HIST_MS = 1500;              // כמה היסטוריית מיקומים שומרים לפיוס
 const STEAL_HOLD = 450;            // הכפתור לא נעלם באותה מילישנייה שיצאת מהרדיוס
 
-interface Other { x: number; y: number; tx: number; ty: number; vx: number; vy: number; st: number; carry: number; stolen: number; rage: number; gold: number; face: number }
+interface Other { x: number; y: number; tx: number; ty: number; vx: number; vy: number; st: number; carry: number; stolen: number; rage: number; slow: number; gold: number; face: number }
+interface TowerC { st: ThTowerSt; until: number; since: number; aim: number }   // until=שעון-שרת · since=performance.now של המעבר · aim=לאן הקנה מכוון
+interface Shot { den: string; x0: number; y0: number; x1: number; y1: number; t0: number; ms: number }
+interface Chan { den: string; kind: "disable" | "destroy"; t0: number; ms: number; cost: number }
+type Acts = { steal: boolean; disable: boolean; destroy: boolean; rebuild: boolean; chan: boolean };
+const NO_ACTS: Acts = { steal: false, disable: false, destroy: false, rebuild: false, chan: false };
+/** המגדל עומד ליד המאורה, בצד שפונה להר — אותו היסט בשרת */
+const towerPos = (den: { x: number; y: number }, mtn: { x: number }) => { const side = Math.sign(mtn.x - den.x) || 1; return { x: den.x + 2.1 * side, y: den.y - 0.5 }; };
 interface Fx { img: HTMLImageElement; x: number; y: number; t: number; life: number; sz: number; rot: number; add: boolean; grow: number }
 interface CItem { lvl: number; v: number; state: "den" | "carried" | "ground"; den: string; carrier: string; gx: number; gy: number; pulse: number }
 const MINE_MS = 2500;              // חייב להיות זהה לשרת — לקשת ההתקדמות של החציבה
@@ -62,11 +77,11 @@ function glowSprite(col: string, r: number): HTMLCanvasElement {
 
 export default function ThievesView({ room, me, conn, hub }: GameViewProps) {
   const cvRef = useRef<HTMLCanvasElement | null>(null);
-  const [hud, setHud] = useState({ gold: 0, carry: 0, left: 0, mtnPct: 100, stolen: false, rage: false, alarm: false, empty: false });
+  const [hud, setHud] = useState({ gold: 0, carry: 0, left: 0, mtnPct: 100, stolen: false, rage: false, alarm: false, empty: false, tower: "ok" as ThTowerSt, towerLeft: 0 });
   const [banner, setBanner] = useState<{ ic: string; t: string; s: string } | null>(null);
   const [toast, setToast] = useState("");
   const [feed, setFeed] = useState<{ id: number; tx: string }[]>([]);
-  const [canSteal, setCanSteal] = useState(false);
+  const [acts, setActs] = useState<Acts>(NO_ACTS);
   const [countdown, setCountdown] = useState(0);
   const [stalled, setStalled] = useState(false);
   const feedId = useRef(1);
@@ -74,8 +89,12 @@ export default function ThievesView({ room, me, conn, hub }: GameViewProps) {
   const G = useRef({
     ready: false, w: 46, h: 30,
     mtn: { x: 23, y: 15, total: 1, left: 1 },
-    dens: new Map<string, { x: number; y: number }>(),
-    me: { x: 5, y: 5, carry: 0, stolen: 0, rageUntil: 0, gold: 0 },
+    dens: new Map<string, { x: number; y: number; back: number }>(),
+    tower: { r: 5.5, arc: Math.PI / 3, disable: 250, destroy: 750 },
+    towers: new Map<string, TowerC>(),
+    shots: [] as Shot[],
+    chans: new Map<string, Chan>(),
+    me: { x: 5, y: 5, carry: 0, stolen: 0, rageUntil: 0, slowUntil: 0, gold: 0 },
     sent: { x: 0, y: 0 }, sentAt: 0, pendT: 0,
     hist: [] as { t: number; x: number; y: number }[],
     others: new Map<string, Other>(),
@@ -144,6 +163,15 @@ export default function ThievesView({ room, me, conn, hub }: GameViewProps) {
   const alarmSiren = () => { if (!sfx("siren")) { tone(520, 0.28, "square", 0.22, 700); tone(700, 0.28, "square", 0.2, 520); } };
   const goSound = () => { if (!sfx("whistle")) { tone(523, 0.09, "square", 0.22); setTimeout(() => tone(659, 0.09, "square", 0.22), 100); setTimeout(() => tone(784, 0.22, "square", 0.26), 200); } };
   const horn = () => { if (!sfx("horn")) { tone(330, 0.9, "sawtooth", 0.26, 262); tone(415, 0.9, "sawtooth", 0.18, 330); setTimeout(() => tone(262, 0.5, "sawtooth", 0.2, 220), 500); } };
+  /** 🗼 צלילי המגדל — עוצמה לפי המרחק ממני (מגדל בקצה השני של המפה נשמע רחוק) */
+  const nearGain = (x: number, y: number) => Math.max(0, 1 - Math.hypot(x - G.current.me.x, y - G.current.me.y) / 16);
+  const shotSnd = (x: number, y: number) => { const gn = nearGain(x, y); if (gn <= 0.05) return; if (!sfx("shot", { gain: gn, rate: 0.94 + Math.random() * 0.12 })) tone(900, 0.05, "square", 0.1 * gn, 300); };
+  const thudSnd = (x: number, y: number, mine: boolean) => { const gn = mine ? 1 : nearGain(x, y) * 0.7; if (gn <= 0.05) return; if (!sfx("thud", { gain: gn })) tone(120, 0.12, "sine", 0.25 * gn, 60); };
+  const zapSnd = () => { if (!sfx("zap")) tone(1200, 0.18, "sawtooth", 0.2, 200); };
+  const crumbleSnd = () => { if (!sfx("crumble")) tone(90, 0.5, "sawtooth", 0.22, 40); };
+  const hammerSnd = () => { for (let i = 0; i < 3; i++) if (!sfx("hammer", { delay: i * 0.85, rate: 0.96 + i * 0.05 })) setTimeout(() => tone(700, 0.06, "square", 0.2), i * 850); };
+  const heatSnd = () => { if (!sfx("heat")) tone(200, 0.3, "sawtooth", 0.1, 100); };
+  const KIND_TX = { disable: "להשבית", destroy: "להרוס" } as const;
 
   function addFeed(tx: string) {
     setFeed((f) => [...f.slice(-2), { id: feedId.current++, tx }]);
@@ -159,7 +187,11 @@ export default function ThievesView({ room, me, conn, hub }: GameViewProps) {
           g.w = d.w; g.h = d.h;
           g.mtn = { x: d.mtn.x, y: d.mtn.y, total: d.mtn.total, left: d.mtn.total };
           g.dens.clear();
-          for (const [pid, x, y] of d.dens) g.dens.set(pid, { x, y });
+          for (const [pid, x, y, back] of d.dens) {
+            g.dens.set(pid, { x, y, back: back ?? Math.atan2(y - d.mtn.y, x - d.mtn.x) });
+            if (!g.towers.has(pid)) g.towers.set(pid, { st: "ok", until: 0, since: 0, aim: Math.atan2(d.mtn.y - y, d.mtn.x - x) });
+          }
+          if (d.tower) g.tower = d.tower;
           const mine = g.dens.get(me);
           if (mine && !g.ready) { g.me.x = mine.x; g.me.y = mine.y; g.cam.x = mine.x * TS; g.cam.y = mine.y * TS; }
           g.goAt = d.goAt; g.endsAt = d.endsAt; g.ready = true; g.lastPosAt = performance.now();
@@ -173,12 +205,83 @@ export default function ThievesView({ room, me, conn, hub }: GameViewProps) {
           for (const [id, x, y, lvl, v] of d.ground) g.items.set(id, { lvl, v: v ?? 1, state: "ground", den: "", carrier: "", gx: x, gy: y, pulse: 0 });
           for (const [id, carrier, lvl, v] of d.carried) g.items.set(id, { lvl, v: v ?? 1, state: "carried", den: "", carrier, gx: 0, gy: 0, pulse: 0 });
           if ([...g.items.values()].some((it) => it.state === "carried" && it.carrier === me)) g.me.stolen = 1;
+          for (const [den, st, until] of d.towers ?? []) { const tw = g.towers.get(den); if (tw) { tw.st = st; tw.until = until; tw.since = performance.now(); } }
+          g.chans.clear();
           g.endsAt = d.endsAt;
+          break;
+        }
+        /* ---- 🗼 המגדל ---- */
+        case "th_tower": {
+          const tw = g.towers.get(d.den) ?? { st: "ok" as ThTowerSt, until: 0, since: 0, aim: 0 };
+          const prev = tw.st;
+          tw.st = d.st; tw.until = d.until ?? 0; tw.since = performance.now(); g.towers.set(d.den, tw);
+          const den = g.dens.get(d.den);
+          if (den) {
+            const tp = towerPos(den, g.mtn);
+            if (d.st === "hot") { fx("dust", tp.x, tp.y - 1.2, 2.2, 700, false, 0.9); if (d.den === me) heatSnd(); }
+            if (d.st === "off") { fx("sparkle", tp.x, tp.y - 0.6, 2.4, 500); }
+            if (d.st === "ruin") { g.parts.push(...burst(tp.x, tp.y, "#8B7D6B", 14)); fx("dust", tp.x, tp.y, 3.2, 800, false, 0.8); }
+            if (d.st === "ok" && prev !== "ok") fx("ring", tp.x, tp.y - 0.4, 2.4, 500, true, 1.2);
+          }
+          if (d.den === me) {
+            if (d.st === "hot") setToast("🔥 המגדל שלך התחמם — 4 שניות קירור");
+            else if (d.st === "off") { g.shake = Math.max(g.shake, 8); setToast(`⚡ ${pname(d.by ?? "")} השבית לך את המגדל ל-15 שניות!`); }
+            else if (d.st === "ruin") { g.shake = Math.max(g.shake, 12); g.flash = 0.18; g.flashCol = "#E5484D"; setToast(`💥 ${pname(d.by ?? "")} הרס לך את המגדל! חזור הביתה לבנות`); }
+            else if (d.st === "build") setToast("🔨 בונים מחדש… 3 שניות");
+            else if (d.st === "ok" && (prev === "off" || prev === "ruin" || prev === "build")) setToast("🗼 המגדל שלך חזר לפעול!");
+          }
+          break;
+        }
+        case "th_shot": {
+          g.shots.push({ den: d.den, x0: d.x0, y0: d.y0, x1: d.x1, y1: d.y1, t0: performance.now(), ms: d.ms });
+          const tw = g.towers.get(d.den); if (tw) tw.aim = Math.atan2(d.y1 - d.y0, d.x1 - d.x0);
+          shotSnd(d.x0, d.y0);
+          break;
+        }
+        case "th_hit": {
+          fx("pow", d.x, d.y - 0.4, 1.9, 320, false, 0.3);
+          if (d.pid === me) {
+            g.me.slowUntil = performance.now() + d.ms; g.shake = Math.max(g.shake, 7); thudSnd(d.x, d.y, true);
+            // ההדף הוא הכרעת שרת — מיישרים מיד (הפיוס הרגיל היה מורח את זה על חצי שנייה)
+            g.corr.x += d.x - g.me.x; g.corr.y += d.y - g.me.y;
+            setToast("🐌 חלוק מהמגדל! איטי 2 שניות");
+          } else {
+            const o = g.others.get(d.pid); if (o) o.slow = 1;
+            thudSnd(d.x, d.y, false);
+          }
+          break;
+        }
+        case "th_channel": {
+          g.chans.set(d.by, { den: d.den, kind: d.kind, t0: performance.now(), ms: d.ms, cost: d.cost });
+          if (d.by === me) setToast(d.kind === "disable" ? "🔧 עמוד במקום… משבית!" : "💥 עמוד במקום — 3 שניות תחת אש!");
+          else if (d.den === me) {
+            g.shake = Math.max(g.shake, 10); g.flash = 0.16; g.flashCol = "#E5484D";
+            sfx("chirp", { rate: 0.78 + 0.07 * (pidx(d.by) % 8) }); sfx("chirp", { rate: 0.78 + 0.07 * (pidx(d.by) % 8), delay: 0.35 });
+            setToast(`😱 ${pname(d.by)} ${d.kind === "disable" ? "משבית" : "מנסה להרוס"} לך את המגדל! רוץ הביתה!`);
+          }
+          if (d.by !== me) addFeed(`${d.kind === "disable" ? "🔧" : "💥"} ${pname(d.by)} מנסה ${KIND_TX[d.kind]} את המגדל של ${pname(d.den)}`);
+          break;
+        }
+        case "th_channel_end": {
+          g.chans.delete(d.by);
+          if (d.ok) break;
+          if (d.by === me) {
+            if (!sfx("nope")) tone(240, 0.09, "square", 0.14, 180);
+            setToast(d.why === "touched" ? `✋ ${pname(d.who ?? "")} עצר אותך!` : d.why === "moved" ? "זזת — הפעולה בוטלה" : d.why === "gold" ? "💰 אין מספיק זהב" : "הפעולה בוטלה");
+          } else if (d.who === me) { setToast(`✋ עצרת את ${pname(d.by)}!`); fx("pow", g.me.x, g.me.y - 0.5, 2.6, 380, false, 0.35); }
+          if (d.why === "touched") addFeed(`✋ ${pname(d.who ?? "")} עצר את ${pname(d.by)}!`);
+          break;
+        }
+        case "th_act_done": {
+          if (d.kind === "disable") { zapSnd(); addFeed(`🔧 ${pname(d.by)} שרף ${d.cost} להשבית את המגדל של ${pname(d.den)}`); }
+          else if (d.kind === "destroy") { crumbleSnd(); g.shake = Math.max(g.shake, 6); addFeed(`💥 ${pname(d.by)} שרף ${d.cost} והרס את המגדל של ${pname(d.den)}`); }
+          else { hammerSnd(); if (d.by !== me) addFeed(`🔨 ${pname(d.by)} בונה מחדש את המגדל`); }
+          if (d.by === me && d.kind !== "rebuild") setToast(d.kind === "disable" ? `⚡ המגדל של ${pname(d.den)} כבוי 15 שניות — עכשיו!` : `💥 הרסת את המגדל של ${pname(d.den)}!`);
           break;
         }
         case "th_pos": {
           g.lastPosAt = performance.now();
-          for (const [pid, x, y, carry, stolen, gold, rage, dx, dy] of d.ps) {
+          for (const [pid, x, y, carry, stolen, gold, rage, dx, dy, slow] of d.ps) {
             if (pid === me) {
               if (conn.synced && d.t && g.hist.length) {
                 // פיוס: איפה *היינו* בזמן-השרת של הדגימה (הקלט שלנו מגיע לשרת אחרי חצי RTT,
@@ -198,17 +301,24 @@ export default function ThievesView({ room, me, conn, hub }: GameViewProps) {
               }
               g.me.carry = carry; g.me.gold = gold;
               if (!stolen) g.me.stolen = 0;
+              if (!slow && g.me.slowUntil) g.me.slowUntil = 0;     // השרת אומר שההאטה נגמרה — הניבוי מתיישר
               // ה-HUD מתעדכן עד 4 פעמים בשנייה — הזהב זז כל טיק, ו-React לא צריך לרוץ 20 פעמים בשנייה
               const now = performance.now();
-              if (now - g.hudAt > 250) { g.hudAt = now; setHud((h) => (h.gold === gold && h.carry === carry ? h : { ...h, gold, carry })); }
+              if (now - g.hudAt > 250) {
+                g.hudAt = now;
+                const tw = g.towers.get(me); const tst = tw?.st ?? "ok";
+                const tLeft = tw && tw.until ? Math.max(0, Math.ceil((tw.until - conn.serverNow()) / 1000)) : 0;
+                setHud((h) => (h.gold === gold && h.carry === carry && h.tower === tst && h.towerLeft === tLeft ? h : { ...h, gold, carry, tower: tst, towerLeft: tLeft }));
+              }
               continue;
             }
-            const o = g.others.get(pid) ?? { x, y, tx: x, ty: y, vx: 0, vy: 0, st: d.t, carry, stolen, rage, gold, face: 1 };
+            const o = g.others.get(pid) ?? { x, y, tx: x, ty: y, vx: 0, vy: 0, st: d.t, carry, stolen, rage, slow: 0, gold, face: 1 };
             let s = SPD * (1 - CARRY_SLOW * carry);
             if (stolen) s *= STOLEN_SLOW;
             if (rage) s *= RAGE_MUL;
+            if (slow) s *= SLOW_MUL;
             o.tx = x; o.ty = y; o.vx = (dx ?? 0) * s; o.vy = (dy ?? 0) * s; o.st = d.t;
-            o.carry = carry; o.stolen = stolen; o.rage = rage; o.gold = gold;
+            o.carry = carry; o.stolen = stolen; o.rage = rage; o.slow = slow ?? 0; o.gold = gold;
             g.others.set(pid, o);
           }
           g.mtn.left = d.mtn; g.left = d.left;
@@ -271,7 +381,7 @@ export default function ThievesView({ room, me, conn, hub }: GameViewProps) {
         case "th_nope": {
           // הלחיצה לא תפסה — אומרים למה מיד, במקום שתיקה שמרגישה כמו באג
           if (!sfx("nope")) tone(240, 0.09, "square", 0.14, 180); g.shake = Math.max(g.shake, 4);
-          setToast(d.why === "far" ? "🚶 תיכנס למאורה שלהם" : d.why === "empty" ? "🕳️ אין שם מה לגנוב" : "🎒 קודם תביא את השלל הביתה");
+          setToast(d.why === "far" ? "🚶 תיכנס למאורה שלהם" : d.why === "empty" ? "🕳️ אין שם מה לגנוב" : d.why === "gold" ? "💰 אין לך מספיק זהב לזה" : d.why === "tower" ? "🗼 אין כאן מגדל לפעול עליו" : g.chans.has(me) ? "✋ אתה באמצע פעולה" : "🎒 קודם תביא את השלל הביתה");
           break;
         }
         case "th_tackle": {
@@ -338,7 +448,7 @@ export default function ThievesView({ room, me, conn, hub }: GameViewProps) {
           horn(); g.stop = 0.9; g.flash = 0.25; g.flashCol = "#F3E7D3"; SFX.current?.stopMusic(1.4); g.over = true;
           setBanner({ ic: "🔔", t: "הצפירה!", s: "מה שנשאר בבית — שלך" });
           break;
-        case "th_left": g.others.delete(d.pid); break;
+        case "th_left": g.others.delete(d.pid); g.chans.delete(d.pid); break;
       }
     });
   }, [hub, me, conn]);
@@ -420,7 +530,8 @@ export default function ThievesView({ room, me, conn, hub }: GameViewProps) {
       e.preventDefault(); sendDir();
     };
     const kd = (e: KeyboardEvent) => key(e, true), ku = (e: KeyboardEvent) => key(e, false);
-    const iv = setInterval(() => { if (joy.current.on || joy.current.dx || joy.current.dy) sendDir(true); }, 900); // רשת ביטחון לדריפט
+    // רשת ביטחון לדריפט — אבל לא באמצע ערוץ: שידור חוזר של אותו וקטור היה נחשב "תזוזה" ומבטל את הפעולה
+    const iv = setInterval(() => { if (!g.chans.has(me) && (joy.current.on || joy.current.dx || joy.current.dy)) sendDir(true); }, 900);
     window.addEventListener("touchstart", down, { passive: false });
     window.addEventListener("touchmove", move, { passive: false });
     window.addEventListener("touchend", up); window.addEventListener("touchcancel", up);
@@ -435,7 +546,7 @@ export default function ThievesView({ room, me, conn, hub }: GameViewProps) {
       window.removeEventListener("keydown", kd); window.removeEventListener("keyup", ku);
       if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
     };
-  }, [conn]);
+  }, [conn, me]);
 
   /* ---- הלולאה ---- */
   useEffect(() => {
@@ -474,6 +585,63 @@ export default function ThievesView({ room, me, conn, hub }: GameViewProps) {
       ctx2.strokeStyle = stroke; ctx2.lineWidth = lw; ctx2.stroke();
     }
 
+    /** מלבן מעוגל בלי roundRect (לא בכל הטלפונים) */
+    const rrect = (x: number, y: number, w: number, h: number, r: number) => {
+      ctx2.moveTo(x + r, y); ctx2.lineTo(x + w - r, y); ctx2.quadraticCurveTo(x + w, y, x + w, y + r); ctx2.lineTo(x + w, y + h - r);
+      ctx2.quadraticCurveTo(x + w, y + h, x + w - r, y + h); ctx2.lineTo(x + r, y + h); ctx2.quadraticCurveTo(x, y + h, x, y + h - r);
+      ctx2.lineTo(x, y + r); ctx2.quadraticCurveTo(x, y, x + r, y); ctx2.closePath();
+    };
+    /** 🗼 המגדל ליד המאורה — מדבקה ב-3 מצבים (פעיל · כבוי · חורבה) או ציור; קירור = עשן, בנייה = פטיש, כבוי/בנייה = קשת ספירה */
+    let smokeAt = 0;
+    function drawTower(pid: string, den: { x: number; y: number }, tw: TowerC, col: string, isMe: boolean) {
+      const IM = IMGS.current, ts = performance.now(), sNow = conn.serverNow();
+      const tp = towerPos(den, g.mtn), px = tp.x * TS, py = tp.y * TS;
+      const st = tw.st;
+      const im = IM ? IM.tower[st === "ruin" || st === "build" ? 2 : st === "off" ? 1 : 0] : null;
+      const hasImg = !!im && imgOk(im);
+      // צל
+      ctx2.fillStyle = "rgba(0,0,0,.3)"; ctx2.beginPath(); ctx2.ellipse(px, py + TS * 0.42, 15, 5, 0, 0, 6.283); ctx2.fill();
+      if (st === "hot") {
+        glow(px, py - TS * 0.5, "#FF5A3C", 30, 0.35 + 0.15 * Math.sin(ts / 90));
+        if (ts - smokeAt > 260) { smokeAt = ts; fx("dust", tp.x + (Math.random() - 0.5) * 0.4, tp.y - 1.3, 1.1 + Math.random() * 0.5, 620, false, 0.9); }
+      }
+      if (hasImg) {
+        // המדבקה הניטרלית בשטיפת צבע הבעלים (כמו המאורה); הקלע פונה אל ההר — היפוך לפי הצד
+        const h = TS * (st === "ruin" || st === "build" ? 1.9 : 2.35), w = h * (im!.naturalWidth / im!.naturalHeight);
+        const wob = st === "ok" ? Math.sin(ts / 700 + den.x) * 0.02 : 0;
+        const flip = Math.sign(g.mtn.x - den.x) || 1;
+        ctx2.save(); ctx2.translate(px, py + TS * 0.45); ctx2.rotate(wob); if (flip > 0) ctx2.scale(-1, 1);
+        if (st === "off") ctx2.globalAlpha = 0.8;
+        ctx2.drawImage(tinted(im!, col, isMe ? 0.2 : 0.28), -w / 2, -h, w, h); ctx2.restore(); ctx2.globalAlpha = 1;
+        if (st === "hot") { ctx2.globalCompositeOperation = "lighter"; ctx2.globalAlpha = 0.22; ctx2.fillStyle = "#FF5A3C"; ctx2.beginPath(); ctx2.ellipse(px, py - TS * 0.6, w * 0.4, h * 0.42, 0, 0, 6.283); ctx2.fill(); ctx2.globalCompositeOperation = "source-over"; ctx2.globalAlpha = 1; }
+      } else if (st === "ruin" || st === "build") {
+        // חורבה: שלוש אבנים
+        ctx2.fillStyle = "#5C5148";
+        for (const [ox, oy, rw, rh] of [[-13, -6, 12, 9], [-2, -10, 11, 13], [8, -5, 10, 8]] as number[][]) { ctx2.fillRect(px + ox, py + oy, rw, rh); ctx2.strokeStyle = "#2C2825"; ctx2.lineWidth = 2; ctx2.strokeRect(px + ox, py + oy, rw, rh); }
+      } else {
+        // גוף אבן + רצועה בצבע השחקן + עדשה שמכוונת לכיוון הירייה האחרונה + גג
+        ctx2.fillStyle = st === "off" ? "#3A332E" : "#6B5F55"; ctx2.strokeStyle = "#2C2825"; ctx2.lineWidth = 2.5;
+        ctx2.beginPath(); rrect(px - 12, py - TS * 1.3, 24, TS * 1.6, 5); ctx2.fill(); ctx2.stroke();
+        ctx2.fillStyle = col; ctx2.globalAlpha = st === "off" ? 0.4 : 1; ctx2.fillRect(px - 12, py - TS * 0.35, 24, 5); ctx2.globalAlpha = 1;
+        ctx2.fillStyle = col; ctx2.beginPath(); ctx2.moveTo(px - 15, py - TS * 1.28); ctx2.lineTo(px + 15, py - TS * 1.28); ctx2.lineTo(px, py - TS * 1.85); ctx2.closePath(); ctx2.fill(); ctx2.stroke();
+        const ex = px + Math.cos(tw.aim) * 5, ey = py - TS * 0.85 + Math.sin(tw.aim) * 3;
+        ctx2.fillStyle = st === "off" ? "#1B1510" : st === "hot" ? "#FF5A3C" : "#F3E7D3"; ctx2.beginPath(); ctx2.arc(px, py - TS * 0.85, 7, 0, 6.283); ctx2.fill(); ctx2.stroke();
+        if (st !== "off") { ctx2.fillStyle = "#1B1510"; ctx2.beginPath(); ctx2.arc(ex, ey, 3, 0, 6.283); ctx2.fill(); }
+      }
+      // מצבים זמניים: קשת ספירה + סמל
+      const total = st === "off" ? 15000 : st === "build" ? 3000 : st === "hot" ? 4000 : 0;
+      if (total && tw.until) {
+        const left = Math.max(0, tw.until - sNow), u = Math.min(1, left / total);
+        ctx2.strokeStyle = st === "build" ? "#F2C14E" : st === "hot" ? "#FF5A3C" : "#9AA4B2"; ctx2.lineWidth = 3; ctx2.globalAlpha = 0.9;
+        ctx2.beginPath(); ctx2.arc(px, py - TS * 0.8, 22, -Math.PI / 2, -Math.PI / 2 + u * Math.PI * 2); ctx2.stroke(); ctx2.globalAlpha = 1;
+        ctx2.font = "15px sans-serif"; ctx2.textAlign = "center";
+        if (st === "off") ctx2.fillText("💤", px + 14 * Math.sin(ts / 500), py - TS * 1.9 - 3 * Math.sin(ts / 300));
+        if (st === "build") ctx2.fillText("🔨", px + 12, py - TS * 1.4 - 6 * Math.abs(Math.sin(ts / 140)));
+      }
+      if (st === "ruin") { ctx2.font = "800 11px Assistant, sans-serif"; ctx2.textAlign = "center"; ctx2.fillStyle = isMe ? "#FF6B5E" : "#8B7D6B"; ctx2.fillText(isMe ? "💥 חזור הביתה לבנות" : "💥 הרוס", px, py - TS * 0.75); }
+      void pid;
+    }
+
     function frame(ts: number) {
       raf = requestAnimationFrame(frame);
       if (!last) last = ts;
@@ -503,12 +671,15 @@ export default function ThievesView({ room, me, conn, hub }: GameViewProps) {
       /* ניבוי מקומי — אותה נוסחה כמו בשרת, עם הקלט *ששלחנו* (זה מה שהשרת מריץ) */
       const m = g.me;
       const raging = performance.now() < m.rageUntil;
-      const moving = g.go && (g.sent.x || g.sent.y);
+      const slowed = performance.now() < m.slowUntil;
+      const myChan = g.chans.get(me);
+      const moving = g.go && !myChan && (g.sent.x || g.sent.y);
       if (g.sent.x) g.face = g.sent.x < 0 ? -1 : 1;
       if (moving) {
         let s = SPD * (1 - CARRY_SLOW * m.carry);
         if (m.stolen) s *= STOLEN_SLOW;
         if (raging) s *= RAGE_MUL;
+        if (slowed) s *= SLOW_MUL;
         m.x = Math.max(1, Math.min(g.w - 1, m.x + g.sent.x * s * dt));
         m.y = Math.max(1, Math.min(g.h - 1, m.y + g.sent.y * s * dt));
         const r = mtnR();
@@ -542,6 +713,13 @@ export default function ThievesView({ room, me, conn, hub }: GameViewProps) {
       for (let i = g.parts.length - 1; i >= 0; i--) { const p = g.parts[i]; p.l -= dt; if (p.l <= 0) { g.parts.splice(i, 1); continue; } p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 7 * dt; }
       for (const it of g.items.values()) if (it.pulse > 0) it.pulse = Math.max(0, it.pulse - dt * 2.2);
       if (g.ping) { g.ping.t -= dt; if (g.ping.t <= 0) g.ping = null; }
+      // 🗼 חלוקים שנחתו — ענן אבק קטן בנקודת הנחיתה (הפגיעה עצמה מגיעה מהשרת כ-th_hit)
+      const nowP = performance.now();
+      for (let i = g.shots.length - 1; i >= 0; i--) {
+        const s = g.shots[i];
+        if (nowP - s.t0 >= s.ms) { g.shots.splice(i, 1); fx("dust", s.x1, s.y1 + 0.1, 1.3, 300, false, 0.5); }
+      }
+      for (const [pid, c] of g.chans.entries()) if (nowP - c.t0 > c.ms + 1500) g.chans.delete(pid);   // רשת ביטחון אם th_channel_end אבד
 
       // שובל לכל סוחב שלל
       if (m.stolen && Math.random() < 0.6) g.trail.push({ x: m.x, y: m.y, l: 1, col: pcol(me) });
@@ -636,9 +814,25 @@ export default function ThievesView({ room, me, conn, hub }: GameViewProps) {
         const idx = Math.max(0, g.players.findIndex((p) => p.id === pid));
         const col = pcol(pid), isMe = pid === me;
         const its = byDen.get(pid) ?? [];
-        let wealth = 0; for (const it of its) wealth += RATE[it.lvl] * it.v;
+        let wealth = 0; for (const it of its) wealth += RATE[it.lvl] * it.v * 5;   // ×5 — הזוהר כויל על הסקאלה הישנה
         const gl = Math.min(26, 4 + wealth * 1.6);
         glow(den.x * TS, den.y * TS, col, DEN_R * TS * 0.72 + gl * 1.4, 0.18 + Math.min(0.42, wealth * 0.02)); // מאורה עשירה זוהרת — העושר פומבי
+        // 🗼 הטווח והשטח המת — של המגדל שלי תמיד; של אחרים רק טבעת אדומה חלשה כשאני בפנים (הם רואים אותי)
+        const tw = g.towers.get(pid);
+        const towerUp = !!tw && (tw.st === "ok" || tw.st === "hot");
+        const dMe = Math.hypot(m.x - den.x, m.y - den.y);
+        if (isMe) {
+          ctx2.save(); ctx2.setLineDash([7, 9]); ctx2.strokeStyle = col; ctx2.globalAlpha = towerUp ? 0.28 : 0.1; ctx2.lineWidth = 2;
+          ctx2.beginPath(); ctx2.arc(den.x * TS, den.y * TS, g.tower.r * TS, 0, 6.283); ctx2.stroke(); ctx2.restore();
+          // השטח המת — הגזרה בגב (הצד הרחוק מההר). הבעלים רואה אותה; אחרים לומדים אותה בכוח
+          ctx2.save(); ctx2.beginPath(); ctx2.moveTo(den.x * TS, den.y * TS);
+          ctx2.arc(den.x * TS, den.y * TS, g.tower.r * TS, den.back - g.tower.arc / 2, den.back + g.tower.arc / 2); ctx2.closePath();
+          ctx2.fillStyle = "rgba(0,0,0,.30)"; ctx2.fill();
+          ctx2.setLineDash([4, 6]); ctx2.strokeStyle = "rgba(243,231,211,.28)"; ctx2.lineWidth = 1.5; ctx2.stroke(); ctx2.restore();
+        } else if (towerUp && dMe <= g.tower.r + 0.3 && !g.chans.has(me)) {
+          ctx2.save(); ctx2.setLineDash([5, 7]); ctx2.strokeStyle = "#E5484D"; ctx2.globalAlpha = 0.2 + 0.1 * Math.sin(ts / 140); ctx2.lineWidth = 2;
+          ctx2.beginPath(); ctx2.arc(den.x * TS, den.y * TS, g.tower.r * TS, 0, 6.283); ctx2.stroke(); ctx2.restore();
+        }
         const denImg = IM ? IM.den[idx % 8] : null;
         if (denImg && imgOk(denImg)) {
           // המדבקה הניטרלית בשטיפת צבע השחקן (מוטמן פעם אחת), ה"רצפה" של המאורה בנקודת המאורה
@@ -649,6 +843,7 @@ export default function ThievesView({ room, me, conn, hub }: GameViewProps) {
         ctx2.strokeStyle = col; ctx2.globalAlpha = 0.16; ctx2.lineWidth = 2;
         ctx2.beginPath(); ctx2.arc(den.x * TS, den.y * TS, DEN_R * TS, 0, 6.283); ctx2.stroke();
         ctx2.globalAlpha = 1;
+        if (tw) drawTower(pid, den, tw, col, isMe);
         // האבנים — בקשת לפני הפתח, הגדולות זוהרות
         const n = its.length, step = Math.min(0.62, 2.9 / Math.max(1, n));
         its.forEach((it, i) => {
@@ -687,6 +882,21 @@ export default function ThievesView({ room, me, conn, hub }: GameViewProps) {
         ctx2.restore();
       }
 
+      // 🗼 חלוקים באוויר — קשת קטנה מהמגדל אל נקודת הנחיתה (הלקוח מציג, השרת מכריע)
+      if (g.shots.length) {
+        const rock = IM ? IM.gem[0] : null, hasRock = !!rock && imgOk(rock);
+        for (const s of g.shots) {
+          const u = Math.min(1, (performance.now() - s.t0) / s.ms);
+          const dist = Math.hypot(s.x1 - s.x0, s.y1 - s.y0);
+          const x = (s.x0 + (s.x1 - s.x0) * u) * TS, y = (s.y0 + (s.y1 - s.y0) * u) * TS - TS * 0.9 * (1 - u) - Math.sin(u * Math.PI) * TS * (0.5 + dist * 0.12);
+          ctx2.fillStyle = "rgba(0,0,0,.25)"; ctx2.beginPath(); ctx2.ellipse((s.x0 + (s.x1 - s.x0) * u) * TS, (s.y0 + (s.y1 - s.y0) * u) * TS + 3, 5, 2.5, 0, 0, 6.283); ctx2.fill();
+          ctx2.save(); ctx2.translate(x, y); ctx2.rotate(u * 9);
+          if (hasRock) ctx2.drawImage(rock!, -7, -7, 14, 14 * (rock!.naturalHeight / rock!.naturalWidth));
+          else { ctx2.fillStyle = "#C8B78E"; ctx2.strokeStyle = "#2C2825"; ctx2.lineWidth = 1.5; ctx2.beginPath(); ctx2.arc(0, 0, 5, 0, 6.283); ctx2.fill(); ctx2.stroke(); }
+          ctx2.restore();
+        }
+      }
+
       // פעימת פינג (פעמון)
       if (g.ping) {
         const u = 1 - (g.ping.t % 1);
@@ -703,11 +913,23 @@ export default function ThievesView({ room, me, conn, hub }: GameViewProps) {
       ctx2.globalAlpha = 1;
 
       // שחקנים
-      const drawPlayer = (pid: string, x: number, y: number, carry: number, stolen: number, rage: number, isMe: boolean, face: number, mov: boolean, carriedV: number) => {
+      const drawPlayer = (pid: string, x: number, y: number, carry: number, stolen: number, rage: number, isMe: boolean, face: number, mov: boolean, carriedV: number, slow: number) => {
         const col = pcol(pid), idx = pidx(pid);
         const im = IM ? IM.thief[idx % 8] : null, hasImg = !!im && imgOk(im);
         if (stolen) glow(x * TS, y * TS, col, hasImg ? 44 : 32, 0.55);           // הדבר היחיד שזורח חזק בשדה
         if (rage) glow(x * TS, y * TS, "#FF4438", hasImg ? 40 : 28, 0.5);
+        if (slow) glow(x * TS, y * TS + 6, "#7FB8FF", hasImg ? 30 : 22, 0.35);   // 🐌 מואט מחלוק
+        // ערוץ פעולה — טבעת התקדמות סביב השחקן, בצבע הפעולה
+        const ch = g.chans.get(pid);
+        if (ch) {
+          const u = Math.min(1, (performance.now() - ch.t0) / ch.ms), cc = ch.kind === "disable" ? "#FFB03B" : "#E5484D";
+          ctx2.strokeStyle = "rgba(0,0,0,.45)"; ctx2.lineWidth = 7; ctx2.beginPath(); ctx2.arc(x * TS, y * TS, 26, 0, 6.283); ctx2.stroke();
+          ctx2.strokeStyle = cc; ctx2.lineWidth = 5; ctx2.beginPath(); ctx2.arc(x * TS, y * TS, 26, -Math.PI / 2, -Math.PI / 2 + u * Math.PI * 2); ctx2.stroke();
+          ctx2.font = "800 12px Assistant, sans-serif"; ctx2.textAlign = "center";
+          const lbl = ch.kind === "disable" ? "🔧 משבית…" : "💥 הורס…";
+          ctx2.fillStyle = "#000"; ctx2.fillText(lbl, x * TS + 1, y * TS - TS * 1.75 + 1);
+          ctx2.fillStyle = cc; ctx2.fillText(lbl, x * TS, y * TS - TS * 1.75);
+        }
         if (hasImg) {
           // צל, ואז הדביבון: מקפץ בריצה, מסתובב לכיוון הריצה, נושם בעמידה
           ctx2.fillStyle = "rgba(0,0,0,.34)"; ctx2.beginPath(); ctx2.ellipse(x * TS, y * TS + TS * 0.62, 13, 5, 0, 0, 6.283); ctx2.fill();
@@ -737,6 +959,13 @@ export default function ThievesView({ room, me, conn, hub }: GameViewProps) {
           else { const sz2 = 11 + 2 * Math.sin(ts / 110); ctx2.save(); ctx2.translate(x * TS, gy); ctx2.rotate(Math.PI / 4); ctx2.fillStyle = "#FFE082"; ctx2.fillRect(-sz2 / 2, -sz2 / 2, sz2, sz2); ctx2.restore(); }
         }
         if (rage) { ctx2.font = "15px sans-serif"; ctx2.textAlign = "center"; ctx2.fillText("🔥", x * TS + (hasImg ? 16 * face : 0), y * TS - (hasImg ? TS * 1.1 : 20)); }
+        if (slow) {
+          // 🐌 תג ההאטה — עיגול כהה מאחוריו כדי שייקרא גם על הקפוצ'ון
+          const bx = x * TS - (hasImg ? 21 * face : 0), by = y * TS - (hasImg ? TS * 1.05 : 18) + 2 * Math.sin(ts / 200);
+          ctx2.fillStyle = "rgba(16,13,10,.82)"; ctx2.beginPath(); ctx2.arc(bx, by - 6, 12, 0, 6.283); ctx2.fill();
+          ctx2.strokeStyle = "#7FB8FF"; ctx2.lineWidth = 2; ctx2.stroke();
+          ctx2.font = "16px sans-serif"; ctx2.textAlign = "center"; ctx2.fillStyle = "#fff"; ctx2.fillText("🐌", bx, by);
+        }
         ctx2.font = `800 ${isMe ? 12 : 11}px Assistant, sans-serif`; ctx2.textAlign = "center";
         const nm = pname(pid), ny = y * TS + (hasImg ? TS * 1.02 : 24);
         ctx2.fillStyle = "#000"; ctx2.fillText(nm, x * TS + 1, ny + 1);
@@ -747,10 +976,10 @@ export default function ThievesView({ room, me, conn, hub }: GameViewProps) {
       const order = [...g.others.entries()].map(([pid, o]) => ({ pid, o })).sort((a, b) => a.o.y - b.o.y);
       let meDrawn = false;
       for (const { pid, o } of order) {
-        if (!meDrawn && m.y < o.y) { drawPlayer(me, m.x, m.y, m.carry, m.stolen ? 1 : 0, raging ? 1 : 0, true, g.face, !!moving, carriedValue(me)); meDrawn = true; }
-        drawPlayer(pid, o.x, o.y, o.carry, o.stolen, o.rage, false, o.face, Math.hypot(o.vx, o.vy) > 0.3, carriedValue(pid));
+        if (!meDrawn && m.y < o.y) { drawPlayer(me, m.x, m.y, m.carry, m.stolen ? 1 : 0, raging ? 1 : 0, true, g.face, !!moving, carriedValue(me), slowed ? 1 : 0); meDrawn = true; }
+        drawPlayer(pid, o.x, o.y, o.carry, o.stolen, o.rage, false, o.face, Math.hypot(o.vx, o.vy) > 0.3, carriedValue(pid), o.slow);
       }
-      if (!meDrawn) drawPlayer(me, m.x, m.y, m.carry, m.stolen ? 1 : 0, raging ? 1 : 0, true, g.face, !!moving, carriedValue(me));
+      if (!meDrawn) drawPlayer(me, m.x, m.y, m.carry, m.stolen ? 1 : 0, raging ? 1 : 0, true, g.face, !!moving, carriedValue(me), slowed ? 1 : 0);
       // ⛏️ קשת החציבה — כמה נשאר עד הצ'אנק הבא (החציבה אוטומטית, אבל רואים אותה)
       if (r > 0 && !m.stolen && m.carry < 3 && Math.hypot(m.x - g.mtn.x, m.y - g.mtn.y) <= r + 1.0) {
         const u = Math.min(1, (performance.now() - g.mineAt) / MINE_MS);
@@ -797,13 +1026,13 @@ export default function ThievesView({ room, me, conn, hub }: GameViewProps) {
       }
       if (thiefPid) {
         const tdx = thiefX * TS - g.cam.x - (m.x * TS - g.cam.x), tdy = thiefY * TS - g.cam.y - (m.y * TS - g.cam.y);
-        ctx2.save(); ctx2.translate(W / 2, 92); ctx2.rotate(Math.atan2(tdy, tdx));
+        ctx2.save(); ctx2.translate(W / 2, 138); ctx2.rotate(Math.atan2(tdy, tdx));
         ctx2.globalAlpha = 0.65 + 0.35 * Math.sin(ts / 100);
         ctx2.fillStyle = pcol(thiefPid); ctx2.strokeStyle = "#000"; ctx2.lineWidth = 2;
         ctx2.beginPath(); ctx2.moveTo(18, 0); ctx2.lineTo(-10, -10); ctx2.lineTo(-5, 0); ctx2.lineTo(-10, 10); ctx2.closePath();
         ctx2.fill(); ctx2.stroke(); ctx2.restore(); ctx2.globalAlpha = 1;
         ctx2.font = "800 12px Assistant, sans-serif"; ctx2.textAlign = "center";
-        ctx2.fillStyle = "#F3E7D3"; ctx2.fillText(`🏃 ${pname(thiefPid)} עם הגביש שלך!`, W / 2, 74);
+        ctx2.fillStyle = "#F3E7D3"; ctx2.fillText(`🏃 ${pname(thiefPid)} עם הגביש שלך!`, W / 2, 118);
         // פעימה לפי כמה הוא קרוב לבית שלו
         const hisDen = g.dens.get(thiefPid);
         if (hisDen && audio.current.ctx) {
@@ -814,7 +1043,7 @@ export default function ThievesView({ room, me, conn, hub }: GameViewProps) {
       }
 
       // 🗺️ מיני-מפה — החוטים של כולם
-      const MW = 132, MH = Math.round(MW * (g.h / g.w)), MX = W - MW - 10, MY = 64;
+      const MW = 132, MH = Math.round(MW * (g.h / g.w)), MX = W - MW - 10, MY = 104;
       ctx2.fillStyle = "rgba(16,13,10,.86)"; ctx2.fillRect(MX, MY, MW, MH);
       ctx2.strokeStyle = "#3A2E22"; ctx2.lineWidth = 2; ctx2.strokeRect(MX, MY, MW, MH);
       const mx2 = (x: number) => MX + (x / g.w) * MW, my2 = (y: number) => MY + (y / g.h) * MH;
@@ -828,6 +1057,16 @@ export default function ThievesView({ room, me, conn, hub }: GameViewProps) {
           ctx2.globalAlpha = 1;
         }
         ctx2.fillStyle = col; ctx2.fillRect(mx2(den.x) - 2.5, my2(den.y) - 2.5, 5, 5);
+        // 🗼 מגדל שלא פעיל — נקודה אפורה/אדומה ליד המאורה (מידע פומבי: "אצלו פתוח עכשיו")
+        const twm = g.towers.get(pid);
+        if (twm && twm.st !== "ok") { ctx2.fillStyle = twm.st === "hot" ? "#FF5A3C" : twm.st === "ruin" ? "#E5484D" : "#9AA4B2"; ctx2.beginPath(); ctx2.arc(mx2(den.x) + 4.5, my2(den.y) - 4.5, 2.2, 0, 6.283); ctx2.fill(); }
+      }
+      // ערוצים פומביים — פס התקדמות ליד המאורה שמותקפת, אצל כולם
+      for (const [, c] of g.chans.entries()) {
+        const den = g.dens.get(c.den); if (!den) continue;
+        const u = Math.min(1, (performance.now() - c.t0) / c.ms), bx = mx2(den.x) - 9, by = my2(den.y) + 5;
+        ctx2.fillStyle = "rgba(0,0,0,.7)"; ctx2.fillRect(bx - 1, by - 1, 20, 5);
+        ctx2.fillStyle = c.kind === "disable" ? "#FFB03B" : "#E5484D"; ctx2.fillRect(bx, by, 18 * u, 3);
       }
       for (const [pid, o] of g.others.entries()) {
         ctx2.fillStyle = pcol(pid);
@@ -844,19 +1083,25 @@ export default function ThievesView({ room, me, conn, hub }: GameViewProps) {
         ctx2.beginPath(); ctx2.arc(joy.current.ox + joy.current.dx * 46, joy.current.oy + joy.current.dy * 46, 20, 0, 6.283); ctx2.fill();
       }
 
-      // כפתור הגניבה — בדיקה מדי ~60ms, ונשאר עוד רגע אחרי שיצאת (שלא ייעלם מתחת לאגודל)
+      // עמודת הכפתורים — בדיקה מדי ~60ms: לגנוב (במאורה זרה עם אבנים) · להשבית/להרוס (ליד מגדל זר שעומד) ·
+      // לבנות מחדש (בבית, כשהמגדל חורבה). הגניבה נשארת עוד רגע אחרי שיצאת (שלא תיעלם מתחת לאגודל)
       if (ts - stealChk > 60) {
         stealChk = ts;
-        let ok = false;
-        if (!m.stolen && g.go) {
+        const a: Acts = { ...NO_ACTS, chan: !!myChan };
+        if (g.go && !g.over && !myChan) {
           for (const [pid, den] of g.dens.entries()) {
             if (pid === me) continue;
-            if (Math.hypot(m.x - den.x, m.y - den.y) <= DEN_R && (byDen.get(pid)?.length ?? 0) > 0) { ok = true; break; }
+            const dd = Math.hypot(m.x - den.x, m.y - den.y);
+            if (!m.stolen && dd <= DEN_R && (byDen.get(pid)?.length ?? 0) > 0) a.steal = true;
+            const tw = g.towers.get(pid);
+            if (!m.stolen && dd <= ACT_R && tw && (tw.st === "ok" || tw.st === "hot" || tw.st === "off")) { a.destroy = true; if (tw.st !== "off") a.disable = true; }
           }
+          const mine = g.dens.get(me), myTw = g.towers.get(me);
+          if (mine && myTw?.st === "ruin" && Math.hypot(m.x - mine.x, m.y - mine.y) <= DEN_R) a.rebuild = true;
         }
-        if (ok) g.stealOkAt = ts;
-        const show = ok || (!m.stolen && ts - g.stealOkAt < STEAL_HOLD);
-        setCanSteal((c) => (c === show ? c : show));
+        if (a.steal) g.stealOkAt = ts;
+        a.steal = a.steal || (!m.stolen && !myChan && ts - g.stealOkAt < STEAL_HOLD);
+        setActs((c) => (c.steal === a.steal && c.disable === a.disable && c.destroy === a.destroy && c.rebuild === a.rebuild && c.chan === a.chan ? c : a));
       }
     }
     raf = requestAnimationFrame(frame);
@@ -889,10 +1134,31 @@ export default function ThievesView({ room, me, conn, hub }: GameViewProps) {
         💰 {hud.gold.toLocaleString()}
         {hud.carry > 0 && <span style={{ fontSize: 13, color: "#C8B78E", marginRight: 8 }}>+{hud.carry} ביד</span>}
         {hud.rage && <span style={{ fontSize: 13, color: "#FF6B5E", marginRight: 8 }}>🔥 זעם!</span>}
+        {/* 🗼 מצב המגדל שלי — שורה שנייה, רק כשהוא לא פעיל */}
+        {hud.tower !== "ok" && (
+          <div style={{ fontSize: 12, color: hud.tower === "ruin" ? "#FF6B5E" : "#E8D9BC", marginTop: 2, whiteSpace: "nowrap" }}>
+            {hud.tower === "hot" ? `🔥 המגדל מתקרר ${hud.towerLeft}` : hud.tower === "off" ? `💤 המגדל כבוי ${hud.towerLeft}` : hud.tower === "build" ? `🔨 בונים ${hud.towerLeft}` : "💥 המגדל הרוס — חזור הביתה"}
+          </div>
+        )}
       </div>
 
+      {/* 🗼 הנגדים — ליד מגדל זר: להשבית / להרוס (המחיר מהניקוד); בבית עם חורבה: לבנות מחדש. pointerdown כמו כפתור הגניבה */}
+      {(acts.disable || acts.destroy || acts.rebuild) && (
+        <div style={{ position: "absolute", bottom: `calc(env(safe-area-inset-bottom, 0px) + ${acts.steal ? 128 : 30}px)`, left: 14, display: "flex", flexDirection: "column", gap: 8, zIndex: 5 }}>
+          {acts.rebuild && (
+            <ActBtn label="🔨 לבנות מחדש" sub="חינם · 3 שניות" col="#F2C14E" onTap={() => { aInit(); conn.sendGame({ a: "th_act", kind: "rebuild" }); }} />
+          )}
+          {acts.disable && (
+            <ActBtn label="🔧 להשבית" sub={`${G.current.tower.disable} זהב · 1.5 שנ' · כבוי 15 שנ'`} col="#FFB03B" dim={hud.gold < G.current.tower.disable} onTap={() => { aInit(); conn.sendGame({ a: "th_act", kind: "disable" }); }} />
+          )}
+          {acts.destroy && (
+            <ActBtn label="💥 להרוס" sub={`${G.current.tower.destroy} זהב · 3 שנ' תחת אש`} col="#E5484D" dim={hud.gold < G.current.tower.destroy} onTap={() => { aInit(); conn.sendGame({ a: "th_act", kind: "destroy" }); }} />
+          )}
+        </div>
+      )}
+
       {/* פיד הקבלות — מתחת למיני-מפה, לא עליה */}
-      <div style={{ position: "absolute", top: "calc(env(safe-area-inset-top, 0px) + 158px)", right: 10, display: "flex", flexDirection: "column", gap: 4, alignItems: "flex-end", pointerEvents: "none" }}>
+      <div style={{ position: "absolute", top: "calc(env(safe-area-inset-top, 0px) + 198px)", right: 10, display: "flex", flexDirection: "column", gap: 4, alignItems: "flex-end", pointerEvents: "none" }}>
         {feed.map((f) => (
           <div key={f.id} style={{
             background: "rgba(16,13,10,.78)", border: "1.5px solid #3A2E22", borderRadius: 10, padding: "3px 10px",
@@ -903,7 +1169,7 @@ export default function ThievesView({ room, me, conn, hub }: GameViewProps) {
 
       {/* כפתור הגניבה — הפשע דורש לחיצה. pointerdown ולא click: אצבע שנייה שמקישה בזמן
           שהראשונה מחזיקה את הג'ויסטיק לא מייצרת click בכלל בדפדפני מובייל — רק pointer/touch */}
-      {canSteal && (
+      {acts.steal && (
         <button
           onPointerDown={(e) => { e.preventDefault(); aInit(); conn.sendGame({ a: "th_steal" }); }}
           onClick={(e) => e.preventDefault()}
@@ -921,9 +1187,9 @@ export default function ThievesView({ room, me, conn, hub }: GameViewProps) {
         </button>
       )}
 
-      {toast && (
+      {toast && !stalled && (
         <div style={{
-          position: "absolute", bottom: "calc(env(safe-area-inset-bottom, 0px) + 120px)", left: "50%", transform: "translateX(-50%)",
+          position: "absolute", top: "calc(env(safe-area-inset-top, 0px) + 54px)", left: "50%", transform: "translateX(-50%)",
           background: "rgba(16,13,10,.92)", border: "2px solid #3A2E22", borderRadius: 14, padding: "8px 18px",
           color: "#F3E7D3", fontWeight: 800, fontFamily: "Assistant, sans-serif", fontSize: 16, whiteSpace: "nowrap", zIndex: 6,
         }}>{toast}</div>
@@ -931,7 +1197,7 @@ export default function ThievesView({ room, me, conn, hub }: GameViewProps) {
 
       {stalled && (
         <div style={{
-          position: "absolute", top: "calc(env(safe-area-inset-top, 0px) + 60px)", left: "50%", transform: "translateX(-50%)",
+          position: "absolute", top: "calc(env(safe-area-inset-top, 0px) + 54px)", left: "50%", transform: "translateX(-50%)",
           background: "rgba(120,20,20,.92)", border: "2px solid #E5484D", borderRadius: 14, padding: "8px 16px",
           color: "#F3E7D3", fontWeight: 800, fontFamily: "Assistant, sans-serif", fontSize: 14, whiteSpace: "nowrap", zIndex: 8, pointerEvents: "none",
         }}>🔌 החיבור נפל — מתחבר מחדש…</div>
@@ -961,6 +1227,23 @@ export default function ThievesView({ room, me, conn, hub }: GameViewProps) {
         </div>
       )}
     </div>
+  );
+}
+
+/** כפתור פעולה בעמודה (מדבקה שטוחה עם מחיר). dim = אין מספיק זהב — עדיין לחיץ, השרת יענה th_nope(gold) והטוסט יסביר */
+function ActBtn({ label, sub, col, dim, onTap }: { label: string; sub: string; col: string; dim?: boolean; onTap: () => void }) {
+  return (
+    <button
+      onPointerDown={(e) => { e.preventDefault(); onTap(); }}
+      onClick={(e) => e.preventDefault()}
+      style={{
+        border: `2.5px solid ${col}`, background: "rgba(16,13,10,.92)", color: "#F3E7D3", borderRadius: 14, padding: "6px 12px",
+        fontFamily: "Assistant, sans-serif", textAlign: "right", opacity: dim ? 0.5 : 1, touchAction: "manipulation", minWidth: 150,
+        boxShadow: `3px 3px 0 ${col}88`, transform: "rotate(-1.5deg)",
+      }}>
+      <div style={{ fontSize: 15, fontWeight: 900, color: col }}>{label}</div>
+      <div style={{ fontSize: 11, fontWeight: 700, opacity: 0.85, whiteSpace: "nowrap" }}>{sub}</div>
+    </button>
   );
 }
 
