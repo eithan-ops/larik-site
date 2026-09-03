@@ -242,7 +242,19 @@ export function createThieves(ctx: GameCtx): GameInstance {
   }
 
   /* ---------- טיק ---------- */
+  // שום חריגה בטיק לא מפילה את החדר (ואת התהליך): תופסים, רושמים, וממשיכים; אחרי 30 רצופות — מסיימים בכבוד.
+  let tickErrors = 0;
   function step() {
+    try { stepBody(); tickErrors = 0; }
+    catch (e) {
+      tickErrors++;
+      console.error(`[thieves] tick error #${tickErrors}:`, e);
+      if (phase === "done") return;
+      if (tickErrors >= 30) { try { finish(); } catch (e2) { console.error("[thieves] finish failed", e2); } return; }
+      loop = ctx.timer(TICK, step);
+    }
+  }
+  function stepBody() {
     const now = ctx.now();
     const dt = Math.min(0.2, (now - lastTick) / 1000) || TICK / 1000;
     lastTick = now;

@@ -68,6 +68,7 @@ export default function ThievesView({ room, me, conn, hub }: GameViewProps) {
   const [feed, setFeed] = useState<{ id: number; tx: string }[]>([]);
   const [canSteal, setCanSteal] = useState(false);
   const [countdown, setCountdown] = useState(0);
+  const [stalled, setStalled] = useState(false);
   const feedId = useRef(1);
 
   const G = useRef({
@@ -88,6 +89,7 @@ export default function ThievesView({ room, me, conn, hub }: GameViewProps) {
     shake: 0, flash: 0, flashCol: "#fff", stop: 0,
     left: 0, goAt: 0, endsAt: 0, go: false, alarm: false, empty: false,
     beepAt: 0, hudAt: 0, stealOkAt: 0, mineAt: 0, face: 1,
+    lastPosAt: 0, kickAt: 0, stalled: false, over: false,
     fxs: [] as Fx[],
     players: [] as { id: string; name: string }[],
   });
@@ -160,7 +162,7 @@ export default function ThievesView({ room, me, conn, hub }: GameViewProps) {
           for (const [pid, x, y] of d.dens) g.dens.set(pid, { x, y });
           const mine = g.dens.get(me);
           if (mine && !g.ready) { g.me.x = mine.x; g.me.y = mine.y; g.cam.x = mine.x * TS; g.cam.y = mine.y * TS; }
-          g.goAt = d.goAt; g.endsAt = d.endsAt; g.ready = true;
+          g.goAt = d.goAt; g.endsAt = d.endsAt; g.ready = true; g.lastPosAt = performance.now();
           if (conn.serverNow() >= d.goAt) g.go = true;   // חזרנו באמצע — אין ספירה לאחור
           break;
         }
@@ -175,6 +177,7 @@ export default function ThievesView({ room, me, conn, hub }: GameViewProps) {
           break;
         }
         case "th_pos": {
+          g.lastPosAt = performance.now();
           for (const [pid, x, y, carry, stolen, gold, rage, dx, dy] of d.ps) {
             if (pid === me) {
               if (conn.synced && d.t && g.hist.length) {
@@ -332,7 +335,7 @@ export default function ThievesView({ room, me, conn, hub }: GameViewProps) {
           break;
         case "th_horn":
           // 🔔 הצפירה — אצל כולם באותו רגע; המסך קופא לרגע, ואז הטקס
-          horn(); g.stop = 0.9; g.flash = 0.25; g.flashCol = "#F3E7D3"; SFX.current?.stopMusic(1.4);
+          horn(); g.stop = 0.9; g.flash = 0.25; g.flashCol = "#F3E7D3"; SFX.current?.stopMusic(1.4); g.over = true;
           setBanner({ ic: "🔔", t: "הצפירה!", s: "מה שנשאר בבית — שלך" });
           break;
         case "th_left": g.others.delete(d.pid); break;
@@ -485,6 +488,16 @@ export default function ThievesView({ room, me, conn, hub }: GameViewProps) {
       if (!g.go && g.goAt) {
         const cd = Math.max(0, Math.ceil((g.goAt - sNow) / 1000));
         if (cd !== cdShown) { cdShown = cd; setCountdown(cd); if (cd > 0 && !sfx("tick")) tone(440, 0.08, "triangle", 0.16); }
+      }
+
+      // 🔌 שומר קיפאון: הדף גלוי אבל 4 שניות בלי th_pos = החיבור מת בשקט (טלפון שננעל/עבר לרקע).
+      // מציגים "מתחבר מחדש", ובועטים בחיבור כל 5 שניות עד שההודעות חוזרות.
+      if (g.go && !g.over && g.lastPosAt) {
+        const since = performance.now() - g.lastPosAt;
+        if (since > 4000 && document.visibilityState === "visible") {
+          if (!g.stalled) { g.stalled = true; setStalled(true); }
+          if (performance.now() - g.kickAt > 5000) { g.kickAt = performance.now(); conn.kick(); }
+        } else if (g.stalled && since < 1500) { g.stalled = false; setStalled(false); }
       }
 
       /* ניבוי מקומי — אותה נוסחה כמו בשרת, עם הקלט *ששלחנו* (זה מה שהשרת מריץ) */
@@ -914,6 +927,14 @@ export default function ThievesView({ room, me, conn, hub }: GameViewProps) {
           background: "rgba(16,13,10,.92)", border: "2px solid #3A2E22", borderRadius: 14, padding: "8px 18px",
           color: "#F3E7D3", fontWeight: 800, fontFamily: "Assistant, sans-serif", fontSize: 16, whiteSpace: "nowrap", zIndex: 6,
         }}>{toast}</div>
+      )}
+
+      {stalled && (
+        <div style={{
+          position: "absolute", top: "calc(env(safe-area-inset-top, 0px) + 60px)", left: "50%", transform: "translateX(-50%)",
+          background: "rgba(120,20,20,.92)", border: "2px solid #E5484D", borderRadius: 14, padding: "8px 16px",
+          color: "#F3E7D3", fontWeight: 800, fontFamily: "Assistant, sans-serif", fontSize: 14, whiteSpace: "nowrap", zIndex: 8, pointerEvents: "none",
+        }}>🔌 החיבור נפל — מתחבר מחדש…</div>
       )}
 
       {/* ספירה לאחור — אותו מספר אצל כולם, משעון השרת */}
