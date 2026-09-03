@@ -446,14 +446,22 @@ export type HofrimServerMsg =
 /* ---------- הגנבים 🥷 ---------- */
 export type ThievesClientMsg =
   | { a: "th_dir"; dx: number; dy: number }        // וקטור אנלוגי ‎-1..1 — נשלח רק כשהוא משתנה
-  | { a: "th_steal" };                             // כפתור הפעולה — גניבה מהמאורה שאתה עומד בה
+  | { a: "th_steal" }                              // כפתור הפעולה — גניבה מהמאורה שאתה עומד בה
+  | { a: "th_act"; kind: "disable" | "destroy" | "rebuild" };   // 🗼 נגדי המגדל: השבתה/הריסה ליד מגדל זר · בנייה מחדש בבית
 
+export type ThTowerSt = "ok" | "hot" | "off" | "ruin" | "build";   // פעיל · קירור (חימום) · כבוי (הושבת) · חורבה · בבנייה
 export type ThievesServerMsg =
-  | { a: "th_init"; w: number; h: number; mtn: { x: number; y: number; total: number }; dens: [string, number, number][]; players: string[]; goAt: number; endsAt: number }
-  | { a: "th_pos"; t: number; ps: [string, number, number, number, number, number, number, number, number][]; mtn: number; left: number } // t=שעון השרת · [pid,x,y,צ'אנקים,סוחב-שלל,זהב,זעם,dx,dy] — dx/dy לניבוי האחרים
+  | { a: "th_init"; w: number; h: number; mtn: { x: number; y: number; total: number }; dens: [string, number, number, number][]; players: string[]; goAt: number; endsAt: number; tower?: { r: number; arc: number; disable: number; destroy: number } }   // dens=[pid,x,y,זווית הגב (מרכז השטח המת)] · tower=רדיוס, קשת השטח המת, מחירי הנגדים
+  | { a: "th_pos"; t: number; ps: [string, number, number, number, number, number, number, number, number, number][]; mtn: number; left: number } // t=שעון השרת · [pid,x,y,צ'אנקים,סוחב-שלל,זהב,זעם,dx,dy,מואט] — dx/dy לניבוי האחרים
   | { a: "th_go" }                                                                    // 🥷 צאו! — cue משותף, כולם יוצאים לדרך באותה שנייה
   | { a: "th_horn" }                                                                  // 🔔 הצפירה — cue בזמן הסיום, לפני מסך הטקס
-  | { a: "th_nope"; why: "far" | "empty" | "busy" }                                   // הגניבה לא יצאה לפועל — משוב מיידי במקום שתיקה
+  | { a: "th_nope"; why: "far" | "empty" | "busy" | "gold" | "tower" }                // הפעולה לא יצאה לפועל — משוב מיידי במקום שתיקה (gold=אין מספיק זהב · tower=אין על מה לפעול)
+  | { a: "th_tower"; den: string; st: ThTowerSt; until?: number; by?: string }        // 🗼 מצב המגדל השתנה (לכולם) · until=שעון-שרת לסוף המצב הזמני · by=מי גרם
+  | { a: "th_shot"; den: string; x0: number; y0: number; x1: number; y1: number; ms: number; tgt: string }   // חלוק בדרך: מהמגדל אל נקודת הנחיתה, זמן המעוף. הלקוח מציג, השרת מכריע
+  | { a: "th_hit"; den: string; pid: string; ms: number; x: number; y: number }       // פגיעה: pid מואט ל-ms ונדחף ל-(x,y)
+  | { a: "th_channel"; by: string; den: string; kind: "disable" | "destroy"; ms: number; cost: number }   // ערוץ פעולה התחיל — פומבי (פס במיני-מפה אצל כולם)
+  | { a: "th_channel_end"; by: string; den: string; kind: "disable" | "destroy"; ok: boolean; why?: "moved" | "touched" | "gone" | "gold"; who?: string }   // הערוץ נגמר: הושלם, או נקטע (who=מי נגע)
+  | { a: "th_act_done"; kind: "disable" | "destroy" | "rebuild"; den: string; by: string; cost: number }   // הנגד בוצע והזהב חויב — שורת הקבלה
   | { a: "th_mine"; pid: string; carry: number; left: number; tier?: number }         // צ'אנק נחצב מההר · tier=שכבת ההר (1 רגיל · 2 עמוק · 3 ליבה)
   | { a: "th_dep"; pid: string; ids: number[]; v?: number }                           // הפקדה — כל הצ'אנקים שביד הפכו לאבן אחת בערך v (סכום השכבות, 1–9)
   | { a: "th_ripen"; id: number; den: string; lvl: number; bell?: boolean }           // גביש עלה דרגת הבשלה · bell=הפעמון הפומבי (אחד למאורה לכמה שניות)
@@ -466,7 +474,7 @@ export type ThievesServerMsg =
   | { a: "th_empty" }                                                                 // ההר נגמר — המלחמה
   | { a: "th_alarm"; secs: number }                                                   // 🚨 הדקה האחרונה — הכנסות ×3
   | { a: "th_first"; by: string; from: string }                                       // הגניבה הראשונה של הסבב
-  | { a: "th_sync"; mtn: number; items: [number, string, number, number, number][]; ground: [number, number, number, number, number][]; carried: [number, string, number, number][]; endsAt: number } // items=[id,den,lvl,sinceLvl,v] · ground=[id,x,y,lvl,v] · carried=[id,carrier,lvl,v]
+  | { a: "th_sync"; mtn: number; items: [number, string, number, number, number][]; ground: [number, number, number, number, number][]; carried: [number, string, number, number][]; towers?: [string, ThTowerSt, number][]; endsAt: number } // items=[id,den,lvl,sinceLvl,v] · ground=[id,x,y,lvl,v] · carried=[id,carrier,lvl,v] · towers=[den,st,until]
   | { a: "th_left"; pid: string };
 
 /* ---------- התהום 🕳️ ---------- */
@@ -496,7 +504,7 @@ export type AbyssServerMsg =
   | ({ a: "ab_throw" } & AbThrowWire)
   | { a: "ab_throwok"; id: number; readyAt: number }                       // אישי — טבעת הקולדאון
   | { a: "ab_throwfail"; reason: "cooldown" | "busy" | "ledge" | "target" | "falling" }
-  | { a: "ab_bonus"; pid: string; kind: "hunter" | "help" | "gift"; amount: number; from: string } // gift = 🫂 נדיב
+  | { a: "ab_bonus"; pid: string; kind: "hunter" | "help"; amount: number; from: string }
   | { a: "ab_swallow"; pot: number; pid: string }
   | { a: "ab_results"; d: number; of: number; rows: { pid: string; banked: number; at: number; caught: boolean; pot: number; bonus: number }[]; totals: Record<string, number>; potLost: number }
   | { a: "ab_draft"; cards: AbyssCard[]; ms: number }                      // אישי
@@ -724,7 +732,7 @@ export const CATALOG: GameMeta[] = [
     name: "הגנבים",
     icon: "🥷",
     tagline: "ההר נגמר. הזהב היחיד שנשאר — אצל החברים שלכם.",
-    howTo: "כל אחד הוא דביבון גנב עם מאורה משלו. חוצבים זהב מההר שבמרכז וסוחבים הביתה — אבן שהופקדה במאורה מבשילה ומייצרת זהב כל שנייה. אבל ההר נגמר, ואז הזהב היחיד נמצא בבתים של החברים: נכנסים למאורה של מישהו, גונבים גביש — וכל החדר רואה אתכם בורחים איתו. מגע בגנב מפיל את השלל, ומי שמגיע ראשון לוקח. בדקה האחרונה הכל שווה פי 3.",
+    howTo: "כל אחד הוא דביבון גנב עם מאורה משלו. חוצבים זהב מההר שבמרכז וסוחבים הביתה — אבן שהופקדה במאורה מבשילה ומייצרת זהב כל שנייה. אבל ההר נגמר, ואז הזהב היחיד נמצא בבתים של החברים: נכנסים למאורה של מישהו, גונבים גביש — וכל החדר רואה אתכם בורחים איתו. מגע בגנב מפיל את השלל, ומי שמגיע ראשון לוקח. ליד כל מאורה עומד מגדל שמירה שיורה חלוקים על פולשים ומאט אותם — פנייה חדה מפספסת אותו, ומאחורי המאורה יש שטח מת. אפשר להשבית או להרוס מגדל של חבר — תמורת זהב מהניקוד שלכם. בדקה האחרונה הכל שווה פי 3.",
     minPlayers: 2,
     maxPlayers: 8,
   },
