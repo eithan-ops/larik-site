@@ -44,6 +44,13 @@ export class Connection {
   private serverUrl: string;
   private roomCode: string;
   private events: ConnectionEvents;
+  private name = ""; private emoji = "";
+  /** ניסיון חיבור מחדש שהוחמץ כי הטאב היה מוסתר — ישוחרר ברגע שהדף חוזר להיות גלוי */
+  private waitVisible = false;
+  private onVis = () => {
+    if (document.visibilityState !== "visible" || !this.waitVisible) return;
+    this.waitVisible = false; this.connect(this.name, this.emoji);
+  };
 
   constructor(serverUrl: string, roomCode: string, events: ConnectionEvents) {
     this.serverUrl = serverUrl;
@@ -58,7 +65,24 @@ export class Connection {
   /** ms עד זמן-שרת נתון */
   untilServer(at: number): number { return at - this.serverNow(); }
 
+  /** האם הסוקט פתוח כרגע — לשומרי הקיפאון של המשחקים */
+  get open(): boolean { return this.ws?.readyState === WebSocket.OPEN; }
+
+  /**
+   * חיבור מחדש יזום — כשמשחק מזהה שלא הגיעו הודעות זמן רב למרות שהדף גלוי (סוקט "זומבי":
+   * הטלפון ננעל/עבר לרקע והמערכת חנקה את החיבור בלי לסגור אותו).
+   */
+  kick() {
+    if (this.closedByUs) return;
+    const st = this.ws?.readyState;
+    if (st === WebSocket.OPEN) { try { this.ws!.close(); } catch { /* onclose יטפל */ } }
+    else if (st === undefined || st === WebSocket.CLOSED) this.connect(this.name, this.emoji);
+  }
+
   connect(name: string, emoji: string) {
+    this.name = name; this.emoji = emoji;
+    document.removeEventListener("visibilitychange", this.onVis);
+    document.addEventListener("visibilitychange", this.onVis);
     const pid = sessionStorage.getItem(`larik-pid-${this.roomCode}`) || "";
     const url = `${this.serverUrl}/ws?room=${this.roomCode}${pid ? `&pid=${pid}` : ""}`;
     this.events.onStatus("connecting");
@@ -119,7 +143,9 @@ export class Connection {
       const base = Math.min(30_000, 1500 * Math.pow(2, this.reconnectAttempt++));
       const delay = base * (0.5 + Math.random() * 0.5);
       setTimeout(() => {
+        // טאב מוסתר ברגע הזה (טלפון נעול) — לא מוותרים על החיבור: מתחברים ברגע שחוזרים לדף
         if (document.visibilityState === "visible") this.connect(name, emoji);
+        else this.waitVisible = true;
       }, delay);
     };
   }
@@ -148,6 +174,7 @@ export class Connection {
   close() {
     this.closedByUs = true;
     clearInterval(this.pingTimer);
+    document.removeEventListener("visibilitychange", this.onVis);
     this.ws?.close();
   }
 }
