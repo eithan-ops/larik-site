@@ -10,6 +10,7 @@ import "./tokens.css";     // הפלטה — חייב לבוא אחרי styles.c
 import "./stickers.css";   // שכבת המראה — חייבת לבוא אחרונה
 import "./hofrim.css";     // מסך החופרים (מסך מלא משלו)
 import "./abyss.css";      // מסך התהום (מסך מלא משלו)
+import "./floors.css";     // מסך הקומות (מסך מלא משלו)
 import { initAnalytics } from "./lib/analytics";
 
 initAnalytics();
