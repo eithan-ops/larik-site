@@ -39,9 +39,11 @@ const WHY: Record<UcScoreRow["why"], { t: string; e: string }> = {
   miss:     { t: "הצביע לא נכון", e: "❌" },
   fooled:   { t: "היה בטוח שהוא המתחזה 😅", e: "🤡" },
 };
-/** לאיזה תוצאות יש איור משלהן — לשאר מספיק האימוג'י */
+/** לכל תוצאה האיור שלה. "bluff" (מתחזה שהכריז וטעה) נשאר על האימוג'י —
+ *  זו התוצאה היחידה שאין לה תמונה, והיא גם הנדירה ביותר. */
 const ART_FOR: Partial<Record<UcScoreRow["why"], UcArtKey>> = {
   declared: "genius", safe: "safe", saved: "genius", caught: "caught",
+  hit: "hit", miss: "miss", fooled: "fooled",
 };
 
 export default function UndercoverView({ room, me, conn, hub }: GameViewProps) {
@@ -66,6 +68,7 @@ export default function UndercoverView({ room, me, conn, hub }: GameViewProps) {
   const [scores, setScores] = useState<{ rows: UcScoreRow[]; totals: Record<string, number> } | null>(null);
   const [holding, setHolding] = useState(false);
   const [left, setLeft] = useState(0);
+  const [need, setNeed] = useState<{ have: number; need: number } | null>(null);
   const stepTimers = useRef<number[]>([]);
 
   const isHost = me === room.hostId;
@@ -80,7 +83,7 @@ export default function UndercoverView({ room, me, conn, hub }: GameViewProps) {
       case "uc_role":
         setRole({ word: m.word, round: m.round, order: m.order, impostors: m.impostors, declareOn: m.declareOn });
         setReveal(null); setScores(null); setGuess(null); setGuessed(null); setStep(0);
-        setIAmReady(false); setMyVote(null); setPick(null); setDeclared(false);
+        setIAmReady(false); setMyVote(null); setPick(null); setDeclared(false); setNeed(null);
         setDeclareOpen(false); setDeclareText(""); setGuessText("");
         Sfx.ding(); vibrate(40);
         return;
@@ -93,7 +96,10 @@ export default function UndercoverView({ room, me, conn, hub }: GameViewProps) {
         else if (m.phase === "vote") { Sfx.tick(); vibrate(30); }
         return;
       case "uc_ready": setReadyN({ n: m.n, of: m.of }); return;
-      case "uc_voted": setVotedN({ n: m.n, of: m.of }); return;
+      case "uc_voted":
+        setVotedN({ n: m.n, of: m.of });
+        if (m.you) { setMyVote(m.you); setPick(m.you); }   // חזרה מניתוק — ההצבעה כבר ננעלה בשרת
+        return;
       case "uc_declared": setDeclared(true); setDeclareOpen(false); Sfx.pop(); vibrate([30, 30, 30]); return;
       case "uc_reveal":
         setReveal({ ...m });
@@ -110,6 +116,7 @@ export default function UndercoverView({ room, me, conn, hub }: GameViewProps) {
         setGuessed({ pid: m.pid, guess: m.guess, ok: m.ok });
         if (m.ok) Sfx.fanfare(); else Sfx.sadTrombone();
         return;
+      case "uc_need": setNeed({ have: m.have, need: m.need }); return;
       case "uc_scores": {
         setScores({ rows: m.rows, totals: m.totals });
         setPhase("scores");
@@ -144,11 +151,12 @@ export default function UndercoverView({ room, me, conn, hub }: GameViewProps) {
     return () => { stepTimers.current.forEach(window.clearTimeout); stepTimers.current = []; };
   }, [reveal]);
 
-  const alive = room.players.filter((p) => p.connected);
+  // רק משתתפי הסיבוב — מצטרף באמצע נראה בלובי אבל אינו יעד הצבעה חוקי בשרת
+  const alive = room.players.filter((p) => p.connected && (room.gamePids?.includes(p.id) ?? true));
   const iAmImpostor = reveal ? reveal.impostors.includes(me) : false;
 
   /* ================= הקלף (משותף לכל השלבים) ================= */
-  const Card = ({ small }: { small?: boolean }) => (
+  const renderCard = (small?: boolean) => (
     <div
       onPointerDown={() => { setHolding(true); vibrate(15); }}
       onPointerUp={() => setHolding(false)}
@@ -180,7 +188,7 @@ export default function UndercoverView({ room, me, conn, hub }: GameViewProps) {
   );
 
   /* ================= כפתור ההכרזה העצמית ================= */
-  const DeclareChip = () => {
+  const renderDeclareChip = () => {
     if (!role?.declareOn) return null;
     if (declared) {
       return <span className="chip" style={{ borderColor: "var(--gold)", color: "var(--gold)" }}>🥸 הכרזת. נראה בחשיפה…</span>;
@@ -212,7 +220,7 @@ export default function UndercoverView({ room, me, conn, hub }: GameViewProps) {
     );
   };
 
-  const OrderStrip = () => {
+  const renderOrderStrip = () => {
     if (!role) return null;
     return (
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "center", maxWidth: 340 }}>
@@ -233,7 +241,7 @@ export default function UndercoverView({ room, me, conn, hub }: GameViewProps) {
     );
   };
 
-  const Timer = () => left > 0 ? <span className="chip" style={{ fontSize: 12 }}>⏱️ {left}</span> : null;
+  const renderTimer = () => left > 0 ? <span className="chip" style={{ fontSize: 12 }}>⏱️ {left}</span> : null;
 
   const head = (
     <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "center" }}>
@@ -241,7 +249,7 @@ export default function UndercoverView({ room, me, conn, hub }: GameViewProps) {
       {role && <span className="chip" style={{ fontSize: 12 }}>
         🥸 {role.impostors === 1 ? "מתחזה אחד בחדר" : `${role.impostors} מתחזים בחדר`}
       </span>}
-      <Timer />
+      {renderTimer()}
     </div>
   );
 
@@ -251,12 +259,12 @@ export default function UndercoverView({ room, me, conn, hub }: GameViewProps) {
       <main className="fullscreen" style={{ justifyContent: "center", gap: 12, padding: "52px 18px 20px" }}>
         {head}
         <div style={{ fontSize: 40 }}>🥸</div>
-        <Card />
+        {renderCard()}
         <p className="sub" style={{ textAlign: "center", fontSize: 12.5, maxWidth: 320, lineHeight: 1.7 }}>
           לכולם יש מילה — אבל לאחד מכם היא <b>אחרת</b>.<br />
           גם הוא לא יודע שזה הוא. תגלו לפי הרמזים.
         </p>
-        <OrderStrip />
+        {renderOrderStrip()}
         {iAmReady
           ? <span className="chip">מוכנים {readyN.n}/{readyN.of} ⏳</span>
           : <button className="mega-cta" style={{ maxWidth: 340, width: "100%" }}
@@ -285,9 +293,9 @@ export default function UndercoverView({ room, me, conn, hub }: GameViewProps) {
             <p className="sub" style={{ textAlign: "center", fontSize: 13, maxWidth: 300, lineHeight: 1.7 }}>
               תגיד בקול <b>מילה אחת</b> שקשורה למילה שלך.<br />לא ברור מדי, לא מעורפל מדי.
             </p>
-            <Card small />
+            {renderCard(true)}
             <button className="mega-cta" style={{ maxWidth: 340, width: "100%" }}
-              onPointerDown={() => { conn.sendGame({ a: "uc_said" }); Sfx.tick(); vibrate(30); }}>
+              onPointerDown={() => { conn.sendGame({ a: "uc_said", idx: (turnIdx?.i ?? 1) - 1 }); Sfx.tick(); vibrate(30); }}>
               אמרתי ✓
             </button>
           </>
@@ -296,13 +304,13 @@ export default function UndercoverView({ room, me, conn, hub }: GameViewProps) {
             <div style={{ fontSize: 40 }}>{emojiOf(turn ?? "")}</div>
             <div className="big" style={{ fontSize: 22 }}>{nameOf(turn ?? "")} אומר רמז 🎤</div>
             {turnIdx && <span className="chip" style={{ fontSize: 12 }}>{turnIdx.i} מתוך {turnIdx.of}</span>}
-            <Card small />
+            {renderCard(true)}
           </>
         )}
-        <OrderStrip />
-        <DeclareChip />
+        {renderOrderStrip()}
+        {renderDeclareChip()}
         {isHost && !mine && <button className="btn ghost" style={{ maxWidth: 180, fontSize: 12.5 }}
-          onPointerDown={() => conn.sendGame({ a: "uc_said" })}>דלג לתור הבא ⏭</button>}
+          onPointerDown={() => conn.sendGame({ a: "uc_said", idx: (turnIdx?.i ?? 1) - 1 })}>דלג לתור הבא ⏭</button>}
       </main>
     );
   }
@@ -318,8 +326,8 @@ export default function UndercoverView({ room, me, conn, hub }: GameViewProps) {
           מי נשמע לכם חשוד? מי אמר משהו כללי מדי?<br />
           <b>שימו לב</b> — גם אתם אולי המתחזה.
         </p>
-        <Card small />
-        <DeclareChip />
+        {renderCard(true)}
+        {renderDeclareChip()}
         {isHost && <button className="mega-cta" style={{ maxWidth: 340, width: "100%" }}
           onPointerDown={() => conn.sendGame({ a: "uc_skip" })}>🗳️ להצבעה</button>}
       </main>
@@ -352,7 +360,7 @@ export default function UndercoverView({ room, me, conn, hub }: GameViewProps) {
             );
           })}
         </div>
-        <Card small />
+        {renderCard(true)}
         {locked ? (
           <span className="chip" style={{ borderColor: "var(--gold)", color: "var(--gold)" }}>
             🔒 הצבעת ל{emojiOf(myVote!)} {nameOf(myVote!)} — מחכים לשאר
@@ -521,6 +529,11 @@ export default function UndercoverView({ room, me, conn, hub }: GameViewProps) {
             );
           })}
         </div>
+        {need && (
+          <span className="chip" style={{ borderColor: "#ff8a8a", color: "#ff8a8a" }}>
+            צריך לפחות {need.need} שחקנים — יש {need.have}
+          </span>
+        )}
         {isHost ? (
           <div style={{ display: "flex", gap: 8, width: "100%", maxWidth: 340, marginTop: 4 }}>
             <button className="btn gold" style={{ flex: 2 }} onPointerDown={() => conn.sendGame({ a: "uc_next" })}>

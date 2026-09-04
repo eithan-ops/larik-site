@@ -307,7 +307,7 @@ export type UcWhy = "safe" | "declared" | "saved" | "caught" | "bluff" | "hit" |
 
 export type UndercoverClientMsg =
   | { a: "uc_ready" }                      // קראתי את הקלף
-  | { a: "uc_said" }                       // בעל התור: אמרתי את הרמז
+  | { a: "uc_said"; idx?: number }         // בעל התור: אמרתי את הרמז (idx = התור שהמסך מציג, נגד לחיצה כפולה)
   | { a: "uc_skip" }                       // מארח: קדימה לשלב הבא
   | { a: "uc_declare"; guess: string }     // "אני המתחזה!" + ניחוש מילת הרוב — סודי עד החשיפה
   | { a: "uc_vote"; target: string }
@@ -323,14 +323,15 @@ export type UndercoverServerMsg =
   | { a: "uc_role"; word: string; round: number; order: string[]; impostors: number; declareOn: boolean }
   | { a: "uc_phase"; phase: UcPhase; until?: number; turn?: string; idx?: number; of?: number }
   | { a: "uc_ready"; n: number; of: number }
-  | { a: "uc_voted"; n: number; of: number }
+  | { a: "uc_voted"; n: number; of: number; you?: string }   // you — אישי, לחוזר מניתוק בלבד
   | { a: "uc_declared" }                   // אישור אישי בלבד — אף אחד אחר לא רואה
   | { a: "uc_reveal"; round: number; majorityWord: string; impostorWord: string; impostors: string[];
       votes: Record<string, string>; tally: Record<string, number>; ejected: string | null; tie: boolean;
       declares: UcDeclare[] }              // cue — כל המסכים מתהפכים יחד
   | { a: "uc_guess"; pid: string; until: number }               // מתחזה שנתפס מנחש עכשיו
   | { a: "uc_guessed"; pid: string; guess: string; ok: boolean }
-  | { a: "uc_scores"; round: number; rows: UcScoreRow[]; totals: Record<string, number> };
+  | { a: "uc_scores"; round: number; rows: UcScoreRow[]; totals: Record<string, number> }
+  | { a: "uc_need"; have: number; need: number };   // המארח ביקש סיבוב חדש ואין מספיק שחקנים
 
 /* ---- מופע 🕯️ — הקהל כמסך ---- */
 export type ShowFx = "off" | "candles" | "wave" | "pulse" | "text" | "heart" | "countdown" | "sparkle" | "sections" | "flash" | "color" | "tribal" | "beat"

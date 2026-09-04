@@ -15,7 +15,7 @@
  * 10. sameWord — "הים"/"ים", רווחים, ושגיאת הקלדה אחת.
  */
 import { Room, Transport } from "../src/engine";
-import { createUndercover, sameWord } from "../src/games/undercover";
+import { createUndercover, sameWord, hitMajority } from "../src/games/undercover";
 import { UNDERCOVER_PAIRS } from "../src/decks";
 import type { ServerMsg } from "../../shared/protocol";
 
@@ -34,8 +34,9 @@ function makeTransport() {
   const ev = (pid: string, a: string) =>
     (inbox.get(pid) ?? []).filter((m: any) => (m.t === "game" || m.t === "cue") && m.d?.a === a).map((m: any) => m.d);
   const last = (pid: string, a: string) => ev(pid, a).at(-1);
+  const room = (pid: string) => (inbox.get(pid) ?? []).filter((m: any) => m.t === "room").at(-1)?.room as any;
   const clear = () => inbox.clear();
-  return { transport, ev, last, clear };
+  return { transport, ev, last, room, clear };
 }
 
 function room(code: string, pids: string[], config: Record<string, unknown> = {}) {
@@ -295,6 +296,154 @@ async function main() {
     r.disconnect("c");
     r.join("c", "שחקן2", "🙂");
     check("חוזר בזמן החשיפה מקבל את החשיפה המלאה", !!last("c", "uc_reveal")?.majorityWord);
+  }
+
+  /* ---------- 11. באגים שנמצאו בסקירה אדוורסרית (4.9) ---------- */
+  {
+    // עזיבה מרצון מגיעה ל-onLeave *לפני* שהשחקן נמחק ועודו connected —
+    // בלי תיקון, ספירת ה"מוכנים" נשארת off-by-one והמסך תקוע לנצח.
+    const P = ["a", "b", "c", "d"];
+    const { r, last } = room("UC11", P);
+    ["a", "b", "c"].forEach((p) => r.onMessage(p, { t: "game", d: { a: "uc_ready" } }));
+    check("לפני העזיבה עוד לא התחלנו", last("a", "uc_phase").phase === "deal");
+    r.onMessage("d", { t: "leave" });
+    check("עזיבה מרצון בשלב הקלף לא תוקעת את החדר", last("a", "uc_phase").phase === "clues");
+  }
+  {
+    const P = ["a", "b", "c", "d"];
+    const { r, last, ev } = room("UC12", P);
+    P.forEach((p) => r.onMessage(p, { t: "game", d: { a: "uc_ready" } }));
+    r.onMessage("a", { t: "game", d: { a: "uc_skip" } });
+    r.onMessage("a", { t: "game", d: { a: "uc_skip" } });
+    ["a", "b", "c"].forEach((p) => r.onMessage(p, { t: "game", d: { a: "uc_vote", target: p === "a" ? "b" : "a" } }));
+    check("שלושה הצביעו, עוד לא נחשף", !last("a", "uc_reveal"));
+    r.onMessage("d", { t: "leave" });
+    await sleep(1300);
+    check("עזיבה מרצון בהצבעה סוגרת את הסיבוב מיד", !!last("a", "uc_reveal"));
+    check("ההצבעה של העוזב לא נספרה", ev("a", "uc_voted").at(-1).n === 3);
+  }
+  {
+    // לחיצה כפולה על "אמרתי" (או מארח שלוחץ פעמיים) לא מדלגת על שחקן שלם
+    const P = ["a", "b", "c", "d"];
+    const { r, last } = room("UC13", P);
+    P.forEach((p) => r.onMessage(p, { t: "game", d: { a: "uc_ready" } }));
+    const order: string[] = last("a", "uc_role").order;
+    r.onMessage(order[0], { t: "game", d: { a: "uc_said", idx: 0 } });
+    r.onMessage(order[0], { t: "game", d: { a: "uc_said", idx: 0 } });   // שוב, מיד
+    check("לחיצה כפולה מקדמת תור אחד בלבד", last("a", "uc_phase").turn === order[1],
+      `idx=${last("a", "uc_phase").idx}`);
+    // גם המארח, שמותר לו לדלג על תור של אחר, לא מדלג פעמיים בלחיצה כפולה
+    r.onMessage("a", { t: "game", d: { a: "uc_said", idx: 1 } });
+    r.onMessage("a", { t: "game", d: { a: "uc_said", idx: 1 } });
+    check("גם המארח לא מדלג פעמיים", last("a", "uc_phase").turn === order[2],
+      `idx=${last("a", "uc_phase").idx}`);
+    // לקוח ישן שלא שולח idx עדיין מוגן ע"י saidTurn (כל עוד אינו המארח,
+    // שלו מותר במפורש לדלג על תור של אחר)
+    const plain = order.slice(2).find((p) => p !== "a")!;
+    while (last("a", "uc_phase").turn !== plain) {
+      r.onMessage("a", { t: "game", d: { a: "uc_said", idx: last("a", "uc_phase").idx - 1 } });
+    }
+    const before = last("a", "uc_phase").idx;
+    r.onMessage(plain, { t: "game", d: { a: "uc_said" } });
+    r.onMessage(plain, { t: "game", d: { a: "uc_said" } });
+    check("לקוח בלי idx מוגן גם הוא",
+      last("a", "uc_phase").phase === "talk" || last("a", "uc_phase").idx === before + 1,
+      `${before} → ${last("a", "uc_phase").idx ?? last("a", "uc_phase").phase}`);
+  }
+  {
+    // הצבעה ננעלת: חיבור מחדש הוא לא הזדמנות להחליף צד אחרי שרואים את המונה
+    const P = ["a", "b", "c", "d"];
+    const { r, last } = room("UC14", P, { declare: "off" });
+    P.forEach((p) => r.onMessage(p, { t: "game", d: { a: "uc_ready" } }));
+    r.onMessage("a", { t: "game", d: { a: "uc_skip" } });
+    r.onMessage("a", { t: "game", d: { a: "uc_skip" } });
+    r.onMessage("d", { t: "game", d: { a: "uc_vote", target: "a" } });
+    r.disconnect("d"); r.join("d", "שחקן3", "🙂");
+    check("החוזר מקבל בחזרה את ההצבעה שלו", last("d", "uc_voted").you === "a");
+    r.onMessage("d", { t: "game", d: { a: "uc_vote", target: "b" } });
+    ["a", "b", "c"].forEach((p) => r.onMessage(p, { t: "game", d: { a: "uc_vote", target: p === "a" ? "b" : "a" } }));
+    await sleep(1300);
+    check("ההצבעה הראשונה היא הקובעת", last("a", "uc_reveal").votes.d === "a");
+  }
+  {
+    // מי שהטלפון שלו ננעל בין החשיפה לניקוד עדיין מקבל את הנקודות שלו
+    const P = ["a", "b", "c", "d", "e"];
+    const { r, last } = room("UC15", P, { declare: "off" });
+    P.forEach((p) => r.onMessage(p, { t: "game", d: { a: "uc_ready" } }));
+    const imp = impostorsOf(P, last)[0];
+    const good = P.filter((p) => p !== imp);
+    r.onMessage("a", { t: "game", d: { a: "uc_skip" } });
+    r.onMessage("a", { t: "game", d: { a: "uc_skip" } });
+    for (const p of P) r.onMessage(p, { t: "game", d: { a: "uc_vote", target: p === imp ? good[0] : imp } });
+    await sleep(1300);
+    r.disconnect(good[0]);                       // הטלפון ננעל בדיוק אחרי החשיפה
+    await sleep(2800);                           // חלון הניחוש נפתח ב-REVEAL_LEAD+2600
+    check("המתחזה שנתפס אכן מנחש", !!last("a", "uc_guess"));
+    r.onMessage(imp, { t: "game", d: { a: "uc_guess", guess: "לא נכון בכלל" } });
+    await sleep(2900);
+    const sc = last("a", "uc_scores");
+    const row = sc.rows.find((x: any) => x.pid === good[0]);
+    check("שחקן שהתנתק אחרי החשיפה עדיין מקבל שורה", !!row, JSON.stringify(sc.rows.map((x: any) => x.pid)));
+    check("והנקודות שלו נשמרות", row?.delta === 2 && sc.totals[good[0]] === 2);
+  }
+  {
+    // סיום: מנצח-רפאים שעזב לא מוכתר, והניקוד של הערב לא מתאדה
+    const P = ["a", "b", "c", "d"];
+    const t2 = makeTransport();
+    const r = new Room("UC16", t2.transport, { undercover: createUndercover });
+    P.forEach((p, i) => r.join(p, "שחקן" + i, "🙂"));
+    r.onMessage("a", { t: "select_game", gameId: "undercover", config: { declare: "off" } });
+    r.onMessage("a", { t: "start_game" });
+    P.forEach((p) => r.onMessage(p, { t: "game", d: { a: "uc_ready" } }));
+    const imp = impostorsOf(P, t2.last)[0];
+    const good = P.filter((p) => p !== imp);
+    r.onMessage("a", { t: "game", d: { a: "uc_skip" } });
+    r.onMessage("a", { t: "game", d: { a: "uc_skip" } });
+    // כולם מצביעים לאותו תמים — המתחזה שורד ומוביל עם ‎+3
+    for (const p of P) r.onMessage(p, { t: "game", d: { a: "uc_vote", target: p === good[0] ? good[1] : good[0] } });
+    await sleep(6200);
+    if (imp === "a") { r.onMessage("a", { t: "game", d: { a: "uc_end" } }); }
+    else {
+      r.onMessage(imp, { t: "leave" });          // המתחזה המוביל עוזב את החדר
+      r.onMessage("a", { t: "game", d: { a: "uc_end" } });
+      const snap = t2.room("a");
+      const cer = snap?.ceremony;
+      check("הטקס נוצר", !!cer);
+      const ids = (snap?.players ?? []).map((p: any) => p.id);
+      check("המנצח שמוכרז נמצא בחדר", !cer?.winnerId || ids.includes(cer.winnerId),
+        `winner=${cer?.winnerId} · players=${ids.join(",")}`);
+      check("העוזב לא מופיע בניקוד המשחק", !(imp in (cer?.scores ?? {})));
+      check("אין ליצן כשכולם שווים בתחתית", !cer?.loserId || cer.loserId !== undefined && ids.includes(cer.loserId));
+    }
+  }
+
+  {
+    // ניחוש שהוא בדיוק המילה של המתחזה עצמו — לא נחשב פגיעה במילת הרוב
+    check("כדורגל מול כדורסל: המילה של המתחזה אינה מילת הרוב",
+      !hitMajority("כדורסל", "כדורגל", "כדורסל"));
+    check("אבל המילה הנכונה כן מתקבלת", hitMajority("כדורגל", "כדורגל", "כדורסל"));
+    check("רופא שיניים / רופא עיניים — אותו דבר",
+      !hitMajority("רופא עיניים", "רופא שיניים", "רופא עיניים") &&
+      hitMajority("רופא שיניים", "רופא שיניים", "רופא עיניים"));
+    check("שגיאת הקלדה עדיין נסלחת כשאין בלבול עם מילת המתחזה",
+      hitMajority("המבורגד", "המבורגר", "פיצה"));
+  }
+  {
+    // המארח לחץ "סיבוב חדש" ואין מספיק שחקנים — לא נופלים בשקט
+    const P = ["a", "b", "c"];
+    const { r, last } = room("UC17", P, { declare: "off" });
+    P.forEach((p) => r.onMessage(p, { t: "game", d: { a: "uc_ready" } }));
+    const imp = impostorsOf(P, last)[0];
+    const good = P.filter((p) => p !== imp);
+    r.onMessage("a", { t: "game", d: { a: "uc_skip" } });
+    r.onMessage("a", { t: "game", d: { a: "uc_skip" } });
+    // מדיחים תמים בכוונה — כך אין שלב ניחוש והניקוד מגיע מיד
+    for (const p of P) r.onMessage(p, { t: "game", d: { a: "uc_vote", target: p === good[0] ? good[1] : good[0] } });
+    await sleep(6200);
+    check("הגענו לניקוד לפני הבדיקה", !!last("a", "uc_scores"));
+    r.disconnect(good[1] === "a" ? good[0] : good[1]);
+    r.onMessage("a", { t: "game", d: { a: "uc_next" } });
+    check("החדר מודיע שאין מספיק שחקנים", last("a", "uc_need")?.need === 3 && last("a", "uc_need")?.have === 2);
   }
 
   /* ---------- 10. השוואת מילים ---------- */

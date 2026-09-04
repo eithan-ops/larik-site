@@ -95,7 +95,7 @@ const CATALOG: AwardDef[] = [
       if (rounds < 1) return null;
       const most = Math.max(...all.map((x) => x.impostorRounds ?? 0));
       if (rounds < most) return null;
-      // אם כבר נמדד "לא נתפס" (יבוא כשתתווסף הצבעה למתחזה) — זה משדרג את הכותרת
+      // "לא נתפס" נמדד מאז שהמתחזה למתקדמים הביא הצבעה אמיתית — והוא משדרג את הכותרת
       const safe = f.impostorSafe ?? 0;
       return {
         score: 800 + rounds * 10 + safe * 20,
@@ -338,6 +338,43 @@ const CATALOG: AwardDef[] = [
       const worst = Math.max(...all.map((x) => x.abCaught ?? 0));
       if (n < worst) return null;
       return { score: 290 + n * 10, detail: `נתפס ${times(n)}`, headline: "הסלעים ידעו את שמו" };
+    },
+  },
+  /* ---- המתחזה למתקדמים 🥸 ---- */
+  {
+    id: "uc_selfaware", emoji: "💡", title: "הבין לבד", priority: 93,
+    test: (f) => {
+      // הרגע הנדיר של המשחק: הבין שהוא המתחזה, הכריז, וניחש נכון את מילת הרוב.
+      // אין כאן השוואה מול האחרים — מי שעשה את זה אפילו פעם אחת ראוי לתואר.
+      // חייב עדיפות מעל "הבוגד" (92): מי שהבין לבד הוא בהכרח גם מתחזה,
+      // ובלי זה "הבוגד" היה בולע את התואר הזה תמיד והוא לא היה נראה לעולם.
+      const n = f.ucSelfFound ?? 0;
+      if (n < 1) return null;
+      return {
+        score: 780 + n * 40,
+        detail: n > 1 ? `${times(n)} תפס את עצמו` : "הכריז וניחש נכון",
+        headline: "הבין שהוא המתחזה לפני שכולם הבינו",
+      };
+    },
+  },
+  {
+    id: "uc_hunter", emoji: "🎯", title: "צייד המתחזים", priority: 75,
+    test: (f, all) => {
+      const n = f.ucCaught ?? 0;
+      if (n < 2) return null;
+      const best = Math.max(...all.map((x) => x.ucCaught ?? 0));
+      if (n < best) return null;
+      return { score: 520 + n * 15, detail: `הצביע נכון ${times(n)}`, headline: "האף שלו לא טועה" };
+    },
+  },
+  {
+    id: "uc_paranoid", emoji: "🫣", title: "חשד בעצמו", priority: 63,
+    test: (f, all) => {
+      const n = f.ucFooled ?? 0;
+      if (n < 1) return null;
+      const worst = Math.max(...all.map((x) => x.ucFooled ?? 0));
+      if (n < worst) return null;
+      return { score: 330 + n * 10, detail: n > 1 ? times(n) : "הכריז — ולא היה המתחזה", headline: "הסגיר את עצמו על לא עוול בכפו" };
     },
   },
   {
