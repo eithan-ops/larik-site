@@ -6,7 +6,7 @@
  * מה זה מוכיח שהבדיקות בשרת לא מוכיחות:
  *  · חמישה טלפונים אמיתיים עוברים את כל המסכים בלי שגיאת קונסולה.
  *  · מסך הקלף נראה *זהה* אצל המתחזה ואצל השאר (השוואת DOM) — הסוד לא דולף ללקוח.
- *  · הנכסים (uc-card / uc-caught / uc-safe / uc-genius / הפוסטר) באמת נטענים.
+ *  · הנכסים (גב-הקלף ואיורי התוצאה) באמת נטענים.
  *  · צילום מסך של כל שלב, כולל רגע החשיפה.
  */
 import { chromium, devices } from "playwright";
@@ -157,6 +157,10 @@ async function main() {
   }
   check("הגענו ללוח הניקוד", sc.includes("הניקוד"));
   check("למארח יש 'סיבוב חדש'", sc.includes("סיבוב חדש"));
+  // לכל שחקן איור תוצאה משלו על לוח הניקוד (חוץ מ-bluff, שנשאר אימוג'י)
+  let withArt = 0;
+  for (const p of phones) if (await p.locator('img[src^="/undercover/uc-"]').count()) withArt++;
+  check("איור התוצאה מופיע אצל כל השחקנים בלוח הניקוד", withArt === N, `${withArt}/${N}`);
   await host.screenshot({ path: `${OUT}/06-scores.png` });
 
   // --- 6. סיבוב שני ---
