@@ -219,6 +219,9 @@ export class Room {
         if (cur?.connected) return; // המפעיל חזר בינתיים — לא נוגעים
         const next = [...this.players.values()].find((x) => x.connected);
         if (next) { if (cur) cur.isHost = false; this.hostId = next.id; next.isHost = true; this.broadcastRoom(); }
+        // אף אחד לא מחובר כרגע (נפילת רשת באולם, כולם עם מסך נעול) — לא מוותרים
+        // על הכתר: בודקים שוב, אחרת החדר נשאר בלי מארח וכפתורי הסיום נעולים לנצח.
+        else if ([...this.players.values()].length) this.disconnect(this.hostId);
       }, 60_000);
     }
     this.broadcastRoom();
