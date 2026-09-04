@@ -74,6 +74,41 @@ test("מיזוג עובדות: זמנים לוקחים מינימום, השאר 
   assert.equal(f.bestStreak, 3, "רצף = הגבוה ביותר");
 });
 
+test("המתחזה למתקדמים: שלושת התארים הולכים למי שעשה את המעשה", () => {
+  const out = computeAwards({
+    // ‏a לא מוביל בנקודות בכוונה — "מלך הערב" גובר על הכול, וזה בסדר
+    a: { games: 2, points: 3, impostorRounds: 1, ucSelfFound: 1 },
+    b: { games: 2, points: 4, ucCaught: 3 },
+    c: { games: 2, points: 2, ucFooled: 1 },
+    d: { games: 2, points: 9, wins: 2 },
+  });
+  assert.equal(out.a.id, "uc_selfaware", "הכריז על עצמו וניחש נכון — התואר הנדיר");
+  assert.equal(out.a.detail, "הכריז וניחש נכון");
+  assert.equal(out.b.id, "uc_hunter", "הכי הרבה הצבעות נכונות");
+  assert.equal(out.b.detail, "הצביע נכון 3 פעמים");
+  assert.equal(out.c.id, "uc_paranoid", "חשד בעצמו ולא היה המתחזה");
+  assert.equal(out.d.id, "king", "מלך הערב נשאר מעל הכול");
+});
+
+test("הצבעה נכונה אחת לא מספיקה ל'צייד המתחזים'", () => {
+  const out = computeAwards({
+    a: { games: 2, points: 2, ucCaught: 1 },
+    b: { games: 2, points: 2, ucCaught: 1 },
+  });
+  assert.ok(!Object.values(out).some((x) => x.id === "uc_hunter"), "צריך לפחות 2 כדי לקבל את התואר");
+});
+
+test("ucSelfFound נדיר מספיק כדי לא לדרוש השוואה מול האחרים", () => {
+  const out = computeAwards({
+    a: { games: 1, points: 5, ucSelfFound: 1 },
+    b: { games: 1, points: 9, wins: 1, ucSelfFound: 1 },
+  });
+  // שניהם עשו את זה — רק אחד יקבל את התואר (ייחודיות), והשני יקבל תואר אחר
+  const ids = [out.a.id, out.b.id];
+  assert.equal(new Set(ids).size, 2, `תואר כפול: ${ids.join(", ")}`);
+  assert.ok(ids.includes("uc_selfaware"));
+});
+
 test("ערכים לא תקינים לא נכנסים לעובדות", () => {
   const f: PlayerFacts = { taps: 2 };
   mergeFacts(f, { taps: NaN as number, bestReactionMs: Infinity });
@@ -81,4 +116,4 @@ test("ערכים לא תקינים לא נכנסים לעובדות", () => {
   assert.equal(f.bestReactionMs, undefined);
 });
 
-console.log(`\n${passed}/7 עברו`);
+console.log(`\n${passed}/10 עברו`);
