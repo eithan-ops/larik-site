@@ -64,6 +64,16 @@ export function sameWord(guess: string, target: string): boolean {
   return ts.length >= 5 && lev(gs, ts) <= 1;
 }
 
+/**
+ * האם הניחוש פגע במילת הרוב — בהקשר של הסיבוב.
+ * הכרחי כי יש בחפיסה זוגות שנבדלים באות אחת ("כדורגל"/"כדורסל"), ובלעדי זה
+ * מתחזה שהקליד את *המילה שלו* היה מקבל את הניקוד הגבוה במשחק על לא כלום.
+ */
+export function hitMajority(guess: string, majority: string, impostor: string): boolean {
+  if (!sameWord(guess, majority)) return false;
+  return !sameWord(guess, impostor) || lev(norm(guess), norm(majority)) < lev(norm(guess), norm(impostor));
+}
+
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr];
   for (let i = a.length - 1; i > 0; i--) {
@@ -99,13 +109,18 @@ export function createUndercover(ctx: GameCtx): GameInstance {
   let ejected: string | null = null;
   let tie = false;
   let guessPid: string | null = null;               // מי מנחש עכשיו
+  let guessUntil = 0;                               // הדדליין של הניחוש — נפרד מ-until של השלב
   let lastGuessOk = false;
   let lastGuessDone = false;
+  let lastRows: UcScoreRow[] = [];                  // כדי שחוזר מניתוק יראה את התוצאה שלו
+  let saidTurn = -1;                                // התור שכבר "נאמר" — לחיצה כפולה לא מדלגת על אף אחד
 
   const totals: Record<string, number> = {};
 
   const isHost = (pid: string) => ctx.players().find((p) => p.id === pid)?.isHost === true;
   const alive = () => ctx.participants().filter((p) => p.connected).map((p) => p.id);
+  /** עזיבה מרצון מגיעה לפני שהשחקן נמחק מהחדר — בלי זה כל ספירה כאן off-by-one */
+  const aliveWithout = (pid: string) => alive().filter((x) => x !== pid);
 
   function clearT() { if (handle) { clearTimeout(handle); handle = undefined; } }
   function after(ms: number, fn: () => void) {
@@ -123,11 +138,12 @@ export function createUndercover(ctx: GameCtx): GameInstance {
   /* ---------- חלוקה ---------- */
   function deal() {
     const players = alive();
-    if (players.length < 3) return;
+    if (players.length < 3) { ctx.broadcast({ a: "uc_need", have: players.length, need: 3 }); return; }
     round += 1;
     clearT();
     votes.clear(); declares.clear(); ready.clear();
-    ejected = null; tie = false; guessPid = null; lastGuessDone = false; lastGuessOk = false;
+    ejected = null; tie = false; guessPid = null; guessUntil = 0;
+    lastGuessDone = false; lastGuessOk = false; lastRows = []; saidTurn = -1;
 
     const { pair } = pickUndercoverPair(level, usedPairs);
     [majorityWord, impostorWord] = pair;
@@ -135,8 +151,9 @@ export function createUndercover(ctx: GameCtx): GameInstance {
     // 7+ שחקנים = שני מתחזים (מתחזה בודד בקבוצה גדולה נתפס מהר מדי),
     // ותמיד מיעוט מובהק. השניים מקבלים את אותה מילה ולא יודעים זה על זה.
     const count = players.length >= 7 ? 2 : 1;
-    // עדיף לא לחזור על מי שהיה מתחזה בסיבוב הקודם
-    const fresh = players.filter((p) => !lastImpostors.includes(p));
+    // עדיף לא לחזור על מי שהיה מתחזה בסיבוב הקודם — אבל רק מ-5 שחקנים.
+    // בחדר קטן זה היה מצמצם את הניחוש (3 שחקנים ⇒ 1-מתוך-2 במקום 1-מתוך-3).
+    const fresh = players.length >= 5 ? players.filter((p) => !lastImpostors.includes(p)) : players;
     const bag = shuffle(fresh.length >= count ? fresh : players);
     impostors = new Set(bag.slice(0, count));
     lastImpostors = [...impostors];
@@ -172,6 +189,7 @@ export function createUndercover(ctx: GameCtx): GameInstance {
     if (!first) turnIdx += 1;
     while (turnIdx < order.length && !live.has(order[turnIdx])) turnIdx += 1;
     if (turnIdx >= order.length) return startTalk();
+    saidTurn = -1;
     setPhase("clues", TURN_MS, { turn: order[turnIdx], idx: turnIdx + 1, of: order.length });
     after(TURN_MS, () => nextTurn());
   }
@@ -225,8 +243,8 @@ export function createUndercover(ctx: GameCtx): GameInstance {
       after(REVEAL_LEAD + 2600, () => {
         if (!guessPid) return;
         phase = "guess";
-        const u = ctx.now() + GUESS_MS;
-        ctx.broadcast({ a: "uc_guess", pid: guessPid, until: u });
+        guessUntil = ctx.now() + GUESS_MS;
+        ctx.broadcast({ a: "uc_guess", pid: guessPid, until: guessUntil });
         after(GUESS_MS, () => resolveGuess(""));
       });
     } else {
@@ -237,7 +255,7 @@ export function createUndercover(ctx: GameCtx): GameInstance {
   function resolveGuess(guess: string) {
     if (!guessPid || lastGuessDone) return;
     lastGuessDone = true;
-    lastGuessOk = sameWord(guess, majorityWord);
+    lastGuessOk = hitMajority(guess, majorityWord, impostorWord);
     ctx.broadcast({ a: "uc_guessed", pid: guessPid, guess: guess.trim().slice(0, 40), ok: lastGuessOk });
     after(2600, showScores);
   }
@@ -249,7 +267,9 @@ export function createUndercover(ctx: GameCtx): GameInstance {
     const facts: Record<string, PlayerFacts> = {};
     const bump = (pid: string, f: PlayerFacts) => { facts[pid] = { ...(facts[pid] ?? {}), ...f }; };
 
-    for (const pid of alive()) {
+    // כל מי שהתחיל את הסיבוב מקבל שורה — גם מי שהטלפון שלו ננעל בין החשיפה לניקוד.
+    // אחרת ההצבעה הנכונה שלו פשוט מתאדה, והוא חוזר בלי נקודות ובלי הסבר.
+    for (const pid of ctx.participants().map((p) => p.id)) {
       const isImp = impostors.has(pid);
       const declaredGuess = declares.get(pid);
       let delta = 0;
@@ -257,7 +277,7 @@ export function createUndercover(ctx: GameCtx): GameInstance {
 
       if (declaredGuess !== undefined) {
         // הימור: הכרזה עצמית
-        if (isImp && sameWord(declaredGuess, majorityWord)) {
+        if (isImp && hitMajority(declaredGuess, majorityWord, impostorWord)) {
           delta = 5; why = "declared"; bump(pid, { ucSelfFound: 1 });
         } else if (isImp) {
           delta = 0; why = "bluff";
@@ -279,6 +299,7 @@ export function createUndercover(ctx: GameCtx): GameInstance {
     }
 
     if (Object.keys(facts).length) ctx.reportFacts(facts);
+    lastRows = rows;
     phase = "scores";
     ctx.broadcast({ a: "uc_scores", round, rows, totals: { ...totals } });
     ctx.broadcast({ a: "uc_phase", phase: "scores" });
@@ -288,15 +309,19 @@ export function createUndercover(ctx: GameCtx): GameInstance {
     if (over) return;
     over = true;
     clearT();
-    const ranked = Object.keys(totals).sort((a, b) => totals[b] - totals[a]);
+    // רק מי שעדיין בחדר — אחרת מוכתר מנצח-רפאים, וטקס הסיום לא מוצא אותו
+    const here = ctx.players().map((p) => p.id).filter((p) => p in totals);
+    const ranked = here.sort((a, b) => totals[b] - totals[a]);
     const top = ranked.length ? totals[ranked[0]] : 0;
     const winnerIds = top > 0 ? ranked.filter((p) => totals[p] === top) : [];
-    const loser = ranked.length > 1 ? ranked[ranked.length - 1] : undefined;
+    // ליצן רק אם יש מפסיד יחיד — אחרת זו הכתרה אקראית לפי סדר המפתחות
+    const bottom = ranked.length ? totals[ranked[ranked.length - 1]] : 0;
+    const losers = ranked.filter((p) => totals[p] === bottom);
+    const loser = losers.length === 1 && !winnerIds.includes(losers[0]) ? losers[0] : undefined;
     ctx.end({
       title: `המתחזה למתקדמים 🥸 · ${round} סיבובים`,
-      winnerId: winnerIds[0], winnerIds,
-      loserId: winnerIds.includes(loser ?? "") ? undefined : loser,
-      scores: { ...totals },
+      winnerId: winnerIds[0], winnerIds, loserId: loser,
+      scores: Object.fromEntries(here.map((p) => [p, totals[p]])),
     });
   }
 
@@ -308,7 +333,7 @@ export function createUndercover(ctx: GameCtx): GameInstance {
       turn: phase === "clues" ? order[turnIdx] : undefined,
       idx: phase === "clues" ? turnIdx + 1 : undefined, of: phase === "clues" ? order.length : undefined });
     if (phase === "deal") ctx.sendTo(pid, { a: "uc_ready", n: ready.size, of: alive().length });
-    if (phase === "vote") ctx.sendTo(pid, { a: "uc_voted", n: votes.size, of: alive().length });
+    if (phase === "vote") ctx.sendTo(pid, { a: "uc_voted", n: votes.size, of: alive().length, you: votes.get(pid) });
     if (declares.has(pid)) ctx.sendTo(pid, { a: "uc_declared" });
     if (phase === "reveal" || phase === "guess" || phase === "scores") {
       const t = tallyVotes();
@@ -319,8 +344,9 @@ export function createUndercover(ctx: GameCtx): GameInstance {
           pid: p, guess, wasImpostor: impostors.has(p), ok: impostors.has(p) && sameWord(guess, majorityWord),
         })),
       });
-      if (phase === "guess" && guessPid) ctx.sendTo(pid, { a: "uc_guess", pid: guessPid, until });
-      if (phase === "scores") ctx.sendTo(pid, { a: "uc_scores", round, rows: [], totals: { ...totals } });
+      if (phase === "guess" && guessPid) ctx.sendTo(pid, { a: "uc_guess", pid: guessPid, until: guessUntil });
+      if (lastGuessDone && guessPid) ctx.sendTo(pid, { a: "uc_guessed", pid: guessPid, guess: "", ok: lastGuessOk });
+      if (phase === "scores") ctx.sendTo(pid, { a: "uc_scores", round, rows: [...lastRows], totals: { ...totals } });
     }
   }
 
@@ -332,7 +358,7 @@ export function createUndercover(ctx: GameCtx): GameInstance {
       const m = d as UndercoverClientMsg;
       switch (m.a) {
         case "uc_ready": {
-          if (phase !== "deal") return;
+          if (phase !== "deal" || !alive().includes(pid)) return;
           ready.add(pid);
           const of = alive().length;
           ctx.broadcast({ a: "uc_ready", n: ready.size, of });
@@ -342,6 +368,11 @@ export function createUndercover(ctx: GameCtx): GameInstance {
         case "uc_said":
           if (phase !== "clues") return;
           if (pid !== order[turnIdx] && !isHost(pid)) return;
+          // לחיצה כפולה לא מדלגת על שחקן שלם: הלקוח מצרף את התור שהוא רואה,
+          // וכל לחיצה שמתייחסת לתור שכבר קודם נזרקת. ה-saidTurn מכסה לקוח ישן.
+          if (m.idx !== undefined && m.idx !== turnIdx) return;
+          if (saidTurn === turnIdx) return;
+          saidTurn = turnIdx;
           nextTurn();
           return;
         case "uc_skip":
@@ -362,6 +393,8 @@ export function createUndercover(ctx: GameCtx): GameInstance {
         }
         case "uc_vote": {
           if (phase !== "vote") return;
+          if (!alive().includes(pid)) return;                 // רק משתתפי הסיבוב מצביעים
+          if (votes.has(pid)) return;                         // הצבעה ננעלת — חיבור מחדש הוא לא הזדמנות שנייה
           if (m.target === pid) return;                       // אין הצבעה עצמית
           if (!alive().includes(m.target)) return;
           votes.set(pid, m.target);
@@ -389,11 +422,13 @@ export function createUndercover(ctx: GameCtx): GameInstance {
 
     onLeave(pid: string) {
       if (over || !round) return;
+      const rest = aliveWithout(pid);   // בעזיבה מרצון הוא עוד ברשימה — כאן הוא כבר לא נספר
+      // מי שנעלם באמצע הניחוש שלו (גם בחלון שבין החשיפה לניחוש) לא תוקע 15 שניות
+      if (guessPid === pid && !lastGuessDone) { guessPid = null; clearT(); return after(600, showScores); }
       // התור של מי שנעלם — ממשיכים הלאה, שהמשחק לא ייתקע עליו
       if (phase === "clues" && order[turnIdx] === pid) return nextTurn();
-      if (phase === "vote" && votes.size >= alive().length && alive().length > 0) return doReveal();
-      if (phase === "deal" && ready.size >= alive().length && alive().length > 0) return startClues();
-      if (phase === "guess" && guessPid === pid) return resolveGuess("");
+      if (phase === "vote" && rest.length > 0 && votes.size >= rest.length) return doReveal();
+      if (phase === "deal" && rest.length > 0 && ready.size >= rest.length) return startClues();
     },
 
     dispose() { over = true; clearT(); },
