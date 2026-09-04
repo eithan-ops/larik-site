@@ -30,6 +30,7 @@ import { createTrivia } from "./games/trivia";
 import { createWhoMost } from "./games/whomost";
 import { createShow } from "./games/show";
 import { createImpostor } from "./games/impostor";
+import { createUndercover } from "./games/undercover";
 import { createWall } from "./games/wall";
 import { createHofrim } from "./games/hofrim";
 import { createThieves } from "./games/thieves";
@@ -66,6 +67,7 @@ const manager = new RoomManager(transport, {
   whomost: createWhoMost,
   show: createShow,
   impostor: createImpostor,
+  undercover: createUndercover,
   wall: createWall,
   hofrim: createHofrim,
   thieves: createThieves,

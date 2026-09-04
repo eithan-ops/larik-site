@@ -39,6 +39,9 @@ export interface PlayerFacts {
   wrong?: number;           // טריוויה — תשובות שגויות
   impostorRounds?: number;  // המתחזה — כמה סיבובים היה המתחזה
   impostorSafe?: number;    // המתחזה — כמה פעמים לא נחשף
+  ucCaught?: number;        // המתחזה למתקדמים — כמה מתחזים תפס בהצבעה
+  ucSelfFound?: number;     // המתחזה למתקדמים — כמה פעמים הבין לבד שהוא המתחזה וניחש נכון
+  ucFooled?: number;        // המתחזה למתקדמים — כמה פעמים חשב שהוא המתחזה ולא היה
   peeks?: number;           // על המצח — נתפס מציץ
   guessed?: number;         // על המצח — ניחש נכון
   hfDeepest?: number;       // החופרים — השורה הכי עמוקה שהגיע אליה (מקס)
@@ -295,6 +298,40 @@ export type ImpostorServerMsg =
   | { a: "im_role"; word: string; isImpostor: boolean; round: number } // word ריק אצל המתחזה
   | { a: "im_exposed"; impostorPid: string; word: string; round: number };
 
+/* ---- המתחזה למתקדמים 🥸 ----
+   כאן *גם* המתחזה מקבל מילה, ולכן אף אחד לא יודע מי הוא. uc_role
+   נראה זהה אצל כולם — זה לב המשחק, ואסור שישדר ולו ביט אחד שמסגיר. */
+export type UcPhase = "deal" | "clues" | "talk" | "vote" | "reveal" | "guess" | "scores";
+/** למה קיבלת את הנקודות בסיבוב — הלקוח ממפה למילים ולאימוג'י */
+export type UcWhy = "safe" | "declared" | "saved" | "caught" | "bluff" | "hit" | "miss" | "fooled";
+
+export type UndercoverClientMsg =
+  | { a: "uc_ready" }                      // קראתי את הקלף
+  | { a: "uc_said" }                       // בעל התור: אמרתי את הרמז
+  | { a: "uc_skip" }                       // מארח: קדימה לשלב הבא
+  | { a: "uc_declare"; guess: string }     // "אני המתחזה!" + ניחוש מילת הרוב — סודי עד החשיפה
+  | { a: "uc_vote"; target: string }
+  | { a: "uc_guess"; guess: string }       // הניחוש האחרון של מתחזה שנתפס
+  | { a: "uc_next" }                       // מארח: סיבוב חדש
+  | { a: "uc_end" };                       // מארח: סיימנו — לטקס
+
+export interface UcDeclare { pid: string; guess: string; ok: boolean; wasImpostor: boolean }
+export interface UcScoreRow { pid: string; delta: number; why: UcWhy }
+
+export type UndercoverServerMsg =
+  /** אותה צורה בדיוק אצל כולם — אין שדה שמסגיר מי המתחזה */
+  | { a: "uc_role"; word: string; round: number; order: string[]; impostors: number; declareOn: boolean }
+  | { a: "uc_phase"; phase: UcPhase; until?: number; turn?: string; idx?: number; of?: number }
+  | { a: "uc_ready"; n: number; of: number }
+  | { a: "uc_voted"; n: number; of: number }
+  | { a: "uc_declared" }                   // אישור אישי בלבד — אף אחד אחר לא רואה
+  | { a: "uc_reveal"; round: number; majorityWord: string; impostorWord: string; impostors: string[];
+      votes: Record<string, string>; tally: Record<string, number>; ejected: string | null; tie: boolean;
+      declares: UcDeclare[] }              // cue — כל המסכים מתהפכים יחד
+  | { a: "uc_guess"; pid: string; until: number }               // מתחזה שנתפס מנחש עכשיו
+  | { a: "uc_guessed"; pid: string; guess: string; ok: boolean }
+  | { a: "uc_scores"; round: number; rows: UcScoreRow[]; totals: Record<string, number> };
+
 /* ---- מופע 🕯️ — הקהל כמסך ---- */
 export type ShowFx = "off" | "candles" | "wave" | "pulse" | "text" | "heart" | "countdown" | "sparkle" | "sections" | "flash" | "color" | "tribal" | "beat"
   | "paparazzi" | "spot" | "ember"; // פפראצי 📸 · הגרלת זרקור 🎯 (text = pid הזוכה) · גחלים 🌅 (walk-away)
@@ -518,10 +555,10 @@ export type AbyssServerMsg =
 
 export type GameClientMsg = ForeheadClientMsg | PodsClientMsg | BombsClientMsg
   | ColorRulesClientMsg | SimonClientMsg | DeathTouchClientMsg | DemonsClientMsg | AliasClientMsg | TriviaClientMsg
-  | WhoMostClientMsg | ShowClientMsg | ImpostorClientMsg | ReactorClientMsg | WallClientMsg | HofrimClientMsg | ThievesClientMsg | AbyssClientMsg;
+  | WhoMostClientMsg | ShowClientMsg | ImpostorClientMsg | UndercoverClientMsg | ReactorClientMsg | WallClientMsg | HofrimClientMsg | ThievesClientMsg | AbyssClientMsg;
 export type GameServerMsg = ForeheadServerMsg | PodsServerMsg | BombsServerMsg
   | ColorRulesServerMsg | SimonServerMsg | DeathTouchServerMsg | DemonsServerMsg | AliasServerMsg | TriviaServerMsg
-  | WhoMostServerMsg | ShowServerMsg | ImpostorServerMsg | ReactorServerMsg | WallServerMsg | HofrimServerMsg | ThievesServerMsg | AbyssServerMsg;
+  | WhoMostServerMsg | ShowServerMsg | ImpostorServerMsg | UndercoverServerMsg | ReactorServerMsg | WallServerMsg | HofrimServerMsg | ThievesServerMsg | AbyssServerMsg;
 
 /* ---- קטלוג ---- */
 export interface GameMeta {
@@ -556,6 +593,19 @@ export const CATALOG: GameMeta[] = [
     howTo: "כולם מקבלים מילה סודית — חוץ מאחד שמגלה שהוא המתחזה. בתורכם אמרו בקול מילה שקשורה למילה הסודית. תתווכחו, תצביעו בקול — וכשתחליטו, המארח חושף.",
     minPlayers: 3,
     maxPlayers: 15,
+  },
+  {
+    id: "undercover",
+    name: "המתחזה למתקדמים",
+    icon: "🥸",
+    tagline: "גם למתחזה יש מילה. אפילו הוא לא יודע שהוא המתחזה.",
+    howTo: "כולם מקבלים מילה — אבל למתחזה יש מילה אחרת, וגם הוא לא יודע. בסבב רמזים כל אחד אומר מילה אחת בקול; משם מתווכחים, ומצביעים בסתר בטלפון. כל המסכים נחשפים יחד: שתי המילים, מי המתחזה, ומי צדק.",
+    minPlayers: 3,
+    maxPlayers: 12,
+    configOptions: [
+      { key: "level", label: "מרחק המילים", values: [{ v: "normal", label: "רגיל 🙂" }, { v: "hard", label: "קרובות 🔥" }] },
+      { key: "declare", label: "הכרזה עצמית", values: [{ v: "off", label: "בלי — רק הצבעה" }, { v: "on", label: "מופעלת 🥸" }] },
+    ],
   },
   {
     id: "colorrules",

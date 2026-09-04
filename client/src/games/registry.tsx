@@ -15,6 +15,7 @@ import AliasView from "./alias";
 import TriviaView from "./trivia";
 import WhoMostView from "./whomost";
 import ImpostorView from "./impostor";
+import UndercoverView from "./undercover";
 import WallView from "./wall";
 import HofrimView from "./hofrim";
 import ThievesView from "./thieves";
@@ -40,6 +41,7 @@ export const GAME_COLORS: Record<string, string> = {
   pods: "#A855F7",        // ענבים
   show: "#E8A33D",        // זהב חם
   impostor: "#C05CE8",    // לילך
+  undercover: "#FF5C7A",  // ורד — "נתפסת"
   wall: "#E0521B",        // חלודה
   hofrim: "#FF8A3D",      // כתום מנורה
   thieves: "#9B6BFF",     // סגול לילה
@@ -59,6 +61,7 @@ export const GAME_VIEWS: Record<string, ComponentType<GameViewProps>> = {
   whomost: WhoMostView,
   // show — עבר לאפליקציית המופע הנפרדת (/s)
   impostor: ImpostorView,
+  undercover: UndercoverView,
   wall: WallView,
   hofrim: HofrimView,
   thieves: ThievesView,
