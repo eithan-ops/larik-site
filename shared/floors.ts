@@ -37,9 +37,10 @@ export const FL = {
   HAMMER_R: 34, HAMMER_FLING: 7, HAMMER_DROP: 6,
   SHOT_V: 9, SHOT_LIFE: 60, SHOT_R: 14, SHOT_SLOW_MS: 2000,
   BANANA_MS: 8000,
-  CHARS: ["👻", "🐙", "🐸", "🐢", "🐔", "🦖", "🦘", "🐒"],
-  CHAR_NAMES: ["רוח רפאים", "תמנון", "צפרדע", "צב", "תרנגולת", "דינוזאור", "קנגרו", "קוף"],
-  CHAR_COLORS: ["#CFEBFF", "#A98BFF", "#5FD46A", "#8BB870", "#FFE066", "#3FC9C9", "#E0A96D", "#C98A5A"],
+  /** 8 הדמויות = יצור ג'לי אחד ב-8 צבעים (client/src/games/floorsSprites.ts). האימוג'י — לטקסט בלבד (פיד/רשימות). */
+  CHARS: ["🟣", "🟠", "🔵", "🔴", "🟡", "🌸", "🟢", "💎"],
+  CHAR_NAMES: ["הסגול", "הכתום", "הכחול", "האדום", "הצהוב", "הוורוד", "הירוק", "הטורקיז"],
+  CHAR_COLORS: ["#9B4DFF", "#FF8A2B", "#2F7BFF", "#FF3B3B", "#FFD21F", "#FF5FB0", "#5FD44A", "#2EDCE6"],
 } as const;
 
 /** סולם הקריאות — לפי סך הקומות בקומבו (הספים המקוריים) */
@@ -226,7 +227,8 @@ export const flNewSim = (x = FL.W / 2): FlSim => ({
   x, y: 0, dx: 0.001, dy: 0, st: 0, floor: 0, maxFloor: 0, face: 1, spin: false,
   combo: 0, comboJumps: 0, comboTicks: 0, comboBonus: 0, jumpsLeft: 0, coyote: 0, buffer: 0, slowUntil: 0, tick: 0, alive: true,
 });
-export interface FlInput { dir: number; jump: boolean; hold: boolean }
+/** dir ∈ [-1,1] אנלוגי (גודל = מהירות מקסימלית יחסית, 5.9); jump = לחיצה; hold = מחזיקים קפיצה (גלישה); jumpHold = מחזיקים את אזור הקפיצה → קפיצה אוטומטית בכל נחיתה */
+export interface FlInput { dir: number; jump: boolean; hold: boolean; jumpHold?: boolean }
 export interface FlEvents {
   jump?(v: number, air: boolean): void;
   land?(floor: number, gained: number): void;
@@ -246,18 +248,21 @@ export function flStep(s: FlSim, inp: FlInput, m: FlMods, seed: string, ev?: FlE
   const acc = FL.ACC * m.accel * slow;
   const onSlip = !air && slippery?.(s.floor);
   const fr = onSlip ? 0.985 : FL.FRICTION;
-  // מקשים (לפני החיתוך — כמו במקור)
-  const d = Math.abs(inp.dir) < 0.15 ? 0 : Math.sign(inp.dir);
+  // מקשים (לפני החיתוך — כמו במקור). 5.9: הקלט אנלוגי — גודל ה-dir קובע תקרת מהירות (אגודל קטן = הליכה, מלא = ריצה)
+  const mag = Math.min(1, Math.abs(inp.dir));
+  const d = mag < 0.15 ? 0 : Math.sign(inp.dir);
   if (d < 0) { if (s.dx > 0) s.dx *= m.turn; s.dx -= acc * (onSlip ? 0.5 : 1); s.face = -1; }
   else if (d > 0) { if (s.dx < 0) s.dx *= m.turn; s.dx += acc * (onSlip ? 0.5 : 1); s.face = 1; }
   else s.dx *= fr;
+  const cap = d === 0 || mag >= 0.97 ? vmax : vmax * Math.max(0.4, mag);
+  if (s.dx > cap) s.dx = Math.max(cap, s.dx * 0.9); if (s.dx < -cap) s.dx = Math.min(-cap, s.dx * 0.9);
   if (s.dx > vmax) s.dx = vmax; if (s.dx < -vmax) s.dx = -vmax;
   s.x += s.dx;
   // קירות
   if (s.x > FL.WALL_R) { s.x = FL.WALL_R; s.dx *= -m.wallKeep; ev?.wall?.(Math.abs(s.dx)); if (s.comboTicks > 0) s.wallHit = true; }
   if (s.x < FL.WALL_L) { s.x = FL.WALL_L; s.dx *= -m.wallKeep; ev?.wall?.(Math.abs(s.dx)); if (s.comboTicks > 0) s.wallHit = true; }
   // קפיצה
-  if (inp.jump) s.buffer = m.buffer;
+  if (inp.jump || (inp.jumpHold && s.st === 0)) s.buffer = m.buffer; // החזקה = קפיצה אוטומטית בנחיתה (כמו להחזיק רווח במקור)
   if (s.buffer > 0) {
     const canGround = s.st === 0 || s.coyote > 0;
     if (canGround) {
