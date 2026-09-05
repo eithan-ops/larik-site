@@ -105,18 +105,74 @@ export function jellyIcon(ci: number, pose: number = P.idle, size = 96): string 
  * מצייר את הדמות: (x,y) = כפות הרגליים במסך, k = פיקסלים למסך ליחידת עולם, face = 1 ימינה / -1 שמאלה.
  * sx/sy = מעיכה/מתיחה (1 = רגיל), rot = סיבוב (סלטה).
  */
-export function drawJelly(ctx: CanvasRenderingContext2D, ci: number, pose: number, x: number, y: number, k: number, face: number, sx = 1, sy = 1, rot = 0, alpha = 1) {
+export function drawJelly(ctx: CanvasRenderingContext2D, ci: number, pose: number, x: number, y: number, k: number, face: number, sx = 1, sy = 1, rot = 0, alpha = 1, dy = 0, wink = false) {
   const sh = jellySheet(ci); if (!sh) return false;
   const px = JWORLD * k;                 // פיקסל-פריים → פיקסל-מסך
   const size = JF * px;
-  ctx.save(); ctx.translate(x, y);
+  ctx.save(); ctx.translate(x, y - dy * px);
   if (rot) { ctx.translate(0, -size * 0.42); ctx.rotate(rot); ctx.translate(0, size * 0.42); }
   ctx.scale(face < 0 ? -sx : sx, sy);
   ctx.globalAlpha = alpha;
   ctx.drawImage(sh as CanvasImageSource, (pose % JELLY_COLS) * JF, Math.floor(pose / JELLY_COLS) * JF, JF, JF, -size / 2, -JFEET * px, size, size);
+  if (wink && pose === P.idle) drawWink(ctx, ci, px);
   if (pose !== P.ball && pose !== P.ko) drawAccessory(ctx, ci, pose, 0, (JTOP[pose] - JFEET) * px, px);
   ctx.restore();
   return true;
+}
+
+/** קריצה: מכסים את העין הימנית (בפריים idle: מרכז 68,67) בצבע הגוף ומציירים קשת עצומה */
+const EYE = { x: 68 - 64, y: 67 - JFEET, rx: 9.5, ry: 10.5 };
+function drawWink(ctx: CanvasRenderingContext2D, ci: number, u: number) {
+  ctx.fillStyle = bodyColor(ci);
+  ctx.beginPath(); ctx.ellipse(EYE.x * u, EYE.y * u, EYE.rx * u, EYE.ry * u, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = INK; ctx.lineWidth = Math.max(1, 2.6 * u); ctx.lineCap = "round";
+  ctx.beginPath(); ctx.moveTo((EYE.x - 7) * u, (EYE.y - 1) * u); ctx.quadraticCurveTo(EYE.x * u, (EYE.y + 5) * u, (EYE.x + 7) * u, (EYE.y - 1) * u); ctx.stroke();
+}
+const bodyCache = new Map<number, string>();
+/** צבע הגוף אחרי ההיסט — נדגם מהמצח בפריים idle */
+function bodyColor(ci: number): string {
+  const hit = bodyCache.get(ci); if (hit) return hit;
+  const sh = jellySheet(ci); if (!sh) return "#888";
+  try {
+    const d = (sh as HTMLCanvasElement).getContext("2d")!.getImageData(64, 48, 1, 1).data;
+    const c = `rgb(${d[0]},${d[1]},${d[2]})`; bodyCache.set(ci, c); return c;
+  } catch { return "#888"; }
+}
+
+/**
+ * אנימציית "אישיות" בעמידה — כל צבע זז אחרת (מסך הבחירה + עמידה במשחק). t במילישניות, amp = עוצמה (1 = מסך הבחירה, ~0.5 במשחק).
+ * 🟣 כתר: סחרור גאה + קפיצה קטנה · 🟠 אנטנה: ג'לי מתנדנד · 🔵 צילינדר: קופץ על רגל אחת · 🔴 קרניים: מתחמם (ריצה במקום + אגרוף)
+ * 🟡 נבט: נשימה גדולה · 🌸 פפיון: קורצת · 🟢 הילה: מרחף · 💎 מסיבה: רוקד
+ */
+export interface JellyAnim { pose: number; sx: number; sy: number; rot: number; face: number; dy: number; wink: boolean }
+export function jellyIdle(ci: number, t: number, amp = 1): JellyAnim {
+  const a: JellyAnim = { pose: P.idle, sx: 1, sy: 1, rot: 0, face: 1, dy: 0, wink: false };
+  const s = (p: number, ph = 0) => Math.sin(t / p + ph);
+  switch (((ci % JELLY.length) + JELLY.length) % JELLY.length) {
+    case 0: { // כתר — סחרור גאה, וכל 2.4 שנ' קפיצה קטנה
+      a.rot = s(650) * 0.07 * amp; a.sy = 1 + s(650, 1) * 0.03; a.sx = 1 - s(650, 1) * 0.03;
+      const ph = t % 2400; if (ph < 260) { const k = Math.sin((ph / 260) * Math.PI); a.pose = P.launch; a.dy = 14 * k * amp; a.sy = 1 + 0.12 * k; a.sx = 1 - 0.08 * k; }
+      break;
+    }
+    case 1: { // אנטנה — התנדנדות ג'לי בפרצים
+      const env = Math.max(0, Math.sin(t / 1000)) ** 2; a.rot = s(140) * 0.14 * env * amp; a.sx = 1 + s(140) * 0.06 * env; a.sy = 1 - s(140) * 0.05 * env; break;
+    }
+    case 2: { // צילינדר — קופץ על רגל אחת
+      const h = Math.abs(s(230)); a.pose = P.run1; a.dy = h * 11 * amp; a.sy = h < 0.15 ? 0.86 : 1 + h * 0.06; a.sx = h < 0.15 ? 1.12 : 1; break;
+    }
+    case 3: { // קרניים — מתחמם: ריצה במקום, וכל 3 שנ' אגרוף
+      const ph = t % 3000;
+      if (ph > 2650) a.pose = P.throw; else { a.pose = Math.floor(t / 140) % 2 ? P.run1 : P.run2; a.dy = Math.abs(s(140)) * 4 * amp; }
+      break;
+    }
+    case 4: { a.sy = 1 + s(520) * 0.11 * amp; a.sx = 1 - s(520) * 0.08 * amp; break; } // נבט — נשימה גדולה
+    case 5: { a.rot = s(800) * 0.05 * amp; a.sy = 1 + s(800, 1) * 0.02; a.wink = t % 2600 < 380; break; } // פפיון — קורצת
+    case 6: { a.dy = (s(700) * 7 + 6) * amp; a.rot = s(900) * 0.06 * amp; a.sy = 1 + s(700) * 0.02; break; } // הילה — מרחף
+    case 7: { // מסיבה — רוקד: מתהפך כל חצי שנייה, קופץ-מועך
+      a.face = Math.floor(t / 500) % 2 ? -1 : 1; const b = Math.abs(s(250)); a.pose = b < 0.3 ? P.crouch : P.idle; a.dy = b * 6 * amp; a.rot = s(500) * 0.1 * amp; break;
+    }
+  }
+  return a;
 }
 
 const INK = "#0C0906";
