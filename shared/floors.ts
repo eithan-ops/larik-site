@@ -109,9 +109,9 @@ export interface FlMods {
 }
 export const flBaseMods = (): FlMods => ({
   speed: 1, accel: 1, jump: 1, grav: 1, wallKeep: FL.WALL_KEEP, turn: FL.TURN, comboTicks: FL.COMBO_TICKS,
-  extraJumps: 0, edge: 0, glide: 1, lowBar: false, slipstream: 0, comboMul: 1,
+  extraJumps: 0, edge: 5 /* 5.9: נוחתים גם קצת מעבר לקצה — עזרה לילדים */, glide: 1, lowBar: false, slipstream: 0, comboMul: 1,
   hammer: false, snowball: false, banana: false, shield: false, propeller: false,
-  hunter: false, underdog: false, coyote: 4, buffer: 5,
+  hunter: false, underdog: false, coyote: 6, buffer: 8, // 5.9: סלחני יותר לילדים (היה 4/5)
 });
 
 /* ---------- הקלפים ---------- */
@@ -136,7 +136,7 @@ export const FL_CARDS: FlCard[] = [
   { id: "fuse", ic: "🕯️", t: "פתיל ארוך", d: "טיימר הקומבו 3 שנ' במקום 2", cat: "G", rarity: "c", kind: "passive", apply: (m) => { m.comboTicks = 150; } },
   { id: "lowbar", ic: "🪜", t: "רף נמוך", d: "קפיצת קומה אחת לא שוברת קומבו", cat: "G", rarity: "c", kind: "passive", apply: (m) => { m.lowBar = true; } },
   { id: "greed", ic: "💰", t: "חמדנות", d: "קומבו שווה ×1.5, טיימר 1.5 שנ'", cat: "G", rarity: "r", kind: "passive", apply: (m) => { m.comboMul = 1.5; m.comboTicks = 75; } },
-  { id: "wide", ic: "🦶", t: "רגליים רחבות", d: "נוחת גם קצת מעבר לקצה", cat: "A", rarity: "c", kind: "passive", apply: (m) => { m.edge = 8; } },
+  { id: "wide", ic: "🦶", t: "רגליים רחבות", d: "נוחת גם קצת מעבר לקצה", cat: "A", rarity: "c", kind: "passive", apply: (m) => { m.edge = 14; } },
   { id: "glide", ic: "🪂", t: "גלישה", d: "החזק טאפ בשיא = נפילה איטית", cat: "B", rarity: "c", kind: "passive", apply: (m) => { m.glide = 0.4; } },
   { id: "hammer", ic: "🔨", t: "פטיש", d: "נגיעה מהצד מפילה שחקן קומה", cat: "C", rarity: "u", kind: "passive", apply: (m) => { m.hammer = true; } },
   { id: "snow", ic: "❄️", t: "כדור שלג", d: "כפתור: קליע לכיוון הריצה, מאט", cat: "D", rarity: "c", kind: "button", cd: 4000, apply: (m) => { m.snowball = true; } },
