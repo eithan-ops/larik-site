@@ -124,7 +124,7 @@
 .fl-over{position:absolute; inset:0; z-index:9; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; padding:20px 14px; background:radial-gradient(circle at 50% 30%, #2A2119, #14110E); overflow:auto;}
 .fl-over h2{font-family:var(--font-display,"Suez One",serif); font-weight:400; font-size:32px; margin:0; text-shadow:-3px 4px 0 var(--gc,#FF7A29);}
 .fl-over ol{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:6px; width:min(340px,90vw);}
-.fl-over li{display:grid; grid-template-columns:24px 32px 1fr auto; gap:8px; align-items:center; padding:6px 10px; border-radius:12px; background:#231F1A; border:2.5px solid #0C0906; box-shadow:-3px 4px 0 var(--gc,#FF7A29);}
+.fl-over li{display:grid; grid-template-columns:24px 36px 1fr auto; gap:8px; align-items:center; padding:6px 10px; border-radius:12px; background:#231F1A; border:2.5px solid #0C0906; box-shadow:-3px 4px 0 var(--gc,#FF7A29);}
 .fl-over li.me{outline:3px solid #FFC531;}
 .fl-over li .pos{font-family:var(--font-display,"Suez One",serif); font-size:18px; color:#FFC531;}
 .fl-over li .em{font-size:24px;}
@@ -136,3 +136,15 @@
 .fl-over .titles b{color:#FFC531;}
 .fl-over .sub{margin:4px 0 0; color:#C8B78E; font-size:13px;}
 .fl-waitmsg{position:absolute; inset:0; display:grid; place-items:center; color:#C8B78E; font-weight:800;}
+
+/* ---- הג'לי: אייקוני דמות (5.9) ---- */
+.fl-face{display:inline-block; vertical-align:middle; object-fit:contain; image-rendering:auto; filter:drop-shadow(-2px 3px 0 rgba(12,9,6,.55));}
+.fl-pick .grid.four{grid-template-columns:repeat(4,1fr); gap:8px; max-width:400px;}
+.fl-pick .grid.four .tile{padding:8px 2px 6px; min-height:0; gap:0; border-radius:14px; box-shadow:-3px 4px 0 #0C0906; background:linear-gradient(180deg, color-mix(in srgb, var(--cc) 45%, #FFF3DC), var(--cc));}
+.fl-pick .grid.four .tile b{font-size:13px; line-height:1.1;}
+.fl-pick .grid.four .tile small{font-size:10px; padding:0 6px; margin-top:2px;}
+.fl-pick .grid.four .tile .fl-face{width:56px; height:56px;}
+.fl-pick .tile.mine .fl-face{animation:flbounce .7s cubic-bezier(.34,1.56,.64,1) infinite alternate;}
+@keyframes flbounce{from{transform:translateY(0) scale(1,1)} to{transform:translateY(-6px) scale(.96,1.06)}}
+.fl-freeze li .nm{display:flex; align-items:center; gap:6px;}
+.fl-over li .fl-face{margin:0 2px;}
