@@ -69,6 +69,7 @@ export default function FloorsView({ room, me, conn, hub }: GameViewProps) {
     attackReadyAt: 0, shieldReadyAt: 0, bananaAt: 0, btnReady: {} as Record<string, number>,
     shots: new Map<number, Shot>(), traps: new Map<number, { by: string; floor: number; until: number }>(),
     anim: new Map<string, Anim>(),
+    autoJump: true,
     input: { pid: -1, x0: 0, y0: 0, t0: 0, drag: false, dir: 0, hold: false, jumpQ: 0, jpid: -1, jumpHold: false, lastY: 0, lastT: 0, flickAt: 0, jumpVis: 0 },
     cam: { bottom: -200, vh: 800, scale: 1 },
     fx: { pops: [] as Pop[], parts: [] as Part[], shake: 0, flash: 0, flashCol: "#fff", spinA: 0 },
@@ -85,6 +86,16 @@ export default function FloorsView({ room, me, conn, hub }: GameViewProps) {
   const fmt = (n: number) => Math.round(n).toLocaleString("he-IL");
   const anim = (pid: string) => { const g = G.current; let a = g.anim.get(pid); if (!a) { a = { prevSt: 0, landAt: 0, jumpAt: 0, hitAt: 0, throwAt: 0, face: 1 }; g.anim.set(pid, a); } return a; };
   const [spr, setSpr] = useState(jellyReady());
+  /** מצב קל (5.9, ברירת מחדל לילדים): 80% מהירות, קיר רך, נחיתה סלחנית (ר' myMods). נשמר בטלפון. */
+  const [autoJump, setAutoJump] = useState<boolean>(() => { try { return localStorage.getItem("fl_auto") !== "0"; } catch { return true; } });
+  useEffect(() => { G.current.autoJump = autoJump; G.current.mods = myMods(); try { localStorage.setItem("fl_auto", autoJump ? "1" : "0"); } catch { /* */ } }, [autoJump]);
+  /** המודים שלי = הקלפים + "מצב קל" (5.9): 80% מהירות מקסימלית, קיר רך (60%), קצה סלחני */
+  function myMods(): FlMods {
+    const g = G.current; const m = flMods(g.cards);
+    if (g.autoJump) { m.speed *= 0.8; m.wallKeep = Math.min(m.wallKeep, 0.6); m.edge += 5; m.coyote += 2; m.buffer += 2; }
+    return m;
+  }
+  const tileSize = Math.max(48, Math.min(72, Math.floor((Math.min(typeof window !== "undefined" ? window.innerWidth : 390, 400) - 20 - 24) / 4) - 12));
   useEffect(() => { loadJelly().then((ok) => setSpr(ok)); return onJellyReady(() => setSpr(true)); }, []);
   /** אייקון דמות לרשימות — הג'לי בצבע, או האימוג'י עד שהנכס נטען */
   const Face = ({ c, size = 28, pose = JP.idle }: { c: number; size?: number; pose?: number }) => spr && jellyReady() ? <img className="fl-face" src={jellyIcon(c, pose, 96)} width={size} height={size} alt="" /> : <span className="em">{FL.CHARS[c] ?? "🙂"}</span>;
@@ -171,14 +182,14 @@ export default function FloorsView({ room, me, conn, hub }: GameViewProps) {
             break;
           }
           case "fl_took": {
-            if (d.pid === me) { g.cards.push(d.card.id); g.mods = flMods(g.cards); refreshButtons(); }
+            if (d.pid === me) { g.cards.push(d.card.id); g.mods = myMods(); refreshButtons(); }
             else addFeed(`${chEmoji(d.pid)} ${pname(d.pid)} לקח ${d.card.ic} ${d.card.t}`);
             break;
           }
           case "fl_reveal": {
             setDraft(null); setPhaseBoth("reveal"); setReveal(d.picks);
             const mine = d.picks[me];
-            if (mine && !g.cards.includes(mine.id)) { g.cards.push(mine.id); g.mods = flMods(g.cards); refreshButtons(); }
+            if (mine && !g.cards.includes(mine.id)) { g.cards.push(mine.id); g.mods = myMods(); refreshButtons(); }
             if (mine?.id === "life") { g.lives[me] = Math.min(FL.LIVES_MAX, (g.lives[me] ?? FL.LIVES) + 1); }
             flSfx.reveal();
             setTimeout(() => {
@@ -253,7 +264,7 @@ export default function FloorsView({ room, me, conn, hub }: GameViewProps) {
           }
           case "fl_sync": {
             g.seed = d.seed; g.startAt = d.startAt; g.cfg = d.cfg; g.chars = d.chars; g.lives = d.lives; g.k = d.k;
-            g.cards = d.cards[me] ?? []; g.mods = flMods(g.cards); refreshButtons();
+            g.cards = d.cards[me] ?? []; g.mods = myMods(); refreshButtons();
             g.out = d.you.out;
             if (d.phase === "pick") { setPhaseBoth("pick"); setPick({ taken: d.chars, until: conn.serverNow() + 8000 }); }
             else if (d.phase === "over") { setPhaseBoth("over"); }
@@ -349,7 +360,7 @@ export default function FloorsView({ room, me, conn, hub }: GameViewProps) {
     const step = () => {
       const g = G.current; const s = g.sim; const t = conn.serverNow();
       if (window.__flAuto && g.phase === "run" && !g.frozen) bot(g);
-      const inp: FlInput = { dir: g.input.dir, jump: g.input.jumpQ > 0, hold: g.input.hold, jumpHold: g.input.jumpHold };
+      const inp: FlInput = { dir: g.input.dir, jump: g.input.jumpQ > 0, hold: g.input.hold, jumpHold: g.input.jumpHold }; // (5.9: קפיצה אוטומטית תמידית נוסתה ונפסלה — הבוטים נפלו פי 3; ההחזקה של כפתור הקפיצה נותנת את אותו דבר בשליטה)
       g.input.jumpQ = 0;
       if (g.frozen || g.dead || g.out) { return; }
       const above = [...g.others.values()].some((o) => !o.out && o.y > s.y + 40);
@@ -625,12 +636,15 @@ export default function FloorsView({ room, me, conn, hub }: GameViewProps) {
               const mineC = owner === me;
               return (
                 <button key={i} className={"tile" + (owner ? (mineC ? " mine" : " taken") : "")} style={{ "--cc": FL.CHAR_COLORS[i] } as CSSProperties} disabled={!!owner && !mineC} onClick={() => pickChar(i)}>
-                  {spr && jellyReady() ? <JellyTile c={i} size={72} win={mineC} /> : <span className="em">{FL.CHARS[i]}</span>}<b style={{ color: FL.CHAR_COLORS[i] }}>{JELLY[i]?.name ?? FL.CHAR_NAMES[i]}</b>
+                  {spr && jellyReady() ? <JellyTile c={i} size={tileSize} win={mineC} /> : <span className="em">{FL.CHARS[i]}</span>}<b style={{ color: FL.CHAR_COLORS[i] }}>{JELLY[i]?.name ?? FL.CHAR_NAMES[i]}</b>
                   {owner && <small>{mineC ? "אתה" : pname(owner)}</small>}
                 </button>
               );
             })}
           </div>
+          <button className={"easy" + (autoJump ? " on" : "")} onClick={() => { flAudioInit(); flSfx.count(); setAutoJump((v) => !v); }}>
+            <span className="sw" /><span>🧒 מצב קל<br /><small>{autoJump ? "קצת יותר איטי, קירות רכים, נחיתה סלחנית — מומלץ לילדים" : "כבוי: מהירות מלאה כמו במקור"}</small></span>
+          </button>
           <PickTimer until={pick.until} conn={conn} />
         </div>
       )}
