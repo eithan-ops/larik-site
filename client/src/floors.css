@@ -140,7 +140,11 @@
 /* ---- הג'לי: אייקוני דמות (5.9) ---- */
 .fl-face{display:inline-block; vertical-align:middle; object-fit:contain; image-rendering:auto; filter:drop-shadow(-2px 3px 0 rgba(12,9,6,.55));}
 .fl-pick .grid.four{grid-template-columns:repeat(4,1fr); gap:8px; max-width:400px;}
-.fl-pick .grid.four .tile{padding:8px 2px 6px; min-height:0; gap:0; border-radius:14px; box-shadow:-3px 4px 0 #0C0906; background:linear-gradient(180deg, color-mix(in srgb, var(--cc) 45%, #FFF3DC), var(--cc));}
+.fl-pick .grid.four .tile{padding:6px 2px 6px; min-height:0; gap:0; border-radius:16px; box-shadow:-3px 4px 0 #0C0906; background:#231F1A; color:#FFF3DC; overflow:visible;}
+.fl-pick .grid.four .tile.mine{outline:4px solid var(--cc); outline-offset:-1px; box-shadow:-3px 4px 0 #0C0906, 0 0 18px color-mix(in srgb, var(--cc) 70%, transparent);}
+.fl-pick .grid.four .tile.taken{opacity:.4; filter:grayscale(.85);}
+.fl-pick .grid.four .tile small{background:rgba(255,243,220,.16); color:#FFF3DC;}
+.fl-tilecv{display:block;}
 .fl-pick .grid.four .tile b{font-size:13px; line-height:1.1;}
 .fl-pick .grid.four .tile small{font-size:10px; padding:0 6px; margin-top:2px;}
 .fl-pick .grid.four .tile .fl-face{width:56px; height:56px;}
@@ -148,3 +152,12 @@
 @keyframes flbounce{from{transform:translateY(0) scale(1,1)} to{transform:translateY(-6px) scale(.96,1.06)}}
 .fl-freeze li .nm{display:flex; align-items:center; gap:6px;}
 .fl-over li .fl-face{margin:0 2px;}
+
+/* ---- שליטה 5.9: כפתור קפיצה (רמז חזותי — אזור הקפיצה הוא כל 38% הימניים) + הסבר בספירה ---- */
+.fl-jump{position:absolute; right:14px; bottom:calc(18px + env(safe-area-inset-bottom)); width:84px; height:84px; border-radius:50%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0; pointer-events:none; z-index:5;
+  background:rgba(255,243,220,.14); border:3px solid rgba(255,243,220,.55); color:#FFF3DC; box-shadow:-3px 4px 0 rgba(12,9,6,.6); transition:transform .08s, background .08s;}
+.fl-jump span{font-size:30px; line-height:1; font-weight:800;}
+.fl-jump small{font-size:11px; font-weight:800; letter-spacing:.02em;}
+.fl-jump.on{background:var(--gc,#FF7A29); border-color:#0C0906; color:#0C0906; transform:scale(.92);}
+.fl-howto{position:absolute; left:0; right:0; bottom:calc(120px + env(safe-area-inset-bottom)); display:flex; flex-direction:column; align-items:center; gap:6px; z-index:6; pointer-events:none;}
+.fl-howto span{background:#231F1A; color:#FFF3DC; border:2.5px solid #0C0906; box-shadow:-3px 4px 0 var(--gc,#FF7A29); border-radius:12px; padding:6px 12px; font-weight:800; font-size:14px;}
