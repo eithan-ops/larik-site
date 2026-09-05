@@ -17,7 +17,7 @@ import {
 } from "../../../shared/floors";
 import type { FlSim, FlMods, FlInput, FloorsServerMsg, FlCardWire, FlTimingWire } from "../../../shared/floors";
 import { flAudioInit, flSfx } from "./floorsAudio";
-import { loadJelly, jellyReady, onJellyReady, jellyIcon, drawJelly, P as JP, JELLY } from "./floorsSprites";
+import { loadJelly, jellyReady, onJellyReady, jellyIcon, drawJelly, jellyIdle, P as JP, JELLY, JF, JWORLD } from "./floorsSprites";
 import { vibrate } from "../lib/audio";
 
 type Phase = "wait" | "pick" | "intro" | "run" | "freeze" | "draft" | "reveal" | "over";
@@ -30,7 +30,9 @@ interface Shot { id: number; by: string; x: number; y: number; dx: number; at: n
 interface Anim { prevSt: number; landAt: number; jumpAt: number; hitAt: number; throwAt: number; face: number }
 
 const REPORT_MS = FL.REPORT_MS;
-const TAP_MS = 200, TAP_PX = 12, STICK_PX = 26, DEAD_PX = 5;
+/** שליטה (פלייטסט 5.9 עם הילדים: "מהיר מדי, קשה גם לזוז וגם לקפוץ"): ג'ויסטיק אנלוגי רחב (מלא ב-56px), אזור קפיצה ב-38% הימניים
+ *  של המסך (טאפ = קפיצה, החזקה = קפיצה אוטומטית בכל נחיתה), הנפה מהירה למעלה של אגודל הריצה = קפיצה, אצבע שנייה = קפיצה. */
+const TAP_MS = 220, TAP_PX = 14, STICK_PX = 56, DEAD_PX = 6, JUMP_ZONE = 0.38, FLICK_VY = 0.22, FLICK_MS = 260;
 const INK = "#0C0906", PAPER = "#FFF3DC", SIG = "#FF7A29";
 /** צבע הקטע לפי הקומה (כל 100 — הגרפיקה מתחלפת, כמו במקור) */
 const SECTIONS = ["#7D8DA3", "#8FD3F4", "#C8955B", "#9AA5B1", "#E88AD1", "#E9E1C9", "#6FBF73", "#5CC8B0", "#CFE7FF", "#F7B7D2", "#BFEFFF"];
@@ -44,7 +46,7 @@ export default function FloorsView({ room, me, conn, hub }: GameViewProps) {
   const cvRef = useRef<HTMLCanvasElement | null>(null);
   const [phase, setPhase] = useState<Phase>("wait");
   const [pick, setPick] = useState<{ taken: Record<string, number>; until: number } | null>(null);
-  const [hud, setHud] = useState({ floor: 0, combo: 0, comboFrac: 0, lives: FL.LIVES as number, secs: 0, lvl: 0, score: 0, rank: 0, n: 0, dead: false, out: false, k: 0, sprint: false });
+  const [hud, setHud] = useState({ floor: 0, combo: 0, comboFrac: 0, lives: FL.LIVES as number, secs: 0, lvl: 0, score: 0, rank: 0, n: 0, dead: false, out: false, k: 0, sprint: false, jumpOn: false });
   const [arrows, setArrows] = useState<{ pid: string; up: boolean; d: number; x: number }[]>([]);
   const [count, setCount] = useState<string | null>(null);
   const [banner, setBanner] = useState<{ ic: string; t: string; s?: string; cls?: string } | null>(null);
@@ -67,7 +69,7 @@ export default function FloorsView({ room, me, conn, hub }: GameViewProps) {
     attackReadyAt: 0, shieldReadyAt: 0, bananaAt: 0, btnReady: {} as Record<string, number>,
     shots: new Map<number, Shot>(), traps: new Map<number, { by: string; floor: number; until: number }>(),
     anim: new Map<string, Anim>(),
-    input: { pid: -1, x0: 0, y0: 0, t0: 0, drag: false, dir: 0, hold: false, jumpQ: 0 },
+    input: { pid: -1, x0: 0, y0: 0, t0: 0, drag: false, dir: 0, hold: false, jumpQ: 0, jpid: -1, jumpHold: false, lastY: 0, lastT: 0, flickAt: 0, jumpVis: 0 },
     cam: { bottom: -200, vh: 800, scale: 1 },
     fx: { pops: [] as Pop[], parts: [] as Part[], shake: 0, flash: 0, flashCol: "#fff", spinA: 0 },
     acc: 0, lastFrame: 0, lastReport: 0, hudAt: 0, arrowsAt: 0, lastLvl: 0, lastAight: 0, seenFloor50: 0,
@@ -268,33 +270,42 @@ export default function FloorsView({ room, me, conn, hub }: GameViewProps) {
     const el = cvRef.current?.parentElement; if (!el) return;
     const g = G.current;
     const isBtn = (t: EventTarget | null) => !!(t as HTMLElement | null)?.closest?.(".fl-btn, .fl-draft, .fl-pick, .fl-over, .fl-reveal, button");
+    const inJumpZone = (x: number) => x > el.clientWidth * (1 - JUMP_ZONE);
     const down = (e: PointerEvent) => {
       if (isBtn(e.target)) return;
       flAudioInit();
-      const inp = g.input;
-      if (inp.pid >= 0 && inp.drag) { inp.jumpQ = 1; inp.hold = true; return; } // אצבע שנייה בזמן גרירה = קפיצה מיידית
-      inp.pid = e.pointerId; inp.x0 = e.clientX; inp.y0 = e.clientY; inp.t0 = performance.now(); inp.drag = false;
+      const inp = g.input; const now = performance.now();
       try { el.setPointerCapture(e.pointerId); } catch { /* */ }
+      // אזור הקפיצה (ימין) או אצבע שנייה בזמן גרירה — קפיצה; החזקה = קפיצה אוטומטית בכל נחיתה
+      if (inJumpZone(e.clientX) || (inp.pid >= 0 && inp.drag)) { inp.jpid = e.pointerId; inp.jumpQ = 1; inp.jumpHold = true; inp.hold = true; inp.jumpVis = now; return; }
+      if (inp.pid >= 0) return; // כבר יש אגודל ריצה
+      inp.pid = e.pointerId; inp.x0 = e.clientX; inp.y0 = e.clientY; inp.t0 = now; inp.drag = false; inp.lastY = e.clientY; inp.lastT = now;
     };
     const move = (e: PointerEvent) => {
       const inp = g.input; if (e.pointerId !== inp.pid) return;
+      const now = performance.now();
       const dx = e.clientX - inp.x0, dy = e.clientY - inp.y0;
       if (!inp.drag && Math.hypot(dx, dy) > TAP_PX) inp.drag = true;
-      if (inp.drag) { inp.dir = Math.abs(dx) < DEAD_PX ? 0 : Math.max(-1, Math.min(1, dx / STICK_PX)); }
+      if (inp.drag) inp.dir = Math.abs(dx) < DEAD_PX ? 0 : Math.max(-1, Math.min(1, dx / STICK_PX));
+      // הנפה מהירה למעלה = קפיצה בלי להרים את האגודל (ממשיכים לרוץ)
+      const dt = now - inp.lastT;
+      if (dt > 0) { const vy = (inp.lastY - e.clientY) / dt; if (vy > FLICK_VY && inp.lastY - e.clientY > 14 && now - inp.flickAt > FLICK_MS) { inp.flickAt = now; inp.jumpQ = 1; inp.jumpVis = now; } }
+      inp.lastY = e.clientY; inp.lastT = now;
     };
     const up = (e: PointerEvent) => {
       const inp = g.input;
-      if (e.pointerId !== inp.pid) { inp.hold = false; return; }
-      if (!inp.drag && performance.now() - inp.t0 < TAP_MS) { inp.jumpQ = 1; }
-      inp.pid = -1; inp.drag = false; inp.dir = 0; inp.hold = false;
+      if (e.pointerId === inp.jpid) { inp.jpid = -1; inp.jumpHold = false; inp.hold = false; return; }
+      if (e.pointerId !== inp.pid) return;
+      if (!inp.drag && performance.now() - inp.t0 < TAP_MS) { inp.jumpQ = 1; inp.jumpVis = performance.now(); }
+      inp.pid = -1; inp.drag = false; inp.dir = 0;
     };
     el.addEventListener("pointerdown", down); el.addEventListener("pointermove", move);
     el.addEventListener("pointerup", up); el.addEventListener("pointercancel", up);
     const prevent = (e: TouchEvent) => { if (!isBtn(e.target)) e.preventDefault(); };
     el.addEventListener("touchstart", prevent, { passive: false }); el.addEventListener("touchmove", prevent, { passive: false });
     const key = (e: KeyboardEvent) => { // מקלדת לפיתוח
-      if (e.type === "keydown") { if (e.key === "ArrowLeft") g.input.dir = -1; if (e.key === "ArrowRight") g.input.dir = 1; if (e.key === " " || e.key === "ArrowUp") { if (!e.repeat) g.input.jumpQ = 1; g.input.hold = true; } if (e.key === "x") useButton("snow"); }
-      else { if (e.key === "ArrowLeft" && g.input.dir < 0) g.input.dir = 0; if (e.key === "ArrowRight" && g.input.dir > 0) g.input.dir = 0; if (e.key === " " || e.key === "ArrowUp") g.input.hold = false; }
+      if (e.type === "keydown") { if (e.key === "ArrowLeft") g.input.dir = -1; if (e.key === "ArrowRight") g.input.dir = 1; if (e.key === " " || e.key === "ArrowUp") { if (!e.repeat) g.input.jumpQ = 1; g.input.hold = true; g.input.jumpHold = true; } if (e.key === "x") useButton("snow"); }
+      else { if (e.key === "ArrowLeft" && g.input.dir < 0) g.input.dir = 0; if (e.key === "ArrowRight" && g.input.dir > 0) g.input.dir = 0; if (e.key === " " || e.key === "ArrowUp") { g.input.hold = false; g.input.jumpHold = false; } }
     };
     window.addEventListener("keydown", key); window.addEventListener("keyup", key);
     return () => {
@@ -338,7 +349,7 @@ export default function FloorsView({ room, me, conn, hub }: GameViewProps) {
     const step = () => {
       const g = G.current; const s = g.sim; const t = conn.serverNow();
       if (window.__flAuto && g.phase === "run" && !g.frozen) bot(g);
-      const inp: FlInput = { dir: g.input.dir, jump: g.input.jumpQ > 0, hold: g.input.hold };
+      const inp: FlInput = { dir: g.input.dir, jump: g.input.jumpQ > 0, hold: g.input.hold, jumpHold: g.input.jumpHold };
       g.input.jumpQ = 0;
       if (g.frozen || g.dead || g.out) { return; }
       const above = [...g.others.values()].some((o) => !o.out && o.y > s.y + 40);
@@ -406,7 +417,7 @@ export default function FloorsView({ room, me, conn, hub }: GameViewProps) {
           if (g.cfg && g.startAt) { const end = flRunEnd(g.cfg, g.startAt, g.k); secs = Math.max(0, Math.ceil((end - t) / 1000)); sprint = g.k >= g.cfg.cycles; }
           const scores = [...g.others.entries()].filter(([, o]) => !o.out).map(([, o]) => o.floor * 10);
           const mine = myScore(); const rank = 1 + scores.filter((x) => x > mine).length;
-          setHud({ floor: s.floor, combo: s.comboTicks > 0 ? s.combo : 0, comboFrac: s.comboTicks > 0 ? s.comboTicks / g.mods.comboTicks : 0, lives: (g.lives[me] ?? FL.LIVES) as number, secs, lvl: g.lvl, score: mine, rank, n: g.others.size + 1, dead: g.dead, out: g.out, k: g.k, sprint });
+          setHud({ floor: s.floor, combo: s.comboTicks > 0 ? s.combo : 0, comboFrac: s.comboTicks > 0 ? s.comboTicks / g.mods.comboTicks : 0, lives: (g.lives[me] ?? FL.LIVES) as number, secs, lvl: g.lvl, score: mine, rank, n: g.others.size + 1, dead: g.dead, out: g.out, k: g.k, sprint, jumpOn: g.input.jumpHold || performance.now() - g.input.jumpVis < 150 });
           if (btns.length) setBtns((b) => b.map((x) => ({ ...x, readyAt: g.btnReady[x.id] ?? 0 })));
         }
         if (t - g.arrowsAt > 150) {
@@ -506,7 +517,7 @@ export default function FloorsView({ room, me, conn, hub }: GameViewProps) {
     if (!mine) { if (a.prevSt !== 0 && st === 0) a.landAt = t; if (a.prevSt === 0 && st !== 0) a.jumpAt = t; }
     a.prevSt = st;
     const sinceLand = t - a.landAt, sinceJump = t - a.jumpAt, sinceHit = t - a.hitAt, sinceThrow = t - a.throwAt;
-    let pose: number = JP.idle, sxx = 1, syy = 1, rot = 0;
+    let pose: number = JP.idle, sxx = 1, syy = 1, rot = 0, idleDy = 0, wink = false;
     const moving = Math.abs(dx) > 1.2;
     if (dead) { pose = JP.ko; }
     else if (sinceHit >= 0 && sinceHit < 700) { pose = JP.dizzy; sxx = 1 + Math.sin(sinceHit / 40) * 0.06; }
@@ -514,14 +525,14 @@ export default function FloorsView({ room, me, conn, hub }: GameViewProps) {
     else if (st === 0) {
       if (sinceLand >= 0 && sinceLand < 110) { pose = JP.land; }
       else if (moving) { const per = Math.max(70, 170 - Math.abs(dx) * 8); pose = Math.floor(t / per) % 2 === 0 ? JP.run1 : JP.run2; syy = 1 + (Math.floor(t / per) % 2 ? 0.03 : -0.03); }
-      else { pose = JP.idle; const br = Math.sin(t / 260 + (pid.charCodeAt(0) || 0)) * 0.03; syy = 1 + br; sxx = 1 - br; }
+      else { const ia = jellyIdle(ci, t + (pid.charCodeAt(0) || 0) * 137, 0.55); pose = ia.pose; sxx = ia.sx; syy = ia.sy; rot = ia.rot; idleDy = ia.dy; wink = ia.wink; if (ia.face < 0) a.face = -a.face; }
       if (sinceLand >= 0 && sinceLand < 180) { const k = 1 - sinceLand / 180; syy *= 1 - 0.22 * k; sxx *= 1 + 0.25 * k; }
     } else if (spin) { pose = JP.ball; rot = ((sinceJump > 0 ? sinceJump : 0) / 1000) * Math.PI * 3.4 * a.face; }
     else if (st === 1) { pose = JP.launch; if (sinceJump >= 0 && sinceJump < 200) { const k = 1 - sinceJump / 200; syy = 1 + 0.2 * k; sxx = 1 - 0.14 * k; } }
     else { pose = JP.fall; }
     if (g.frozen && g.phase !== "run" && !dead) { pose = JP.idle; sxx = 1; syy = 1; rot = 0; }
     const alpha = mine ? 1 : 0.9;
-    const drawn = drawJelly(ctx, ci, pose, x, y, S, a.face, sxx, syy, rot, alpha);
+    const drawn = drawJelly(ctx, ci, pose, x, y, S, a.face, sxx, syy, rot, alpha, idleDy, wink);
     if (!drawn) { // הנכס לא נטען — הקופסה מהגרייבוקס
       const col = chColor(pid); const w = 22 * S, h = 40 * S;
       ctx.save(); ctx.translate(x, y); ctx.globalAlpha = alpha;
@@ -592,12 +603,14 @@ export default function FloorsView({ room, me, conn, hub }: GameViewProps) {
               return <button key={b.id} className={"fl-btn" + (left > 0 ? " cd" : "")} style={{ "--p": `${left > 0 ? (1 - left / b.cd) * 360 : 360}deg` } as CSSProperties} onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); useButton(b.id); }}><span>{b.ic}</span></button>;
             })}
           </div>
+          {!hud.out && <div className={"fl-jump" + (hud.jumpOn ? " on" : "")} aria-hidden="true"><span>⤒</span><small>קפיצה</small></div>}
           {hud.dead && !hud.out && <div className="fl-dead">💔 חוזרים בעוד רגע…</div>}
           {hud.out && <div className="fl-dead">👁️ צופה — נגמרו החיים</div>}
         </>
       )}
       {feed.length > 0 && phase !== "over" && <div className="fl-feed">{feed.map((f) => <div key={f.id}>{f.tx}</div>)}</div>}
       {count && <div className="fl-count" key={count}>{count}</div>}
+      {phase === "intro" && <div className="fl-howto"><span>👈 אגודל שמאל: גוררים לרוץ</span><span>👉 אגודל ימין: טאפ = קפיצה · להחזיק = קופץ לבד</span></div>}
       {banner && <div className={"fl-banner " + (banner.cls ?? "")}><span className="ic">{banner.ic}</span><b>{banner.t}</b>{banner.s && <small>{banner.s}</small>}</div>}
       {flash && <div className="fl-flash" style={{ background: flash }} />}
 
@@ -612,7 +625,7 @@ export default function FloorsView({ room, me, conn, hub }: GameViewProps) {
               const mineC = owner === me;
               return (
                 <button key={i} className={"tile" + (owner ? (mineC ? " mine" : " taken") : "")} style={{ "--cc": FL.CHAR_COLORS[i] } as CSSProperties} disabled={!!owner && !mineC} onClick={() => pickChar(i)}>
-                  <Face c={i} size={64} pose={mineC ? JP.win : JP.idle} /><b>{JELLY[i]?.name ?? FL.CHAR_NAMES[i]}</b>
+                  {spr && jellyReady() ? <JellyTile c={i} size={72} win={mineC} /> : <span className="em">{FL.CHARS[i]}</span>}<b style={{ color: FL.CHAR_COLORS[i] }}>{JELLY[i]?.name ?? FL.CHAR_NAMES[i]}</b>
                   {owner && <small>{mineC ? "אתה" : pname(owner)}</small>}
                 </button>
               );
@@ -672,6 +685,27 @@ export default function FloorsView({ room, me, conn, hub }: GameViewProps) {
   );
 }
 
+/** אריח בחירה חי: כל צבע עם אנימציית האישיות שלו (jellyIdle); הנבחר שלי — ניצחון קופץ */
+function JellyTile({ c, size, win }: { c: number; size: number; win: boolean }) {
+  const ref = useRef<HTMLCanvasElement | null>(null);
+  useEffect(() => {
+    const cv = ref.current; if (!cv) return;
+    const H = size + 22; // מקום לאביזרים ולקפיצות מעל הראש
+    const dpr = Math.min(2, window.devicePixelRatio || 1); cv.width = size * dpr; cv.height = H * dpr;
+    const ctx = cv.getContext("2d")!; const k = size / (JF * JWORLD); const phase = c * 431; const feet = H - 4;
+    let raf = 0;
+    const loop = () => {
+      raf = requestAnimationFrame(loop);
+      const t = performance.now() + phase;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, size, H);
+      if (win) { const b = Math.abs(Math.sin(t / 220)); drawJelly(ctx, c, JP.win, size / 2, feet, k, 1, 1 - b * 0.05, 1 + b * 0.08, 0, 1, b * 10); }
+      else { const a = jellyIdle(c, t, 1); drawJelly(ctx, c, a.pose, size / 2, feet, k, a.face, a.sx, a.sy, a.rot, 1, a.dy, a.wink); }
+    };
+    raf = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(raf);
+  }, [c, size, win]);
+  return <canvas ref={ref} className="fl-tilecv" style={{ width: size, height: size + 22 }} />;
+}
 function PickTimer({ until, conn }: { until: number; conn: GameViewProps["conn"] }) {
   const [left, setLeft] = useState(0);
   useEffect(() => { const iv = setInterval(() => setLeft(Math.max(0, Math.ceil((until - conn.serverNow()) / 1000))), 200); return () => clearInterval(iv); }, [until]);
