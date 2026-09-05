@@ -36,7 +36,7 @@
 .fl-arrow .ic{font-size:16px; color:#FFC531; text-shadow:-1px 2px 0 #0C0906;}
 .fl-arrow .nm{font-size:11px; font-weight:800; background:rgba(0,0,0,.55); padding:1px 6px; border-radius:99px; white-space:nowrap; direction:rtl;}
 /* כפתורי שדרוג פעיל — פינה שמאלית-תחתונה (הבקשה של איתן), 60px + hit-slop, טבעת קולדאון */
-.fl-btns{position:absolute; left:max(16px, env(safe-area-inset-left,0px)); bottom:calc(env(safe-area-inset-bottom,0px) + 18px); display:flex; gap:12px; direction:ltr;}
+.fl-btns{position:absolute; left:max(26px, env(safe-area-inset-left,0px)); bottom:calc(env(safe-area-inset-bottom,0px) + 116px); display:flex; flex-direction:column-reverse; gap:14px; direction:ltr;} /* מעל כפתור הקפיצה, אגודל שמאל */
 .fl-btn{width:60px; height:60px; border-radius:50%; border:0; padding:6px; margin:-6px; box-sizing:content-box; background:transparent; display:grid; place-items:center; position:relative; touch-action:none;}
 .fl-btn::before{content:""; position:absolute; inset:6px; border-radius:50%; background:conic-gradient(#FFC531 var(--p,360deg), rgba(255,255,255,.15) 0); box-shadow:0 0 0 3px #0C0906, -3px 4px 0 3px rgba(0,0,0,.45);}
 .fl-btn::after{content:""; position:absolute; inset:11px; border-radius:50%; background:#231F1A; border:2px solid #0C0906;}
@@ -153,8 +153,8 @@
 .fl-freeze li .nm{display:flex; align-items:center; gap:6px;}
 .fl-over li .fl-face{margin:0 2px;}
 
-/* ---- שליטה 5.9: כפתור קפיצה (רמז חזותי — אזור הקפיצה הוא כל 38% הימניים) + הסבר בספירה ---- */
-.fl-jump{position:absolute; right:14px; bottom:calc(18px + env(safe-area-inset-bottom)); width:84px; height:84px; border-radius:50%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0; pointer-events:none; z-index:5;
+/* ---- שליטה 5.9: כפתור קפיצה (רמז חזותי — אזור הקפיצה הוא כל 38% השמאליים; היכולות מעליו) + הסבר בספירה ---- */
+.fl-jump{position:absolute; left:14px; bottom:calc(18px + env(safe-area-inset-bottom)); width:84px; height:84px; border-radius:50%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0; pointer-events:none; z-index:5;
   background:rgba(255,243,220,.14); border:3px solid rgba(255,243,220,.55); color:#FFF3DC; box-shadow:-3px 4px 0 rgba(12,9,6,.6); transition:transform .08s, background .08s;}
 .fl-jump span{font-size:30px; line-height:1; font-weight:800;}
 .fl-jump small{font-size:11px; font-weight:800; letter-spacing:.02em;}
