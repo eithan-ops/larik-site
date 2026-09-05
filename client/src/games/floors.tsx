@@ -17,6 +17,7 @@ import {
 } from "../../../shared/floors";
 import type { FlSim, FlMods, FlInput, FloorsServerMsg, FlCardWire, FlTimingWire } from "../../../shared/floors";
 import { flAudioInit, flSfx } from "./floorsAudio";
+import { loadJelly, jellyReady, onJellyReady, jellyIcon, drawJelly, P as JP, JELLY } from "./floorsSprites";
 import { vibrate } from "../lib/audio";
 
 type Phase = "wait" | "pick" | "intro" | "run" | "freeze" | "draft" | "reveal" | "over";
@@ -25,6 +26,8 @@ interface Other { x: number; y: number; tx: number; ty: number; dx: number; st: 
 interface Pop { x: number; y: number; t: string; col: string; l: number; sz: number; vy: number }
 interface Part { x: number; y: number; vx: number; vy: number; l: number; col: string; r: number }
 interface Shot { id: number; by: string; x: number; y: number; dx: number; at: number; done: boolean }
+/** מצב אנימציה לדמות (שלי ושל אחרים) — מעברי קרקע/אוויר, פגיעה, זריקה */
+interface Anim { prevSt: number; landAt: number; jumpAt: number; hitAt: number; throwAt: number; face: number }
 
 const REPORT_MS = FL.REPORT_MS;
 const TAP_MS = 200, TAP_PX = 12, STICK_PX = 26, DEAD_PX = 5;
@@ -63,6 +66,7 @@ export default function FloorsView({ room, me, conn, hub }: GameViewProps) {
     frozen: false, dead: false, out: false, respawnAt: 0, respawnFloor: 0, invulnUntil: 0, graceUntil: 0, propUsed: false,
     attackReadyAt: 0, shieldReadyAt: 0, bananaAt: 0, btnReady: {} as Record<string, number>,
     shots: new Map<number, Shot>(), traps: new Map<number, { by: string; floor: number; until: number }>(),
+    anim: new Map<string, Anim>(),
     input: { pid: -1, x0: 0, y0: 0, t0: 0, drag: false, dir: 0, hold: false, jumpQ: 0 },
     cam: { bottom: -200, vh: 800, scale: 1 },
     fx: { pops: [] as Pop[], parts: [] as Part[], shake: 0, flash: 0, flashCol: "#fff", spinA: 0 },
@@ -77,6 +81,11 @@ export default function FloorsView({ room, me, conn, hub }: GameViewProps) {
   const chEmoji = (pid: string) => FL.CHARS[charOf(pid)] ?? "🙂";
   const chColor = (pid: string) => FL.CHAR_COLORS[charOf(pid)] ?? "#fff";
   const fmt = (n: number) => Math.round(n).toLocaleString("he-IL");
+  const anim = (pid: string) => { const g = G.current; let a = g.anim.get(pid); if (!a) { a = { prevSt: 0, landAt: 0, jumpAt: 0, hitAt: 0, throwAt: 0, face: 1 }; g.anim.set(pid, a); } return a; };
+  const [spr, setSpr] = useState(jellyReady());
+  useEffect(() => { loadJelly().then((ok) => setSpr(ok)); return onJellyReady(() => setSpr(true)); }, []);
+  /** אייקון דמות לרשימות — הג'לי בצבע, או האימוג'י עד שהנכס נטען */
+  const Face = ({ c, size = 28, pose = JP.idle }: { c: number; size?: number; pose?: number }) => spr && jellyReady() ? <img className="fl-face" src={jellyIcon(c, pose, 96)} width={size} height={size} alt="" /> : <span className="em">{FL.CHARS[c] ?? "🙂"}</span>;
   function setPhaseBoth(p: Phase) { G.current.phase = p; setPhase(p); }
   function addFeed(tx: string) { setFeed((f) => [...f.slice(-2), { id: feedId.current++, tx }]); }
   function pop(x: number, y: number, t: string, col = PAPER, sz = 20) { G.current.fx.pops.push({ x, y, t, col, l: 1, sz, vy: 1.2 }); }
@@ -195,6 +204,7 @@ export default function FloorsView({ room, me, conn, hub }: GameViewProps) {
           }
           case "fl_out": { const o = g.others.get(d.pid); if (o) o.out = true; break; }
           case "fl_hit": {
+            anim(d.target).hitAt = conn.serverNow();
             if (d.target === me) {
               const s = g.sim; s.st = 2; s.dy = -FL.HAMMER_DROP; s.dx = d.dir * FL.HAMMER_FLING; s.coyote = 0;
               flBreakCombo(s, g.mods);
@@ -208,11 +218,13 @@ export default function FloorsView({ room, me, conn, hub }: GameViewProps) {
           }
           case "fl_shot": {
             g.shots.set(d.id, { id: d.id, by: d.by, x: d.x, y: d.y, dx: d.dx, at: d.at, done: false });
+            anim(d.by).throwAt = conn.serverNow();
             if (d.by !== me) flSfx.shot();
             break;
           }
           case "fl_shothit": {
             const sh = g.shots.get(d.id); if (sh) sh.done = true;
+            if (!d.shielded) anim(d.pid).hitAt = conn.serverNow();
             if (d.pid === me) {
               if (d.shielded) { flSfx.shield(); pop(g.sim.x, g.sim.y + 60, "🛡️", "#8FE9F5", 24); g.shieldReadyAt = conn.serverNow() + 20000; }
               else { g.sim.slowUntil = g.sim.tick + Math.round(FL.SHOT_SLOW_MS / FL.TICK_MS); flSfx.hit(true); g.fx.flash = 0.35; g.fx.flashCol = "#8FE9F5"; vibrate(50); setBanner({ ic: "❄️", t: `${pname(d.by)} פגע בך`, cls: "short" }); }
@@ -307,9 +319,9 @@ export default function FloorsView({ room, me, conn, hub }: GameViewProps) {
     const slippery = (floor: number) => { const t = conn.serverNow(); for (const tr of G.current.traps.values()) if (tr.floor === floor && tr.by !== me && tr.until > t) return true; return false; };
 
     const events = {
-      jump: (v: number, air: boolean) => { const g = G.current; if (air) flSfx.airJump(); else flSfx.jump(v); if (!air && g.mods.banana && conn.serverNow() > g.bananaAt) { g.bananaAt = conn.serverNow() + 3000; conn.sendGame({ a: "fl_trap", floor: g.sim.floor }); flSfx.banana(); } if (v > 22) burst(g.sim.x, g.sim.y, "#FFF", 5, 3); },
+      jump: (v: number, air: boolean) => { const g = G.current; anim(me).jumpAt = conn.serverNow(); if (air) flSfx.airJump(); else flSfx.jump(v); if (!air && g.mods.banana && conn.serverNow() > g.bananaAt) { g.bananaAt = conn.serverNow() + 3000; conn.sendGame({ a: "fl_trap", floor: g.sim.floor }); flSfx.banana(); } if (v > 22) burst(g.sim.x, g.sim.y, "#FFF", 5, 3); },
       land: (floor: number, gained: number) => {
-        const g = G.current; flSfx.land(gained);
+        const g = G.current; flSfx.land(gained); anim(me).landAt = conn.serverNow();
         if (gained >= 2) { pop(g.sim.x, g.sim.y + 50, `+${gained}`, gained >= 3 ? "#FFC531" : PAPER, 14 + gained * 2); if (!g.reduced) burst(g.sim.x, g.sim.y, SECTIONS[Math.floor(floor / 100) % SECTIONS.length], 4, 2); }
         if (floor % 50 === 0 && floor > g.seenFloor50) { g.seenFloor50 = floor; flSfx.aight(); pop(g.sim.x, g.sim.y + 90, `קומה ${floor}!`, "#FFC531", 24); vibrate(30); }
         if (slippery(floor)) { pop(g.sim.x, g.sim.y + 40, "🍌", "#FFC531", 20); }
@@ -470,9 +482,9 @@ export default function FloorsView({ room, me, conn, hub }: GameViewProps) {
       ctx.fillStyle = "#EAF8FF"; ctx.beginPath(); ctx.arc(sx(x), sy(sh.y), FL.SHOT_R * S, 0, Math.PI * 2); ctx.fill();
     }
     // אחרים
-    for (const [pid, o] of g.others) { if (o.out || o.dead) continue; if (o.y < bottom - 60 || o.y > top + 60) continue; drawChar(ctx, sx(o.x), sy(o.y), S, pid, o.dx, o.st, false, t, o.combo); }
+    for (const [pid, o] of g.others) { if (o.out) continue; if (o.y < bottom - 60 || o.y > top + 60) continue; drawChar(ctx, sx(o.x), sy(o.y), S, pid, o.dx, o.st, false, t, o.combo, false, o.dead); }
     // אני
-    if (!g.dead && !g.out) drawChar(ctx, sx(s.x), sy(s.y), S, me, s.dx, s.st, true, t, s.comboTicks > 0 ? s.combo : 0, s.spin);
+    if (!g.dead && !g.out) drawChar(ctx, sx(s.x), sy(s.y), S, me, s.dx, s.st, true, t, s.comboTicks > 0 ? s.combo : 0, s.spin, false);
     // חלקיקים ופופים
     for (let i = g.fx.parts.length - 1; i >= 0; i--) { const p = g.fx.parts[i]; p.x += p.vx; p.y += p.vy; p.vy -= 0.35; p.l -= 0.04; if (p.l <= 0) { g.fx.parts.splice(i, 1); continue; } ctx.globalAlpha = Math.max(0, p.l); ctx.fillStyle = p.col; ctx.beginPath(); ctx.arc(sx(p.x), sy(p.y), p.r * S * p.l, 0, Math.PI * 2); ctx.fill(); }
     ctx.globalAlpha = 1;
@@ -483,27 +495,51 @@ export default function FloorsView({ room, me, conn, hub }: GameViewProps) {
     if (t < g.invulnUntil && !g.dead && Math.floor(t / 120) % 2 === 0) { ctx.globalAlpha = 0.25; ctx.fillStyle = "#FFF"; ctx.beginPath(); ctx.arc(sx(s.x), sy(s.y + 20), 34 * S, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1; }
   }
   function slipperyNow(floor: number, t: number) { for (const tr of G.current.traps.values()) if (tr.floor === floor && tr.until > t) return true; return false; }
-  function drawChar(ctx: CanvasRenderingContext2D, x: number, y: number, S: number, pid: string, dx: number, st: number, mine: boolean, t: number, combo: number, spin = false) {
-    const col = chColor(pid); const w = 22 * S, h = 40 * S;
+  /**
+   * הדמות: הג'לי בצבע השחקן, עם פוזה לפי המצב + מעיכה/מתיחה פרוצדורלית (squash & stretch).
+   * st: 0 קרקע · 1 עולה · 2 נופל. spin = סלטה (קפיצה גבוהה). dead = שלולית (אחרים בזמן תחייה).
+   */
+  function drawChar(ctx: CanvasRenderingContext2D, x: number, y: number, S: number, pid: string, dx: number, st: number, mine: boolean, t: number, combo: number, spin = false, dead = false) {
+    const g = G.current; const a = anim(pid); const ci = charOf(pid);
+    if (Math.abs(dx) > 0.6) a.face = dx > 0 ? 1 : -1;
+    // מעברים (לאחרים — מזיהוי שינוי st; שלי — מהאירועים)
+    if (!mine) { if (a.prevSt !== 0 && st === 0) a.landAt = t; if (a.prevSt === 0 && st !== 0) a.jumpAt = t; }
+    a.prevSt = st;
+    const sinceLand = t - a.landAt, sinceJump = t - a.jumpAt, sinceHit = t - a.hitAt, sinceThrow = t - a.throwAt;
+    let pose: number = JP.idle, sxx = 1, syy = 1, rot = 0;
+    const moving = Math.abs(dx) > 1.2;
+    if (dead) { pose = JP.ko; }
+    else if (sinceHit >= 0 && sinceHit < 700) { pose = JP.dizzy; sxx = 1 + Math.sin(sinceHit / 40) * 0.06; }
+    else if (sinceThrow >= 0 && sinceThrow < 260) { pose = JP.throw; }
+    else if (st === 0) {
+      if (sinceLand >= 0 && sinceLand < 110) { pose = JP.land; }
+      else if (moving) { const per = Math.max(70, 170 - Math.abs(dx) * 8); pose = Math.floor(t / per) % 2 === 0 ? JP.run1 : JP.run2; syy = 1 + (Math.floor(t / per) % 2 ? 0.03 : -0.03); }
+      else { pose = JP.idle; const br = Math.sin(t / 260 + (pid.charCodeAt(0) || 0)) * 0.03; syy = 1 + br; sxx = 1 - br; }
+      if (sinceLand >= 0 && sinceLand < 180) { const k = 1 - sinceLand / 180; syy *= 1 - 0.22 * k; sxx *= 1 + 0.25 * k; }
+    } else if (spin) { pose = JP.ball; rot = ((sinceJump > 0 ? sinceJump : 0) / 1000) * Math.PI * 3.4 * a.face; }
+    else if (st === 1) { pose = JP.launch; if (sinceJump >= 0 && sinceJump < 200) { const k = 1 - sinceJump / 200; syy = 1 + 0.2 * k; sxx = 1 - 0.14 * k; } }
+    else { pose = JP.fall; }
+    if (g.frozen && g.phase !== "run" && !dead) { pose = JP.idle; sxx = 1; syy = 1; rot = 0; }
+    const alpha = mine ? 1 : 0.9;
+    const drawn = drawJelly(ctx, ci, pose, x, y, S, a.face, sxx, syy, rot, alpha);
+    if (!drawn) { // הנכס לא נטען — הקופסה מהגרייבוקס
+      const col = chColor(pid); const w = 22 * S, h = 40 * S;
+      ctx.save(); ctx.translate(x, y); ctx.globalAlpha = alpha;
+      ctx.fillStyle = INK; roundRect(ctx, -w / 2 - 3 * S, -h - 3 * S, w + 6 * S, h + 6 * S, 8 * S); ctx.fill();
+      ctx.fillStyle = col; roundRect(ctx, -w / 2, -h, w, h, 7 * S); ctx.fill();
+      ctx.font = `${Math.round(18 * S)}px serif`; ctx.textAlign = "center"; ctx.fillText(chEmoji(pid), 0, -h / 2 + 8 * S);
+      ctx.restore();
+    }
+    if (dead) return;
+    const h = 52 * S;
     ctx.save(); ctx.translate(x, y);
-    if (spin) { G.current.fx.spinA += 0.35; ctx.translate(0, -h / 2); ctx.rotate(G.current.fx.spinA * (dx >= 0 ? 1 : -1)); ctx.translate(0, h / 2); }
-    // צל
-    ctx.globalAlpha = mine ? 1 : 0.8;
-    ctx.fillStyle = INK; roundRect(ctx, -w / 2 - 3 * S, -h - 3 * S, w + 6 * S, h + 6 * S, 8 * S); ctx.fill();
-    ctx.fillStyle = col; roundRect(ctx, -w / 2, -h, w, h, 7 * S); ctx.fill();
-    // מתיחה בקפיצה
-    const face = dx >= 0 ? 1 : -1;
-    ctx.fillStyle = INK; ctx.beginPath(); ctx.arc(face * 4 * S, -h + 12 * S, 2.2 * S, 0, Math.PI * 2); ctx.fill();
-    ctx.font = `${Math.round(18 * S)}px serif`; ctx.textAlign = "center"; ctx.fillText(chEmoji(pid), 0, -h / 2 + 8 * S);
-    ctx.globalAlpha = 1;
     // שם
-    ctx.font = `800 ${Math.round((mine ? 12 : 11) * S)}px Assistant, sans-serif`; ctx.lineWidth = 3; ctx.strokeStyle = INK; ctx.fillStyle = mine ? "#FFC531" : PAPER;
+    ctx.font = `800 ${Math.round((mine ? 12 : 11) * S)}px Assistant, sans-serif`; ctx.textAlign = "center"; ctx.lineWidth = 3; ctx.strokeStyle = INK; ctx.fillStyle = mine ? "#FFC531" : PAPER;
     const label = mine ? "אתה" : pname(pid).slice(0, 8);
     ctx.strokeText(label, 0, -h - 8 * S); ctx.fillText(label, 0, -h - 8 * S);
     if (combo >= 4) { ctx.font = `800 ${Math.round(11 * S)}px Assistant, sans-serif`; ctx.fillStyle = "#FFC531"; ctx.strokeText(`🔗${combo}`, 0, -h - 22 * S); ctx.fillText(`🔗${combo}`, 0, -h - 22 * S); }
-    if (mine) { ctx.fillStyle = "#FFC531"; ctx.beginPath(); ctx.moveTo(0, 6 * S); ctx.lineTo(-5 * S, 12 * S); ctx.lineTo(5 * S, 12 * S); ctx.closePath(); ctx.fill(); }
+    if (mine) { ctx.fillStyle = "#FFC531"; ctx.strokeStyle = INK; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0, 4 * S); ctx.lineTo(-5 * S, 11 * S); ctx.lineTo(5 * S, 11 * S); ctx.closePath(); ctx.fill(); ctx.stroke(); }
     ctx.restore();
-    void st; void t;
   }
   function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
 
@@ -568,15 +604,15 @@ export default function FloorsView({ room, me, conn, hub }: GameViewProps) {
       {/* בחירת דמות */}
       {phase === "pick" && pick && (
         <div className="fl-pick">
-          <h2>מי אתה במגדל?</h2>
-          <p className="sub">כל דמות לשחקן אחד. אחר כך: מי זה התמנון?</p>
-          <div className="grid">
-            {FL.CHARS.map((ch, i) => {
+          <h2>איזה צבע אתה?</h2>
+          <p className="sub">כל צבע לשחקן אחד. אחר כך: "מי זה הסגול עם הכתר?"</p>
+          <div className="grid four">
+            {FL.CHARS.map((_ch, i) => {
               const owner = Object.entries(pick.taken).find(([, c]) => c === i)?.[0];
               const mineC = owner === me;
               return (
                 <button key={i} className={"tile" + (owner ? (mineC ? " mine" : " taken") : "")} style={{ "--cc": FL.CHAR_COLORS[i] } as CSSProperties} disabled={!!owner && !mineC} onClick={() => pickChar(i)}>
-                  <span className="em">{ch}</span><b>{FL.CHAR_NAMES[i]}</b>
+                  <Face c={i} size={64} pose={mineC ? JP.win : JP.idle} /><b>{JELLY[i]?.name ?? FL.CHAR_NAMES[i]}</b>
                   {owner && <small>{mineC ? "אתה" : pname(owner)}</small>}
                 </button>
               );
@@ -590,7 +626,7 @@ export default function FloorsView({ room, me, conn, hub }: GameViewProps) {
       {phase === "freeze" && freeze && (
         <div className="fl-freeze">
           <h2>✋ עצירה!</h2>
-          <ol>{freeze.rank.slice(0, 8).map((pid, i) => <li key={pid} className={pid === me ? "me" : ""}><span>{i + 1}</span><span>{chEmoji(pid)} {pid === me ? "אתה" : pname(pid)}</span><b>{fmt(freeze.scores[pid] ?? 0)}</b></li>)}</ol>
+          <ol>{freeze.rank.slice(0, 8).map((pid, i) => <li key={pid} className={pid === me ? "me" : ""}><span>{i + 1}</span><span className="nm"><Face c={charOf(pid)} size={26} pose={i === 0 ? JP.win : JP.idle} /> {pid === me ? "אתה" : pname(pid)}</span><b>{fmt(freeze.scores[pid] ?? 0)}</b></li>)}</ol>
         </div>
       )}
 
@@ -613,7 +649,7 @@ export default function FloorsView({ room, me, conn, hub }: GameViewProps) {
       {phase === "reveal" && reveal && (
         <div className="fl-reveal">
           <h2>מי לקח מה</h2>
-          <div className="row">{Object.entries(reveal).map(([pid, c]) => <div key={pid} className={"who" + (pid === me ? " me" : "")}><span className="em">{chEmoji(pid)}</span><b>{pid === me ? "אתה" : pname(pid).slice(0, 8)}</b><span className="cd">{c ? `${c.ic} ${c.t}` : "—"}</span></div>)}</div>
+          <div className="row">{Object.entries(reveal).map(([pid, c]) => <div key={pid} className={"who" + (pid === me ? " me" : "")}><Face c={charOf(pid)} size={40} /><b>{pid === me ? "אתה" : pname(pid).slice(0, 8)}</b><span className="cd">{c ? `${c.ic} ${c.t}` : "—"}</span></div>)}</div>
         </div>
       )}
 
@@ -622,7 +658,7 @@ export default function FloorsView({ room, me, conn, hub }: GameViewProps) {
         <div className="fl-over">
           <h2>🏢 סוף המגדל</h2>
           <ol>{over.rows.map((r, i) => <li key={r.pid} className={r.pid === me ? "me" : ""}>
-            <span className="pos">{i + 1}</span><span className="em">{FL.CHARS[r.c]}</span>
+            <span className="pos">{i + 1}</span><Face c={r.c} size={34} pose={i === 0 ? JP.win : i === over.rows.length - 1 && over.rows.length > 1 ? JP.dizzy : JP.idle} />
             <span className="nm">{r.pid === me ? "אתה" : pname(r.pid)}<small>קומה {r.maxFloor} · קומבו {r.bestCombo}{r.kills ? ` · 🎯${r.kills}` : ""}</small></span>
             <b>{fmt(r.score)}</b>
           </li>)}</ol>
