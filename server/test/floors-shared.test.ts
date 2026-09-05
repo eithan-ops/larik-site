@@ -111,5 +111,24 @@ console.log("\n— הקומות 🏢 ליבה משותפת —");
   check("הצבה על קומה", s.floor === 12 && s.y === flFloorY(12) && s.st === 0);
 }
 
+// שליטה 5.9: קלט אנלוגי + החזקת קפיצה
+{
+  const m = flMods([]);
+  const a = flNewSim(); flPlace(a, "x", 0); a.x = FL.WALL_L + 5;
+  for (let i = 0; i < 45; i++) flStep(a, { dir: 0.5, jump: false, hold: false }, m, "x");
+  check("אגודל בחצי = הליכה: המהירות נתקעת ב-50% מהמקסימום", Math.abs(a.dx - FL.VMAX * 0.5) < 0.3, `dx=${a.dx.toFixed(2)}`);
+  const b = flNewSim(); flPlace(b, "x", 0); b.x = FL.WALL_L + 5;
+  for (let i = 0; i < 45; i++) flStep(b, { dir: 1, jump: false, hold: false }, m, "x");
+  check("אגודל מלא = ריצה מלאה (כמו במקור)", Math.abs(b.dx - FL.VMAX) < 1e-9, `dx=${b.dx}`);
+  const c = flNewSim(); flPlace(c, "x", 0); c.x = FL.W / 2;
+  let jumps = 0;
+  for (let i = 0; i < 300; i++) flStep(c, { dir: 0, jump: false, hold: true, jumpHold: true }, m, "x", { jump: () => { jumps++; } });
+  check("החזקת אזור הקפיצה = קופץ שוב בכל נחיתה", jumps >= 4, `jumps=${jumps}`);
+  const d = flNewSim(); flPlace(d, "x", 0); d.x = FL.W / 2;
+  let j2 = 0;
+  for (let i = 0; i < 300; i++) flStep(d, { dir: 0, jump: i === 0, hold: false }, m, "x", { jump: () => { j2++; } });
+  check("טאפ בודד = קפיצה אחת בלבד", j2 === 1, `jumps=${j2}`);
+}
+
 console.log(failed ? `\n${failed} FAILED\n` : "\nהכול עבר ✓\n");
 process.exit(failed ? 1 : 0);
