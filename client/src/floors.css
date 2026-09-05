@@ -1,5 +1,5 @@
 /* ===== הקומות 🏢 — מסך מלא משלו, בשפת המדבקות (גרייבוקס שלב A) ===== */
-.fl-wrap{position:fixed; inset:0; width:100vw; height:100vh; z-index:60; background:#14110E; overflow:hidden;
+.fl-wrap{position:fixed; inset:0; width:100vw; height:100vh; height:100dvh; z-index:60; background:#14110E; overflow:hidden;
   touch-action:none; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; overscroll-behavior:none; direction:rtl;
   font-family:var(--font-body,"Assistant Variable",Assistant,sans-serif); color:#FFF3DC;}
 .fl-cv{position:absolute; inset:0; width:100%; height:100%; display:block;}
@@ -64,7 +64,7 @@
 @keyframes flflash{from{opacity:.85;} to{opacity:0;}}
 
 /* ---- בחירת דמות ---- */
-.fl-pick{position:absolute; inset:0; z-index:8; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; padding:20px 14px; background:radial-gradient(circle at 50% 30%, #2A2119, #14110E);}
+.fl-pick{position:absolute; inset:0; z-index:8; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; padding:max(14px, env(safe-area-inset-top)) 10px max(14px, env(safe-area-inset-bottom)); overflow:hidden; background:radial-gradient(circle at 50% 30%, #2A2119, #14110E);}
 .fl-pick h2{font-family:var(--font-display,"Suez One",serif); font-weight:400; font-size:30px; margin:0; text-shadow:-3px 4px 0 var(--gc,#FF7A29);}
 .fl-pick .sub{margin:0; color:#C8B78E; font-size:14px;}
 .fl-pick .grid{display:grid; grid-template-columns:repeat(2,1fr); gap:12px; width:100%; max-width:360px;}
@@ -139,7 +139,15 @@
 
 /* ---- הג'לי: אייקוני דמות (5.9) ---- */
 .fl-face{display:inline-block; vertical-align:middle; object-fit:contain; image-rendering:auto; filter:drop-shadow(-2px 3px 0 rgba(12,9,6,.55));}
-.fl-pick .grid.four{grid-template-columns:repeat(4,1fr); gap:8px; max-width:400px;}
+.fl-pick .grid.four{grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; max-width:400px; width:100%;}
+.fl-pick .grid.four .tile{min-width:0; padding-left:0; padding-right:0;}
+.fl-pick .grid.four .tile b{white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%;}
+.fl-pick .easy{display:flex; align-items:center; gap:10px; margin-top:6px; padding:8px 14px; border-radius:14px; background:#231F1A; border:2.5px solid #0C0906; box-shadow:-3px 4px 0 var(--gc,#FF7A29); color:#FFF3DC; font-weight:800; font-size:14px;}
+.fl-pick .easy .sw{width:44px; height:26px; border-radius:99px; background:#3A312A; border:2px solid #0C0906; position:relative; flex:none; transition:background .15s;}
+.fl-pick .easy .sw::after{content:""; position:absolute; top:2px; left:2px; width:18px; height:18px; border-radius:50%; background:#FFF3DC; transition:transform .15s;}
+.fl-pick .easy.on .sw{background:#5FD44A;}
+.fl-pick .easy.on .sw::after{transform:translateX(18px);}
+.fl-pick .easy small{font-weight:600; opacity:.8; font-size:12px;}
 .fl-pick .grid.four .tile{padding:6px 2px 6px; min-height:0; gap:0; border-radius:16px; box-shadow:-3px 4px 0 #0C0906; background:#231F1A; color:#FFF3DC; overflow:visible;}
 .fl-pick .grid.four .tile.mine{outline:4px solid var(--cc); outline-offset:-1px; box-shadow:-3px 4px 0 #0C0906, 0 0 18px color-mix(in srgb, var(--cc) 70%, transparent);}
 .fl-pick .grid.four .tile.taken{opacity:.4; filter:grayscale(.85);}
@@ -161,3 +169,29 @@
 .fl-jump.on{background:var(--gc,#FF7A29); border-color:#0C0906; color:#0C0906; transform:scale(.92);}
 .fl-howto{position:absolute; left:0; right:0; bottom:calc(120px + env(safe-area-inset-bottom)); display:flex; flex-direction:column; align-items:center; gap:6px; z-index:6; pointer-events:none;}
 .fl-howto span{background:#231F1A; color:#FFF3DC; border:2.5px solid #0C0906; box-shadow:-3px 4px 0 var(--gc,#FF7A29); border-radius:12px; padding:6px 12px; font-weight:800; font-size:14px;}
+
+/* ---- מסכים קטנים (אייפון ישן / כרום עם בר תחתון: ~320×480) 5.9 ---- */
+.fl-draft .cards{overflow-y:auto; -webkit-overflow-scrolling:touch; min-height:0;}
+@media (max-height: 600px){
+  .fl-draft{gap:6px;}
+  .fl-draft h2{font-size:22px;}
+  .fl-draft .cards{gap:8px; align-content:start;}
+  .fl-draft .card{min-height:0; padding:6px 6px; gap:1px; border-width:2.5px; box-shadow:-3px 4px 0 #0C0906;}
+  .fl-draft .card .ic{font-size:26px;}
+  .fl-draft .card b{font-size:14px;}
+  .fl-draft .card small{font-size:11.5px;}
+  .fl-draft .hint{font-size:12px; margin:0;}
+  .fl-pick h2{font-size:24px;}
+  .fl-pick .sub{font-size:12px;}
+  .fl-pick .grid.four .tile b{font-size:12px;}
+  .fl-jump{width:68px; height:68px;}
+  .fl-jump span{font-size:24px;}
+  .fl-btns{bottom:calc(env(safe-area-inset-bottom,0px) + 96px);}
+}
+@media (max-width: 360px){
+  .fl-top{top:calc(max(10px, env(safe-area-inset-top,0px)) + 30px);} /* מתחת לכפתור "סיום משחק" של החדר */
+  .fl-sub{top:calc(max(10px, env(safe-area-inset-top,0px)) + 88px);}
+  .fl-draft{padding-top:calc(max(12px, env(safe-area-inset-top,0px)) + 40px);}
+  .fl-floor b{font-size:30px;}
+  .fl-floor{padding:3px 12px;}
+}
