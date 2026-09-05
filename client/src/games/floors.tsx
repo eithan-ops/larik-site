@@ -30,8 +30,8 @@ interface Shot { id: number; by: string; x: number; y: number; dx: number; at: n
 interface Anim { prevSt: number; landAt: number; jumpAt: number; hitAt: number; throwAt: number; face: number }
 
 const REPORT_MS = FL.REPORT_MS;
-/** שליטה (פלייטסט 5.9 עם הילדים: "מהיר מדי, קשה גם לזוז וגם לקפוץ"): ג'ויסטיק אנלוגי רחב (מלא ב-56px), אזור קפיצה ב-38% הימניים
- *  של המסך (טאפ = קפיצה, החזקה = קפיצה אוטומטית בכל נחיתה), הנפה מהירה למעלה של אגודל הריצה = קפיצה, אצבע שנייה = קפיצה. */
+/** שליטה (פלייטסט 5.9 עם הילדים: "מהיר מדי, קשה גם לזוז וגם לקפוץ"): ג'ויסטיק אנלוגי רחב (מלא ב-56px) באגודל ימין, אזור קפיצה ב-38% השמאליים
+ *  של המסך (יחד עם כפתורי היכולות — הבקשה של איתן 5.9) (טאפ = קפיצה, החזקה = קפיצה אוטומטית בכל נחיתה), הנפה מהירה למעלה של אגודל הריצה = קפיצה, אצבע שנייה = קפיצה. */
 const TAP_MS = 220, TAP_PX = 14, STICK_PX = 56, DEAD_PX = 6, JUMP_ZONE = 0.38, FLICK_VY = 0.22, FLICK_MS = 260;
 const INK = "#0C0906", PAPER = "#FFF3DC", SIG = "#FF7A29";
 /** צבע הקטע לפי הקומה (כל 100 — הגרפיקה מתחלפת, כמו במקור) */
@@ -270,7 +270,7 @@ export default function FloorsView({ room, me, conn, hub }: GameViewProps) {
     const el = cvRef.current?.parentElement; if (!el) return;
     const g = G.current;
     const isBtn = (t: EventTarget | null) => !!(t as HTMLElement | null)?.closest?.(".fl-btn, .fl-draft, .fl-pick, .fl-over, .fl-reveal, button");
-    const inJumpZone = (x: number) => x > el.clientWidth * (1 - JUMP_ZONE);
+    const inJumpZone = (x: number) => x < el.clientWidth * JUMP_ZONE; // 5.9 (איתן): קפיצה ויכולות באגודל שמאל, תנועה באגודל ימין
     const down = (e: PointerEvent) => {
       if (isBtn(e.target)) return;
       flAudioInit();
@@ -610,7 +610,7 @@ export default function FloorsView({ room, me, conn, hub }: GameViewProps) {
       )}
       {feed.length > 0 && phase !== "over" && <div className="fl-feed">{feed.map((f) => <div key={f.id}>{f.tx}</div>)}</div>}
       {count && <div className="fl-count" key={count}>{count}</div>}
-      {phase === "intro" && <div className="fl-howto"><span>👈 אגודל שמאל: גוררים לרוץ</span><span>👉 אגודל ימין: טאפ = קפיצה · להחזיק = קופץ לבד</span></div>}
+      {phase === "intro" && <div className="fl-howto"><span>👉 אגודל ימין: גוררים לרוץ</span><span>👈 אגודל שמאל: טאפ = קפיצה · להחזיק = קופץ לבד</span></div>}
       {banner && <div className={"fl-banner " + (banner.cls ?? "")}><span className="ic">{banner.ic}</span><b>{banner.t}</b>{banner.s && <small>{banner.s}</small>}</div>}
       {flash && <div className="fl-flash" style={{ background: flash }} />}
 
