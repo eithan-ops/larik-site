@@ -1,0 +1,138 @@
+/* ===== הקומות 🏢 — מסך מלא משלו, בשפת המדבקות (גרייבוקס שלב A) ===== */
+.fl-wrap{position:fixed; inset:0; width:100vw; height:100vh; z-index:60; background:#14110E; overflow:hidden;
+  touch-action:none; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; overscroll-behavior:none; direction:rtl;
+  font-family:var(--font-body,"Assistant Variable",Assistant,sans-serif); color:#FFF3DC;}
+.fl-cv{position:absolute; inset:0; width:100%; height:100%; display:block;}
+.fl-wrap button{font-family:inherit; cursor:pointer; -webkit-tap-highlight-color:transparent;}
+.fl-stk{background:#231F1A; border:2.5px solid #0C0906; box-shadow:-3px 4px 0 var(--gc,#FF7A29);}
+
+/* ---- HUD ---- */
+.fl-top{position:absolute; top:max(10px, env(safe-area-inset-top,0px)); left:12px; right:12px; display:flex; align-items:flex-start; justify-content:space-between; pointer-events:none;}
+.fl-lives{display:flex; gap:2px; font-size:16px; padding:4px 8px; border-radius:12px; background:#231F1A; border:2.5px solid #0C0906; box-shadow:-3px 4px 0 #FF4438;}
+.fl-lives .off{opacity:.45;}
+.fl-floor{display:flex; flex-direction:column; align-items:center; line-height:1; padding:4px 16px; border-radius:16px; background:#231F1A; border:2.5px solid #0C0906; box-shadow:-3px 4px 0 var(--gc,#FF7A29); rotate:-1deg;}
+.fl-floor b{font-family:var(--font-display,"Suez One",serif); font-weight:400; font-size:38px; color:#FFF3DC; font-variant-numeric:tabular-nums; text-shadow:-2px 3px 0 #0C0906;}
+.fl-floor small{font-size:11px; color:#C8B78E; margin-top:2px;}
+.fl-timer{width:44px; height:44px; border-radius:50%; display:grid; place-items:center; position:relative;
+  background:conic-gradient(#FFC531 var(--p,360deg), rgba(255,255,255,.12) 0); box-shadow:0 0 0 3px #0C0906, -3px 4px 0 3px rgba(0,0,0,.4);}
+.fl-timer::before{content:""; position:absolute; inset:5px; border-radius:50%; background:#231F1A; border:2px solid #0C0906;}
+.fl-timer span{position:relative; font-family:var(--font-display,"Suez One",serif); font-size:18px; font-variant-numeric:tabular-nums;}
+.fl-timer.warm{background:conic-gradient(#FF7A29 var(--p,360deg), rgba(255,255,255,.12) 0);}
+.fl-timer.hot{background:conic-gradient(#FF4438 var(--p,360deg), rgba(255,255,255,.12) 0); animation:flpulse .5s ease-in-out infinite alternate;}
+@keyframes flpulse{from{transform:scale(1);} to{transform:scale(1.12);}}
+.fl-sub{position:absolute; top:calc(max(10px, env(safe-area-inset-top,0px)) + 66px); left:0; right:0; display:flex; justify-content:center; gap:10px; pointer-events:none; font-size:12px; font-weight:800; color:#C8B78E;}
+.fl-sub span{background:rgba(0,0,0,.45); padding:2px 8px; border-radius:99px;}
+.fl-hurry{color:#FFC531 !important;}
+/* מד הקומבו — פס אנכי בקצה הימני (RTL: זה הצד שהעין מגיעה אליו ראשונה), באמצע הגובה */
+.fl-combo{position:absolute; right:10px; top:32%; height:32%; width:34px; display:flex; flex-direction:column; align-items:center; gap:4px; pointer-events:none; opacity:0; transition:opacity .2s;}
+.fl-combo.on{opacity:1;}
+.fl-combobar{flex:1; width:10px; border-radius:99px; background:rgba(0,0,0,.55); border:2px solid #0C0906; display:flex; flex-direction:column; justify-content:flex-end; overflow:hidden;}
+.fl-combobar i{display:block; width:100%; background:linear-gradient(0deg,#FF7A29,#FFC531); transition:height .08s linear;}
+.fl-combo b{font-family:var(--font-display,"Suez One",serif); font-size:20px; color:#FFC531; text-shadow:-2px 2px 0 #0C0906;}
+/* חצים לשחקנים מחוץ למסך */
+.fl-arrow{position:absolute; transform:translateX(-50%); display:flex; flex-direction:column; align-items:center; pointer-events:none; line-height:1;}
+.fl-arrow.up{top:calc(max(10px, env(safe-area-inset-top,0px)) + 92px);}
+.fl-arrow.down{bottom:calc(env(safe-area-inset-bottom,0px) + 96px); flex-direction:column-reverse;}
+.fl-arrow .ic{font-size:16px; color:#FFC531; text-shadow:-1px 2px 0 #0C0906;}
+.fl-arrow .nm{font-size:11px; font-weight:800; background:rgba(0,0,0,.55); padding:1px 6px; border-radius:99px; white-space:nowrap; direction:rtl;}
+/* כפתורי שדרוג פעיל — פינה שמאלית-תחתונה (הבקשה של איתן), 60px + hit-slop, טבעת קולדאון */
+.fl-btns{position:absolute; left:max(16px, env(safe-area-inset-left,0px)); bottom:calc(env(safe-area-inset-bottom,0px) + 18px); display:flex; gap:12px; direction:ltr;}
+.fl-btn{width:60px; height:60px; border-radius:50%; border:0; padding:6px; margin:-6px; box-sizing:content-box; background:transparent; display:grid; place-items:center; position:relative; touch-action:none;}
+.fl-btn::before{content:""; position:absolute; inset:6px; border-radius:50%; background:conic-gradient(#FFC531 var(--p,360deg), rgba(255,255,255,.15) 0); box-shadow:0 0 0 3px #0C0906, -3px 4px 0 3px rgba(0,0,0,.45);}
+.fl-btn::after{content:""; position:absolute; inset:11px; border-radius:50%; background:#231F1A; border:2px solid #0C0906;}
+.fl-btn span{position:relative; font-size:26px; z-index:1;}
+.fl-btn.cd span{opacity:.45; filter:grayscale(.6);}
+.fl-btn:not(.cd){animation:flready .25s cubic-bezier(.2,1.6,.4,1);}
+.fl-btn:active span{transform:scale(.9);}
+@keyframes flready{from{transform:scale(1.15); filter:brightness(1.4);} to{transform:scale(1);}}
+.fl-dead{position:absolute; left:50%; bottom:calc(env(safe-area-inset-bottom,0px) + 110px); transform:translateX(-50%); padding:8px 16px; border-radius:14px; font-weight:800; background:#231F1A; border:2.5px solid #0C0906; box-shadow:-3px 4px 0 #FF4438; pointer-events:none; white-space:nowrap;}
+.fl-feed{position:absolute; left:10px; top:calc(max(10px, env(safe-area-inset-top,0px)) + 92px); display:flex; flex-direction:column; gap:4px; pointer-events:none; max-width:60vw; direction:rtl;}
+.fl-feed div{font-size:12px; font-weight:800; background:rgba(0,0,0,.5); padding:2px 8px; border-radius:99px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; animation:flin .2s ease-out both;}
+@keyframes flin{from{opacity:0; transform:translateY(-6px);} to{opacity:1; transform:none;}}
+
+/* ---- ספירה, באנר, פלאש ---- */
+.fl-count{position:absolute; inset:0; display:grid; place-items:center; pointer-events:none; font-family:var(--font-display,"Suez One",serif);
+  font-size:min(30vw,128px); color:#FFF3DC; text-shadow:-4px 5px 0 var(--gc,#FF7A29); -webkit-text-stroke:3px #0C0906; animation:flcount .7s cubic-bezier(.2,1.6,.4,1) both;}
+@keyframes flcount{from{transform:scale(.4); opacity:0;} 40%{opacity:1;} to{transform:scale(1);}}
+.fl-banner{position:absolute; left:50%; top:38%; transform:translate(-50%,-50%); display:flex; flex-direction:column; align-items:center; gap:2px; padding:10px 22px; border-radius:18px;
+  background:#231F1A; border:3px solid #0C0906; box-shadow:-4px 6px 0 var(--gc,#FF7A29); pointer-events:none; animation:flbanner .35s cubic-bezier(.2,1.6,.4,1) both; z-index:5; rotate:-1deg; text-align:center;}
+.fl-banner .ic{font-size:34px; line-height:1;}
+.fl-banner b{font-family:var(--font-display,"Suez One",serif); font-weight:400; font-size:24px;}
+.fl-banner small{font-size:13px; color:#C8B78E;}
+@keyframes flbanner{from{transform:translate(-50%,-50%) scale(.6); opacity:0;} to{transform:translate(-50%,-50%) scale(1); opacity:1;}}
+.fl-flash{position:absolute; inset:0; pointer-events:none; z-index:9; animation:flflash .3s ease-out forwards;}
+@keyframes flflash{from{opacity:.85;} to{opacity:0;}}
+
+/* ---- בחירת דמות ---- */
+.fl-pick{position:absolute; inset:0; z-index:8; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; padding:20px 14px; background:radial-gradient(circle at 50% 30%, #2A2119, #14110E);}
+.fl-pick h2{font-family:var(--font-display,"Suez One",serif); font-weight:400; font-size:30px; margin:0; text-shadow:-3px 4px 0 var(--gc,#FF7A29);}
+.fl-pick .sub{margin:0; color:#C8B78E; font-size:14px;}
+.fl-pick .grid{display:grid; grid-template-columns:repeat(2,1fr); gap:12px; width:100%; max-width:360px;}
+.fl-pick .tile{display:flex; flex-direction:column; align-items:center; gap:2px; padding:10px 6px; border-radius:18px; background:var(--cc,#FFF3DC); color:#0C0906; border:3px solid #0C0906; box-shadow:-4px 5px 0 #0C0906; transition:transform .12s cubic-bezier(.34,1.56,.64,1); min-height:84px; position:relative; rotate:-1deg;}
+.fl-pick .tile:nth-child(even){rotate:1deg;}
+.fl-pick .tile .em{font-size:38px; line-height:1;}
+.fl-pick .tile b{font-size:15px;}
+.fl-pick .tile small{font-size:11px; font-weight:800; background:rgba(0,0,0,.15); padding:1px 8px; border-radius:99px;}
+.fl-pick .tile.taken{opacity:.45; filter:grayscale(.7);}
+.fl-pick .tile.mine{outline:5px solid #FFF3DC; outline-offset:-2px; transform:scale(1.05);}
+.fl-pick .tile:active{transform:translate(4px,5px) scale(.98); box-shadow:0 0 0 #0C0906;}
+.fl-pick .timer{margin:4px 0 0; font-weight:800; color:#FFC531;}
+
+/* ---- עצירה ---- */
+.fl-freeze{position:absolute; inset:0; z-index:7; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; background:rgba(20,17,14,.72); backdrop-filter:blur(2px); pointer-events:none;}
+.fl-freeze h2{font-family:var(--font-display,"Suez One",serif); font-weight:400; font-size:44px; margin:0; text-shadow:-4px 5px 0 var(--gc,#FF7A29); animation:flbanner .35s cubic-bezier(.2,1.6,.4,1) both;}
+.fl-freeze ol{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:6px; width:min(320px,86vw);}
+.fl-freeze li{display:grid; grid-template-columns:28px 1fr auto; gap:8px; align-items:center; padding:6px 12px; border-radius:12px; background:#231F1A; border:2.5px solid #0C0906; box-shadow:-3px 4px 0 var(--gc,#FF7A29); font-weight:800; animation:flin .25s ease-out both;}
+.fl-freeze li.me{outline:3px solid #FFC531;}
+.fl-freeze li b{font-variant-numeric:tabular-nums; color:#FFC531;}
+
+/* ---- דראפט: 2×3, טאפ לבחירה, טאפ שוב לאישור ---- */
+.fl-draft{position:absolute; inset:0; z-index:8; display:flex; flex-direction:column; align-items:center; gap:10px; padding:calc(max(12px, env(safe-area-inset-top,0px)) + 6px) 12px calc(env(safe-area-inset-bottom,0px) + 12px); background:rgba(20,17,14,.92);}
+.fl-draft .head{display:flex; align-items:center; gap:14px;}
+.fl-draft h2{font-family:var(--font-display,"Suez One",serif); font-weight:400; font-size:26px; margin:0; text-shadow:-3px 4px 0 var(--gc,#FF7A29);}
+.fl-draft .ring,.fl-draft .ring::before{border-radius:50%;}
+.fl-draft .ring{width:46px; height:46px; display:grid; place-items:center; position:relative; background:conic-gradient(#FFC531 var(--p,360deg), rgba(255,255,255,.12) 0); box-shadow:0 0 0 3px #0C0906;}
+.fl-draft .ring::before{content:""; position:absolute; inset:5px; background:#231F1A; border:2px solid #0C0906;}
+.fl-draft .ring span{position:relative; font-family:var(--font-display,"Suez One",serif); font-size:20px;}
+.fl-draft .ring.warm{background:conic-gradient(#FF7A29 var(--p,360deg), rgba(255,255,255,.12) 0);}
+.fl-draft .ring.hot{background:conic-gradient(#FF4438 var(--p,360deg), rgba(255,255,255,.12) 0); animation:flpulse .4s ease-in-out infinite alternate;}
+.fl-draft .cards{display:grid; grid-template-columns:1fr 1fr; gap:12px; width:100%; max-width:380px; flex:1; align-content:center;}
+.fl-draft .card{display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; padding:10px 8px; min-height:132px; border-radius:16px; background:#231F1A; color:#FFF3DC; border:3px solid var(--rc,#C8B78E); box-shadow:-4px 5px 0 #0C0906; text-align:center; transition:transform .12s cubic-bezier(.34,1.56,.64,1), box-shadow .12s; position:relative;}
+.fl-draft .card .ic{font-size:36px; line-height:1;}
+.fl-draft .card b{font-size:16px;}
+.fl-draft .card small{font-size:12.5px; line-height:1.25; color:#E9DCC0;}
+.fl-draft .card i{font-style:normal; font-size:10px; font-weight:800; color:var(--rc,#C8B78E); background:rgba(0,0,0,.35); padding:1px 8px; border-radius:99px; margin-top:2px;}
+.fl-draft .card.sel{transform:scale(1.04); outline:4px solid #FFF3DC; outline-offset:-2px;}
+.fl-draft .card.locked{transform:scale(1.04); outline:4px solid #FFC531; outline-offset:-2px;}
+.fl-draft .card.locked::after{content:"✓"; position:absolute; top:6px; right:10px; font-size:22px; font-weight:900; color:#FFC531;}
+.fl-draft .card.dim{opacity:.35;}
+.fl-draft .card:active{transform:translate(3px,4px) scale(.98); box-shadow:0 0 0 #0C0906;}
+.fl-draft .hint{margin:0; font-size:13px; font-weight:800; color:#C8B78E;}
+
+/* ---- חשיפה ---- */
+.fl-reveal{position:absolute; inset:0; z-index:8; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; background:rgba(20,17,14,.9); pointer-events:none;}
+.fl-reveal h2{font-family:var(--font-display,"Suez One",serif); font-weight:400; font-size:28px; margin:0; text-shadow:-3px 4px 0 var(--gc,#FF7A29);}
+.fl-reveal .row{display:flex; flex-wrap:wrap; justify-content:center; gap:8px; max-width:380px;}
+.fl-reveal .who{display:flex; flex-direction:column; align-items:center; gap:2px; width:82px; padding:8px 4px; border-radius:14px; background:#231F1A; border:2.5px solid #0C0906; box-shadow:-3px 4px 0 var(--gc,#FF7A29); animation:flbanner .3s cubic-bezier(.2,1.6,.4,1) both;}
+.fl-reveal .who:nth-child(2){animation-delay:.08s} .fl-reveal .who:nth-child(3){animation-delay:.16s} .fl-reveal .who:nth-child(4){animation-delay:.24s} .fl-reveal .who:nth-child(5){animation-delay:.32s} .fl-reveal .who:nth-child(6){animation-delay:.4s} .fl-reveal .who:nth-child(7){animation-delay:.48s} .fl-reveal .who:nth-child(8){animation-delay:.56s}
+.fl-reveal .who.me{outline:3px solid #FFC531;}
+.fl-reveal .who .em{font-size:28px; line-height:1;}
+.fl-reveal .who b{font-size:12px;}
+.fl-reveal .who .cd{font-size:11px; font-weight:800; color:#FFC531; text-align:center; line-height:1.15;}
+
+/* ---- סיום ---- */
+.fl-over{position:absolute; inset:0; z-index:9; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; padding:20px 14px; background:radial-gradient(circle at 50% 30%, #2A2119, #14110E); overflow:auto;}
+.fl-over h2{font-family:var(--font-display,"Suez One",serif); font-weight:400; font-size:32px; margin:0; text-shadow:-3px 4px 0 var(--gc,#FF7A29);}
+.fl-over ol{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:6px; width:min(340px,90vw);}
+.fl-over li{display:grid; grid-template-columns:24px 32px 1fr auto; gap:8px; align-items:center; padding:6px 10px; border-radius:12px; background:#231F1A; border:2.5px solid #0C0906; box-shadow:-3px 4px 0 var(--gc,#FF7A29);}
+.fl-over li.me{outline:3px solid #FFC531;}
+.fl-over li .pos{font-family:var(--font-display,"Suez One",serif); font-size:18px; color:#FFC531;}
+.fl-over li .em{font-size:24px;}
+.fl-over li .nm{display:flex; flex-direction:column; font-weight:800; line-height:1.15;}
+.fl-over li .nm small{font-size:11px; color:#C8B78E; font-weight:700;}
+.fl-over li b{font-variant-numeric:tabular-nums; color:#FFC531;}
+.fl-over .titles,.fl-over .mycards{display:flex; flex-wrap:wrap; justify-content:center; gap:6px; max-width:360px;}
+.fl-over .titles span,.fl-over .mycards span{font-size:12px; font-weight:800; background:rgba(0,0,0,.4); padding:3px 10px; border-radius:99px;}
+.fl-over .titles b{color:#FFC531;}
+.fl-over .sub{margin:4px 0 0; color:#C8B78E; font-size:13px;}
+.fl-waitmsg{position:absolute; inset:0; display:grid; place-items:center; color:#C8B78E; font-weight:800;}
