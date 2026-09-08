@@ -489,7 +489,7 @@ export type ThievesClientMsg =
 
 export type ThTowerSt = "ok" | "hot" | "off" | "ruin" | "build";   // פעיל · קירור (חימום) · כבוי (הושבת) · חורבה · בבנייה
 export type ThievesServerMsg =
-  | { a: "th_init"; w: number; h: number; mtn: { x: number; y: number; total: number }; dens: [string, number, number, number][]; players: string[]; goAt: number; endsAt: number; tower?: { r: number; arc: number; disable: number; destroy: number } }   // dens=[pid,x,y,זווית הגב (מרכז השטח המת)] · tower=רדיוס, קשת השטח המת, מחירי הנגדים
+  | { a: "th_init"; w: number; h: number; mtn: { x: number; y: number; total: number }; dens: [string, number, number, number][]; players: string[]; goAt: number; endsAt: number; tower?: { r: number; arc: number; disable: number; destroy: number }; timing?: { segMs: number; pauseMs: number; freezeMs: number; draftMs: number; pauses: number; alarmMs: number }; nextPauseAt?: number; k?: number }   // dens=[pid,x,y,זווית הגב (מרכז השטח המת)] · tower=רדיוס, קשת השטח המת · timing/nextPauseAt/k = סבב 5: ציר העצירות (ההודעות עצמן ב-shared/thieves.ts)
   | { a: "th_pos"; t: number; ps: [string, number, number, number, number, number, number, number, number, number][]; mtn: number; left: number } // t=שעון השרת · [pid,x,y,צ'אנקים,סוחב-שלל,זהב,זעם,dx,dy,מואט] — dx/dy לניבוי האחרים
   | { a: "th_go" }                                                                    // 🥷 צאו! — cue משותף, כולם יוצאים לדרך באותה שנייה
   | { a: "th_horn" }                                                                  // 🔔 הצפירה — cue בזמן הסיום, לפני מסך הטקס
@@ -783,7 +783,7 @@ export const CATALOG: GameMeta[] = [
     name: "הגנבים",
     icon: "🥷",
     tagline: "ההר נגמר. הזהב היחיד שנשאר — אצל החברים שלכם.",
-    howTo: "כל אחד הוא דביבון גנב עם מאורה משלו. חוצבים זהב מההר שבמרכז וסוחבים הביתה — אבן שהופקדה במאורה מבשילה ומייצרת זהב כל שנייה. אבל ההר נגמר, ואז הזהב היחיד נמצא בבתים של החברים: נכנסים למאורה של מישהו, גונבים גביש — וכל החדר רואה אתכם בורחים איתו. מגע בגנב מפיל את השלל, ומי שמגיע ראשון לוקח. ליד כל מאורה עומד מגדל שמירה שיורה חלוקים על פולשים ומאט אותם — פנייה חדה מפספסת אותו, ומאחורי המאורה יש שטח מת. אפשר להשבית או להרוס מגדל של חבר — תמורת זהב מהניקוד שלכם. בדקה האחרונה הכל שווה פי 3.",
+    howTo: "כל אחד הוא דביבון גנב עם מאורה משלו. חוצבים זהב מההר שבמרכז וסוחבים הביתה — אבן שהופקדה במאורה מבשילה ומייצרת זהב כל שנייה. אבל ההר נגמר, ואז הזהב היחיד נמצא בבתים של החברים: נכנסים למאורה של מישהו, גונבים גביש — וכל החדר רואה אתכם בורחים איתו. מגע בגנב מפיל את השלל, ומי שמגיע ראשון לוקח. ליד כל מאורה עומד מגדל שמירה שיורה חלוקים על פולשים — פנייה חדה מפספסת אותו. כל דקה — עצירה! כולם קופאים ל-12 שניות, וכל אחד יכול לקנות שדרוג אחד בזהב שלו: לעצמו (מהירות, שק גדול, דאש, עוגה…) או לבית (מגדל חזק יותר, גדר, כספת, דבש…). בדקה האחרונה הכל שווה פי 3.",
     minPlayers: 2,
     maxPlayers: 8,
   },

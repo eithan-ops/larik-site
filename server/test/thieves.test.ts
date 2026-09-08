@@ -55,7 +55,7 @@ async function main() {
   P.forEach((p, i) => room.join(p, "גנב" + i, "🥷"));
 
   // סבב לבדיקה: הבשלה מהירה, הר קטן. ‎70 שנ' כדי שהאזעקה (דקה אחרונה) תיכנס אחרי מרווח סביר.
-  room.onMessage("a", { t: "select_game", gameId: "thieves", config: { roundMs: 70000, ripen1Ms: 500, ripen2Ms: 1200, mtnPer: 5 } });
+  room.onMessage("a", { t: "select_game", gameId: "thieves", config: { roundMs: 70000, ripen1Ms: 500, ripen2Ms: 1200, mtnPer: 5, timing: { pauses: 0 } } });
   room.onMessage("a", { t: "start_game" });
 
   const init = last("a", "th_init") as any;

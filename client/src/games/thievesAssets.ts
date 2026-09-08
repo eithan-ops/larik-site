@@ -9,9 +9,14 @@ export const TH_IMG = {
   den: Array.from({ length: 8 }, (_, i) => `${P}den${i}.webp`),       // אוהל · מחילה · גזע · בית-עץ · קרון · מצודה · מגדל · איגלו
   gem: Array.from({ length: 5 }, (_, i) => `${P}gem${i}.webp`),       // 0 סלע (צ'אנק) · 1 חלוק · 2 זהב · 3 קורן · 4 אגדי
   mtn: Array.from({ length: 4 }, (_, i) => `${P}mtn${i}.webp`),       // מלא · חצי · ליבה · מכתש
-  fx: { pow: `${P}fx0.webp`, sparkle: `${P}fx1.webp`, dust: `${P}fx2.webp`, ring: `${P}fx3.webp` },
+  fx: { pow: `${P}fx0.webp`, sparkle: `${P}fx1.webp`, dust: `${P}fx2.webp`, ring: `${P}fx3.webp`,
+        bubble: `${P}fx4.webp`, pie: `${P}fx5.webp`, stars: `${P}fx6.webp`, honey: `${P}fx7.webp`, lantern: `${P}fx8.webp`, torch: `${P}fx9.webp` },   // 7.9: בועה · עוגה נמרחת · מהומם · דבש · פנס · לפיד
   btn: `${P}btn.webp`,
-  tower: Array.from({ length: 3 }, (_, i) => `${P}tower${i}.webp`),   // 🗼 פעיל · כבוי (עשן, עיניים עצומות) · חורבה
+  tower: Array.from({ length: 3 }, (_, i) => `${P}tower${i}.webp`),   // 🗼 פעיל · כבוי (עשן, עיניים עצומות) · חורבה (לא בשימוש מ-7.9)
+  towerUp: { l2: `${P}tower_l2.webp`, l3: `${P}tower_l3.webp`, rear: `${P}tower_rear.webp` },   // 🗼 סבב 5: דרגה 2 · דרגה 3 (גג אדום, דבק) · מגדל אחורי
+  home: { fence: `${P}home_fence.webp`, wall: `${P}home_wall.webp`, honey: `${P}home_honey.webp`, bell: `${P}home_bell.webp`, safe: `${P}home_safe.webp`, plant: `${P}home_plant.webp`, crates: `${P}home_crates.webp`, mine: `${P}home_mine.webp`, lantern: `${P}home_lantern.webp` },   // 🏠 חתימות הבית
+  cards: `${P}cards.webp`,                                              // 🃏 32 אייקוני קלפים, 8×4 של 96px (index = sheet בקלף)
+  ground: `${P}ground.webp`,                                            // 🌲 אריח קרקע — יער בלילה, 512px חלק
 };
 
 export const TH_SFX: Record<string, string> = Object.fromEntries([
@@ -20,9 +25,14 @@ export const TH_SFX: Record<string, string> = Object.fromEntries([
   "shot", "thud", "heat", "zap", "crumble", "hammer",   // 🗼 המגדל: ירייה · פגיעה · חימום · השבתה · הריסה · בנייה
 ].map((n) => [n, `${P}sfx/${n}.mp3`]));
 
+export type ThFxKind = "pow" | "sparkle" | "dust" | "ring" | "bubble" | "pie" | "stars" | "honey" | "lantern" | "torch";
+export type ThHomeKind = keyof typeof TH_IMG.home;
 export interface ThImages {
   thief: HTMLImageElement[]; den: HTMLImageElement[]; gem: HTMLImageElement[]; mtn: HTMLImageElement[]; tower: HTMLImageElement[];
-  fx: Record<"pow" | "sparkle" | "dust" | "ring", HTMLImageElement>;
+  fx: Record<ThFxKind, HTMLImageElement>;
+  towerUp: Record<"l2" | "l3" | "rear", HTMLImageElement>;
+  home: Record<ThHomeKind, HTMLImageElement>;
+  cards: HTMLImageElement; ground: HTMLImageElement;
 }
 const okImg = (im: HTMLImageElement) => im.complete && im.naturalWidth > 0;
 export const ready = okImg;
@@ -31,9 +41,13 @@ function img(src: string) { const im = new Image(); im.decoding = "async"; im.sr
 
 /** טוען את כל התמונות ברקע; כל ציור בודק ready() ונופל לצורות אם עוד לא הגיע */
 export function loadImages(): ThImages {
+  const fx = Object.fromEntries(Object.entries(TH_IMG.fx).map(([k, v]) => [k, img(v)])) as Record<ThFxKind, HTMLImageElement>;
+  const home = Object.fromEntries(Object.entries(TH_IMG.home).map(([k, v]) => [k, img(v)])) as Record<ThHomeKind, HTMLImageElement>;
   return {
     thief: TH_IMG.thief.map(img), den: TH_IMG.den.map(img), gem: TH_IMG.gem.map(img), mtn: TH_IMG.mtn.map(img), tower: TH_IMG.tower.map(img),
-    fx: { pow: img(TH_IMG.fx.pow), sparkle: img(TH_IMG.fx.sparkle), dust: img(TH_IMG.fx.dust), ring: img(TH_IMG.fx.ring) },
+    fx, home,
+    towerUp: { l2: img(TH_IMG.towerUp.l2), l3: img(TH_IMG.towerUp.l3), rear: img(TH_IMG.towerUp.rear) },
+    cards: img(TH_IMG.cards), ground: img(TH_IMG.ground),
   };
 }
 
