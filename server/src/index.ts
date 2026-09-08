@@ -36,6 +36,7 @@ import { createHofrim } from "./games/hofrim";
 import { createThieves } from "./games/thieves";
 import { createAbyss } from "./games/abyss";
 import { createFloors } from "./games/floors";
+import { createTanks } from "./games/tanks";
 import type { ClientMsg } from "../../shared/protocol";
 
 const PORT = Number(process.env.PORT || 8787);
@@ -74,6 +75,7 @@ const manager = new RoomManager(transport, {
   thieves: createThieves,
   abyss: createAbyss,
   floors: createFloors,
+  tanks: createTanks,
 }, {
   playerJoined: statPlayerJoined,
   gameStarted: statGameStarted,
