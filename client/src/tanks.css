@@ -2,40 +2,54 @@
 .tk-wrap{position:fixed; inset:0; width:100vw; height:100vh; height:100dvh; z-index:60; background:#14110E; overflow:hidden;
   touch-action:none; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; overscroll-behavior:none; direction:rtl;
   font-family:var(--font-body,"Assistant Variable",Assistant,sans-serif); color:#FFF3DC;}
+/* styles.css נותן לכל ילד ישיר של #root position:relative — כאן חייבים fixed (אחרת לרוחב המסך זז עם ה-body של 480px) */
+#root>.tk-wrap{position:fixed; z-index:60;}
 .tk-cv{position:absolute; inset:0; width:100%; height:100%; display:block;}
 .tk-wrap button{font-family:inherit; cursor:pointer; -webkit-tap-highlight-color:transparent;}
 .tk-face{vertical-align:middle; border-radius:8px;}
 
-/* ---- HUD ---- */
-.tk-top{position:absolute; top:max(10px, env(safe-area-inset-top,0px)); left:10px; right:10px; display:flex; align-items:flex-start; justify-content:space-between; gap:8px; pointer-events:none; z-index:3;}
+/* ---- HUD ----
+   הפינה השמאלית-עליונה שמורה ל-.exit-fab של החדר (fixed, 12px/12px, z 70) — לכן העמודה השמאלית ריקה.
+   ימין (RTL: ילד ראשון) = "שלי": זהב גדול + טיימר, חיים, הבילד. אמצע = קרב/סלבו + רוח + תגים. */
+.tk-top{position:absolute; top:max(10px, env(safe-area-inset-top,0px)); left:10px; right:10px; display:grid; grid-template-columns:auto 1fr 112px; align-items:start; gap:8px; pointer-events:none; z-index:3;}
+.tk-me{display:flex; flex-direction:column; align-items:flex-start; gap:5px;}
+.tk-me .row{display:flex; align-items:center; gap:8px;}
 .tk-chip{display:inline-flex; align-items:center; gap:4px; padding:5px 10px; border-radius:12px; background:#231F1A; border:2.5px solid #0C0906; box-shadow:-3px 4px 0 var(--gc,#E8433F); font-weight:800; font-size:14px; white-space:nowrap;}
 .tk-chip b{font-family:var(--font-display,"Suez One",serif); font-weight:400; font-size:18px; color:#FFC531; font-variant-numeric:tabular-nums;}
-.tk-chip.big{font-size:16px;} .tk-chip.big b{font-size:24px;}
+.tk-chip.big{font-size:18px; padding:6px 12px;} .tk-chip.big b{font-size:26px;}
 .tk-gold{box-shadow:-3px 4px 0 #FFC531;}
-.tk-mid{display:flex; flex-direction:column; align-items:center; gap:4px;}
+.tk-hp{position:relative; overflow:hidden; min-width:132px; padding:3px 10px; border-radius:99px; background:rgba(0,0,0,.55); border:2px solid #0C0906; font-size:13px; font-weight:800; white-space:nowrap;}
+.tk-hp i{position:absolute; left:0; top:0; bottom:0; background:rgba(95,212,74,.45);}
+.tk-hp span{position:relative;}
+.tk-hp.dead{color:#A78BFA;}
+.tk-build{display:flex; flex-wrap:wrap; gap:3px; max-width:200px;}
+.tk-build span{font-size:15px; line-height:1; background:rgba(0,0,0,.5); border:1.5px solid #0C0906; border-radius:8px; padding:3px 4px;}
+.tk-build span small{font-size:10px; font-weight:800; color:#FFC531; margin-inline-start:1px;}
+.tk-mid{display:flex; flex-direction:column; align-items:center; gap:4px; min-width:0;}
 .tk-round{font-size:12px; font-weight:800; color:#FFF3DC; background:rgba(0,0,0,.5); padding:2px 10px; border-radius:99px; white-space:nowrap;}
 .tk-round b{color:#FFC531; font-family:var(--font-display,"Suez One",serif); font-weight:400; font-size:15px;}
 .tk-wind{font-size:13px; font-weight:800; background:#231F1A; border:2.5px solid #0C0906; box-shadow:-3px 4px 0 #38C8E8; padding:3px 10px; border-radius:12px; white-space:nowrap; direction:ltr;}
 .tk-wind .arr{color:#38C8E8; letter-spacing:-2px; font-size:16px;}
 .tk-wind.strong{box-shadow:-3px 4px 0 #FF4438;} .tk-wind.strong .arr{color:#FF4438;}
-.tk-timer{width:44px; height:44px; border-radius:50%; display:grid; place-items:center; position:relative; flex:0 0 auto;
+.tk-tag{font-size:12px; font-weight:800; background:rgba(0,0,0,.55); padding:2px 10px; border-radius:99px; white-space:nowrap;}
+.tk-tag.bounty{color:#FFC531;} .tk-tag.doom{color:#FF7A29;}
+.tk-timer{width:48px; height:48px; border-radius:50%; display:grid; place-items:center; position:relative; flex:0 0 auto;
   background:conic-gradient(#FFC531 var(--p,360deg), rgba(255,255,255,.12) 0); box-shadow:0 0 0 3px #0C0906, -3px 4px 0 3px rgba(0,0,0,.4);}
 .tk-timer::before{content:""; position:absolute; inset:5px; border-radius:50%; background:#231F1A; border:2px solid #0C0906;}
-.tk-timer span{position:relative; font-family:var(--font-display,"Suez One",serif); font-size:18px; font-variant-numeric:tabular-nums;}
+.tk-timer span{position:relative; font-family:var(--font-display,"Suez One",serif); font-size:20px; font-variant-numeric:tabular-nums;}
 .tk-timer.warm{background:conic-gradient(#FF7A29 var(--p,360deg), rgba(255,255,255,.12) 0);}
 .tk-timer.hot{background:conic-gradient(#FF4438 var(--p,360deg), rgba(255,255,255,.12) 0); animation:tkpulse .5s ease-in-out infinite alternate;}
 .tk-timer.off{background:rgba(255,255,255,.12);}
 @keyframes tkpulse{from{transform:scale(1);} to{transform:scale(1.12);}}
-.tk-sub{position:absolute; top:calc(max(10px, env(safe-area-inset-top,0px)) + 54px); left:0; right:0; display:flex; justify-content:center; flex-wrap:wrap; gap:6px; pointer-events:none; font-size:12px; font-weight:800; z-index:3;}
-.tk-sub span{background:rgba(0,0,0,.5); padding:3px 10px; border-radius:99px; position:relative; overflow:hidden;}
-.tk-sub .hp i{position:absolute; left:0; top:0; bottom:0; background:rgba(95,212,74,.35); z-index:-1;}
-.tk-sub .bounty{color:#FFC531;} .tk-sub .doom{color:#FF7A29;} .tk-sub .dead{color:#A78BFA;}
-.tk-feed{position:absolute; right:10px; top:calc(max(10px, env(safe-area-inset-top,0px)) + 84px); display:flex; flex-direction:column; gap:4px; pointer-events:none; max-width:72vw; direction:rtl; z-index:3;}
-.tk-feed div{font-size:12px; font-weight:800; background:rgba(0,0,0,.55); padding:2px 9px; border-radius:99px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; animation:tkin .2s ease-out both;}
+.tk-feed{position:absolute; left:10px; top:calc(max(10px, env(safe-area-inset-top,0px)) + 46px); display:flex; flex-direction:column; align-items:flex-start; gap:4px; pointer-events:none; max-width:min(60vw, 260px); direction:rtl; z-index:3;}
+.tk-feed div{font-size:12px; font-weight:800; background:rgba(0,0,0,.55); padding:2px 9px; border-radius:99px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; animation:tkin .2s ease-out both;}
 @keyframes tkin{from{opacity:0; transform:translateY(-6px);} to{opacity:1; transform:none;}}
 
 /* ---- סרגל התחמושת ומוכן ---- */
-.tk-bar{position:absolute; left:0; right:0; bottom:0; padding:6px 8px calc(env(safe-area-inset-bottom,0px) + 8px); display:flex; flex-direction:column; gap:6px; background:linear-gradient(180deg, rgba(20,17,14,0), rgba(20,17,14,.85) 30%); z-index:4;}
+/* המיכל שקוף למגע — רק הכפתורים ורצועת התחמושת תופסים; המרווחים שייכים לרוגטקה */
+.tk-bar{position:absolute; left:0; right:0; bottom:0; padding:6px 8px calc(env(safe-area-inset-bottom,0px) + 8px); display:flex; flex-direction:column; gap:6px; background:linear-gradient(180deg, rgba(20,17,14,0), rgba(20,17,14,.85) 30%); z-index:4; pointer-events:none;}
+.tk-bar button,.tk-ammo{pointer-events:auto;}
+.tk-ammohint{align-self:center; font-size:12px; font-weight:800; background:rgba(0,0,0,.6); border:2px solid #0C0906; padding:3px 10px; border-radius:99px; max-width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; animation:tkin .2s ease-out both;}
 .tk-ammo{display:flex; gap:6px; overflow-x:auto; padding:4px 2px; scrollbar-width:none; direction:rtl;}
 .tk-ammo::-webkit-scrollbar{display:none;}
 .tk-am{flex:0 0 auto; display:flex; flex-direction:column; align-items:center; gap:0; min-width:58px; padding:4px 8px; border-radius:12px; background:#231F1A; color:#FFF3DC; border:2.5px solid #0C0906; box-shadow:-3px 3px 0 #0C0906; line-height:1.15;}
@@ -79,6 +93,8 @@
 .tk-pick{position:absolute; inset:0; z-index:8; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; padding:max(14px, env(safe-area-inset-top)) 10px max(14px, env(safe-area-inset-bottom)); overflow:hidden; background:radial-gradient(circle at 50% 30%, #2A2119, #14110E);}
 .tk-pick h2{font-family:var(--font-display,"Suez One",serif); font-weight:400; font-size:30px; margin:0; text-shadow:-3px 4px 0 var(--gc,#E8433F);}
 .tk-pick .sub{margin:0; color:#C8B78E; font-size:14px;}
+.tk-pick .rotate{margin:0; font-size:13px; font-weight:800; color:#0C0906; background:#FFC531; border:2.5px solid #0C0906; box-shadow:-3px 4px 0 #0C0906; padding:4px 12px; border-radius:99px; animation:tkrot 1.6s ease-in-out infinite;}
+@keyframes tkrot{0%,100%{transform:rotate(-1.5deg);} 50%{transform:rotate(1.5deg) scale(1.03);}}
 .tk-pick .grid{display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; width:100%; max-width:400px;}
 .tk-pick .tile{display:flex; flex-direction:column; align-items:center; gap:2px; padding:8px 4px; border-radius:16px; background:linear-gradient(180deg, color-mix(in srgb, var(--cc,#FFF3DC) 35%, #231F1A), #231F1A); color:#FFF3DC; border:3px solid #0C0906; box-shadow:-4px 5px 0 #0C0906; transition:transform .12s cubic-bezier(.34,1.56,.64,1); position:relative; rotate:-1deg; min-width:0;}
 .tk-pick .tile:nth-child(even){rotate:1deg;}
@@ -92,7 +108,14 @@
 
 /* ---- המוסך ---- */
 .tk-garage{position:absolute; inset:0; z-index:8; display:flex; flex-direction:column; align-items:center; gap:8px; padding:calc(max(10px, env(safe-area-inset-top,0px)) + 4px) 10px calc(env(safe-area-inset-bottom,0px) + 10px); background:rgba(20,17,14,.93); overflow:hidden;}
-.tk-garage .head{display:flex; align-items:center; gap:10px; width:100%; max-width:400px; justify-content:space-between;}
+.tk-garage .head{display:flex; align-items:center; gap:10px; width:100%; max-width:400px; justify-content:space-between; padding-left:118px; box-sizing:border-box;} /* מקום ל"סיום משחק" */
+.tk-buytoast{position:absolute; top:calc(max(10px, env(safe-area-inset-top,0px)) + 58px); left:50%; transform:translateX(-50%); z-index:9; display:flex; align-items:center; gap:10px; padding:8px 14px; border-radius:16px; max-width:92vw;
+  background:#FFF3DC; color:#0C0906; border:3px solid #0C0906; box-shadow:-4px 5px 0 var(--tc,#C8B78E); pointer-events:none; animation:tktoast .35s cubic-bezier(.2,1.6,.4,1) both; rotate:-1deg;}
+.tk-buytoast.r-u{--tc:#4D86FF;} .tk-buytoast.r-r{--tc:#A855F7; background:#F3E8FF;} .tk-buytoast.r-e{--tc:#FFC531; background:#FFF1BF;}
+.tk-buytoast .ic{font-size:38px; line-height:1;}
+.tk-buytoast .tx{display:flex; flex-direction:column; gap:1px; min-width:0;}
+.tk-buytoast b{font-size:16px;} .tk-buytoast small{font-size:12px; font-weight:800; color:#4A3F35; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+@keyframes tktoast{from{transform:translateX(-50%) scale(.5); opacity:0;} to{transform:translateX(-50%) scale(1); opacity:1;}}
 .tk-garage h2{font-family:var(--font-display,"Suez One",serif); font-weight:400; font-size:26px; margin:0; text-shadow:-3px 4px 0 var(--gc,#E8433F);}
 .tk-garage .ring,.tk-garage .ring::before{border-radius:50%;}
 .tk-garage .ring{width:46px; height:46px; display:grid; place-items:center; position:relative; background:conic-gradient(#FFC531 var(--p,360deg), rgba(255,255,255,.12) 0); box-shadow:0 0 0 3px #0C0906; flex:0 0 auto;}
@@ -148,4 +171,50 @@
 @media (max-height:640px){
   .tk-garage .card{min-height:98px; padding:6px 4px 4px;} .tk-garage .card .ic{font-size:26px;} .tk-garage .card small{font-size:11px;}
   .tk-pick .tile img{max-width:56px;}
+}
+
+/* ===== לרוחב (טלפון מסובב): ההר על כל המסך, עמודה שמאלית = תחמושת+תזוזה, ימנית = שלי + אש ===== */
+@media (orientation: landscape) and (max-height: 600px){
+  .tk-wrap.land .tk-top{grid-template-columns:auto 1fr 130px; top:max(6px, env(safe-area-inset-top,0px)); left:8px; right:8px;}
+  .tk-wrap.land .tk-me{gap:4px;}
+  .tk-wrap.land .tk-chip.big{font-size:15px; padding:4px 10px;} .tk-wrap.land .tk-chip.big b{font-size:22px;}
+  .tk-wrap.land .tk-timer{width:42px; height:42px;} .tk-wrap.land .tk-timer span{font-size:17px;}
+  .tk-wrap.land .tk-hp{min-width:110px; font-size:12px;}
+  .tk-wrap.land .tk-build{max-width:100px;}
+  .tk-wrap.land .tk-mid{flex-direction:row; flex-wrap:wrap; justify-content:center; gap:6px; align-self:start;}
+  .tk-wrap.land .tk-feed{top:calc(max(6px, env(safe-area-inset-top,0px)) + 40px); max-width:150px;}
+  .tk-wrap.land .tk-feed div{font-size:11px;}
+  /* הסרגל הופך לשתי עמודות */
+  .tk-wrap.land .tk-bar{top:0; bottom:0; left:0; right:0; padding:0; background:none; display:block;}
+  .tk-wrap.land .tk-ammo{position:absolute; left:calc(6px + env(safe-area-inset-left,0px)); top:52px; bottom:70px; width:92px; flex-direction:column; overflow-y:auto; overflow-x:hidden; padding:2px; gap:5px; direction:ltr; mask-image:linear-gradient(180deg, #000 88%, transparent);}
+  .tk-wrap.land .tk-am{min-width:0; width:88px; padding:3px 4px; box-sizing:border-box;} .tk-wrap.land .tk-am .ic{font-size:18px;}
+  .tk-wrap.land .tk-ammohint{position:absolute; left:50%; bottom:8px; transform:translateX(-50%); max-width:50vw;}
+  .tk-wrap.land .tk-actions{position:absolute; right:calc(8px + env(safe-area-inset-right,0px)); bottom:calc(8px + env(safe-area-inset-bottom,0px)); left:auto; width:auto; display:block;}
+  .tk-wrap.land .tk-ready{width:96px; height:96px; min-height:0; border-radius:50%; font-size:15px; line-height:1.15; padding:6px; white-space:normal;}
+  .tk-wrap.land .tk-move{position:absolute; left:calc(6px + env(safe-area-inset-left,0px)); bottom:calc(8px + env(safe-area-inset-bottom,0px)); width:88px; box-sizing:border-box; justify-content:center; gap:2px; padding:2px;}
+  .tk-wrap.land .tk-move button{width:36px; height:36px; font-size:15px;}
+  /* שמיים למתים: עמודה בימין */
+  .tk-wrap.land .tk-sky{left:auto; right:8px; top:56px; bottom:auto; max-height:calc(100% - 64px); width:min(240px, 40vw); overflow-y:auto; justify-content:flex-start; box-sizing:border-box;}
+  .tk-wrap.land .tk-sky .cards{flex-direction:column;}
+  .tk-wrap.land .tk-sky .card{flex-direction:row; text-align:start; gap:8px; padding:6px 8px;} .tk-wrap.land .tk-sky .card .ic{font-size:24px;}
+  /* בחירת צבע ומוסך — שורה נמוכה יותר */
+  .tk-wrap.land .tk-pick{gap:5px; padding:6px 10px;}
+  .tk-wrap.land .tk-pick h2{font-size:22px;} .tk-wrap.land .tk-pick .sub{display:none;}
+  .tk-wrap.land .tk-pick .grid{max-width:520px; gap:6px;}
+  .tk-wrap.land .tk-pick .tile{padding:4px 2px; gap:0;} .tk-wrap.land .tk-pick .tile img{max-width:48px;} .tk-wrap.land .tk-pick .tile b{font-size:11px;}
+  .tk-wrap.land .tk-pick .timer{margin:0; font-size:13px;}
+  .tk-wrap.land .tk-garage{gap:5px; padding:6px 10px;}
+  .tk-wrap.land .tk-garage .head{max-width:640px;} .tk-wrap.land .tk-garage h2{font-size:22px;}
+  .tk-wrap.land .tk-garage .cards{grid-template-columns:repeat(3,1fr); max-width:640px; gap:6px;}
+  .tk-wrap.land .tk-garage .cards.eight{grid-template-columns:repeat(4,1fr);}
+  .tk-wrap.land .tk-garage .card{min-height:0; padding:4px 6px; gap:0;} .tk-wrap.land .tk-garage .card .ic{font-size:22px;} .tk-wrap.land .tk-garage .card b{font-size:13px;} .tk-wrap.land .tk-garage .card small{font-size:11px;}
+  .tk-wrap.land .tk-garage .mine,.tk-wrap.land .tk-garage .buys{max-width:640px; font-size:11px;}
+  .tk-wrap.land .tk-garage .tk-ready{max-width:640px; min-height:42px; font-size:16px;}
+  .tk-wrap.land .tk-buytoast{top:auto; bottom:54px; padding:4px 12px; gap:8px; rotate:0deg; max-width:80vw;}
+  .tk-wrap.land .tk-buytoast .ic{font-size:26px;}
+  .tk-wrap.land .tk-buytoast .tx{flex-direction:row; flex-wrap:wrap; align-items:center; gap:2px 10px;}
+  .tk-wrap.land .tk-buytoast b{font-size:14px;} .tk-wrap.land .tk-buytoast small{font-size:11px;}
+  .tk-wrap.land .tk-bo h2{font-size:20px;} .tk-wrap.land .tk-bo ol{gap:3px;} .tk-wrap.land .tk-bo li{padding:2px 10px; font-size:13px;}
+  .tk-wrap.land .tk-over{gap:5px;} .tk-wrap.land .tk-over h2{font-size:24px;} .tk-wrap.land .tk-over li{padding:3px 10px;}
+  .tk-wrap.land .tk-banner{top:42%;}
 }
