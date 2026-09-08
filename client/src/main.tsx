@@ -11,6 +11,7 @@ import "./stickers.css";   // שכבת המראה — חייבת לבוא אחר
 import "./hofrim.css";     // מסך החופרים (מסך מלא משלו)
 import "./abyss.css";      // מסך התהום (מסך מלא משלו)
 import "./floors.css";     // מסך הקומות (מסך מלא משלו)
+import "./tanks.css";      // מסך התותחים (מסך מלא משלו)
 import { initAnalytics } from "./lib/analytics";
 
 initAnalytics();
