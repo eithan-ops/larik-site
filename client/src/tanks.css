@@ -1,0 +1,151 @@
+/* ===== התותחים 💥 — מסך מלא משלו, בשפת המדבקות ===== */
+.tk-wrap{position:fixed; inset:0; width:100vw; height:100vh; height:100dvh; z-index:60; background:#14110E; overflow:hidden;
+  touch-action:none; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; overscroll-behavior:none; direction:rtl;
+  font-family:var(--font-body,"Assistant Variable",Assistant,sans-serif); color:#FFF3DC;}
+.tk-cv{position:absolute; inset:0; width:100%; height:100%; display:block;}
+.tk-wrap button{font-family:inherit; cursor:pointer; -webkit-tap-highlight-color:transparent;}
+.tk-face{vertical-align:middle; border-radius:8px;}
+
+/* ---- HUD ---- */
+.tk-top{position:absolute; top:max(10px, env(safe-area-inset-top,0px)); left:10px; right:10px; display:flex; align-items:flex-start; justify-content:space-between; gap:8px; pointer-events:none; z-index:3;}
+.tk-chip{display:inline-flex; align-items:center; gap:4px; padding:5px 10px; border-radius:12px; background:#231F1A; border:2.5px solid #0C0906; box-shadow:-3px 4px 0 var(--gc,#E8433F); font-weight:800; font-size:14px; white-space:nowrap;}
+.tk-chip b{font-family:var(--font-display,"Suez One",serif); font-weight:400; font-size:18px; color:#FFC531; font-variant-numeric:tabular-nums;}
+.tk-chip.big{font-size:16px;} .tk-chip.big b{font-size:24px;}
+.tk-gold{box-shadow:-3px 4px 0 #FFC531;}
+.tk-mid{display:flex; flex-direction:column; align-items:center; gap:4px;}
+.tk-round{font-size:12px; font-weight:800; color:#FFF3DC; background:rgba(0,0,0,.5); padding:2px 10px; border-radius:99px; white-space:nowrap;}
+.tk-round b{color:#FFC531; font-family:var(--font-display,"Suez One",serif); font-weight:400; font-size:15px;}
+.tk-wind{font-size:13px; font-weight:800; background:#231F1A; border:2.5px solid #0C0906; box-shadow:-3px 4px 0 #38C8E8; padding:3px 10px; border-radius:12px; white-space:nowrap; direction:ltr;}
+.tk-wind .arr{color:#38C8E8; letter-spacing:-2px; font-size:16px;}
+.tk-wind.strong{box-shadow:-3px 4px 0 #FF4438;} .tk-wind.strong .arr{color:#FF4438;}
+.tk-timer{width:44px; height:44px; border-radius:50%; display:grid; place-items:center; position:relative; flex:0 0 auto;
+  background:conic-gradient(#FFC531 var(--p,360deg), rgba(255,255,255,.12) 0); box-shadow:0 0 0 3px #0C0906, -3px 4px 0 3px rgba(0,0,0,.4);}
+.tk-timer::before{content:""; position:absolute; inset:5px; border-radius:50%; background:#231F1A; border:2px solid #0C0906;}
+.tk-timer span{position:relative; font-family:var(--font-display,"Suez One",serif); font-size:18px; font-variant-numeric:tabular-nums;}
+.tk-timer.warm{background:conic-gradient(#FF7A29 var(--p,360deg), rgba(255,255,255,.12) 0);}
+.tk-timer.hot{background:conic-gradient(#FF4438 var(--p,360deg), rgba(255,255,255,.12) 0); animation:tkpulse .5s ease-in-out infinite alternate;}
+.tk-timer.off{background:rgba(255,255,255,.12);}
+@keyframes tkpulse{from{transform:scale(1);} to{transform:scale(1.12);}}
+.tk-sub{position:absolute; top:calc(max(10px, env(safe-area-inset-top,0px)) + 54px); left:0; right:0; display:flex; justify-content:center; flex-wrap:wrap; gap:6px; pointer-events:none; font-size:12px; font-weight:800; z-index:3;}
+.tk-sub span{background:rgba(0,0,0,.5); padding:3px 10px; border-radius:99px; position:relative; overflow:hidden;}
+.tk-sub .hp i{position:absolute; left:0; top:0; bottom:0; background:rgba(95,212,74,.35); z-index:-1;}
+.tk-sub .bounty{color:#FFC531;} .tk-sub .doom{color:#FF7A29;} .tk-sub .dead{color:#A78BFA;}
+.tk-feed{position:absolute; right:10px; top:calc(max(10px, env(safe-area-inset-top,0px)) + 84px); display:flex; flex-direction:column; gap:4px; pointer-events:none; max-width:72vw; direction:rtl; z-index:3;}
+.tk-feed div{font-size:12px; font-weight:800; background:rgba(0,0,0,.55); padding:2px 9px; border-radius:99px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; animation:tkin .2s ease-out both;}
+@keyframes tkin{from{opacity:0; transform:translateY(-6px);} to{opacity:1; transform:none;}}
+
+/* ---- סרגל התחמושת ומוכן ---- */
+.tk-bar{position:absolute; left:0; right:0; bottom:0; padding:6px 8px calc(env(safe-area-inset-bottom,0px) + 8px); display:flex; flex-direction:column; gap:6px; background:linear-gradient(180deg, rgba(20,17,14,0), rgba(20,17,14,.85) 30%); z-index:4;}
+.tk-ammo{display:flex; gap:6px; overflow-x:auto; padding:4px 2px; scrollbar-width:none; direction:rtl;}
+.tk-ammo::-webkit-scrollbar{display:none;}
+.tk-am{flex:0 0 auto; display:flex; flex-direction:column; align-items:center; gap:0; min-width:58px; padding:4px 8px; border-radius:12px; background:#231F1A; color:#FFF3DC; border:2.5px solid #0C0906; box-shadow:-3px 3px 0 #0C0906; line-height:1.15;}
+.tk-am .ic{font-size:20px;} .tk-am b{font-size:11px;} .tk-am small{font-size:10px; color:#C8B78E;}
+.tk-am.sel{background:#FFF3DC; color:#0C0906; box-shadow:-3px 3px 0 var(--gc,#E8433F); transform:translateY(-3px);} .tk-am.sel small{color:#4A3F35;}
+.tk-actions{display:flex; gap:8px; align-items:stretch;}
+.tk-ready{flex:1; min-height:54px; border-radius:16px; border:3px solid #0C0906; box-shadow:-4px 5px 0 #0C0906; font-weight:900; font-size:18px; background:#FFF3DC; color:#0C0906; transition:transform .12s;}
+.tk-ready.go{background:#FF4438; color:#FFF3DC; animation:tkready .7s ease-in-out infinite alternate;}
+.tk-ready.on{background:#0FA958; color:#FFF3DC; animation:none;}
+.tk-ready:active{transform:translate(3px,4px); box-shadow:0 0 0 #0C0906;}
+@keyframes tkready{from{transform:scale(1);} to{transform:scale(1.03);}}
+.tk-move{display:flex; align-items:center; gap:4px; background:#231F1A; border:2.5px solid #0C0906; border-radius:14px; padding:2px 4px; box-shadow:-3px 4px 0 #0FA958;}
+.tk-move button{width:44px; height:44px; border-radius:10px; border:2px solid #0C0906; background:#FFF3DC; color:#0C0906; font-size:18px; font-weight:900;}
+.tk-move small{font-size:11px; font-weight:800; color:#C8B78E;}
+
+/* ---- שמיים (למתים) ---- */
+.tk-sky{position:absolute; left:8px; right:8px; bottom:calc(env(safe-area-inset-bottom,0px) + 10px); z-index:4; display:flex; flex-direction:column; align-items:center; gap:8px; padding:10px; border-radius:18px; background:rgba(35,31,26,.94); border:3px solid #0C0906; box-shadow:-4px 5px 0 #A78BFA;}
+.tk-sky.needx{background:rgba(35,31,26,.6); pointer-events:none;}
+.tk-sky .hint,.tk-sky .done{margin:0; font-weight:800; font-size:14px; text-align:center;}
+.tk-sky .done{color:#5FD44A;}
+.tk-sky .cards{display:flex; gap:8px; width:100%;}
+.tk-sky .card{flex:1; display:flex; flex-direction:column; align-items:center; gap:2px; padding:8px 4px; border-radius:14px; background:#2A2119; color:#FFF3DC; border:2.5px solid #A78BFA; box-shadow:-3px 4px 0 #0C0906; text-align:center;}
+.tk-sky .card .ic{font-size:28px;} .tk-sky .card b{font-size:13px;} .tk-sky .card small{font-size:11px; color:#C8B78E; line-height:1.2;}
+.tk-sky .targets,.tk-garage .targets{display:flex; flex-wrap:wrap; gap:8px; justify-content:center;}
+.tk-sky .targets button,.tk-garage .targets button{display:flex; align-items:center; gap:6px; padding:6px 12px; border-radius:12px; background:var(--cc,#FFF3DC); color:#0C0906; border:2.5px solid #0C0906; box-shadow:-3px 4px 0 #0C0906; font-weight:800; font-size:14px;}
+
+/* ---- ספירה, באנר, פלאש ---- */
+.tk-count{position:absolute; inset:0; display:grid; place-items:center; pointer-events:none; z-index:6; font-family:var(--font-display,"Suez One",serif);
+  font-size:min(30vw,128px); color:#FFF3DC; text-shadow:-4px 5px 0 var(--gc,#E8433F); -webkit-text-stroke:3px #0C0906; animation:tkcount .7s cubic-bezier(.2,1.6,.4,1) both;}
+@keyframes tkcount{from{transform:scale(.4); opacity:0;} 40%{opacity:1;} to{transform:scale(1);}}
+.tk-banner{position:absolute; left:50%; top:36%; transform:translate(-50%,-50%); display:flex; flex-direction:column; align-items:center; gap:2px; padding:10px 22px; border-radius:18px; max-width:88vw;
+  background:#231F1A; border:3px solid #0C0906; box-shadow:-4px 6px 0 var(--gc,#E8433F); pointer-events:none; animation:tkbanner .35s cubic-bezier(.2,1.6,.4,1) both; z-index:6; rotate:-1deg; text-align:center;}
+.tk-banner .ic{font-size:34px; line-height:1;}
+.tk-banner b{font-family:var(--font-display,"Suez One",serif); font-weight:400; font-size:24px;}
+.tk-banner small{font-size:13px; color:#C8B78E;}
+@keyframes tkbanner{from{transform:translate(-50%,-50%) scale(.6); opacity:0;} to{transform:translate(-50%,-50%) scale(1); opacity:1;}}
+.tk-flash{position:absolute; inset:0; pointer-events:none; z-index:9; animation:tkflash .3s ease-out forwards;}
+@keyframes tkflash{from{opacity:.85;} to{opacity:0;}}
+
+/* ---- בחירת צבע ---- */
+.tk-pick{position:absolute; inset:0; z-index:8; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; padding:max(14px, env(safe-area-inset-top)) 10px max(14px, env(safe-area-inset-bottom)); overflow:hidden; background:radial-gradient(circle at 50% 30%, #2A2119, #14110E);}
+.tk-pick h2{font-family:var(--font-display,"Suez One",serif); font-weight:400; font-size:30px; margin:0; text-shadow:-3px 4px 0 var(--gc,#E8433F);}
+.tk-pick .sub{margin:0; color:#C8B78E; font-size:14px;}
+.tk-pick .grid{display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; width:100%; max-width:400px;}
+.tk-pick .tile{display:flex; flex-direction:column; align-items:center; gap:2px; padding:8px 4px; border-radius:16px; background:linear-gradient(180deg, color-mix(in srgb, var(--cc,#FFF3DC) 35%, #231F1A), #231F1A); color:#FFF3DC; border:3px solid #0C0906; box-shadow:-4px 5px 0 #0C0906; transition:transform .12s cubic-bezier(.34,1.56,.64,1); position:relative; rotate:-1deg; min-width:0;}
+.tk-pick .tile:nth-child(even){rotate:1deg;}
+.tk-pick .tile img{width:100%; max-width:74px; aspect-ratio:1; display:block;}
+.tk-pick .tile b{font-size:13px; color:var(--cc);}
+.tk-pick .tile small{font-size:10px; font-weight:800; background:rgba(255,255,255,.15); padding:1px 6px; border-radius:99px; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.tk-pick .tile.taken{opacity:.45; filter:grayscale(.7);}
+.tk-pick .tile.mine{outline:4px solid #FFF3DC; outline-offset:-2px; transform:scale(1.06);}
+.tk-pick .tile:active{transform:translate(4px,5px) scale(.98); box-shadow:0 0 0 #0C0906;}
+.tk-pick .timer{margin:4px 0 0; font-weight:800; color:#FFC531;}
+
+/* ---- המוסך ---- */
+.tk-garage{position:absolute; inset:0; z-index:8; display:flex; flex-direction:column; align-items:center; gap:8px; padding:calc(max(10px, env(safe-area-inset-top,0px)) + 4px) 10px calc(env(safe-area-inset-bottom,0px) + 10px); background:rgba(20,17,14,.93); overflow:hidden;}
+.tk-garage .head{display:flex; align-items:center; gap:10px; width:100%; max-width:400px; justify-content:space-between;}
+.tk-garage h2{font-family:var(--font-display,"Suez One",serif); font-weight:400; font-size:26px; margin:0; text-shadow:-3px 4px 0 var(--gc,#E8433F);}
+.tk-garage .ring,.tk-garage .ring::before{border-radius:50%;}
+.tk-garage .ring{width:46px; height:46px; display:grid; place-items:center; position:relative; background:conic-gradient(#FFC531 var(--p,360deg), rgba(255,255,255,.12) 0); box-shadow:0 0 0 3px #0C0906; flex:0 0 auto;}
+.tk-garage .ring::before{content:""; position:absolute; inset:5px; background:#231F1A; border:2px solid #0C0906;}
+.tk-garage .ring span{position:relative; font-family:var(--font-display,"Suez One",serif); font-size:20px;}
+.tk-garage .ring.warm{background:conic-gradient(#FF7A29 var(--p,360deg), rgba(255,255,255,.12) 0);}
+.tk-garage .ring.hot{background:conic-gradient(#FF4438 var(--p,360deg), rgba(255,255,255,.12) 0); animation:tkpulse .4s ease-in-out infinite alternate;}
+.tk-garage .cards{display:grid; grid-template-columns:1fr 1fr; gap:8px; width:100%; max-width:400px; flex:1; align-content:center; min-height:0; overflow-y:auto;}
+.tk-garage .cards.eight{grid-template-columns:1fr 1fr;}
+.tk-garage .card{display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; padding:8px 6px 6px; min-height:118px; border-radius:16px; background:#231F1A; color:#FFF3DC; border:3px solid var(--rc,#C8B78E); box-shadow:-4px 5px 0 #0C0906; text-align:center; transition:transform .12s cubic-bezier(.34,1.56,.64,1), box-shadow .12s; position:relative; overflow:hidden;}
+.tk-garage .card .cat{position:absolute; top:0; right:0; font-size:9px; font-weight:800; padding:1px 7px; border-radius:0 0 0 8px; background:var(--cc,#C8B78E); color:#0C0906;}
+.tk-garage .card .ic{font-size:32px; line-height:1;}
+.tk-garage .card b{font-size:15px;}
+.tk-garage .card small{font-size:12px; line-height:1.2; color:#E9DCC0;}
+.tk-garage .card i{font-style:normal; font-size:11px; font-weight:800; color:#FFC531; background:rgba(0,0,0,.4); padding:2px 8px; border-radius:99px; margin-top:3px;}
+.tk-garage .card.poor{opacity:.55;} .tk-garage .card.poor i{color:#FF8A8A;}
+.tk-garage .card.bought{background:#1E2E1E; border-color:#5FD44A; opacity:.8;} .tk-garage .card.bought i{color:#5FD44A;}
+.tk-garage .card:active{transform:translate(3px,4px) scale(.98); box-shadow:0 0 0 #0C0906;}
+.tk-garage .mine{display:flex; flex-wrap:wrap; justify-content:center; gap:4px; font-size:12px; font-weight:800; max-width:400px;}
+.tk-garage .mine span{background:rgba(0,0,0,.45); padding:2px 8px; border-radius:99px;}
+.tk-garage .mine .own{background:rgba(77,134,255,.3);} .tk-garage .mine .none{color:#C8B78E; background:none;}
+.tk-garage .buys{display:flex; flex-wrap:wrap; justify-content:center; gap:4px; font-size:11px; font-weight:800; max-width:400px;}
+.tk-garage .buys span{border:2px solid var(--cc,#C8B78E); padding:1px 8px; border-radius:99px; animation:tkin .25s ease-out both;}
+.tk-garage .tk-ready{width:100%; max-width:400px; flex:0 0 auto;}
+.tk-garage .target{display:flex; flex-direction:column; align-items:center; gap:12px; flex:1; justify-content:center;}
+.tk-garage .target p{margin:0; font-size:18px; font-weight:800;}
+.tk-garage .cancel{padding:8px 18px; border-radius:12px; background:#231F1A; color:#FFF3DC; border:2.5px solid #0C0906; font-weight:800;}
+
+/* ---- סיום קרב ---- */
+.tk-bo{position:absolute; inset:0; z-index:7; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; background:rgba(20,17,14,.7); backdrop-filter:blur(2px); pointer-events:none; padding:12px;}
+.tk-bo h2{font-family:var(--font-display,"Suez One",serif); font-weight:400; font-size:26px; line-height:1.2; margin:0; text-align:center; max-width:92vw; text-shadow:-4px 5px 0 var(--gc,#E8433F); animation:tkin .35s ease-out both;}
+.tk-bo ol{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:6px; width:min(340px,90vw);}
+.tk-bo li{display:grid; grid-template-columns:24px 1fr auto auto; gap:8px; align-items:center; padding:5px 12px; border-radius:12px; background:#231F1A; border:2.5px solid #0C0906; box-shadow:-3px 4px 0 var(--gc,#E8433F); font-weight:800; font-size:14px; animation:tkin .25s ease-out both;}
+.tk-bo li.me{outline:3px solid #FFC531;}
+.tk-bo li small{color:#C8B78E; font-size:11px;} .tk-bo li b{color:#FFC531; font-variant-numeric:tabular-nums;}
+.tk-bo .sub{margin:0; color:#C8B78E; font-size:13px; font-weight:800;}
+
+/* ---- סיום ---- */
+.tk-over{position:absolute; inset:0; z-index:8; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; background:rgba(20,17,14,.94); padding:14px; overflow:auto;}
+.tk-over h2{font-family:var(--font-display,"Suez One",serif); font-weight:400; font-size:32px; margin:0; text-shadow:-4px 5px 0 var(--gc,#E8433F);}
+.tk-over ol{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:6px; width:min(360px,92vw);}
+.tk-over li{display:grid; grid-template-columns:26px 38px 1fr auto; gap:8px; align-items:center; padding:6px 12px; border-radius:12px; background:#231F1A; border:2.5px solid #0C0906; box-shadow:-3px 4px 0 var(--gc,#E8433F); font-weight:800;}
+.tk-over li.me{outline:3px solid #FFC531;}
+.tk-over li .nm{display:flex; flex-direction:column; line-height:1.15;} .tk-over li .nm small{color:#C8B78E; font-size:11px;}
+.tk-over li b{color:#FFC531; font-family:var(--font-display,"Suez One",serif); font-weight:400; font-size:22px; font-variant-numeric:tabular-nums;}
+.tk-over .titles,.tk-over .mycards{display:flex; flex-wrap:wrap; justify-content:center; gap:6px; font-size:12px; font-weight:800; max-width:380px;}
+.tk-over .titles span{background:rgba(255,197,49,.15); border:2px solid #FFC531; padding:2px 10px; border-radius:99px;}
+.tk-over .mycards span{background:rgba(0,0,0,.45); padding:2px 8px; border-radius:99px;}
+.tk-over .sub{margin:0; color:#C8B78E; font-size:13px; font-weight:800;}
+.tk-waitmsg{position:absolute; inset:0; display:grid; place-items:center; font-weight:800; font-size:18px; color:#C8B78E;}
+
+/* מסכים קטנים */
+@media (max-height:640px){
+  .tk-garage .card{min-height:98px; padding:6px 4px 4px;} .tk-garage .card .ic{font-size:26px;} .tk-garage .card small{font-size:11px;}
+  .tk-pick .tile img{max-width:56px;}
+}
