@@ -1,0 +1,75 @@
+/* הגנבים 🥷 — סבב 5: מסך העצירה, כפתורי היכולות, פס הבילד. אותה שפה כמו .fl-draft בהקומות (מדבקות, צל קשיח). */
+.th-pause{position:absolute; inset:0; z-index:9; display:flex; flex-direction:column; align-items:center; gap:10px; direction:rtl;
+  padding:calc(max(12px, env(safe-area-inset-top,0px)) + 92px) 12px calc(env(safe-area-inset-bottom,0px) + 12px);   /* מתחת לכפתור "סיום משחק" של החדר */
+  background:rgba(20,17,14,.9); background-image:radial-gradient(rgba(243,231,211,.05) 1px, transparent 1.3px); background-size:9px 9px;
+  font-family:Assistant, sans-serif; color:#F3E7D3; animation:thfade .25s ease-out;}
+@keyframes thfade{from{opacity:0} to{opacity:1}}
+.th-pause .head{display:flex; align-items:center; gap:14px; margin-top:4px;}
+.th-pause h2{font-family:"Suez One", Assistant, serif; font-weight:400; font-size:28px; margin:0; color:#FFF3DC; text-shadow:-3px 4px 0 #7A3CC8;
+  background:#14110E; border:3px solid #F3E7D3; border-radius:14px; padding:2px 16px 4px; transform:rotate(-1.3deg); box-shadow:5px 5px 0 rgba(226,63,60,.85);}
+.th-pause .ring,.th-pause .ring::before{border-radius:50%;}
+.th-pause .ring{width:46px; height:46px; display:grid; place-items:center; position:relative; background:conic-gradient(#FFC531 var(--p,360deg), rgba(255,255,255,.12) 0); box-shadow:0 0 0 3px #0C0906;}
+.th-pause .ring::before{content:""; position:absolute; inset:5px; background:#231F1A; border:2px solid #0C0906;}
+.th-pause .ring span{position:relative; font-family:"Suez One", Assistant, serif; font-size:20px;}
+.th-pause .ring.hot{background:conic-gradient(#FF4438 var(--p,360deg), rgba(255,255,255,.12) 0);}
+.th-pause .sub{margin:0; font-size:14px; font-weight:800; color:#C8B78E; text-align:center;}
+/* דירוג הדקה (ההקפאה) */
+.th-rank{display:flex; flex-direction:column; gap:6px; width:100%; max-width:360px; margin-top:6px;}
+.th-rank .row{display:flex; align-items:center; gap:10px; background:#231F1A; border:2px solid #3A2E22; border-radius:12px; padding:5px 10px; font-weight:800;}
+.th-rank .row img{width:34px; height:34px; border-radius:50%; background:var(--c); border:2px solid #0C0906;}
+.th-rank .row .nm{flex:1;}
+.th-rank .row .g{color:#F2C14E; font-variant-numeric:tabular-nums;}
+.th-rank .row.me{border-color:#F3E7D3;}
+/* המדף */
+.th-shelf{display:grid; grid-template-columns:1fr 1fr; gap:12px; width:100%; max-width:380px; flex:1; align-content:center;}
+.th-card{all:unset; box-sizing:border-box; cursor:pointer; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; padding:10px 8px 8px; min-height:138px;
+  border-radius:16px; background:#F3E7D3; color:#1B1510; border:3px solid #1B1510; box-shadow:3px 3px 0 var(--rc,#C8B78E); text-align:center; position:relative;
+  transform:rotate(-1.3deg); transition:transform .12s cubic-bezier(.34,1.56,.64,1), box-shadow .12s;}
+.th-card:nth-child(even){transform:rotate(1.1deg);}
+.th-card .ic{width:56px; height:56px; background-image:var(--sheet); background-size:800% 400%; background-repeat:no-repeat; display:grid; place-items:center; font-size:36px; line-height:1;}
+.th-card b{font-size:16px;}
+.th-card small{font-size:12.5px; line-height:1.25; color:#4A3A2C;}
+.th-card .pr{margin-top:4px; font-size:14px; font-weight:900; color:#1B1510; background:#F2C14E; border:2px solid #1B1510; border-radius:999px; padding:0 10px; font-variant-numeric:tabular-nums;}
+.th-card .pr.free{background:#46E0C0;}
+.th-card .pr.no{background:#E8D9BC; color:#7A6752; text-decoration:line-through;}
+.th-card .tr{position:absolute; top:6px; left:8px; font-size:11px; font-weight:800; background:var(--rc,#C8B78E); color:#1B1510; border-radius:999px; padding:0 7px;}
+.th-card.sel{transform:scale(1.05); outline:4px solid #FFF3DC; outline-offset:-2px;}
+.th-card.locked{transform:scale(1.05); outline:4px solid #FFC531; outline-offset:-2px;}
+.th-card.locked::after{content:"✓"; position:absolute; top:4px; right:10px; font-size:22px; font-weight:900; color:#1B1510;}
+.th-card.dim{opacity:.4;}
+.th-card.poor{opacity:.55; filter:grayscale(.5);}
+.th-card:active{transform:translate(2px,3px) scale(.98); box-shadow:0 0 0 var(--rc,#C8B78E);}
+.th-skip{all:unset; cursor:pointer; font-weight:800; color:#C8B78E; border:2px solid #3A2E22; border-radius:999px; padding:5px 16px; font-size:14px;}
+.th-skip.on{color:#F3E7D3; border-color:#F3E7D3;}
+.th-gold{font-weight:900; color:#F2C14E; font-size:16px; font-variant-numeric:tabular-nums;}
+/* החשיפה */
+.th-reveal{display:grid; grid-template-columns:repeat(4, 1fr); gap:10px; width:100%; max-width:380px; margin-top:8px;}
+.th-reveal .p{display:flex; flex-direction:column; align-items:center; gap:4px; font-size:12px; font-weight:800; animation:thpop .3s cubic-bezier(.2,1.6,.4,1) both;}
+.th-reveal .p img.face{width:52px; height:52px; border-radius:50%; background:var(--c); border:3px solid #0C0906;}
+.th-reveal .p .pick{width:40px; height:40px; margin-top:-16px; background:#F3E7D3; border:2px solid #1B1510; border-radius:10px; display:grid; place-items:center; font-size:22px; box-shadow:2px 2px 0 rgba(226,63,60,.85); background-image:var(--sheet); background-size:800% 400%; background-repeat:no-repeat; background-position:var(--pos, 200% 200%);}
+.th-reveal .p .pick.none{background:#3A2E22; color:#C8B78E; font-size:14px;}
+@keyframes thpop{from{transform:scale(.5); opacity:0} to{transform:scale(1); opacity:1}}
+/* כפתורי יכולות — מעל "לגנוב!", אגודל שמאל */
+.th-btns{position:absolute; left:max(22px, env(safe-area-inset-left,0px)); bottom:calc(env(safe-area-inset-bottom,0px) + 130px); display:flex; flex-direction:column-reverse; gap:12px; z-index:5; direction:ltr;}
+.th-btn{width:58px; height:58px; border-radius:50%; border:0; padding:6px; margin:-6px; box-sizing:content-box; background:transparent; display:grid; place-items:center; position:relative; touch-action:none;}
+.th-btn::before{content:""; position:absolute; inset:6px; border-radius:50%; background:conic-gradient(#FFC531 var(--p,360deg), rgba(255,255,255,.15) 0); box-shadow:0 0 0 3px #0C0906, -3px 4px 0 3px rgba(0,0,0,.45);}
+.th-btn::after{content:""; position:absolute; inset:11px; border-radius:50%; background:#231F1A; border:2px solid #0C0906;}
+.th-btn span{position:relative; font-size:26px; z-index:1;}
+.th-btn.cd span{opacity:.45; filter:grayscale(.6);}
+.th-btn:not(.cd){animation:thready .25s cubic-bezier(.2,1.6,.4,1);}
+@keyframes thready{from{transform:scale(.8)} to{transform:scale(1)}}
+.th-btn:active span{transform:scale(.9);}
+/* פס הבילד שלי — מתחת לזהב */
+.th-build{display:flex; gap:3px; margin-top:4px; direction:rtl; flex-wrap:wrap; max-width:150px;}
+.th-build i{font-style:normal; font-size:14px; line-height:1; background:rgba(243,231,211,.12); border-radius:6px; padding:1px 3px;}
+/* טבעת "עד העצירה" בפס העליון */
+.th-next{width:18px; height:18px; border-radius:50%; background:conic-gradient(#B37BE0 var(--p,0deg), rgba(255,255,255,.14) 0); box-shadow:0 0 0 2px #0C0906; display:inline-block; vertical-align:-3px;}
+@media (max-height:640px){
+  .th-pause{gap:6px; padding-top:calc(max(8px, env(safe-area-inset-top,0px)) + 72px);}
+  .th-pause h2{font-size:22px;}
+  .th-shelf{gap:8px; align-content:start; overflow-y:auto; min-height:0;}
+  .th-card{min-height:0; padding:6px 6px 6px; gap:1px; border-width:2.5px;}
+  .th-card .ic{width:40px; height:40px; font-size:26px;}
+  .th-card b{font-size:14px;} .th-card small{font-size:11.5px;}
+  .th-btns{bottom:calc(env(safe-area-inset-bottom,0px) + 112px);}
+}
