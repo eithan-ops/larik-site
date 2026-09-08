@@ -268,16 +268,16 @@ export const TK_CARDS: TkCard[] = [
   W("meteorcall", "☄️", "קריאה למטאור", "מטאור נופל על נקודת הפגיעה", "r", 180, 1, { meteor: true, dmg: 10, r: 20 }),
 
   /* 🛡️ הגנה */
-  P("armor", "🛡️", "שריון", "−15% נזק (נערם עד 3)", "D", "c", 70, 3, (m) => { m.armor = Math.round(Math.min(0.6, m.armor + 0.15) * 100) / 100; }),
-  P("hp", "❤️", "שלדה מחוזקת", "+25 חיים מקסימום (ומרפא 25)", "D", "c", 60, 4, (m) => { m.hpMax += 25; }),
+  P("armor", "🛡️", "שריון", "−20% נזק (נערם עד 3)", "D", "c", 70, 3, (m) => { m.armor = Math.round(Math.min(0.6, m.armor + 0.2) * 100) / 100; }),
+  P("hp", "❤️", "שלדה מחוזקת", "+30 חיים מקסימום (ומרפא 30)", "D", "c", 60, 4, (m) => { m.hpMax += 30; }),
   P("megahp", "💗", "שלדת טיטניום", "+60 חיים מקסימום", "D", "r", 160, 1, (m) => { m.hpMax += 60; }, ["hp"]),
   P("shield", "🔵", "מגן", "30 מגן שמתחדש כל סלבו", "D", "u", 90, 3, (m) => { m.shield += 30; }),
   P("reflect", "🪞", "מגן מחזיר", "פגיעה ישירה במגן חוזרת ליורה", "D", "r", 180, 1, (m) => { m.reflect = true; }, ["shield"]),
   P("fortress", "🏰", "מבצר", "+60 מגן ו-−10% נזק", "D", "e", 240, 1, (m) => { m.shield += 60; m.armor = Math.round(Math.min(0.6, m.armor + 0.1) * 100) / 100; }, ["shield", "armor"]),
-  P("autorepair", "🔧", "תיקון אוטומטי", "+8 חיים כל סלבו", "D", "c", 80, 3, (m) => { m.repair += 8; }),
+  P("autorepair", "🔧", "תיקון אוטומטי", "+12 חיים כל סלבו", "D", "c", 80, 3, (m) => { m.repair += 12; }),
   P("chute", "🪂", "מצנח", "בלי נזק נפילה", "D", "c", 40, 1, (m) => { m.chute = true; }),
   P("hover", "🛸", "ריחוף", "חסין לנפילה ולמבול", "D", "u", 120, 1, (m) => { m.hover = true; m.chute = true; }, ["chute"]),
-  P("dodge", "💫", "התחמקות", "15% מהפגזים מפספסים", "D", "u", 100, 2, (m) => { m.dodge = Math.min(0.5, m.dodge + 0.15); }),
+  P("dodge", "💫", "התחמקות", "20% מהפגזים מפספסים", "D", "u", 100, 2, (m) => { m.dodge = Math.min(0.5, m.dodge + 0.2); }),
   P("laststand", "🕯️", "עמידה אחרונה", "פגיעה קטלנית משאירה 1 חיים (פעם בקרב)", "D", "u", 130, 1, (m) => { m.lastStand = true; }),
   P("heavytank", "🪨", "משקל כבד", "חסין להדף ולחור שחור", "D", "c", 60, 1, (m) => { m.heavy = true; }),
   P("fireproof", "🧯", "חסין אש", "נפאלם לא פוגע בך", "D", "c", 60, 1, (m) => { m.fireproof = true; }),
@@ -293,7 +293,7 @@ export const TK_CARDS: TkCard[] = [
   P("ballistic", "🧮", "מחשב בליסטי", "רואה את כל המסלול", "T", "u", 120, 1, (m) => { m.preview = 999; }),
   P("windsensor", "🌬️", "חיישן רוח", "התחזית כוללת את הרוח", "T", "u", 90, 1, (m) => { m.windPreview = true; }),
   P("sight", "🔭", "כוונת", "מסמן את נקודת הנחיתה", "T", "c", 60, 1, (m) => { m.sight = true; }),
-  P("biggun", "🔩", "תותח גדול", "+20% עוצמה מקסימלית", "T", "c", 70, 2, (m) => { m.power += 0.2; }),
+  P("biggun", "🔩", "תותח גדול", "+30% עוצמה מקסימלית", "T", "c", 70, 2, (m) => { m.power += 0.3; }),
   P("dbl", "🎯🎯", "קנה כפול", "כל ירייה יורה פעמיים", "T", "r", 200, 1, (m) => { m.dbl = true; }),
   P("coat", "🧥", "מעיל רוח", "הרוח משפיעה חצי", "T", "c", 80, 1, (m) => { m.windK = 0.5; }),
   P("stabilizer", "📐", "מייצב", "מניפות צפופות פי 2", "T", "c", 60, 1, (m) => { m.stabilizer = true; }),
@@ -302,7 +302,7 @@ export const TK_CARDS: TkCard[] = [
   I("ammobox", "📦", "ארגז תחמושת", "+1 שימוש לכל התחמושת שלך", "T", "u", 90, "ammobox"),
 
   /* 🪙 כלכלה */
-  P("magnet", "🧲", "מגנט זהב", "+25% זהב", "E", "c", 80, 2, (m) => { m.gold += 0.25; }),
+  P("magnet", "🧲", "מגנט זהב", "+35% זהב", "E", "c", 80, 2, (m) => { m.gold += 0.35; }),
   P("loot", "💰", "שלל", "+50% זהב מנזק", "E", "r", 150, 1, (m) => { m.gold += 0.5; }, ["magnet"]),
   P("lucky", "🍀", "מזל", "יותר קלפים נדירים", "E", "u", 100, 2, (m) => { m.luck += 1; }),
   P("discount", "🏷️", "מחירון", "20% הנחה בכל המוסך", "E", "u", 90, 1, (m) => { m.discount = 0.2; }),
@@ -722,7 +722,7 @@ export function tkConfig(raw: Partial<Record<string, unknown>>): TkConfig {
 }
 
 /* ---------- הודעות ---------- */
-export interface TkTankWire { pid: string; c: number; x: number; y: number; hp: number; hpMax: number; sh: number; alive: boolean; bounty?: boolean; frozen?: boolean }
+export interface TkTankWire { pid: string; c: number; x: number; y: number; hp: number; hpMax: number; sh: number; alive: boolean; bounty?: boolean; frozen?: boolean; own?: string[] /* הבילד: מזהי הפסיביים (כולם רואים) */ }
 export interface TkCardWire { id: string; ic: string; t: string; d: string; r: TkRarity; cat: TkCat; kind: TkKind; price: number; tg?: TkTargetKind; n?: number }
 export interface TkWorldWire { water: number; gravK: number; windK: number; walls: boolean; night: boolean; fires: { x: number; r: number; until: number }[]; theme: TkTheme }
 export type TkRow = { pid: string; c: number; score: number; kills: number; dmg: number; gold: number; wins: number; cards: string[] };
