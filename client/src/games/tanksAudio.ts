@@ -75,6 +75,8 @@ export const tkSfx = {
   go() { play([{ f: 660, t: 0, d: 0.1, type: "triangle", g: 0.16 }, { f: 990, t: 0.1, d: 0.3, type: "triangle", g: 0.2 }]); },
   ready() { play([{ f: 523, t: 0, d: 0.08, type: "triangle", g: 0.12 }, { f: 784, t: 0.08, d: 0.16, type: "triangle", g: 0.14 }]); },
   gold(n: number) { const k = Math.min(5, 1 + Math.floor(n / 40)); for (let i = 0; i < k; i++) play([{ f: 1300 + i * 120, t: i * 0.06, d: 0.09, type: "sine", g: 0.09 }]); },
+  /** קלף אגדי/אבולוציה — פנפרה קצרה עולה */
+  epic() { [392, 523, 659, 784, 1047].forEach((f, i) => play([{ f, t: i * 0.07, d: 0.22, type: "triangle", g: 0.16 }])); noise(0.08, 0.06, 4000, "highpass", 0.3); },
   win() { [523, 659, 784, 1047, 1319].forEach((f, i) => play([{ f, t: i * 0.11, d: 0.28, type: "triangle", g: 0.18 }])); },
   over() { play([{ f: 330, t: 0, d: 0.3, type: "triangle", g: 0.2 }, { f: 415, t: 0.25, d: 0.3, type: "triangle", g: 0.2 }, { f: 494, t: 0.5, d: 0.3, type: "triangle", g: 0.2 }, { f: 659, t: 0.75, d: 0.7, type: "triangle", g: 0.24 }]); },
   drag(p: number) { const now = performance.now(); if (now - lastFire < 90) return; lastFire = now; play([{ f: 200 + p * 500, t: 0, d: 0.05, type: "sine", g: 0.04 }]); },
