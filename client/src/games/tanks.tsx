@@ -44,6 +44,65 @@ function skyImg(theme: string): HTMLImageElement | null {
 
 declare global { interface Window { __tkDbg?: unknown; __tkFrames?: number; __tkErr?: string; __tkAuto?: boolean } }
 
+/** רוחב > גובה על טלפון = משחק לרוחב (עמודות בצדדים, ההר על כל המסך) */
+const isLandscape = () => typeof window !== "undefined" && window.innerWidth > window.innerHeight && window.innerHeight < 600;
+/** ניסיון עדין למסך מלא + נעילה לרוחב (אנדרואיד; iOS מתעלם) — רק מתוך מגע של המשתמש */
+function tryLandscape() {
+  try {
+    const el = document.documentElement as HTMLElement & { requestFullscreen?: (o?: unknown) => Promise<void> };
+    const lock = () => { try { (screen.orientation as unknown as { lock?: (o: string) => Promise<void> })?.lock?.("landscape")?.catch(() => { /* */ }); } catch { /* */ } };
+    if (!document.fullscreenElement && el.requestFullscreen) el.requestFullscreen({ navigationUI: "hide" }).then(lock).catch(() => { /* */ });
+    else lock();
+  } catch { /* */ }
+}
+function leaveLandscape() {
+  try { (screen.orientation as unknown as { unlock?: () => void })?.unlock?.(); } catch { /* */ }
+  try { if (document.fullscreenElement) document.exitFullscreen?.().catch(() => { /* */ }); } catch { /* */ }
+}
+/** מה השתנה בבילד — שורות קצרות לטוסט הקנייה ("חיים 100 → 130") */
+function modDelta(a: TkMods, b: TkMods): string[] {
+  const out: string[] = [];
+  const pct = (v: number) => `${Math.round(v * 100)}%`;
+  if (b.hpMax !== a.hpMax) out.push(`❤️ חיים ${a.hpMax} → ${b.hpMax}`);
+  if (b.armor !== a.armor) out.push(`🛡️ שריון ${pct(a.armor)} → ${pct(b.armor)} פחות נזק`);
+  if (b.shield !== a.shield) out.push(`🔵 מגן ${a.shield} → ${b.shield} כל סלבו`);
+  if (b.repair !== a.repair) out.push(`🔧 +${b.repair} חיים כל סלבו`);
+  if (b.dodge !== a.dodge) out.push(`💫 ${pct(b.dodge)} מהפגזים מפספסים`);
+  if (b.fuel !== a.fuel) out.push(`⛽ ${b.fuel} צעדים בסיבוב`);
+  if (b.moveStep !== a.moveStep) out.push(`🏎️ צעד ${a.moveStep} → ${b.moveStep}`);
+  if (b.power !== a.power) out.push(`🔩 עוצמה ${pct(a.power)} → ${pct(b.power)}`);
+  if (b.gold !== a.gold) out.push(`🪙 זהב ×${a.gold} → ×${b.gold}`);
+  if (b.windK !== a.windK) out.push(`🧥 הרוח משפיעה ×${b.windK}`);
+  if (b.preview !== a.preview) out.push("🧮 רואה את כל המסלול");
+  if (b.luck !== a.luck) out.push(`🍀 מזל ${b.luck} — יותר קלפים נדירים`);
+  if (b.discount !== a.discount) out.push(`🏷️ ${pct(b.discount)} הנחה במוסך`);
+  if (b.interest !== a.interest) out.push(`🏦 +${pct(b.interest)} זהב כל סלבו`);
+  if (b.killBonus !== a.killBonus) out.push(`🦅 +${b.killBonus} זהב להריגה`);
+  if (b.surviveMul !== a.surviveMul) out.push(`🌵 שרידות ×${b.surviveMul}`);
+  if (b.offerN !== a.offerN) out.push(`📜 ${b.offerN} קלפים במוסך`);
+  const flags: [keyof TkMods, string][] = [["chute", "🪂 בלי נזק נפילה"], ["hover", "🛸 חסין לנפילה ולמבול"], ["heavy", "🪨 חסין להדף"], ["fireproof", "🧯 חסין לאש"], ["faraday", "🔌 חסין להקפאה ו-EMP"], ["lastStand", "🕯️ פגיעה קטלנית משאירה 1"], ["reflect", "🪞 פגיעה במגן חוזרת ליורה"], ["windPreview", "🌬️ התחזית כוללת רוח"], ["dbl", "🎯🎯 כל ירייה — פעמיים"], ["stabilizer", "📐 מניפות צפופות"], ["sight", "🔭 רואה את נקודת הנחיתה"], ["revenge", "😤 נזק כפול למי שפגע בך"], ["hunter", "🏹 בונוס ראש-בפרס כפול"], ["betray", "🗡️ מותר לפגוע בבן הברית"]];
+  for (const [k, tx] of flags) if (b[k] && !a[k]) out.push(tx);
+  return out;
+}
+/** תיאור תחמושת בשורה: נזק · רדיוס · מיוחד */
+function ammoLine(id: string): string {
+  const w = tkWeaponOf(id); const bits: string[] = [];
+  if (w.dmg > 0) bits.push(`💥 נזק ${w.dmg}${w.n > 1 ? ` ×${w.n}` : ""}`);
+  if (w.r > 0) bits.push(`מכתש ${w.r}`);
+  if (w.mirv > 0) bits.push(`מתפצל ל-${w.mirv} בשיא`);
+  if (w.burst > 0) bits.push(`מתפצל ל-${w.burst} בפגיעה`);
+  if (w.bounce > 0) bits.push(`${w.bounce} קפיצות`);
+  if (w.fire > 0) bits.push("🔥 מצית");
+  if (w.dig > 0) bits.push("⛏️ חופר");
+  if (w.laser) bits.push("קו ישר");
+  if (w.homing > 0) bits.push("🛰️ מתביית");
+  if (w.chain > 0) bits.push(`⛓️ ${w.chain} פיצוצים נוספים`);
+  if (w.shock > 0) bits.push("💨 הדף");
+  if (w.freeze) bits.push("🧊 מקפיא"); if (w.emp) bits.push("⚡ EMP"); if (w.heal > 0) bits.push(`💊 מרפא ${w.heal}`);
+  if (w.dirt) bits.push("בונה אדמה"); if (w.confetti) bits.push("🎊 0 נזק");
+  return bits.join(" · ");
+}
+
 const wireToTank = (w: TkTankWire, prev?: TkTank): TkTank => ({
   pid: w.pid, c: w.c, x: w.x, y: w.y, hp: w.hp, hpMax: w.hpMax, shield: w.sh, alive: w.alive,
   armor: prev?.armor ?? 0, dodge: prev?.dodge ?? 0, chute: prev?.chute ?? false, heavy: prev?.heavy ?? false, fireproof: prev?.fireproof ?? false, faraday: prev?.faraday ?? false, reflect: prev?.reflect ?? false, hover: prev?.hover ?? false,
@@ -67,6 +126,9 @@ export default function TanksView({ room, me, conn, hub }: GameViewProps) {
   const [battleOver, setBattleOver] = useState<BattleOverMsg | null>(null);
   const [over, setOver] = useState<OverMsg | null>(null);
   const [spr, setSpr] = useState(tankSpriteReady());
+  const [land, setLand] = useState(isLandscape());
+  const [buyToast, setBuyToast] = useState<{ id: number; ic: string; t: string; lines: string[]; r: string } | null>(null);
+  const [ammoHint, setAmmoHint] = useState("");
   const feedId = useRef(1);
 
   const G = useRef({
@@ -77,7 +139,8 @@ export default function TanksView({ room, me, conn, hub }: GameViewProps) {
     drag: { pid: -1, x0: 0, y0: 0, cx: 0, cy: 0, on: false, moved: false },
     salvo: null as TkSalvoSim | null, salvoAt: 0, salvoTicks: 0, salvoK: 0, pendingResult: null as Extract<TanksServerMsg, { a: "tk_result" }> | null,
     anim: new Map<string, Anim>(),
-    cam: { scale: 1, x0: 0, y0: 0, base: 1, target: 1, vw: 390, vh: 800, bottom: 120 },
+    cam: { scale: 1, x0: 0, y0: 0, base: 1, target: 1, vw: 390, vh: 800, bottom: 120, land: false, sideL: 0, sideR: 0, top: 0 },
+    builds: new Map<string, string[]>(),   // הבילד של כל טנק (מהשרת) — מוצג מעל הטנק לכולם
     fx: { pops: [] as Pop[], parts: [] as Part[], rings: [] as Ring[], shake: 0, flash: 0, flashCol: "#fff", lasers: [] as { x0: number; y0: number; x1: number; y1: number; l: number }[] },
     terrainCv: null as HTMLCanvasElement | null, terrainDirty: true, terrainTheme: "",
     lastFrame: 0, hudAt: 0, lastTickSec: -1, skyX: false,
@@ -104,10 +167,19 @@ export default function TanksView({ room, me, conn, hub }: GameViewProps) {
   useEffect(() => { tkAudioInit(); loadTankSprite().then((ok) => setSpr(ok)); return onTankSpriteReady(() => setSpr(true)); }, []);
   useEffect(() => { if (!banner) return; const t = setTimeout(() => setBanner(null), banner.cls === "long" ? 3200 : banner.cls === "short" ? 1200 : 2000); return () => clearTimeout(t); }, [banner]);
   useEffect(() => { if (!flash) return; const t = setTimeout(() => setFlash(""), 300); return () => clearTimeout(t); }, [flash]);
+  useEffect(() => { if (!buyToast) return; const t = setTimeout(() => setBuyToast(null), 2600); return () => clearTimeout(t); }, [buyToast]);
+  useEffect(() => { if (!ammoHint) return; const t = setTimeout(() => setAmmoHint(""), 2600); return () => clearTimeout(t); }, [ammoHint]);
+  useEffect(() => {
+    const on = () => { const l = isLandscape(); setLand(l); G.current.cam.land = l; };
+    window.addEventListener("resize", on); window.addEventListener("orientationchange", on); on();
+    return () => { window.removeEventListener("resize", on); window.removeEventListener("orientationchange", on); leaveLandscape(); };
+  }, []);
   useEffect(() => { G.current.weapon = weapon; }, [weapon]);
 
   function applyWorldWire(w: TkWorldWire) { const g = G.current; g.world.water = w.water; g.world.gravK = w.gravK; g.world.windK = w.windK; g.world.walls = w.walls; g.world.night = w.night; g.world.fires = w.fires; if (g.world.theme !== w.theme) { g.world.theme = w.theme; g.terrainDirty = true; } }
-  function applyTanks(list: TkTankWire[]) { const g = G.current; const seen = new Set<string>(); for (const w of list) { seen.add(w.pid); g.tanks.set(w.pid, wireToTank(w, g.tanks.get(w.pid))); } }
+  function applyTanks(list: TkTankWire[]) { const g = G.current; for (const w of list) { g.tanks.set(w.pid, wireToTank(w, g.tanks.get(w.pid))); if (w.own) g.builds.set(w.pid, w.own); else if (w.own === undefined && !g.builds.has(w.pid)) { /* אין בילד */ } } }
+  /** הבילד שמוצג מעל טנק — שלי חי מ-tk_you, של אחרים מהשרת */
+  function buildOf(pid: string): string[] { const g = G.current; if (pid === me) { const RO: Record<string, number> = { e: 0, r: 1, u: 2, c: 3 }; return Object.keys(g.owned).sort((a, b) => (RO[tkCard(a)?.r ?? "c"] ?? 3) - (RO[tkCard(b)?.r ?? "c"] ?? 3)); } return g.builds.get(pid) ?? []; }
   function applyYou(d: { gold: number; ammo: Record<string, number>; owned: Record<string, number>; fuel: number; blind?: boolean; curse?: string }) {
     const g = G.current; g.gold = d.gold; g.ammo = d.ammo; g.owned = d.owned; g.mods = tkMods(d.owned); g.fuel = d.fuel; g.blind = !!d.blind;
     if (g.weapon !== TK_BASIC && !(d.ammo[g.weapon] > 0)) { g.weapon = TK_BASIC; setWeapon(TK_BASIC); }
@@ -196,7 +268,16 @@ export default function TanksView({ room, me, conn, hub }: GameViewProps) {
           case "tk_sky": { setSky({ cards: d.cards }); break; }
           case "tk_bought": {
             setBuys((b) => [...b.slice(-5), { id: feedId.current++, pid: d.pid, card: d.card, tx: d.tx }]);
-            if (d.pid === me) { tkSfx.buy(); setGarage((gr) => gr ? { ...gr, bought: [...gr.bought, d.card.id], pick: undefined } : gr); }
+            if (d.pid === me) {
+              tkSfx.buy(); setGarage((gr) => gr ? { ...gr, bought: [...gr.bought, d.card.id], pick: undefined } : gr);
+              // להרגיש את השדרוג: מה בדיוק השתנה
+              const c = d.card; let lines: string[] = [];
+              if (c.kind === "passive") { const before = tkMods(g.owned); const after = tkMods({ ...g.owned, [c.id]: (g.owned[c.id] ?? 0) + 1 }); lines = modDelta(before, after); if (!lines.length) lines = [c.d]; }
+              else if (c.kind === "ammo") lines = [`×${c.n ?? 1} שימושים`, ammoLine(c.id)];
+              else lines = [c.d];
+              setBuyToast({ id: feedId.current++, ic: c.ic, t: c.t, lines, r: c.r });
+              if (c.r === "r" || c.r === "e") { tkSfx.epic(); vibrate([30, 30, 30, 30, 80]); } else vibrate(25);
+            }
             else if (d.card.cat === "S" || d.card.cat === "X" || d.card.r === "r" || d.card.r === "e") addFeed(d.tx);
             if (d.target === me && d.card.cat === "S") { setBanner({ ic: d.card.ic, t: `${pname(d.pid)}: ${d.card.t}`, s: "עליך!", cls: "long" }); vibrate(60); }
             break;
@@ -242,7 +323,13 @@ export default function TanksView({ room, me, conn, hub }: GameViewProps) {
     const g = G.current; const th = themeOf();
     for (const e of evs) {
       switch (e.t) {
-        case "fire": { const a = anim(e.pid); a.fireAt = performance.now(); a.angle = Math.atan2(e.vy, e.vx); const p = Math.hypot(e.vx, e.vy) / TK.VMAX; tkSfx.fire(p, e.pid === me); burst(e.x + Math.cos(a.angle) * 24, e.y + Math.sin(a.angle) * 24, "#FFF3DC", 5, 3, 0.1); if (e.pid === me) g.fx.shake = Math.max(g.fx.shake, 2 + p * 3); break; }
+        case "fire": {
+          const a = anim(e.pid); a.fireAt = performance.now(); a.angle = Math.atan2(e.vy, e.vx); const p = Math.hypot(e.vx, e.vy) / TK.VMAX; tkSfx.fire(p, e.pid === me); burst(e.x + Math.cos(a.angle) * 24, e.y + Math.sin(a.angle) * 24, "#FFF3DC", 5, 3, 0.1); if (e.pid === me) g.fx.shake = Math.max(g.fx.shake, 2 + p * 3);
+          // נשק מיוחד = רגע: באנר אצלי, שורה בפיד אצל כולם, והאייקון עף על הפגז
+          const c = e.w !== TK_BASIC ? tkCard(e.w) : null;
+          if (c) { if (e.pid === me) setBanner({ ic: c.ic, t: `${c.t}!`, s: ammoLine(c.id), cls: "short" }); else addFeed(`${c.ic} ${pname(e.pid)} ירה ${c.t}`); const t = g.tanks.get(e.pid); if (t) pop(t.x, t.y + 74, c.ic, PAPER, 26); }
+          break;
+        }
         case "boom": {
           const big = e.r >= 50;
           if (e.kind === "confetti") { tkSfx.confetti(); for (let i = 0; i < 26; i++) burst(e.x, e.y, ["#FF4438", "#FFC531", "#4D86FF", "#5FD44A", "#FF5FB0"][i % 5], 1, 7, 0.15, true); ring(e.x, e.y, e.r, "#FF5FB0", "confetti"); }
@@ -265,7 +352,8 @@ export default function TanksView({ room, me, conn, hub }: GameViewProps) {
           if (e.dmg < 0) { pop(t.x, t.y + 52, `+${-e.dmg}`, "#5FD44A", 18); break; }
           anim(e.pid).hurtAt = performance.now();
           if (e.shield && e.dmg === 0) { tkSfx.shield(); pop(t.x, t.y + 52, "🛡️", "#8FE9F5", 20); break; }
-          pop(t.x, t.y + 52, `-${e.dmg}`, e.pid === me ? "#FF4438" : e.by === me ? "#FFC531" : "#FFF3DC", e.dmg >= 40 ? 24 : 18);
+          { const wc = e.kind && e.kind !== TK_BASIC ? tkCard(e.kind) : null;
+            pop(t.x, t.y + 52, `${wc && e.dmg >= 25 ? wc.ic + " " : ""}-${e.dmg}`, e.pid === me ? "#FF4438" : e.by === me ? "#FFC531" : "#FFF3DC", e.dmg >= 60 ? 30 : e.dmg >= 40 ? 24 : 18); }
           tkSfx.hit(e.pid === me);
           if (e.pid === me) { g.fx.shake = Math.max(g.fx.shake, 8); g.fx.flash = 0.4; g.fx.flashCol = "#FF4438"; vibrate(80); }
           else if (e.by === me) { burst(t.x, t.y + 10, "#FFC531", 6, 3); }
@@ -297,7 +385,8 @@ export default function TanksView({ room, me, conn, hub }: GameViewProps) {
   useEffect(() => {
     const el = cvRef.current?.parentElement; if (!el) return;
     const g = G.current;
-    const isBtn = (t: EventTarget | null) => !!(t as HTMLElement | null)?.closest?.("button, .tk-garage, .tk-pick, .tk-over, .tk-bo, .tk-sky, .tk-bar, .tk-top, .tk-move");
+    // רק כפתורים ומסכי-על חוסמים את הרוגטקה — המרווחים בין הכפתורים שייכים להר (הטנק התחתון היה "נוגע" בכפתורים)
+    const isBtn = (t: EventTarget | null) => !!(t as HTMLElement | null)?.closest?.("button, .tk-garage, .tk-pick, .tk-over, .tk-bo, .tk-sky, .tk-ammo, .exit-fab");
     const down = (e: PointerEvent) => {
       if (isBtn(e.target)) return;
       tkAudioInit();
@@ -381,9 +470,25 @@ export default function TanksView({ room, me, conn, hub }: GameViewProps) {
       dpr = Math.min(2, window.devicePixelRatio || 1);
       cssW = cv.clientWidth || window.innerWidth; cssH = cv.clientHeight || window.innerHeight;
       cv.width = Math.round(cssW * dpr); cv.height = Math.round(cssH * dpr);
-      const g = G.current; g.cam.vw = cssW; g.cam.vh = cssH; g.cam.bottom = 118;
-      g.cam.base = Math.min(cssW / TK.W, (cssH - g.cam.bottom) / 700);
-      g.cam.scale = g.cam.base; g.cam.target = g.cam.base;
+      const g = G.current; g.cam.vw = cssW; g.cam.vh = cssH; g.cam.land = isLandscape();
+      fitCam(true);
+    };
+    /**
+     * המצלמה: ההר ממלא את הרוחב שנשאר (לרוחב: בין שתי העמודות), ורצועת הטנקים חייבת להיכנס
+     * בין ה-HUD למעלה לכפתורים למטה — הטנק הכי נמוך יושב לפחות 70px מעל הכפתורים.
+     */
+    const fitCam = (snap = false) => {
+      const g = G.current; const cam = g.cam;
+      cam.sideL = cam.land ? 104 : 0; cam.sideR = cam.land ? 104 : 0;
+      cam.top = cam.land ? 56 : 128; cam.bottom = cam.land ? 14 : 200;
+      const wFit = (cam.vw - cam.sideL - cam.sideR) / TK.W;
+      let minH = Infinity, maxT = -Infinity; for (const v of g.world.h) if (v < minH) minH = v;
+      for (const t of g.tanks.values()) if (t.alive && t.y > maxT) maxT = t.y;
+      if (!isFinite(maxT)) maxT = minH;
+      const band = (maxT - minH) + 110;   // גובה הטנק + שם + מרווח
+      const hFit = (cam.vh - cam.top - cam.bottom) / band;
+      const base = Math.max(wFit * 0.5, Math.min(wFit, hFit));
+      cam.base = base; if (snap) { cam.scale = base; cam.target = base; }
     };
     resize(); window.addEventListener("resize", resize);
 
@@ -416,19 +521,20 @@ export default function TanksView({ room, me, conn, hub }: GameViewProps) {
         const dt = g.lastFrame ? Math.min(100, nowMs - g.lastFrame) : 16; g.lastFrame = nowMs;
         if (window.__tkAuto) { bot(); if (g.phase === "garage") { setGarage((gr) => { if (gr && !gr.done && Math.random() < 0.02) { const c = gr.cards.find((x) => !gr.bought.includes(x.id) && x.price <= g.gold && x.tg !== "player"); if (c) conn.sendGame({ a: "tk_buy", id: c.id }); else { conn.sendGame({ a: "tk_ready" }); return { ...gr, done: true }; } } return gr; }); } if (g.phase === "aim" && !myTank()?.alive) setSky((s) => { if (s && !s.sent && !s.pick) { const c = s.cards.find((x) => x.tg !== "player") ?? s.cards[0]; if (c.tg === "x") { conn.sendGame({ a: "tk_skypick", id: c.id, x: 360 }); } else if (c.tg === "player") { const tg = [...g.tanks.values()].find((x) => x.alive && x.pid !== me); if (tg) conn.sendGame({ a: "tk_skypick", id: c.id, target: tg.pid }); } else conn.sendGame({ a: "tk_skypick", id: c.id }); return { ...s, pick: c, sent: c.id }; } return s; }); }
         if (g.phase === "salvo") stepSalvo();
-        // מצלמה: מתרחקת כשהפגזים גבוה
+        // מצלמה: מתאימה לרצועת הטנקים, ומתרחקת כשהפגזים גבוה
         const cam = g.cam;
+        fitCam();
+        let minH = Infinity; for (const v of g.world.h) if (v < minH) minH = v;
         if (g.phase === "salvo" && g.salvo) {
           let top = 0; for (const s of g.salvo.shells) if (!s.done && s.t > 0) top = Math.max(top, s.y);
-          const minH = Math.min(...g.world.h);
           const need = top + 80 - (minH - 30);
-          const viewH = cam.vh / cam.base;
-          cam.target = need > viewH ? Math.max(cam.base * 0.45, cam.vh / need) : cam.base;
+          const viewH = (cam.vh - cam.bottom) / cam.base;
+          cam.target = need > viewH ? Math.max(cam.base * 0.45, (cam.vh - cam.bottom) / need) : cam.base;
         } else cam.target = cam.base;
         cam.scale += (cam.target - cam.scale) * 0.08;
-        const minH = Math.min(...g.world.h);
         cam.y0 = minH - 30 - cam.bottom / cam.scale;
-        cam.x0 = (TK.W - cam.vw / cam.scale) / 2;
+        // מרכז ההר = מרכז השטח שבין העמודות
+        cam.x0 = TK.W / 2 - (cam.sideL + (cam.vw - cam.sideL - cam.sideR) / 2) / cam.scale;
         // אפקטים
         const k = dt / 16.7;
         for (const p of g.fx.parts) { p.x += p.vx * k; p.y += p.vy * k; p.vy -= p.g * k; p.l -= 0.02 * k; if (p.y < tkGround(g.world.h, p.x) - 2 && p.vy < 0) { p.vy = 0; p.vx *= 0.6; } }
@@ -502,8 +608,14 @@ export default function TanksView({ room, me, conn, hub }: GameViewProps) {
     if (!th.stars && !bg) { ctx.fillStyle = "rgba(255,255,255,.75)"; ctx.strokeStyle = "rgba(12,9,6,.5)"; ctx.lineWidth = 2; for (let i = 0; i < 4; i++) { const cx = ((i * 190 + nowMs * 0.006 * (1 + g.wind * 0.6) + 2000) % (W + 160)) - 80, cy = H * (0.08 + i * 0.07); cloud(ctx, cx, cy, 26 + i * 6); } }
     // הר
     const tc = terrainCanvas();
+    // כשהמצלמה מתרחקת ההר צר מהמסך — ממשיכים את הקצוות ואת האדמה העמוקה לכל הרוחב
+    const hL = g.world.h[0], hR = g.world.h[TK.COLS - 1];
+    const sideG = ctx.createLinearGradient(0, sy(600), 0, sy(0)); sideG.addColorStop(0, th.dirt); sideG.addColorStop(1, th.deep);
+    ctx.fillStyle = sideG;
+    if (sx(0) > 0) ctx.fillRect(-20, sy(hL), sx(0) + 21, H - sy(hL) + 40);
+    if (sx(TK.W) < W) ctx.fillRect(sx(TK.W) - 1, sy(hR), W - sx(TK.W) + 21, H - sy(hR) + 40);
     ctx.drawImage(tc, sx(0), sy(680), TK.W * S, 680 * S);
-    ctx.fillStyle = th.deep; ctx.fillRect(sx(0) - 2, sy(0) - 1, TK.W * S + 4, H - sy(0) + 40);
+    ctx.fillStyle = th.deep; ctx.fillRect(-20, sy(0) - 1, W + 40, H - sy(0) + 40);
     // מים
     if (g.world.water > 0) { ctx.fillStyle = th.water; ctx.fillRect(sx(0), sy(g.world.water + Math.sin(nowMs / 400) * 3), TK.W * S, (g.world.water - cam.y0) * S + 50); ctx.strokeStyle = "rgba(255,255,255,.6)"; ctx.lineWidth = 2; ctx.beginPath(); for (let x = 0; x <= TK.W; x += 12) { const y = g.world.water + Math.sin(nowMs / 400 + x / 30) * 3; if (x === 0) ctx.moveTo(sx(x), sy(y)); else ctx.lineTo(sx(x), sy(y)); } ctx.stroke(); }
     // אש
@@ -543,6 +655,15 @@ export default function TanksView({ room, me, conn, hub }: GameViewProps) {
       const face = Math.cos(a.angle) >= 0 ? 1 : -1;
       const hurt = nowMs - a.hurtAt < 500;
       const pose = !tank.alive ? "dead" : hurt ? "hurt" : (g.phase === "battleover" && battleOver?.winner === tank.pid) ? "win" : "idle";
+      const build = tank.alive ? buildOf(tank.pid) : [];
+      // הילה בצבע הבילד הדומיננטי — רואים מרחוק "מי בנה הגנה ומי בנה כלכלה"
+      if (build.length && tank.alive) {
+        const cnt: Record<string, number> = {}; for (const id of build) { const c = tkCard(id); if (c) cnt[c.cat] = (cnt[c.cat] ?? 0) + 1; }
+        const dom = Object.entries(cnt).sort((p, q) => q[1] - p[1])[0]?.[0] ?? "T";
+        const pulse = 0.85 + 0.15 * Math.sin(nowMs / 400 + tank.c);
+        ctx.globalAlpha = 0.28 + Math.min(0.3, build.length * 0.05); ctx.fillStyle = CAT_COL[dom] ?? "#FFF";
+        ctx.beginPath(); ctx.ellipse(x, y + 2, (40 + build.length * 3) * kU * pulse, (11 + build.length) * kU * pulse, 0, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1;
+      }
       if (tank.pid === me && tank.alive) { ctx.fillStyle = "rgba(255,197,49,.35)"; ctx.beginPath(); ctx.ellipse(x, y + 2, 34 * kU, 8 * kU, 0, 0, Math.PI * 2); ctx.fill(); }
       const rec = Math.max(0, 1 - (nowMs - a.fireAt) / 220);
       drawTankBody(ctx, tank.c, x, y, kU, face, pose, nowMs + tank.c * 300);
@@ -558,15 +679,28 @@ export default function TanksView({ room, me, conn, hub }: GameViewProps) {
       const ly = y - TANK_W * 0.95 * kU - 8;
       ctx.strokeStyle = INK; ctx.lineWidth = 3.5; ctx.fillStyle = mine ? "#FFC531" : tank.alive ? PAPER : "#C8B78E";
       ctx.strokeText(label, x, ly); ctx.fillText(label, x, ly);
+      // תגי הבילד מעל השם — אבולוציות ונדירים קודם, עד 4 ואז "+n"
+      if (build.length) {
+        const shown = build.slice(0, 4); const extra = build.length - shown.length;
+        const fs = Math.round(13 * Math.max(0.85, Math.min(1.3, S * 1.7)));
+        ctx.font = `${fs}px sans-serif`; ctx.textAlign = "center";
+        const step = fs + 3; const tot = shown.length * step + (extra > 0 ? step : 0);
+        let bx = x - tot / 2 + step / 2; const by = ly - fs - 4;
+        ctx.fillStyle = "rgba(12,9,6,.55)"; const rr = 5; const bw0 = tot + 6, bh0 = fs + 6; const rx = x - bw0 / 2, ry = by - fs + 1;
+        ctx.beginPath(); ctx.moveTo(rx + rr, ry); ctx.lineTo(rx + bw0 - rr, ry); ctx.quadraticCurveTo(rx + bw0, ry, rx + bw0, ry + rr); ctx.lineTo(rx + bw0, ry + bh0 - rr); ctx.quadraticCurveTo(rx + bw0, ry + bh0, rx + bw0 - rr, ry + bh0); ctx.lineTo(rx + rr, ry + bh0); ctx.quadraticCurveTo(rx, ry + bh0, rx, ry + bh0 - rr); ctx.lineTo(rx, ry + rr); ctx.quadraticCurveTo(rx, ry, rx + rr, ry); ctx.closePath(); ctx.fill();
+        for (const id of shown) { ctx.fillText(tkCard(id)?.ic ?? "•", bx, by); bx += step; }
+        if (extra > 0) { ctx.font = `800 ${fs - 2}px Assistant, sans-serif`; ctx.fillStyle = "#FFC531"; ctx.fillText(`+${extra}`, bx, by); }
+      }
       if (tank.alive) {
-        const bw = 44, bh = 6; const hx = x - bw / 2, hy = ly + 3;
+        const bw = Math.min(72, 44 * Math.max(1, tank.hpMax / TK.HP)), bh = 6; const hx = x - bw / 2, hy = ly + 3;
         ctx.fillStyle = INK; ctx.fillRect(hx - 1, hy - 1, bw + 2, bh + 2);
         ctx.fillStyle = "#3a2f28"; ctx.fillRect(hx, hy, bw, bh);
         const f = Math.max(0, tank.hp / tank.hpMax); ctx.fillStyle = f > 0.5 ? "#5FD44A" : f > 0.25 ? "#FFC531" : "#FF4438"; ctx.fillRect(hx, hy, bw * f, bh);
         if (tank.shield > 0) { ctx.fillStyle = "#8FE9F5"; ctx.fillRect(hx, hy + bh - 2, bw * Math.min(1, tank.shield / tank.hpMax), 2); }
       }
-      if ((tank.bounty >= 0 || tank.pid === g.bounty) && tank.alive) { ctx.font = "20px sans-serif"; const by = ly - 22 + Math.sin(nowMs / 250) * 3; ctx.fillText("🎯", x, by); }
-      if (mine && tank.alive && g.phase === "aim") { ctx.fillStyle = "#FFC531"; ctx.strokeStyle = INK; ctx.lineWidth = 2; const ty = ly - 18 + Math.sin(nowMs / 300) * 2; ctx.beginPath(); ctx.moveTo(x, ty); ctx.lineTo(x - 7, ty - 10); ctx.lineTo(x + 7, ty - 10); ctx.closePath(); ctx.fill(); ctx.stroke(); }
+      const above = build.length ? Math.round(13 * Math.max(0.85, Math.min(1.3, S * 1.7))) + 10 : 0;
+      if ((tank.bounty >= 0 || tank.pid === g.bounty) && tank.alive) { ctx.font = "20px sans-serif"; const by = ly - 22 - above + Math.sin(nowMs / 250) * 3; ctx.fillText("🎯", x, by); }
+      if (mine && tank.alive && g.phase === "aim") { ctx.fillStyle = "#FFC531"; ctx.strokeStyle = INK; ctx.lineWidth = 2; const ty = ly - 18 - above + Math.sin(nowMs / 300) * 2; ctx.beginPath(); ctx.moveTo(x, ty); ctx.lineTo(x - 7, ty - 10); ctx.lineTo(x + 7, ty - 10); ctx.closePath(); ctx.fill(); ctx.stroke(); }
     }
     // פגזים
     if (g.salvo) {
@@ -584,6 +718,8 @@ export default function TanksView({ room, me, conn, hub }: GameViewProps) {
         ctx.strokeStyle = INK; ctx.lineWidth = 2;
         ctx.beginPath(); ctx.arc(sx(s.x), sy(s.y), r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
         if (s.meteor) { ctx.fillStyle = "#FFE27A"; ctx.beginPath(); ctx.arc(sx(s.x) - 2, sy(s.y) - 2, r * 0.45, 0, Math.PI * 2); ctx.fill(); }
+        // נשק מיוחד — האייקון שלו עף (רואים מה כל אחד ירה)
+        else if (s.wid !== TK_BASIC) { const ic = tkCard(s.wid)?.ic; if (ic) { ctx.font = `${Math.round(r * 2.6)}px sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(ic, sx(s.x), sy(s.y)); ctx.textBaseline = "alphabetic"; } }
         // חץ למי שמעל המסך
         if (sy(s.y) < -10) { ctx.fillStyle = "#FFC531"; ctx.strokeStyle = INK; ctx.beginPath(); ctx.moveTo(sx(s.x), 8); ctx.lineTo(sx(s.x) - 8, 22); ctx.lineTo(sx(s.x) + 8, 22); ctx.closePath(); ctx.fill(); ctx.stroke(); }
       }
@@ -614,7 +750,7 @@ export default function TanksView({ room, me, conn, hub }: GameViewProps) {
   function cloud(ctx: CanvasRenderingContext2D, x: number, y: number, r: number) { ctx.beginPath(); ctx.arc(x, y, r * 0.6, 0, Math.PI * 2); ctx.arc(x + r * 0.6, y - r * 0.2, r * 0.7, 0, Math.PI * 2); ctx.arc(x + r * 1.3, y, r * 0.55, 0, Math.PI * 2); ctx.fill(); }
 
   /* ---------- בחירת צבע ---------- */
-  function pickChar(c: number) { tkAudioInit(); tkSfx.select(); conn.sendGame({ a: "tk_char", c }); }
+  function pickChar(c: number) { tkAudioInit(); tkSfx.select(); conn.sendGame({ a: "tk_char", c }); if (!land) tryLandscape(); }
 
   const ammoList = () => [{ id: TK_BASIC, ic: "💣", t: "רגיל", n: -1 }, ...Object.entries(you.ammo).map(([id, n]) => { const c = tkCard(id); return { id, ic: c?.ic ?? "?", t: c?.t ?? id, n }; })];
   const ownedList = () => Object.entries(you.owned).map(([id, n]) => { const c = tkCard(id); return c ? { id, ic: c.ic, t: c.t, n } : null; }).filter(Boolean) as { id: string; ic: string; t: string; n: number }[];
@@ -623,40 +759,45 @@ export default function TanksView({ room, me, conn, hub }: GameViewProps) {
   const inGame = phase === "aim" || phase === "salvo" || phase === "garage" || phase === "intro" || phase === "battleover";
 
   return (
-    <div className="tk-wrap" style={{ "--gc": SIG } as CSSProperties}>
+    <div className={"tk-wrap" + (land ? " land" : "")} style={{ "--gc": SIG } as CSSProperties}>
       <canvas ref={cvRef} className="tk-cv" />
 
-      {/* HUD */}
+      {/* HUD: הפינה השמאלית-עליונה שמורה לכפתור "סיום משחק" של החדר; שלי (זהב·טיימר·חיים·בילד) בימין */}
       {inGame && (
         <>
           <div className="tk-top">
-            <div className="tk-chip tk-gold">🪙 <b>{fmt(hud.gold)}</b></div>
+            <div className="tk-me">
+              <div className="row">
+                <div className="tk-chip tk-gold big">🪙 <b>{fmt(hud.gold)}</b></div>
+                <div className={"tk-timer" + (hud.secs <= 3 && hud.secs > 0 ? " hot" : hud.secs <= 6 ? " warm" : "") + (phase === "aim" || phase === "garage" ? "" : " off")} style={{ "--p": `${hud.secs > 0 ? (hud.secs / hud.total) * 360 : 0}deg` } as CSSProperties}><span>{phase === "aim" || phase === "garage" ? hud.secs : "💥"}</span></div>
+              </div>
+              {hud.alive ? <div className="tk-hp"><i style={{ width: `${Math.round((hud.hp / hud.hpMax) * 100)}%` }} /><span>❤️ {Math.round(hud.hp)}/{hud.hpMax}{hud.sh > 0 ? ` 🛡️${Math.round(hud.sh)}` : ""}</span></div> : <div className="tk-hp dead"><span>☁️ בשמיים</span></div>}
+              {ownedList().length > 0 && <div className="tk-build">{ownedList().slice(0, 7).map((o) => <span key={o.id} title={o.t}>{o.ic}{o.n > 1 ? <small>×{o.n}</small> : null}</span>)}{ownedList().length > 7 && <span>+{ownedList().length - 7}</span>}</div>}
+            </div>
             <div className="tk-mid">
               <div className="tk-round">קרב {hud.b + 1}{hud.battles > 1 ? `/${hud.battles}` : ""} · סלבו <b>{hud.k}</b></div>
               <div className={"tk-wind" + (Math.abs(hud.wind) >= 7 ? " strong" : "")}>🌬️ <span className="arr">{windArrow(hud.wind)}</span> {Math.abs(hud.wind)}</div>
+              {hud.bounty && <span className="tk-tag bounty">🎯 ראש בפרס: {hud.bounty === me ? "אתה!" : pname(hud.bounty)}</span>}
+              {hud.doom && <span className="tk-tag doom">🔔 יום הדין ×2</span>}
+              {you.curse && <span className="tk-tag doom">😈 מקולל</span>}
             </div>
-            <div className={"tk-timer" + (hud.secs <= 3 && hud.secs > 0 ? " hot" : hud.secs <= 6 ? " warm" : "") + (phase === "aim" || phase === "garage" ? "" : " off")} style={{ "--p": `${hud.secs > 0 ? (hud.secs / hud.total) * 360 : 0}deg` } as CSSProperties}><span>{phase === "aim" || phase === "garage" ? hud.secs : "💥"}</span></div>
-          </div>
-          <div className="tk-sub">
-            {hud.alive ? <span className="hp"><i style={{ width: `${Math.round((hud.hp / hud.hpMax) * 100)}%` }} />❤️ {Math.round(hud.hp)}/{hud.hpMax}{hud.sh > 0 ? ` 🛡️${Math.round(hud.sh)}` : ""}</span> : <span className="dead">☁️ בשמיים</span>}
-            {hud.bounty && <span className="bounty">🎯 ראש בפרס: {hud.bounty === me ? "אתה!" : pname(hud.bounty)}</span>}
-            {hud.doom && <span className="doom">🔔 יום הדין ×2</span>}
-            {you.curse && <span className="doom">😈 מקולל</span>}
+            <div className="tk-fabspace" />
           </div>
           {feed.length > 0 && <div className="tk-feed">{feed.map((f) => <div key={f.id}>{f.tx}</div>)}</div>}
         </>
       )}
 
-      {/* סרגל התחמושת + מוכן — שלב הכיוון */}
+      {/* סרגל התחמושת + מוכן — שלב הכיוון (לאורך: למטה · לרוחב: עמודות בצדדים) */}
       {phase === "aim" && hud.alive && (
         <div className="tk-bar">
           <div className="tk-ammo">
             {ammoList().map((a) => (
-              <button key={a.id} className={"tk-am" + (weapon === a.id ? " sel" : "")} onClick={() => { tkAudioInit(); setWeapon(a.id); G.current.weapon = a.id; tkSfx.select(); sendAim(); }}>
+              <button key={a.id} className={"tk-am" + (weapon === a.id ? " sel" : "")} onClick={() => { tkAudioInit(); setWeapon(a.id); G.current.weapon = a.id; tkSfx.select(); sendAim(); setAmmoHint(a.id === TK_BASIC ? "" : `${a.ic} ${a.t} — ${ammoLine(a.id)}`); }}>
                 <span className="ic">{a.ic}</span><b>{a.t}</b><small>{a.n < 0 ? "∞" : `×${a.n}`}</small>
               </button>
             ))}
           </div>
+          {ammoHint && <div className="tk-ammohint">{ammoHint}</div>}
           <div className="tk-actions">
             {you.fuel > 0 && <div className="tk-move"><button onClick={() => moveTank(-1)}>◀</button><small>⛽{you.fuel}</small><button onClick={() => moveTank(1)}>▶</button></div>}
             <button className={"tk-ready" + (hud.locked ? " on" : hud.aimed ? " go" : "")} onClick={ready}>{hud.locked ? "✓ מוכן — מחכים לכולם" : hud.aimed ? `🔥 אש! (${hud.power}%)` : "🎯 משכו אחורה לכוון"}</button>
@@ -683,6 +824,7 @@ export default function TanksView({ room, me, conn, hub }: GameViewProps) {
         <div className="tk-pick">
           <h2>איזה טנק אתה?</h2>
           <p className="sub">כל צבע לשחקן אחד. "מי זה הסגול עם הכתר?"</p>
+          {!land && <p className="rotate">🔄 סובבו את הטלפון לרוחב — רואים את כל ההר</p>}
           <div className="grid">
             {TANKS.map((tk, i) => {
               const owner = Object.entries(pick.taken).find(([, c]) => c === i)?.[0];
@@ -707,6 +849,12 @@ export default function TanksView({ room, me, conn, hub }: GameViewProps) {
             <div className="tk-chip tk-gold big">🪙 <b>{fmt(hud.gold)}</b></div>
             <Ring until={garage.until} conn={conn} total={G.current.cfg.garageMs / 1000} />
           </div>
+          {buyToast && (
+            <div className={"tk-buytoast r-" + buyToast.r} key={buyToast.id}>
+              <span className="ic">{buyToast.ic}</span>
+              <div className="tx"><b>{buyToast.t}{buyToast.r === "e" ? " — אבולוציה!" : buyToast.r === "r" ? " — אגדי!" : ""}</b>{buyToast.lines.map((l, i) => <small key={i}>{l}</small>)}</div>
+            </div>
+          )}
           {garage.pick ? (
             <div className="target">
               <p>{garage.pick.ic} <b>{garage.pick.t}</b> — על מי?</p>

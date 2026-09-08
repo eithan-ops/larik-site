@@ -115,7 +115,7 @@ function shotAt(seed: string, wid: string, extra: Partial<TkSalvoIn> = {}, tweak
   }
   check(`בנק: ${TK_CARDS.length} קלפים, כולם תקינים`, bad.length === 0 && TK_CARDS.length >= 110, bad.join(" "));
   const m = tkMods({ armor: 3, shield: 2, fuel: 1, magnet: 2, dbl: 1 });
-  check("מודים נערמים", m.armor === 0.45 && m.shield === 60 && m.fuel === 2 && Math.abs(m.gold - 1.5) < 1e-9 && m.dbl);
+  check("מודים נערמים", m.armor === 0.6 && m.shield === 60 && m.fuel === 2 && Math.abs(m.gold - 1.7) < 1e-9 && m.dbl);
   const w = tkWeaponOf("apoc"); check("נשק אבולוציה יורש בסיס", w.mirv === 5 && w.dmg === 60 && w.n === 1);
 }
 // תחזית
