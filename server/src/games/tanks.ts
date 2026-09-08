@@ -56,7 +56,14 @@ export function createTanks(ctx: GameCtx): GameInstance {
   const feed = (tx: string) => bc({ a: "tk_feed", tx });
   const rng = tkRng("server:" + Math.random());
 
-  const wireTank = (t: TkTank): TkTankWire => ({ pid: t.pid, c: t.c, x: Math.round(t.x), y: Math.round(t.y), hp: Math.round(t.hp), hpMax: t.hpMax, sh: Math.round(t.shield), alive: t.alive, bounty: t.bounty >= k || t.pid === bountyPid, frozen: t.frozen });
+  /** הבילד שרואים על הטנק: פסיביים לפי נדירות (אבולוציה קודם), עד 6 */
+  const RAR_ORD: Record<string, number> = { e: 0, r: 1, u: 2, c: 3 };
+  const ownList = (pid: string): string[] | undefined => {
+    const p = ps.get(pid); if (!p) return undefined;
+    const ids = Object.keys(p.owned); if (!ids.length) return undefined;
+    return ids.sort((a, b) => (RAR_ORD[tkCard(a)?.r ?? "c"] ?? 3) - (RAR_ORD[tkCard(b)?.r ?? "c"] ?? 3)).slice(0, 6);
+  };
+  const wireTank = (t: TkTank): TkTankWire => ({ pid: t.pid, c: t.c, x: Math.round(t.x), y: Math.round(t.y), hp: Math.round(t.hp), hpMax: t.hpMax, sh: Math.round(t.shield), alive: t.alive, bounty: t.bounty >= k || t.pid === bountyPid, frozen: t.frozen, own: ownList(t.pid) });
   const wireTanks = () => [...tanks.values()].map(wireTank);
   const wireWorld = (): TkWorldWire => ({ water: world.water, gravK: world.gravK, windK: world.windK, walls: world.walls, night: world.night, fires: world.fires, theme: world.theme });
   const wireCard = (c: TkCard, m?: TkMods): TkCardWire => ({ id: c.id, ic: c.ic, t: c.t, d: c.d, r: c.r, cat: c.cat, kind: c.kind, price: m ? tkPrice(c, m) : c.price, tg: c.tg, n: c.n });
