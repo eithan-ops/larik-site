@@ -844,6 +844,8 @@ export const CATALOG: GameMeta[] = [
     configOptions: [
       { key: "rounds", label: "סבבים", values: [{ v: "1", label: "כל אחד קובע פעם 🙂" }, { v: "2", label: "פעמיים 🔥" }] },
       { key: "minutes", label: "סולו", values: [{ v: "3", label: "3 דק'" }, { v: "2", label: "2 דק' ⚡" }, { v: "5", label: "5 דק' 🔥" }] },
+      { key: "patterns", label: "דפוסי קצב", values: [{ v: "off", label: "כבוי" }, { v: "on", label: "דלוק 🎵" }] },
+      { key: "phys", label: "פיזיקת רצפה", values: [{ v: "off", label: "כבוי" }, { v: "on", label: "דלוק 🪂" }] },
     ],
   },
 ];

@@ -8,12 +8,12 @@
  */
 import type { GameCtx, GameInstance } from "../engine";
 import type { GameClientMsg, GameServerMsg } from "../../../shared/protocol";
-import { MB, MB_FLOORS, mbBpm, mbPeriod, mbConfig, mbNewBall, mbFeedTap, mbBeatScore, mbTempoClose, mbRoundScore } from "../../../shared/metro";
-import type { MbBall, MbConfig, MbPhase, MbProgRow, MbResultRow, MetroServerMsg } from "../../../shared/metro";
+import { MB, MB_FLOORS, MB_PATTERNS, mbBpm, mbPeriod, mbConfig, mbNewBall, mbFeedTap, mbBeatScore, mbTempoClose, mbRoundScore, mbLandings, mbBpmAt } from "../../../shared/metro";
+import type { MbBall, MbConfig, MbPhase, MbPattern, MbSched, MbProgRow, MbResultRow, MetroServerMsg } from "../../../shared/metro";
 
-interface RoundStat { pts: number; beats: number; streak: number; locked: boolean; lockAt: number; bonus: number; lockCounted: boolean }
-interface P { pid: string; c: number; total: number; ball: MbBall; rs: RoundStat; lastTapAt: number; taps: number; bestLockMs: number; accSum: number; accN: number; locks: number; leadLocks: number }
-const newRs = (): RoundStat => ({ pts: 0, beats: 0, streak: 0, locked: false, lockAt: 0, bonus: 0, lockCounted: false });
+interface RoundStat { pts: number; beats: number; streak: number; locked: boolean; lockAt: number; bonus: number; lockCounted: boolean; oops: number }
+interface P { pid: string; c: number; total: number; ball: MbBall; tapList: number[]; rs: RoundStat; lastTapAt: number; taps: number; bestLockMs: number; accSum: number; accN: number; locks: number; leadLocks: number }
+const newRs = (): RoundStat => ({ pts: 0, beats: 0, streak: 0, locked: false, lockAt: 0, bonus: 0, lockCounted: false, oops: 0 });
 
 export function createMetro(ctx: GameCtx): GameInstance {
   // MB_FAST=1 — פלייטסט מהיר לבדיקות ולצילומים; לא משפיע על פרודקשן
@@ -27,6 +27,9 @@ export function createMetro(ctx: GameCtx): GameInstance {
   let floor = MB_FLOORS[0].id;
   let level = 25;
   let bpm = mbBpm(level);
+  let bpm2 = bpm;
+  let pattern: MbPattern = "plain";
+  let sched: MbSched = { pattern: "plain", bpm, bpm2: bpm, anchor: 0, until: 0 };
   let anchor = 0;
   let until = 0;
   let startAt = 0;
@@ -44,6 +47,10 @@ export function createMetro(ctx: GameCtx): GameInstance {
   const followers = () => [...ps.values()].filter((p) => p.pid !== leader);
   const taken = (): Record<string, number> => Object.fromEntries([...ps.values()].filter((p) => p.c >= 0).map((p) => [p.pid, p.c]));
   const totals = (): Record<string, number> => Object.fromEntries([...ps.values()].map((p) => [p.pid, p.total]));
+  const opts = () => ({ patterns: cfg.patterns, phys: cfg.phys });
+  const liveSched = (): MbSched => ({ pattern, bpm, bpm2, anchor, until: 0 });
+  /** הקצב השני של "מתחלף": 6–10 רמות מעל או מתחת (בתוך הטווח) */
+  const pickBpm2 = () => { const d = 6 + Math.floor(seedRnd() * 5); const up = level + d <= MB.LEVELS && (level - d < 1 || seedRnd() < 0.5); return mbBpm(up ? level + d : level - d); };
   const seedRnd = (() => { let s = 0; for (const ch of (cfg.seed ?? "")) s = (s * 31 + ch.charCodeAt(0)) >>> 0; return cfg.seed ? () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; } : Math.random; })();
 
   /* ---------- בחירת צבע ---------- */
@@ -66,7 +73,7 @@ export function createMetro(ctx: GameCtx): GameInstance {
       order = [];
       for (let k = 0; k < cfg.rounds; k++) { const sh = [...list]; for (let i = sh.length - 1; i > 0; i--) { const j = Math.floor(seedRnd() * (i + 1)); [sh[i], sh[j]] = [sh[j], sh[i]]; } order.push(...sh); }
     }
-    bc({ a: "mb_go", chars: taken(), rounds: order.length, solo });
+    bc({ a: "mb_go", chars: taken(), rounds: order.length, solo, opts: opts() });
     later(900, () => startRound(0));
   }
 
@@ -80,18 +87,21 @@ export function createMetro(ctx: GameCtx): GameInstance {
     // רמה: לא קרובה לקודמת (שיהיה מה לתפוס), ובטווח שנעים להקיש בו
     let lv = 6 + Math.floor(seedRnd() * 40);
     if (r > 0 && Math.abs(lv - level) < 6) lv = lv > level ? Math.min(MB.LEVELS, lv + 6) : Math.max(1, lv - 6);
-    level = lv; bpm = mbBpm(level);
+    level = lv; bpm = mbBpm(level); bpm2 = pickBpm2();
+    // דפוס: כבוי = רגיל; בסולו עם האופציה — מוגרל (רגיל 40%); במולטי הקובע בוחר בזמן הכיוון
+    pattern = "plain";
+    if (cfg.patterns && solo) { const x = seedRnd(); pattern = x < 0.4 ? "plain" : x < 0.6 ? "rest" : x < 0.8 ? "accel" : "switch"; }
     if (solo) {
       phase = "set";
       anchor = now();
-      bc({ a: "mb_round", r, of: order.length, leader, floor, level, anchor, until: now() });
+      bc({ a: "mb_round", r, of: order.length, leader, floor, level, anchor, until: now(), pattern });
       startCount(5000);
       return;
     }
     phase = "set";
     anchor = now();
     until = now() + cfg.setMs;
-    bc({ a: "mb_round", r, of: order.length, leader, floor, level, anchor, until });
+    bc({ a: "mb_round", r, of: order.length, leader, floor, level, anchor, until, pattern });
     later(cfg.setMs, () => startCount(cfg.countMs));
   }
   /** שינוי קצב תוך כדי — שומרים על רציפות הכדור: העוגן החדש = הנחיתה האחרונה בקצב הישן */
@@ -107,18 +117,19 @@ export function createMetro(ctx: GameCtx): GameInstance {
     startAt = now() + ms;
     anchor = startAt;
     until = startAt + cfg.matchMs;
-    for (const p of ps.values()) p.ball = mbNewBall();
-    bc({ a: "mb_count", r, startAt, until, bpm, floor });
+    sched = { pattern, bpm, bpm2: pattern === "switch" ? bpm2 : bpm, anchor: startAt, until };
+    for (const p of ps.values()) { p.ball = mbNewBall(); p.tapList = []; }
+    bc({ a: "mb_count", r, startAt, until, bpm, floor, sched });
     later(ms, startMatch);
   }
   function startMatch() {
     phase = "match";
-    const T = mbPeriod(bpm);
-    let n = 1;
+    const L = mbLandings(sched, until);
+    let i = 1; // הנחיתה הראשונה היא startAt עצמו — שופטים מהשנייה
     const tick = () => {
-      const beat = anchor + n * T;
-      if (beat > until) { later(until + MB.BEAT_EVAL_DELAY + 80 - now(), endRound); return; }
-      later(beat + MB.BEAT_EVAL_DELAY - now(), () => { evalBeat(beat); n++; tick(); });
+      if (i >= L.length || L[i] > until) { later(until + MB.BEAT_EVAL_DELAY + 80 - now(), endRound); return; }
+      const beat = L[i], prev = L[i - 1];
+      later(beat + MB.BEAT_EVAL_DELAY - now(), () => { evalBeat(beat, prev); i++; tick(); });
     };
     tick();
     const prog = () => { if (phase !== "match") return; bc({ a: "mb_prog", rows: progRows(), unison }); later(500, prog); };
@@ -126,14 +137,17 @@ export function createMetro(ctx: GameCtx): GameInstance {
   }
   const progRows = (): MbProgRow[] => followers().map((p) => ({ pid: p.pid, locked: p.rs.locked, streak: p.rs.streak, pts: p.rs.pts, beats: p.rs.beats, lockAt: p.rs.lockAt }));
 
-  function evalBeat(beat: number) {
+  function evalBeat(beat: number, prev: number) {
     if (phase !== "match") return;
     const fs = followers();
     const lead = leader ? ps.get(leader) : undefined;
+    const bpmNow = mbBpmAt(sched, beat);
     for (const p of fs) {
-      const { pts } = mbBeatScore(p.ball, bpm, beat);
+      p.tapList = p.tapList.filter((t) => t > beat - 6000);
+      const { pts, orphan } = mbBeatScore(p.tapList, beat, prev);
       p.rs.pts += pts; p.rs.beats++;
-      if (pts >= 6 && mbTempoClose(p.ball, bpm)) {
+      if (orphan) { p.rs.oops++; to(p.pid, { a: "mb_oops", pid: p.pid, at: beat }); }
+      if (pts >= 6 && !orphan && mbTempoClose(p.ball, bpmNow)) {
         p.rs.streak++;
         if (p.rs.streak >= MB.LOCK_BEATS && !p.rs.locked) {
           p.rs.locked = true;
@@ -167,7 +181,7 @@ export function createMetro(ctx: GameCtx): GameInstance {
     }
     rows.sort((a, b) => b.round - a.round || b.total - a.total);
     until = now() + cfg.resultMs;
-    bc({ a: "mb_result", r, of: order.length, leader, rows, level, until });
+    bc({ a: "mb_result", r, of: order.length, leader, rows, level, until, pattern });
     later(cfg.resultMs, () => { if (r + 1 < order.length) startRound(r + 1); else finish(); });
   }
 
@@ -197,14 +211,14 @@ export function createMetro(ctx: GameCtx): GameInstance {
 
   function sync(pid: string) {
     to(pid, {
-      a: "mb_sync", phase, r, of: order.length, leader, floor, bpm, anchor, until, startAt, chars: taken(), solo, level,
+      a: "mb_sync", phase, r, of: order.length, leader, floor, bpm, anchor, until, startAt, chars: taken(), solo, level, sched: phase === "count" || phase === "match" ? sched : liveSched(), opts: opts(),
       balls: followers().map((p) => ({ pid: p.pid, bpm: p.ball.bpm, anchor: p.ball.anchor })), totals: totals(),
     });
   }
 
   return {
     onStart() {
-      for (const p of ctx.participants()) if (p.connected) ps.set(p.id, { pid: p.id, c: -1, total: 0, ball: mbNewBall(), rs: newRs(), lastTapAt: 0, taps: 0, bestLockMs: Infinity, accSum: 0, accN: 0, locks: 0, leadLocks: 0 });
+      for (const p of ctx.participants()) if (p.connected) ps.set(p.id, { pid: p.id, c: -1, total: 0, ball: mbNewBall(), tapList: [], rs: newRs(), lastTapAt: 0, taps: 0, bestLockMs: Infinity, accSum: 0, accN: 0, locks: 0, leadLocks: 0 });
       pickPhase();
     },
     onMessage(pid, d0: GameClientMsg) {
@@ -226,15 +240,22 @@ export function createMetro(ctx: GameCtx): GameInstance {
           if (phase !== "set" || pid !== leader) return;
           const lv = Math.round(Number(d.level));
           if (!Number.isFinite(lv) || lv < 1 || lv > MB.LEVELS) return;
-          level = lv; retime(mbBpm(level));
-          bc({ a: "mb_lead", bpm, anchor, floor });
+          level = lv; retime(mbBpm(level)); bpm2 = pickBpm2();
+          bc({ a: "mb_lead", bpm, anchor, floor, pattern });
           return;
         }
         case "mb_floor": {
           if (phase !== "set" || pid !== leader) return;
           const f = MB_FLOORS.find((x) => x.id === d.floor); if (!f) return;
           floor = f.id;
-          bc({ a: "mb_lead", bpm, anchor, floor });
+          bc({ a: "mb_lead", bpm, anchor, floor, pattern });
+          return;
+        }
+        case "mb_pattern": {
+          if (phase !== "set" || pid !== leader || !cfg.patterns) return;
+          const pt = MB_PATTERNS.find((x) => x.id === d.pattern); if (!pt) return;
+          pattern = pt.id; anchor = now(); // הדפוס מתחיל מחדש מעכשיו כדי שהתצוגה המקדימה תתחיל מההתחלה
+          bc({ a: "mb_lead", bpm, anchor, floor, pattern });
           return;
         }
         case "mb_setdone": {
@@ -248,6 +269,7 @@ export function createMetro(ctx: GameCtx): GameInstance {
           if (!Number.isFinite(t) || t > nw + 300 || t < nw - 2000) return;
           if (t - p.lastTapAt < 70) return; // ≤14 הקשות בשנייה — כל מה שמעבר לזה הוא רעש
           p.lastTapAt = t; p.taps++;
+          p.tapList.push(t);
           p.ball = mbFeedTap(p.ball, t);
           bc({ a: "mb_ball", pid, bpm: p.ball.bpm, anchor: p.ball.anchor });
           return;

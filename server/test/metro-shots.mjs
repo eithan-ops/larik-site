@@ -25,6 +25,7 @@ try {
   const pages = [p1];
   for (const n of ["נועם", "תמר", "יובל"]) { const p = await mk(); await p.goto(`http://localhost:${PORT}/r/${code}`, { waitUntil: "domcontentloaded" }); await enter(p, n); pages.push(p); }
   await p1.click("button:has-text('מטרונובול')"); await sleep(600);
+  if (process.env.MB_OPTS) { try { await p1.click("text=דלוק 🎵", { timeout: 2000 }); await p1.click("text=דלוק 🪂", { timeout: 2000 }); await sleep(300); } catch (e) { console.log("opts click failed", String(e).slice(0, 80)); } }
   await shot(p1, "0-catalog");
   await p1.click("text=מתחילים", { timeout: 10000 });
   for (const p of pages) await p.evaluate(() => { window.__mbAuto = true; });
@@ -44,7 +45,8 @@ try {
   try {
     await lead.locator(".mb-lv").nth(3).dispatchEvent("pointerdown", {}, { timeout: 1500 }); await sleep(120);
     await lead.locator(".mb-lv").nth(1).dispatchEvent("pointerdown", {}, { timeout: 1500 }); await sleep(120);
-    await lead.locator(".mb-fl").nth(4).dispatchEvent("pointerdown", {}, { timeout: 1500 }); await sleep(300);
+    await lead.locator(".mb-fl").nth(process.env.MB_OPTS ? 3 : 4).dispatchEvent("pointerdown", {}, { timeout: 1500 }); await sleep(120);
+    if (process.env.MB_OPTS) { await lead.locator(".mb-pat").nth(1).dispatchEvent("pointerdown", {}, { timeout: 1500 }); await sleep(300); }
   } catch (e) { console.log("adjust skipped", String(e).slice(0, 80)); }
   await shot(lead, "3-set-leader");
   await shot(fol, "4-set-follower");
