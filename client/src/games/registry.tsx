@@ -22,6 +22,7 @@ import ThievesView from "./thieves";
 import AbyssView from "./abyss";
 import FloorsView from "./floors";
 import TanksView from "./tanks";
+import MetroView from "./metro";
 
 // GameHub עבר ל-lib/gamehub (משותף לאפליקציית המופע) — מייצאים מחדש לתאימות
 export { GameHub };
@@ -50,6 +51,7 @@ export const GAME_COLORS: Record<string, string> = {
   abyss: "#38C8E8",       // תכלת-גביש
   floors: "#FF7A29",      // כתום מגדל
   tanks: "#E8433F",       // אדום פיצוץ
+  metro: "#3DC63D",       // ירוק כדור
 };
 
 export const GAME_VIEWS: Record<string, ComponentType<GameViewProps>> = {
@@ -72,4 +74,5 @@ export const GAME_VIEWS: Record<string, ComponentType<GameViewProps>> = {
   abyss: AbyssView,
   floors: FloorsView,
   tanks: TanksView,
+  metro: MetroView,
 };
