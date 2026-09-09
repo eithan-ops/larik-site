@@ -1,0 +1,126 @@
+/* ===== מטרונובול 🎾 — מסך מלא משלו, בשפת המדבקות ===== */
+.mb-wrap{position:fixed; inset:0; width:100vw; height:100vh; height:100dvh; z-index:60; background:#14110E; overflow:hidden;
+  touch-action:none; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; overscroll-behavior:none; direction:rtl;
+  font-family:var(--font-body,"Assistant Variable",Assistant,sans-serif); color:#FFF3DC;}
+#root>.mb-wrap{position:fixed; z-index:60;}
+.mb-cv{position:absolute; left:0; right:0; top:0; height:62%; width:100%; display:block;}
+.mb-wrap button{font-family:inherit; cursor:pointer; -webkit-tap-highlight-color:transparent;}
+.mb-face{vertical-align:middle;}
+.mb-flash{position:absolute; inset:0; pointer-events:none; z-index:9; animation:mbflash .32s ease-out forwards;}
+@keyframes mbflash{from{opacity:1;} to{opacity:0;}}
+
+/* ---- HUD (הפינה השמאלית-עליונה שמורה ל-.exit-fab של החדר) ---- */
+.mb-top{position:absolute; top:max(10px, env(safe-area-inset-top,0px)); left:10px; right:10px; display:grid; grid-template-columns:auto 1fr 112px; align-items:start; gap:8px; pointer-events:none; z-index:3;}
+.mb-me{display:flex; flex-direction:column; align-items:flex-start; gap:5px;}
+.mb-chip{display:inline-flex; align-items:center; gap:4px; padding:5px 10px; border-radius:12px; background:#231F1A; border:2.5px solid #0C0906; box-shadow:-3px 4px 0 var(--gc,#3DC63D); font-weight:800; font-size:14px; white-space:nowrap;}
+.mb-chip b{font-family:var(--font-display,"Suez One",serif); font-weight:400; font-size:18px; color:#FFC531; font-variant-numeric:tabular-nums;}
+.mb-chip.big{font-size:16px; padding:6px 12px;} .mb-chip.big b{font-size:24px;}
+.mb-chip.small{font-size:11px; padding:3px 8px; box-shadow:-2px 3px 0 #0C0906;} .mb-chip.small b{font-size:13px;}
+.mb-mid{display:flex; flex-direction:column; align-items:center; gap:4px; min-width:0;}
+.mb-round{font-size:12px; font-weight:800; background:rgba(0,0,0,.5); padding:2px 10px; border-radius:99px; white-space:nowrap;}
+.mb-round b{color:#FFC531; font-family:var(--font-display,"Suez One",serif); font-weight:400; font-size:15px;}
+.mb-leadchip{display:inline-flex; align-items:center; gap:6px; font-size:13px; font-weight:800; background:#231F1A; border:2.5px solid #0C0906; box-shadow:-3px 4px 0 var(--cc,#FFC531); padding:3px 10px; border-radius:12px; white-space:nowrap; max-width:100%; overflow:hidden; text-overflow:ellipsis;}
+.mb-tag{font-size:12px; font-weight:800; background:rgba(0,0,0,.55); padding:2px 10px; border-radius:99px; white-space:nowrap; color:#5FD44A;}
+.mb-timerbox{display:flex; justify-content:flex-end; padding-top:34px;}
+.mb-timer{width:46px; height:46px; border-radius:50%; display:grid; place-items:center; position:relative; flex:0 0 auto;
+  background:conic-gradient(#FFC531 var(--p,360deg), rgba(255,255,255,.12) 0); box-shadow:0 0 0 3px #0C0906, -3px 4px 0 3px rgba(0,0,0,.4);}
+.mb-timer::before{content:""; position:absolute; inset:5px; border-radius:50%; background:#231F1A; border:2px solid #0C0906;}
+.mb-timer span{position:relative; font-family:var(--font-display,"Suez One",serif); font-size:19px; font-variant-numeric:tabular-nums;}
+.mb-timer.warm{background:conic-gradient(#FF7A29 var(--p,360deg), rgba(255,255,255,.12) 0);}
+
+/* ---- באנר + ספירה ---- */
+.mb-banner{position:absolute; left:50%; top:17%; transform:translate(-50%,-50%); display:flex; flex-direction:row; align-items:center; gap:12px; padding:10px 20px; border-radius:18px; max-width:90vw;
+  background:#FFF3DC; color:#0C0906; border:3px solid #0C0906; box-shadow:-5px 6px 0 var(--gc,#3DC63D); z-index:7; pointer-events:none; animation:mbpop .35s cubic-bezier(.2,1.6,.4,1) both; rotate:-1deg;}
+.mb-banner .ic{font-size:36px; line-height:1;}
+.mb-banner div{display:flex; flex-direction:column; min-width:0;}
+.mb-banner b{font-family:var(--font-display,"Suez One",serif); font-weight:400; font-size:22px; line-height:1.15;}
+.mb-banner small{font-size:13px; font-weight:800; color:#4A3F35;}
+@keyframes mbpop{from{transform:translate(-50%,-50%) scale(.5); opacity:0;} to{transform:translate(-50%,-50%) scale(1); opacity:1;}}
+.mb-count{position:absolute; left:50%; top:19%; transform:translate(-50%,-50%); font-family:var(--font-display,"Suez One",serif); font-size:96px; line-height:1; color:#FFF3DC; text-shadow:-6px 7px 0 #0C0906, 0 0 40px rgba(255,197,49,.5); z-index:7; pointer-events:none; animation:mbcount .9s ease-out both;}
+@keyframes mbcount{0%{transform:translate(-50%,-50%) scale(1.6); opacity:0;} 20%{transform:translate(-50%,-50%) scale(1); opacity:1;} 100%{transform:translate(-50%,-50%) scale(.9); opacity:0;}}
+
+/* ---- משטח ההקשה (השליש התחתון) ---- */
+.mb-pad{position:absolute; left:0; right:0; bottom:0; height:38%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; padding:12px 16px calc(env(safe-area-inset-bottom,0px) + 14px); text-align:center;
+  background:linear-gradient(180deg, #2A2119, #1B1612); border-top:4px solid #0C0906; box-shadow:inset 0 6px 0 rgba(255,255,255,.05); z-index:4;}
+.mb-pad::before{content:""; position:absolute; inset:12px 12px calc(env(safe-area-inset-bottom,0px) + 12px); border-radius:26px; border:3px dashed rgba(255,243,220,.18); pointer-events:none; transition:border-color .2s, background .2s;}
+.mb-pad.sleep::before{border-color:rgba(255,197,49,.45); animation:mbbreathe 1.6s ease-in-out infinite;}
+.mb-pad.locked::before{border-style:solid; border-color:rgba(95,212,74,.7); background:rgba(95,212,74,.06);}
+@keyframes mbbreathe{0%,100%{transform:scale(1);} 50%{transform:scale(1.015);}}
+.mb-pad b{font-family:var(--font-display,"Suez One",serif); font-weight:400; font-size:22px; line-height:1.15; position:relative;}
+.mb-pad small{font-size:13px; font-weight:800; color:#C8B78E; position:relative;}
+.mb-pad.listen{justify-content:center;} .mb-pad.listen .ear{font-size:56px; line-height:1; animation:mbear 1.2s ease-in-out infinite;}
+@keyframes mbear{0%,100%{transform:rotate(-8deg);} 50%{transform:rotate(8deg) scale(1.08);}}
+.mb-judge{position:absolute; top:-26px; left:50%; transform:translateX(-50%); font-family:var(--font-display,"Suez One",serif); font-size:34px; padding:4px 22px; border-radius:99px; border:3px solid #0C0906; box-shadow:-4px 5px 0 #0C0906; color:#0C0906; animation:mbjudge .7s ease-out both; pointer-events:none; z-index:5; white-space:nowrap;}
+.mb-judge.p{background:#5FD44A;} .mb-judge.g{background:#FFC531;} .mb-judge.o{background:#FF8A2B;} .mb-judge.b{background:#C8B78E;}
+@keyframes mbjudge{0%{transform:translate(-50%,10px) scale(.6); opacity:0;} 25%{transform:translate(-50%,0) scale(1.08); opacity:1;} 100%{transform:translate(-50%,-14px) scale(1); opacity:0;}}
+
+/* ---- בקרת הקובע ---- */
+.mb-leadpanel{position:absolute; left:0; right:0; bottom:0; height:38%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; padding:10px 12px calc(env(safe-area-inset-bottom,0px) + 12px); background:linear-gradient(180deg, #2A2119, #1B1612); border-top:4px solid #0C0906; z-index:4;}
+.mb-lvrow{display:flex; align-items:center; justify-content:center; gap:8px; width:100%; max-width:420px;}
+.mb-lv{flex:1; height:64px; border-radius:16px; background:#FFF3DC; color:#0C0906; border:3px solid #0C0906; box-shadow:-4px 5px 0 #0C0906; font-size:18px; font-weight:900; transition:transform .08s;}
+.mb-lv.big{flex:1.3; height:76px; font-size:30px; background:var(--gc,#3DC63D);}
+.mb-lv:active{transform:translate(4px,5px); box-shadow:0 0 0 #0C0906;}
+.mb-lvnum{flex:1.4; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0; height:84px; border-radius:18px; background:#231F1A; border:3px solid #0C0906; box-shadow:-4px 5px 0 #FFC531;}
+.mb-lvnum b{font-family:var(--font-display,"Suez One",serif); font-weight:400; font-size:38px; line-height:1; color:#FFC531; font-variant-numeric:tabular-nums;}
+.mb-lvnum small{font-size:11px; font-weight:800; color:#C8B78E;}
+.mb-floors{display:grid; grid-template-columns:repeat(8,minmax(0,1fr)); gap:5px; width:100%; max-width:440px;}
+.mb-fl{display:flex; flex-direction:column; align-items:center; gap:1px; padding:6px 0 4px; border-radius:12px; background:color-mix(in srgb, var(--ft,#888) 55%, #231F1A); color:#FFF3DC; border:2.5px solid #0C0906; box-shadow:-3px 4px 0 #0C0906; min-width:0; transition:transform .08s;}
+.mb-fl span{font-size:22px; line-height:1;} .mb-fl small{font-size:9px; font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%;}
+.mb-fl.on{outline:3px solid #FFC531; outline-offset:-1px; transform:translateY(-3px);}
+.mb-fl:active{transform:translate(3px,4px); box-shadow:0 0 0 #0C0906;}
+.mb-done{width:100%; max-width:420px; height:54px; border-radius:16px; background:#FFC531; color:#0C0906; border:3px solid #0C0906; box-shadow:-4px 5px 0 #0C0906; font-family:var(--font-display,"Suez One",serif); font-size:22px; transition:transform .08s;}
+.mb-done:active{transform:translate(4px,5px); box-shadow:0 0 0 #0C0906;}
+.mb-leadpanel.watch h3{margin:0; font-family:var(--font-display,"Suez One",serif); font-weight:400; font-size:22px; text-shadow:-3px 4px 0 var(--gc,#3DC63D);}
+.mb-leadpanel .sub{margin:0; font-size:12px; font-weight:800; color:#C8B78E;}
+.mb-locklist{display:flex; flex-wrap:wrap; justify-content:center; gap:6px; max-width:440px;}
+.mb-lockchip{display:inline-flex; align-items:center; gap:5px; font-size:13px; font-weight:800; padding:4px 10px; border-radius:99px; background:#231F1A; border:2.5px solid #0C0906; box-shadow:-3px 4px 0 var(--cc,#888); transition:transform .2s;}
+.mb-lockchip.on{background:#5FD44A; color:#0C0906; transform:scale(1.06);}
+
+/* ---- בחירת צבע ---- */
+.mb-pick{position:absolute; inset:0; z-index:8; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; padding:max(14px, env(safe-area-inset-top)) 10px max(14px, env(safe-area-inset-bottom)); overflow:hidden; background:radial-gradient(circle at 50% 30%, #2A2119, #14110E);}
+.mb-pick h2{font-family:var(--font-display,"Suez One",serif); font-weight:400; font-size:30px; margin:0; text-shadow:-3px 4px 0 var(--gc,#3DC63D);}
+.mb-pick .sub{margin:0; color:#C8B78E; font-size:14px; text-align:center;}
+.mb-pick .grid{display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; width:100%; max-width:400px;}
+.mb-pick .tile{display:flex; flex-direction:column; align-items:center; gap:2px; padding:8px 4px; border-radius:16px; background:linear-gradient(180deg, color-mix(in srgb, var(--cc,#FFF3DC) 35%, #231F1A), #231F1A); color:#FFF3DC; border:3px solid #0C0906; box-shadow:-4px 5px 0 #0C0906; transition:transform .12s cubic-bezier(.34,1.56,.64,1); position:relative; rotate:-1deg; min-width:0;}
+.mb-pick .tile:nth-child(even){rotate:1deg;}
+.mb-pick .tile img{width:100%; max-width:74px; aspect-ratio:1; display:block;}
+.mb-pick .tile b{font-size:13px; color:var(--cc);}
+.mb-pick .tile small{font-size:10px; font-weight:800; background:rgba(255,255,255,.15); padding:1px 6px; border-radius:99px; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.mb-pick .tile.taken{opacity:.45; filter:grayscale(.7);}
+.mb-pick .tile.mine{outline:4px solid #FFF3DC; outline-offset:-2px; transform:scale(1.06);}
+.mb-pick .tile:active{transform:translate(4px,5px) scale(.98); box-shadow:0 0 0 #0C0906;}
+.mb-pick .timer{margin:4px 0 0; font-weight:800; color:#FFC531;}
+
+/* ---- טבלת הסבב / סיום ---- */
+.mb-result,.mb-over{position:absolute; inset:0; z-index:8; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; background:rgba(20,17,14,.93); padding:14px; overflow:auto;}
+.mb-result h2,.mb-over h2{font-family:var(--font-display,"Suez One",serif); font-weight:400; font-size:28px; margin:0; text-shadow:-4px 5px 0 var(--gc,#3DC63D); text-align:center;}
+.mb-result .lv,.mb-over .lv{margin:0; font-weight:800; font-size:14px; color:#FFF3DC; background:#231F1A; border:2.5px solid #0C0906; box-shadow:-3px 4px 0 #FFC531; padding:4px 14px; border-radius:99px;}
+.mb-result .lv b{color:#FFC531; font-family:var(--font-display,"Suez One",serif); font-weight:400; font-size:18px;}
+.mb-result ol,.mb-over ol{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:6px; width:min(380px,94vw);}
+.mb-result li{display:grid; grid-template-columns:24px 1fr auto auto; grid-template-rows:auto auto; column-gap:8px; align-items:center; padding:6px 10px; border-radius:12px; background:#231F1A; border:2.5px solid #0C0906; box-shadow:-3px 4px 0 var(--gc,#3DC63D); font-weight:800;}
+.mb-result li>span:first-child{grid-row:1/3; font-family:var(--font-display,"Suez One",serif); color:#C8B78E; text-align:center;}
+.mb-result li .nm{display:flex; align-items:center; gap:6px; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; font-size:15px;}
+.mb-result li small{grid-column:2; font-size:11px; color:#C8B78E; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.mb-result li b{grid-column:3; grid-row:1/3; font-family:var(--font-display,"Suez One",serif); font-weight:400; font-size:22px; color:#5FD44A;}
+.mb-result li i{grid-column:4; grid-row:1/3; font-style:normal; font-size:13px; color:#FFC531; font-variant-numeric:tabular-nums; min-width:44px; text-align:right;}
+.mb-result li.me{outline:3px solid #FFC531;} .mb-result li.lead{box-shadow:-3px 4px 0 #FFC531;}
+.mb-result .sub,.mb-over .sub{margin:0; font-size:13px; font-weight:800; color:#C8B78E;}
+.mb-over li{display:grid; grid-template-columns:26px 1fr auto auto; gap:8px; align-items:center; padding:7px 12px; border-radius:12px; background:#231F1A; border:2.5px solid #0C0906; box-shadow:-3px 4px 0 var(--gc,#3DC63D); font-weight:800;}
+.mb-over li>span:first-child{font-family:var(--font-display,"Suez One",serif); color:#C8B78E; text-align:center;}
+.mb-over li .nm{display:flex; align-items:center; gap:6px; overflow:hidden; white-space:nowrap; text-overflow:ellipsis;}
+.mb-over li small{font-size:11px; color:#C8B78E; white-space:nowrap;}
+.mb-over li b{font-family:var(--font-display,"Suez One",serif); font-weight:400; font-size:22px; color:#FFC531;}
+.mb-over li.me{outline:3px solid #FFC531;}
+.mb-over .titles{display:flex; flex-direction:column; gap:4px; width:min(380px,94vw);}
+.mb-over .titles span{font-size:13px; font-weight:800; background:#FFF3DC; color:#0C0906; border:2.5px solid #0C0906; box-shadow:-3px 4px 0 #0C0906; padding:4px 12px; border-radius:12px; rotate:-.6deg;}
+.mb-over .titles span.me{background:#FFC531;}
+
+/* ---- מסכים נמוכים (אייפון ישן עם בר של כרום) ---- */
+@media (max-height:600px){
+  .mb-cv{height:58%;}
+  .mb-pad,.mb-leadpanel{height:42%;}
+  .mb-pad b{font-size:18px;} .mb-lv{height:52px;} .mb-lv.big{height:60px;} .mb-lvnum{height:68px;} .mb-lvnum b{font-size:30px;} .mb-done{height:46px; font-size:19px;}
+  .mb-fl span{font-size:18px;} .mb-fl small{display:none;}
+  .mb-pick .tile img{max-width:56px;}
+}
+@media (prefers-reduced-motion: reduce){ .mb-banner,.mb-count,.mb-judge,.mb-pad.sleep::before,.mb-pad.listen .ear{animation:none;} }
