@@ -8,8 +8,8 @@
  */
 import { useEffect, useRef, useState, type CSSProperties, type ReactElement } from "react";
 import type { GameViewProps } from "./registry";
-import { MB, MB_FLOORS, mbFloor, mbBpm, mbLevelOf, mbPeriod, mbPhase, mbHeight, mbNewBall, mbFeedTap, mbAsleep } from "../../../shared/metro";
-import type { MbBall, MbResultRow, MbProgRow, MetroServerMsg } from "../../../shared/metro";
+import { MB, MB_FLOORS, MB_PATTERNS, MB_PHYS_OFF, mbFloor, mbPattern, mbBpm, mbLevelOf, mbPeriod, mbPhase, mbHeight, mbNewBall, mbFeedTap, mbAsleep, mbPlainSched, mbAround, mbNearest, mbIsRest, mbBpmAt } from "../../../shared/metro";
+import type { MbBall, MbResultRow, MbProgRow, MbSched, MbPattern, MbOpts, MetroServerMsg } from "../../../shared/metro";
 import { mbAudioInit, mbAudioTime, mbLand, mbCancelScheduled, mbSfx, mbSay, mbPreloadVoices } from "./metroAudio";
 import { drawBall, ballIcon, loadBallSprite, onBallSpriteReady, type BallPose } from "./metroSprites";
 import { vibrate } from "../lib/audio";
@@ -52,18 +52,21 @@ export default function MetroView({ room, me, conn, hub }: GameViewProps) {
   const [spr, setSpr] = useState(false);
   const [asleep, setAsleep] = useState(true);
   const [countN, setCountN] = useState(-1);
+  const [opts, setOpts] = useState<MbOpts>({ patterns: false, phys: false });
+  const [pattern, setPattern] = useState<MbPattern>("plain");
   const cvRef = useRef<HTMLCanvasElement>(null);
 
   const G = useRef({
     phase: "wait" as Phase, leader: "", solo: false,
     chars: {} as Record<string, number>,
     lead: { bpm: 0, anchor: 0, floor: MB_FLOORS[0].id },
+    sched: mbPlainSched(0, 0) as MbSched, opts: { patterns: false, phys: false } as MbOpts,
     balls: new Map<string, { bpm: number; anchor: number }>(),
     my: mbNewBall() as MbBall,
     locked: new Set<string>(), unison: false, unisonAt: 0,
     lastN: new Map<string, number>(), landAt: new Map<string, number>(),
     rings: [] as Ring[], parts: [] as Part[], shake: 0, flashA: 0,
-    sched: { n: -Infinity, key: "" },
+    snd: { n: -Infinity, key: "" },
     wakeAt: 0, sleptAt: 0, startAt: 0, until: 0, lastTapAt: 0,
     players: [] as { id: string; name: string; emoji: string }[],
     lastFrame: 0, hudAt: 0, countTimers: [] as number[],
@@ -84,11 +87,11 @@ export default function MetroView({ room, me, conn, hub }: GameViewProps) {
   useEffect(() => { img(`/metro/floor-${floorId}.webp`); }, [floorId]);
 
   /* ---------- הודעות ---------- */
-  function applyLead(bpm: number, anchor: number, floor: string) {
+  function applyLead(bpm: number, anchor: number, floor: string, sched: MbSched) {
     const g = G.current;
-    if (g.lead.bpm !== bpm || g.lead.anchor !== anchor) { mbCancelScheduled(); g.sched = { n: -Infinity, key: "" }; }
-    g.lead = { bpm, anchor, floor };
-    setFloorId(floor); setLevel(mbLevelOf(bpm));
+    if (g.lead.bpm !== bpm || g.lead.anchor !== anchor || g.sched.pattern !== sched.pattern) { mbCancelScheduled(); g.snd = { n: -Infinity, key: "" }; }
+    g.lead = { bpm, anchor, floor }; g.sched = sched;
+    setFloorId(floor); setLevel(mbLevelOf(bpm)); setPattern(sched.pattern);
   }
   function clearCount() { for (const t of G.current.countTimers) clearTimeout(t); G.current.countTimers = []; }
   function scheduleCount(startAt: number) {
@@ -112,30 +115,36 @@ export default function MetroView({ room, me, conn, hub }: GameViewProps) {
             break;
           }
           case "mb_go": {
-            g.chars = d.chars; g.solo = d.solo; setSolo(d.solo);
+            g.chars = d.chars; g.solo = d.solo; setSolo(d.solo); g.opts = d.opts; setOpts(d.opts);
             mbSay("intro");
             setBanner({ ic: "🎾", t: "מטרונובול", s: d.solo ? `${d.rounds} קצבים — תפסו כל אחד` : `${d.rounds} סבבים — כל אחד קובע קצב`, cls: "long" });
             break;
           }
           case "mb_round": {
             g.leader = d.leader; g.locked.clear(); g.unison = false; g.balls.clear(); g.my = mbNewBall(); g.lastN.clear();
-            applyLead(mbBpm(d.level), d.anchor, d.floor);
+            applyLead(mbBpm(d.level), d.anchor, d.floor, { pattern: d.pattern, bpm: mbBpm(d.level), bpm2: mbBpm(d.level), anchor: d.anchor, until: 0 });
             setRnd({ r: d.r, of: d.of, leader: d.leader, until: d.until, level: d.level });
             setProg([]); setResult(null); setHint(""); setAsleep(true);
             setPhaseBoth("set");
-            if (g.solo) { setBanner({ ic: "🎵", t: `קצב ${d.r + 1} מתוך ${d.of}`, s: "תקשיבו… ואז תפסו אותו", cls: "long" }); mbSay("newtempo"); }
+            if (g.solo) { const pt = mbPattern(d.pattern); setBanner({ ic: pt.id === "plain" ? "🎵" : pt.ic, t: pt.id === "plain" ? `קצב ${d.r + 1} מתוך ${d.of}` : `${pt.name}! ${pt.desc}`, s: pt.id === "plain" ? "תקשיבו… ואז תפסו אותו" : `קצב ${d.r + 1} מתוך ${d.of} — תקשיבו…`, cls: "long" }); mbSay("newtempo"); }
             else if (d.leader === me) { setBanner({ ic: "🎛️", t: "הקצב שלך!", s: "כוונו את הכדור — כולם שומעים אותו", cls: "long" }); mbSay("yourturn"); vibrate([40, 40, 40]); }
             else { setBanner({ ic: "👂", t: `${pname(d.leader)} קובע את הקצב`, s: "תקשיבו לכדור שלו…", cls: "long" }); mbSay("listen"); }
             break;
           }
-          case "mb_lead": { applyLead(d.bpm, d.anchor, d.floor); break; }
+          case "mb_lead": { applyLead(d.bpm, d.anchor, d.floor, { pattern: d.pattern, bpm: d.bpm, bpm2: d.bpm, anchor: d.anchor, until: 0 }); break; }
+          case "mb_oops": {
+            if (d.pid !== me) break;
+            setJudge({ t: g.sched.pattern === "rest" ? "✋ שקט!" : "✋ יותר מדי הקשות", cls: "b", id: Date.now() }); mbSfx.tap(0); vibrate([10, 30, 10]);
+            break;
+          }
           case "mb_count": {
-            applyLead(d.bpm, d.startAt, d.floor);
+            applyLead(d.bpm, d.startAt, d.floor, d.sched);
+            if (!isLeader() && d.sched.pattern !== "plain") { const pt = mbPattern(d.sched.pattern); setBanner({ ic: pt.ic, t: `${pt.name}: ${pt.desc}`, s: "עקבו אחרי הכדור — לא רק אחרי המספר", cls: "long" }); }
             g.startAt = d.startAt; g.until = d.until; g.my = mbNewBall(); g.balls.clear(); g.lastN.clear(); g.locked.clear(); g.unison = false;
             setCnt({ startAt: d.startAt, until: d.until }); setPhaseBoth("count"); setAsleep(true);
             const t = d.startAt - conn.serverNow();
             g.countTimers.push(window.setTimeout(() => { if (G.current.phase === "count") setPhaseBoth("match"); }, Math.max(0, t)));
-            if (!isLeader()) { if (t > 3600) setBanner({ ic: "👂", t: "תקשיבו לקצב…", s: "בעוד רגע — מקישים איתו", cls: "long" }); else mbSay("catch"); }
+            if (!isLeader()) { if (t > 3600 && d.sched.pattern === "plain") setBanner({ ic: "👂", t: "תקשיבו לקצב…", s: "בעוד רגע — מקישים איתו", cls: "long" }); else if (t <= 3600) mbSay("catch"); }
             scheduleCount(d.startAt);
             break;
           }
@@ -169,8 +178,8 @@ export default function MetroView({ room, me, conn, hub }: GameViewProps) {
             break;
           }
           case "mb_sync": {
-            g.chars = d.chars; g.solo = d.solo; setSolo(d.solo); g.leader = d.leader;
-            applyLead(d.bpm, d.anchor, d.floor);
+            g.chars = d.chars; g.solo = d.solo; setSolo(d.solo); g.leader = d.leader; g.opts = d.opts; setOpts(d.opts);
+            applyLead(d.bpm, d.anchor, d.floor, d.sched);
             g.startAt = d.startAt; g.until = d.until;
             g.balls.clear(); for (const b of d.balls) if (b.pid !== me) g.balls.set(b.pid, { bpm: b.bpm, anchor: b.anchor });
             setTotal(d.totals[me] ?? 0);
@@ -197,6 +206,7 @@ export default function MetroView({ room, me, conn, hub }: GameViewProps) {
     setLevel(nl); conn.sendGame({ a: "mb_level", level: nl }); mbSfx.levelTick(delta > 0); vibrate(8);
   }
   function setFl(id: string) { const g = G.current; if (g.phase !== "set" || !isLeader()) return; setFloorId(id); conn.sendGame({ a: "mb_floor", floor: id }); mbSfx.select(); vibrate(12); }
+  function setPat(id: MbPattern) { const g = G.current; if (g.phase !== "set" || !isLeader() || !g.opts.patterns) return; setPattern(id); conn.sendGame({ a: "mb_pattern", pattern: id }); mbSfx.select(); vibrate(12); }
   function setDone() { if (G.current.phase !== "set" || !isLeader()) return; conn.sendGame({ a: "mb_setdone" }); mbSfx.select(); }
   /** ההקשה שלי — הכדור מגיב מיד, השרת שופט אחר כך */
   function tap() {
@@ -209,17 +219,18 @@ export default function MetroView({ room, me, conn, hub }: GameViewProps) {
     g.my = mbFeedTap(g.my, at);
     conn.sendGame({ a: "mb_tap", at: Math.round(at) });
     if (wasAsleep) { g.wakeAt = at; mbSfx.wake(); setAsleep(false); }
-    // שיפוט מקומי מול פעימות המנהיג — פידבק מיידי (הניקוד האמיתי מהשרת)
-    const T = mbPeriod(g.lead.bpm);
-    const k = Math.round((at - g.lead.anchor) / T); const off = at - (g.lead.anchor + k * T);
+    // שיפוט מקומי מול לוח הנחיתות של המנהיג — פידבק מיידי (הניקוד האמיתי מהשרת)
+    const near = mbNearest(g.sched, at); const off = at - near;
     const a = Math.abs(off);
-    const good: 0 | 1 | 2 | 3 = a <= MB.PERFECT_MS ? 3 : a <= MB.GOOD_MS ? 2 : a <= MB.OK_MS ? 1 : 0;
+    const rest = mbIsRest(g.sched, at, MB.OK_MS * 1.6);
+    const good: 0 | 1 | 2 | 3 = rest ? 0 : a <= MB.PERFECT_MS ? 3 : a <= MB.GOOD_MS ? 2 : a <= MB.OK_MS ? 1 : 0;
     mbSfx.tap(good);
     vibrate(good === 3 ? 12 : 6);
     if (g.phase === "match") {
       const id = Date.now();
-      setJudge(good === 3 ? { t: "מושלם!", cls: "p", id } : good === 2 ? { t: "טוב", cls: "g", id } : good === 1 ? { t: "קרוב", cls: "o", id } : { t: off < 0 ? "מוקדם" : "מאוחר", cls: "b", id });
-      if (g.my.bpm > 0) { const rel = (g.my.bpm - g.lead.bpm) / g.lead.bpm; setHint(rel > MB.TEMPO_TOL ? "לאט יותר ⏪" : rel < -MB.TEMPO_TOL ? "מהר יותר ⏩" : rel > MB.LOCK_TOL ? "קצת לאט יותר" : rel < -MB.LOCK_TOL ? "קצת מהר יותר" : ""); }
+      setJudge(rest ? { t: "✋ שקט!", cls: "b", id } : good === 3 ? { t: "מושלם!", cls: "p", id } : good === 2 ? { t: "טוב", cls: "g", id } : good === 1 ? { t: "קרוב", cls: "o", id } : { t: off < 0 ? "מוקדם" : "מאוחר", cls: "b", id });
+      const lb = mbBpmAt(g.sched, at);
+      if (g.my.bpm > 0) { const rel = (g.my.bpm - lb) / lb; setHint(rel > MB.TEMPO_TOL ? "לאט יותר ⏪" : rel < -MB.TEMPO_TOL ? "מהר יותר ⏩" : rel > MB.LOCK_TOL ? "קצת לאט יותר" : rel < -MB.LOCK_TOL ? "קצת מהר יותר" : ""); }
     }
     // הבזק נחיתה מקומי לכדור שלי
     g.landAt.set(me, performance.now());
@@ -314,34 +325,46 @@ export default function MetroView({ room, me, conn, hub }: GameViewProps) {
         const rB = Math.max(13, Math.min(24, (W * 0.9) / (Math.max(1, back.length) * 2.6)));
         const backX = (i: number, n: number) => W * 0.5 + (i - (n - 1) / 2) * Math.min(rB * 2.7, (W * 0.88) / Math.max(1, n));
 
-        const ballState = (pid: string, kind: string): { bpm: number; anchor: number; asleep: boolean } => {
-          if (kind === "lead" || kind === "metro") return { bpm: g.lead.bpm, anchor: g.lead.anchor, asleep: !inRound && ph !== "result" ? true : g.lead.bpm <= 0 };
+        const phys = g.opts.phys ? fl.phys : MB_PHYS_OFF;
+        /** prev/next = הנחיתה הקודמת והבאה של הכדור הזה. המנהיג — מלוח הנחיתות (דפוסים); עוקב — מהמודל המחזורי שלו, עם דילוג על "הפסקה" של המנהיג */
+        const ballState = (pid: string, kind: string): { prev: number; next: number; asleep: boolean } => {
+          if (kind === "lead" || kind === "metro") { const asleep = !inRound && ph !== "result" ? true : g.lead.bpm <= 0; if (asleep) return { prev: 0, next: 1, asleep }; return { ...mbAround(g.sched, now), asleep: false }; }
           const b = pid === me ? g.my : g.balls.get(pid);
-          if (!b || (ph !== "count" && ph !== "match")) return { bpm: 0, anchor: 0, asleep: true };
-          return { bpm: b.bpm, anchor: b.anchor, asleep: b.bpm <= 0 || now - b.anchor > MB.SLEEP_MS };
+          if (!b || (ph !== "count" && ph !== "match") || b.bpm <= 0 || now - b.anchor > MB.SLEEP_MS) return { prev: 0, next: 1, asleep: true };
+          const T = mbPeriod(b.bpm);
+          const { n } = mbPhase(b.bpm, b.anchor, now);
+          let prev = b.anchor + n * T, next = prev + T;
+          if (g.sched.pattern === "rest" && n >= 0 && mbIsRest(g.sched, next, T * 0.3)) next += T;      // מרחפים מעל ההפסקה כמו המנהיג
+          else if (g.sched.pattern === "rest" && n >= 1 && mbIsRest(g.sched, prev, T * 0.3)) prev -= T; // באמצע הריחוף
+          return { prev, next, asleep: false };
         };
 
         const drawOne = (pid: string, c: number, kind: string, x: number, yFloor: number, r: number, label: string) => {
           const st = ballState(pid, kind);
           const maxH = Math.max(r * 1.2, (yFloor - yH - r * 2.2 + (kind === "lead" || kind === "me" || kind === "metro" ? (yH - r) * 0.35 : 0)));
-          let hh = 0, pose: BallPose = "idle", sx = 1, sy = 1, dim = 0;
+          let hh = 0, pose: BallPose = "idle", sx = 1, sy = 1, dim = 0, dx = 0;
           if (st.asleep) {
             // ישן: נושם על הרצפה
             const br = Math.sin(pn / 600) * 0.03; sx = 1.04 + br; sy = 0.96 - br; dim = kind === "me" || kind === "metro" ? 0.25 : 0.5;
           } else {
-            const { phi, n } = mbPhase(st.bpm, st.anchor, now);
-            const T = mbPeriod(st.bpm);
-            const hNorm = mbHeight(st.bpm);
-            hh = maxH * hNorm * 4 * phi * (1 - phi);
+            const T = Math.max(60, st.next - st.prev);
+            const phi = Math.max(0, Math.min(0.999, (now - st.prev) / T));
+            const hNorm = mbHeight(60000 / T) * phys.h;
+            let arc = 4 * phi * (1 - phi);
+            if (phys.hang > 0) arc = Math.pow(arc, 1 - phys.hang * 0.7);           // כבידה נמוכה: מתמהמה בשיא
+            hh = maxH * hNorm * arc;
             const since = phi * T; // ms מאז הנחיתה
             const last = g.lastN.get(pid);
-            if (last !== undefined && n !== last) { g.landAt.set(pid, pn); ring(x, yFloor, r * 0.9, kind === "lead" || kind === "metro" ? "#FFC531" : "rgba(255,243,220,.85)"); }
-            g.lastN.set(pid, n);
+            if (last !== undefined && st.prev !== last) { g.landAt.set(pid, pn); ring(x, yFloor, r * (0.9 + phys.sink * 1.2), kind === "lead" || kind === "metro" ? "#FFC531" : "rgba(255,243,220,.85)"); }
+            g.lastN.set(pid, st.prev);
             const la = g.landAt.get(pid); const sinceLand = la === undefined ? 999 : pn - la;
-            const sq = sinceLand < 110 ? Math.sin((sinceLand / 110) * Math.PI) : 0;
-            sx = 1 + 0.24 * sq; sy = 1 - 0.28 * sq;
+            const sqDur = 110 + phys.sq * 40;
+            const sq = sinceLand < sqDur ? Math.sin((sinceLand / sqDur) * Math.PI) : 0;
+            sx = 1 + 0.24 * sq * phys.sq; sy = 1 - 0.28 * sq * Math.min(phys.sq, 1.6);
+            if (phys.sink > 0 && sq > 0) hh -= r * phys.sink * sq;                   // שוקע ברצפה (מים/תוף/גומי)
             const v = Math.abs(1 - 2 * phi); // מהירות יחסית
             if (sq === 0 && hh > r * 0.5) { sy *= 1 + 0.1 * v; sx *= 1 - 0.06 * v; }
+            if (phys.wob > 0) dx = Math.sin(phi * Math.PI * 2 + pn / 900) * r * phys.wob * 3;
             pose = sinceLand < 130 || since < 60 ? "land" : phi < 0.5 ? "fly" : "idle";
           }
           // צל
@@ -352,7 +375,7 @@ export default function MetroView({ room, me, conn, hub }: GameViewProps) {
           if (kind === "lead" || kind === "metro") { ctx.strokeStyle = "rgba(255,197,49,.85)"; ctx.lineWidth = 3; ctx.setLineDash([6, 6]); ctx.lineDashOffset = -pn / 40; ctx.beginPath(); ctx.ellipse(x, yFloor + r * 0.06, r * 1.35, r * 0.4, 0, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]); }
           else if (g.locked.has(pid)) { const pulse = 0.7 + 0.3 * Math.sin(pn / 160); ctx.strokeStyle = `rgba(95,212,74,${pulse})`; ctx.lineWidth = 3.5; ctx.beginPath(); ctx.ellipse(x, yFloor + r * 0.06, r * 1.35, r * 0.4, 0, 0, Math.PI * 2); ctx.stroke(); }
           // הכדור
-          drawBall(ctx, c, x, yFloor - hh, r, sx, sy, pose, dim);
+          drawBall(ctx, c, x + dx, yFloor - hh, r, sx, sy, pose, dim);
           // תווית
           ctx.font = `800 ${Math.max(10, Math.min(14, r * 0.34))}px "Assistant Variable", Assistant, sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "top";
           ctx.lineWidth = 3; ctx.strokeStyle = "rgba(12,9,6,.85)"; ctx.fillStyle = kind === "me" ? "#FFC531" : PAPER;
@@ -377,12 +400,10 @@ export default function MetroView({ room, me, conn, hub }: GameViewProps) {
 
         /* --- סאונד הנחיתה של הקובע (רק הוא נשמע) --- */
         if (inRound && g.lead.bpm > 0) {
-          const T = mbPeriod(g.lead.bpm);
-          const n = Math.floor((now - g.lead.anchor) / T);
-          const nxt = g.lead.anchor + (n + 1) * T;
-          const key = `${g.lead.bpm}:${g.lead.anchor}`;
-          if (g.sched.key !== key) { g.sched = { n: -Infinity, key }; }
-          if (nxt - now < 240 && g.sched.n < n + 1) { g.sched.n = n + 1; mbLand(fl.sfx, mbAudioTime(nxt, now), ph === "set" && !isLeader() ? 0.75 : 1); }
+          const { next: nxt } = mbAround(g.sched, now);
+          const key = `${g.sched.pattern}:${g.lead.bpm}:${g.lead.anchor}`;
+          if (g.snd.key !== key) { g.snd = { n: -Infinity, key }; }
+          if (nxt - now < 240 && g.snd.n < nxt) { g.snd.n = nxt; mbLand(fl.sfx, mbAudioTime(nxt, now), ph === "set" && !isLeader() ? 0.75 : 1); }
         }
         /* --- הכדור שלי נרדם? --- */
         const meAsleep = mbAsleep(g.my, now);
@@ -402,9 +423,9 @@ export default function MetroView({ room, me, conn, hub }: GameViewProps) {
       if (!window.__mbAuto) return;
       const g = G.current;
       if ((g.phase !== "count" && g.phase !== "match") || isLeader() || g.lead.bpm <= 0) return;
-      const now = conn.serverNow(); const T = mbPeriod(g.lead.bpm);
-      const near = g.lead.anchor + Math.round((now - g.lead.anchor) / T) * T;
-      if (Math.abs(now - near) <= 45 && Math.abs(near - lastBeat) > T / 2 && now > g.startAt - 400) { lastBeat = near; tap(); }
+      const now = conn.serverNow();
+      const near = mbNearest(g.sched, now);
+      if (Math.abs(now - near) <= 45 && near !== lastBeat && now > g.startAt - 400) { lastBeat = near; tap(); }
     };
     loop();
     return () => clearTimeout(t);
@@ -442,6 +463,7 @@ export default function MetroView({ room, me, conn, hub }: GameViewProps) {
           <div className="mb-mid">
             <div className="mb-round">{solo ? "קצב" : "סבב"} <b>{rnd.r + 1}</b>/{rnd.of}</div>
             {!solo && lead && <div className="mb-leadchip" style={{ "--cc": colorOf(lead) } as CSSProperties}><Face c={cOf(lead)} size={22} /> {lead === me ? "הקצב שלך" : `הקצב של ${pname(lead)}`}</div>}
+            {pattern !== "plain" && phase !== "set" && <div className="mb-tag pat">{mbPattern(pattern).ic} {mbPattern(pattern).name}</div>}
             {phase === "match" && !solo && <div className="mb-tag">🔒 {lockedN}/{prog.length || Math.max(0, Object.keys(G.current.chars).length - 1)} נעולים</div>}
           </div>
           <div className="mb-timerbox">
@@ -457,7 +479,7 @@ export default function MetroView({ room, me, conn, hub }: GameViewProps) {
 
       {/* בקרת הקובע */}
       {phase === "set" && lead === me && !solo && (
-        <div className="mb-leadpanel">
+        <div className={"mb-leadpanel" + (opts.patterns || opts.phys ? " opts" : "")}>
           <div className="mb-lvrow">
             <button className="mb-lv" onPointerDown={(e) => { e.stopPropagation(); setLv(-5); }}>◀◀</button>
             <button className="mb-lv big" onPointerDown={(e) => { e.stopPropagation(); setLv(-1); }}>◀</button>
@@ -468,6 +490,12 @@ export default function MetroView({ room, me, conn, hub }: GameViewProps) {
           <div className="mb-floors">
             {MB_FLOORS.map((f) => <button key={f.id} className={"mb-fl" + (f.id === floorId ? " on" : "")} style={{ "--ft": f.tint } as CSSProperties} onPointerDown={(e) => { e.stopPropagation(); setFl(f.id); }}><span>{f.ic}</span><small>{f.name}</small></button>)}
           </div>
+          {opts.phys && <p className="mb-physhint">🪂 {mbFloor(floorId).phys.hint}</p>}
+          {opts.patterns && (
+            <div className="mb-pats">
+              {MB_PATTERNS.map((pt) => <button key={pt.id} className={"mb-pat" + (pt.id === pattern ? " on" : "")} onPointerDown={(e) => { e.stopPropagation(); setPat(pt.id); }} title={pt.desc}><span>{pt.ic}</span><small>{pt.name}</small></button>)}
+            </div>
+          )}
           <button className="mb-done" onClick={setDone}>✓ זה הקצב!</button>
         </div>
       )}
@@ -523,7 +551,7 @@ export default function MetroView({ room, me, conn, hub }: GameViewProps) {
       {phase === "result" && result && (
         <div className="mb-result">
           <h2>{solo ? `קצב ${result.r + 1} מתוך ${result.of}` : `סבב ${result.r + 1} מתוך ${result.of}`}</h2>
-          <p className="lv">הקצב היה רמה <b>{result.level}</b> · {mbBpm(result.level)} BPM{!solo && result.leader ? ` · קבע: ${pname(result.leader)}` : ""}</p>
+          <p className="lv">הקצב היה רמה <b>{result.level}</b> · {mbBpm(result.level)} BPM{result.pattern !== "plain" ? ` · ${mbPattern(result.pattern).ic} ${mbPattern(result.pattern).name}` : ""}{!solo && result.leader ? ` · קבע: ${pname(result.leader)}` : ""}</p>
           <ol>
             {result.rows.map((r, i) => <ResultRow key={r.pid} r={r} i={i} me={me} name={pname(r.pid)} Face={Face} />)}
           </ol>
