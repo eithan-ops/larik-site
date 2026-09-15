@@ -4,6 +4,7 @@ import Room from "./components/Room";
 import Mapper from "./components/Mapper";
 import GamesShelf from "./components/GamesShelf";
 import Daily from "./components/Daily";
+import { pageView } from "./lib/analytics";
 
 /** ראוטר משחקים: / (בית) · /r/CODE (חדר) · /daily (סולו). המופע באפליקציה נפרדת (/s) */
 export default function App() {
@@ -14,6 +15,9 @@ export default function App() {
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
   }, []);
+
+  // page_view ידני לכל מעבר מסך (ה-config ב-analytics.ts לא שולח אוטומטית) — נתיב מנורמל
+  useEffect(() => { pageView(path); }, [path]);
 
   // נתיבי מופע ישנים — מפנים לאפליקציית המופע (קישורים/כרטיסים שכבר הודפסו ממשיכים לעבוד)
   if (path === "/show") { location.replace("/s"); return null; }

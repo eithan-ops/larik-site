@@ -68,7 +68,7 @@ export default function Home() {
     setErr("");
     try {
       const c = await createRoom();
-      track("room_created");
+      track("room_created", { from: "home" });
       navigate(`/r/${c}`);
     } catch {
       setErr(t("app.err_waking"));

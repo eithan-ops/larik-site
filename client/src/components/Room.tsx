@@ -5,7 +5,7 @@ import { CATALOG, SPODS_CATEGORY } from "../../../shared/protocol";
 import { Connection, defaultServerUrl } from "../lib/connection";
 import { unlockAudio, Sfx, vibrate } from "../lib/audio";
 import { armPhone } from "../lib/sensors";
-import { track } from "../lib/analytics";
+import { track, trackOnce, entrySource, bumpGamesTotal } from "../lib/analytics";
 import { setGround } from "../lib/ground";
 import QRCodeView from "./QRCodeView";
 import Ceremony from "./Ceremony";
@@ -37,6 +37,7 @@ export default function Room({ code }: { code: string }) {
   const [fatal, setFatal] = useState("");
   const connRef = useRef<Connection | null>(null);
   const roomRef = useRef<RoomSnapshot | null>(null);
+  const leavingRef = useRef(false); // סגירה מכוונת (עזיבה/ניווט) — לא ניתוק רשת
   const hub = useMemo(() => new GameHub(), []);
 
   function showToast(m: string) {
@@ -54,26 +55,79 @@ export default function Room({ code }: { code: string }) {
     localStorage.setItem("larik-emoji", emoji);
 
     const conn = new Connection(defaultServerUrl(), code, {
-      onWelcome: (pid, r) => { setMe(pid); setRoom(r); roomRef.current = r; },
+      onWelcome: (pid, r) => {
+        // ה-welcome הראשון = הצטרפות אמיתית (השרת אישר). מכאן יודעים אם אני המארח ומאיפה הגעתי
+        if (!roomRef.current) {
+          track("room_joined", {
+            role: pid === r.hostId ? "host" : "guest",
+            via: entrySource(),
+            rejoin: isRejoin ? 1 : 0,
+            players: r.players.filter((p) => p.connected).length,
+            phase: r.phase,
+          });
+        }
+        setMe(pid); setRoom(r); roomRef.current = r;
+      },
       onRoom: (r) => { setRoom(r); roomRef.current = r; },
       onGame: (d) => hub.emit(d, 0),
       onCue: (d, at) => hub.emit(d, at),
       // שגיאה לפני שנכנסנו לחדר (קוד שגוי / חדר שנסגר) = מסך שגיאה עם דרך חזרה, לא ספינר נצחי
-      onError: (m) => { if (!roomRef.current) setFatal(m || t("lobby.room_not_found")); else showToast(m); },
-      onStatus: (s) => setStatus(s),
+      onError: (m) => {
+        if (!roomRef.current) { track("join_failed", { via: entrySource(), reason: m || "not_found" }); setFatal(m || t("lobby.room_not_found")); }
+        else showToast(m);
+      },
+      onStatus: (s) => {
+        // ניתוק אחרי שכבר היינו בפנים — פעם אחת לחדר, שנדע כמה חדרים סובלים מרשת
+        if (s === "closed" && roomRef.current && !leavingRef.current) trackOnce(`lost-${code}`, "connection_lost", { phase: roomRef.current.phase, game_id: roomRef.current.gameId ?? "" });
+        setStatus(s);
+      },
     });
     connRef.current = conn;
     conn.connect(name.trim() || t("app.player"), emoji);
     conn.send({ t: "arm" });
-    track("room_joined");
     setStage("in");
   }
 
-  useEffect(() => () => connRef.current?.close(), []);
+  useEffect(() => () => { leavingRef.current = true; connRef.current?.close(); }, []);
 
   // בין משחקים מנקים הודעות שמורות — שלא יזלגו למשחק הבא
   const phase = room?.phase;
   useEffect(() => { if (phase !== "game") hub.reset(); }, [phase, hub]);
+
+  /* ---- אנליטיקה אחידה לכל המשחקים — לפי מעבר שלב שהשרת אישר ----
+   * game_selected (מארח) · game_started · game_ended (+room_completed למארח) · game_aborted.
+   * אין צורך בקוד בתוך אף משחק: כל משחק חדש נמדד אוטומטית. */
+  const ga = useRef<{ phase?: string; gameId?: string; startedAt: number; players: number; inGame: boolean }>({ startedAt: 0, players: 0, inGame: false });
+  useEffect(() => {
+    if (!room || !me) return;
+    const g = ga.current;
+    const prev = g.phase;
+    const role = me === room.hostId ? "host" : "guest";
+    const gameNo = (room.ceremony?.gamesPlayed ?? 0);
+    if (room.phase === "game" && prev !== "game" && room.gameId) {
+      const inGame = !room.gamePids || room.gamePids.includes(me);
+      g.startedAt = Date.now(); g.players = room.gamePids?.length ?? room.players.filter((p) => p.connected).length; g.inGame = inGame; g.gameId = room.gameId;
+      if (inGame) track("game_started", { game_id: room.gameId, role, players: g.players, game_no: gameNo + 1 });
+    } else if (prev === "game" && room.phase !== "game" && g.gameId) {
+      const duration_s = Math.round((Date.now() - g.startedAt) / 1000);
+      if (room.phase === "ceremony" && room.ceremony) {
+        const c = room.ceremony;
+        const won = c.winnerIds?.includes(me) || c.winnerId === me;
+        const result = won ? "won" : c.loserId === me ? "lost" : "played";
+        const params = { game_id: g.gameId, role, players: g.players, duration_s, game_no: c.gamesPlayed ?? gameNo, result };
+        if (g.inGame) { track("game_ended", params); bumpGamesTotal(); }
+        // אירוע-חדר יחיד (רק המארח) — זה ה-Key Event ל-Google Ads: "חדר שסיים משחק"
+        if (role === "host") track("room_completed", params);
+      } else if (g.inGame) {
+        track("game_aborted", { game_id: g.gameId, role, players: g.players, duration_s });
+      }
+      g.inGame = false;
+    } else if (room.phase === "lobby" && role === "host" && room.gameId && room.gameId !== g.gameId) {
+      track("game_selected", { game_id: room.gameId, players: room.players.filter((p) => p.connected).length });
+    }
+    if (room.phase === "lobby") g.gameId = room.gameId;
+    g.phase = room.phase;
+  }, [room, me]);
 
   // הרקע נגזר מהרגע, לא מהגדרה: לובי = מדבקות נייר על דיו,
   // משחק = הכול כהה (קריאוּת), טקס = אור מלא (הדרמה של סוף הערב).
@@ -183,6 +237,8 @@ export default function Room({ code }: { code: string }) {
   const conn = connRef.current!;
 
   function leaveRoom() {
+    track("room_left", { role: isHost ? "host" : "guest", phase: room?.phase ?? "", game_id: room?.gameId ?? "" });
+    leavingRef.current = true;
     conn.send({ t: "leave" });
     conn.close();
     navigate("/");
@@ -257,7 +313,7 @@ export default function Room({ code }: { code: string }) {
       {isHost ? (
         <div className="card" style={{ textAlign: "center" }}>
           <div className="sub">{t("lobby.friends_scan")}</div>
-          <QRCodeView url={roomUrl(code)} />
+          <QRCodeView url={roomUrl(code, "qr")} />
           <div className="code-big">{code}</div>
           <ShareRow code={code} />
         </div>
@@ -279,7 +335,7 @@ export default function Room({ code }: { code: string }) {
 
       {isHost ? (
         <HostCatalog room={room} onSelect={(gameId, config) => conn.send({ t: "select_game", gameId, config })}
-          onStart={() => { if (room.gameId) track("game_started", { game_id: room.gameId }); conn.send({ t: "start_game" }); }} />
+          onStart={() => conn.send({ t: "start_game" })} />
       ) : room.gameId ? (
         <GameExplainer room={room} me={me} conn={conn} />
       ) : (
@@ -331,19 +387,22 @@ function GameExplainer({ room, me, conn }: { room: RoomSnapshot; me: string; con
 
 /* שיתוף מהיר — הדרך הקלה להכניס חברים בלי להקליד כלום */
 function ShareRow({ code }: { code: string }) {
-  const joinUrl = roomUrl(code);
+  // ‎&s= = מאיפה הגיע המצטרף (וואטסאפ / שיתוף / QR) — נקרא באנליטיקה ב-room_joined
+  const joinUrl = roomUrl(code, "wa");
   const text = t("lobby.share_msg", { url: joinUrl });
 
   async function shareNative() {
+    track("invite_share", { channel: "native" });
     try {
-      await navigator.share({ title: "LARIK", text: t("lobby.share_short"), url: joinUrl });
+      await navigator.share({ title: "LARIK", text: t("lobby.share_short"), url: roomUrl(code, "sh") });
     } catch { /* המשתמש ביטל */ }
   }
 
   return (
     <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
       <a className="btn wa" style={{ flex: 1, textDecoration: "none" }}
-        href={`https://wa.me/?text=${encodeURIComponent(text)}`} target="_blank" rel="noreferrer">
+        href={`https://wa.me/?text=${encodeURIComponent(text)}`} target="_blank" rel="noreferrer"
+        onClick={() => track("invite_share", { channel: "whatsapp" })}>
         {t("lobby.share_wa")}
       </a>
       {"share" in navigator && (

@@ -45,9 +45,10 @@ export function setLang(l: Lang) {
   location.replace(u.toString());
 }
 
-/** קישור לחדר שנושא את שפת החדר — כך אורח שסורק מקבל את השפה של המארח */
-export function roomUrl(code: string): string {
-  return `${location.origin}/r/${code}?l=${lang}`;
+/** קישור לחדר שנושא את שפת החדר — כך אורח שסורק מקבל את השפה של המארח.
+ *  `src` = מאיפה הגיע המצטרף (qr / wa / sh) — נקרא באנליטיקה ב-room_joined. */
+export function roomUrl(code: string, src?: "qr" | "wa" | "sh"): string {
+  return `${location.origin}/r/${code}?l=${lang}${src ? `&s=${src}` : ""}`;
 }
 
 /** ה-JSON של כל שפה = chunk נפרד; רק אחד נטען. */

@@ -14,7 +14,7 @@ import "./floors.css";     // מסך הקומות (מסך מלא משלו)
 import "./tanks.css";      // מסך התותחים (מסך מלא משלו)
 import "./metro.css";      // מסך המטרונובול (מסך מלא משלו)
 import "./i18n.css";       // כיווניות, פונטים לכל כתב, 🌐 — חייב אחרון
-import { initAnalytics } from "./lib/analytics";
+import { initAnalytics, setUserProps } from "./lib/analytics";
 import { initLocale } from "./lib/locale";
 
 initAnalytics();
@@ -28,7 +28,9 @@ if ("serviceWorker" in navigator && import.meta.env.PROD) {
 watchInstallPrompt();
 
 // השפה נטענת לפני הרינדור הראשון (chunk אחד קטן של השפה הנוכחית בלבד) — אין הבהוב של עברית בטלפון זר
-void initLocale().then(() => {
+void initLocale().then((lang) => {
+  // השפה נקבעת לפי המדינה/הדפדפן — מעדכנים את מאפיין המשתמש ב-GA רק אחרי שהיא ידועה
+  setUserProps({ app_lang: lang });
   ReactDOM.createRoot(document.getElementById("root")!).render(
     <React.StrictMode>
       <App />
