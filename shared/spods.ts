@@ -87,9 +87,9 @@ export const SP_DEFS: Record<SpGame, SpDef> = {
     setup: "הניחו 4–6 טלפונים בשורה (מסך למעלה) במרחק ~10 מ' מקו הזינוק. הילדים בשורה על הקו.",
     minPods: 2, minAth: 1, maxAth: 8,
     settings: [
-      { key: "rounds", label: "סבבים", values: [{ v: 4, label: "4" }, { v: 6, label: "6" }, { v: 10, label: "10 🔥" }] },
-      { key: "window", label: "זמן לנגיעה", values: [{ v: 6000, label: "6 שנ'" }, { v: 10000, label: "10 שנ'" }, { v: 15000, label: "15 שנ' 🧒" }] },
-      { key: "delay", label: "השהיה לפני הגו", values: [{ v: 1500, label: "עד 1.5 שנ'" }, { v: 3000, label: "עד 3 שנ'" }, { v: 5000, label: "עד 5 שנ' 😈" }] },
+      { key: "rounds", label: "סבבים", values: [{ v: 6, label: "6" }, { v: 4, label: "4 ⚡" }, { v: 10, label: "10 🔥" }] },
+      { key: "window", label: "זמן לנגיעה", values: [{ v: 10000, label: "10 שנ'" }, { v: 6000, label: "6 שנ' ⚡" }, { v: 15000, label: "15 שנ' 🧒" }] },
+      { key: "delay", label: "השהיה לפני הגו", values: [{ v: 3000, label: "עד 3 שנ'" }, { v: 1500, label: "עד 1.5 שנ'" }, { v: 5000, label: "עד 5 שנ' 😈" }] },
     ],
     scoreLabel: "סבבים שניצח", unit: "n",
   },
@@ -100,8 +100,8 @@ export const SP_DEFS: Record<SpGame, SpDef> = {
     setup: "4 פודים בריבוע של ~3×3 מ'. שני הספורטאים גב אל גב במרכז. השלט מגריל את הזוגות.",
     minPods: 2, minAth: 2, maxAth: 8,
     settings: [
-      { key: "secs", label: "זמן לדו-קרב", values: [{ v: 30, label: "30 שנ'" }, { v: 45, label: "45 שנ'" }, { v: 60, label: "60 שנ' 🔥" }] },
-      { key: "window", label: "זמן לנגיעה", values: [{ v: 3000, label: "3 שנ'" }, { v: 5000, label: "5 שנ'" }, { v: 8000, label: "8 שנ' 🧒" }] },
+      { key: "secs", label: "זמן לדו-קרב", values: [{ v: 45, label: "45 שנ'" }, { v: 30, label: "30 שנ' ⚡" }, { v: 60, label: "60 שנ' 🔥" }] },
+      { key: "window", label: "זמן לנגיעה", values: [{ v: 5000, label: "5 שנ'" }, { v: 3000, label: "3 שנ' ⚡" }, { v: 8000, label: "8 שנ' 🧒" }] },
     ],
     scoreLabel: "נקודות טורניר", unit: "n",
   },
@@ -112,7 +112,7 @@ export const SP_DEFS: Record<SpGame, SpDef> = {
     setup: "פוד 1 = הבית במרכז. שאר הפודים במעגל ברדיוס 3–5 מ' סביבו. ספורטאי אחד בכל תור.",
     minPods: 2, minAth: 1, maxAth: 8,
     settings: [
-      { key: "secs", label: "זמן לתור", values: [{ v: 20, label: "20 שנ'" }, { v: 30, label: "30 שנ'" }, { v: 45, label: "45 שנ' 🔥" }] },
+      { key: "secs", label: "זמן לתור", values: [{ v: 30, label: "30 שנ'" }, { v: 20, label: "20 שנ' ⚡" }, { v: 45, label: "45 שנ' 🔥" }] },
     ],
     scoreLabel: "כוכבים", unit: "n",
   },
@@ -123,8 +123,8 @@ export const SP_DEFS: Record<SpGame, SpDef> = {
     setup: "3–4 פודים בקו ישר במרחקים 5 / 10 / 15 / 20 מ' מקו הזינוק (פוד 1 = הקרוב). כולם על הקו.",
     minPods: 1, minAth: 1, maxAth: 8,
     settings: [
-      { key: "window", label: "זמן התחלתי", values: [{ v: 6000, label: "6 שנ'" }, { v: 8000, label: "8 שנ'" }, { v: 12000, label: "12 שנ' 🧒" }] },
-      { key: "elim", label: "הדחה", values: [{ v: 1, label: "2 פספוסים = בחוץ" }, { v: 0, label: "בלי הדחה 🙂" }] },
+      { key: "window", label: "זמן התחלתי", values: [{ v: 8000, label: "8 שנ'" }, { v: 6000, label: "6 שנ' ⚡" }, { v: 12000, label: "12 שנ' 🧒" }] },
+      { key: "elim", label: "הדחה", values: [{ v: 1, label: "2 פספוסים = בחוץ 💀" }, { v: 0, label: "בלי הדחה 🙂 (4 רמות)" }] },
     ],
     scoreLabel: "רמה", unit: "lvl",
   },
@@ -135,8 +135,8 @@ export const SP_DEFS: Record<SpGame, SpDef> = {
     setup: "6 פודים במעגל ברדיוס 4–5 מ'. עד 4 ספורטאים במרכז עם יד על קונוס/כיסא. מעל 4 — בסבבים.",
     minPods: 1, minAth: 2, maxAth: 8,
     settings: [
-      { key: "toN", label: "גניבות לניצחון", values: [{ v: 5, label: "5" }, { v: 10, label: "10" }, { v: 15, label: "15 🔥" }] },
-      { key: "delay", label: "השהיה", values: [{ v: 2000, label: "עד 2 שנ'" }, { v: 4000, label: "עד 4 שנ'" }, { v: 7000, label: "עד 7 שנ' 😈" }] },
+      { key: "toN", label: "גניבות לניצחון", values: [{ v: 10, label: "10" }, { v: 5, label: "5 ⚡" }, { v: 15, label: "15 🔥" }] },
+      { key: "delay", label: "השהיה", values: [{ v: 4000, label: "עד 4 שנ'" }, { v: 2000, label: "עד 2 שנ' ⚡" }, { v: 7000, label: "עד 7 שנ' 😈" }] },
     ],
     scoreLabel: "גניבות", unit: "n",
   },
@@ -147,7 +147,7 @@ export const SP_DEFS: Record<SpGame, SpDef> = {
     setup: "6–8 פודים מפוזרים חופשי, 3–6 מ' זה מזה. כולם מוכנים באמצע.",
     minPods: 1, minAth: 2, maxAth: 8,
     settings: [
-      { key: "window", label: "זמן התחלתי", values: [{ v: 4000, label: "4 שנ'" }, { v: 6000, label: "6 שנ'" }, { v: 9000, label: "9 שנ' 🧒" }] },
+      { key: "window", label: "זמן התחלתי", values: [{ v: 6000, label: "6 שנ'" }, { v: 4000, label: "4 שנ' ⚡" }, { v: 9000, label: "9 שנ' 🧒" }] },
     ],
     scoreLabel: "הדלקות ששרד", unit: "n",
   },
@@ -169,7 +169,7 @@ export const SP_DEFS: Record<SpGame, SpDef> = {
     setup: "6–8 פודים מפוזרים ברחבי החצר/האולם (על כיסאות או על הרצפה). כל ספורטאי מתחיל ליד פוד.",
     minPods: 1, minAth: 1, maxAth: 8,
     settings: [
-      { key: "mins", label: "אורך", values: [{ v: 3, label: "3 דק'" }, { v: 5, label: "5 דק'" }, { v: 8, label: "8 דק' 🔥" }] },
+      { key: "mins", label: "אורך", values: [{ v: 5, label: "5 דק'" }, { v: 3, label: "3 דק' ⚡" }, { v: 8, label: "8 דק' 🔥" }] },
       { key: "kit", label: "ערכה", values: [{ v: 0, label: "חימום 🦘" }, { v: 1, label: "כוח 💪" }, { v: 2, label: "כיף 🐻" }] },
     ],
     scoreLabel: "תחנות", unit: "n",
@@ -181,8 +181,8 @@ export const SP_DEFS: Record<SpGame, SpDef> = {
     setup: "4–6 פודים במעגל ברדיוס ~3 מ'. הספורטאים במרכז. המאמן פוסל תנוחה שנשברה (−1).",
     minPods: 1, minAth: 1, maxAth: 8,
     settings: [
-      { key: "secs", label: "אורך", values: [{ v: 45, label: "45 שנ'" }, { v: 60, label: "60 שנ'" }, { v: 90, label: "90 שנ' 🔥" }] },
-      { key: "hold", label: "החזקה", values: [{ v: 4000, label: "2–4 שנ'" }, { v: 6000, label: "2–6 שנ'" }, { v: 9000, label: "2–9 שנ' 💪" }] },
+      { key: "secs", label: "אורך", values: [{ v: 60, label: "60 שנ'" }, { v: 45, label: "45 שנ' ⚡" }, { v: 90, label: "90 שנ' 🔥" }] },
+      { key: "hold", label: "החזקה", values: [{ v: 6000, label: "2–6 שנ'" }, { v: 4000, label: "2–4 שנ' ⚡" }, { v: 9000, label: "2–9 שנ' 💪" }] },
     ],
     scoreLabel: "תנוחות", unit: "n",
   },
@@ -193,15 +193,16 @@ export const SP_DEFS: Record<SpGame, SpDef> = {
     setup: "3–4 פודים במרחקים שונים (5 / 8 / 12 מ'). כולם על קו הזינוק.",
     minPods: 1, minAth: 1, maxAth: 8,
     settings: [
-      { key: "lights", label: "הדלקות", values: [{ v: 5, label: "5" }, { v: 8, label: "8" }, { v: 12, label: "12 🔥" }] },
-      { key: "fade", label: "דעיכה", values: [{ v: 3000, label: "~3 שנ'" }, { v: 5000, label: "~5 שנ'" }, { v: 8000, label: "~8 שנ'" }] },
+      { key: "lights", label: "הדלקות", values: [{ v: 8, label: "8" }, { v: 5, label: "5 ⚡" }, { v: 12, label: "12 🔥" }] },
+      { key: "fade", label: "דעיכה", values: [{ v: 5000, label: "~5 שנ'" }, { v: 3000, label: "~3 שנ' ⚡" }, { v: 8000, label: "~8 שנ' 🐢" }] },
       { key: "fake", label: "פייקים", values: [{ v: 0, label: "בלי" }, { v: 1, label: "עם 😈" }] },
     ],
     scoreLabel: "פער כולל", unit: "ms", lowerIsBetter: true,
   },
 };
 
-export const spDefaults = (g: SpGame): SpCfg => Object.fromEntries(SP_DEFS[g].settings.map((s) => [s.key, s.values[Math.min(1, s.values.length - 1)].v]));
+/** ברירת המחדל = הערך הראשון בכל הגדרה (כמו שהלובי מציג) */
+export const spDefaults = (g: SpGame): SpCfg => Object.fromEntries(SP_DEFS[g].settings.map((s) => [s.key, s.values[0].v]));
 export function spConfig(g: SpGame, raw: unknown): SpCfg {
   const out = spDefaults(g);
   const o = (raw ?? {}) as Record<string, unknown>;

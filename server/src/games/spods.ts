@@ -223,7 +223,7 @@ export function createSpods(ctx: GameCtx, game: SpGame): GameInstance {
       // יותר ספורטאים מפודים — מסתובבים לפי הסבב
       if (list.length > ps.length) { const k = (round * ps.length) % list.length; list = [...list.slice(k), ...list.slice(0, k)].slice(0, ps.length); }
       const podsShuf = shuffle(ps).slice(0, list.length);
-      const delay = T.lead + 600 + Math.random() * (cfg.delay ?? 3000);
+      const delay = T.lead + 600 + Math.random() * (cfg.delay ?? 3000) * WF;
       setBanner(`סבב ${round + 1} מתוך ${of}`, "רגע… חכו לצליל");
       focus = list.map((a) => a.pid);
       push();
@@ -365,7 +365,7 @@ export function createSpods(ctx: GameCtx, game: SpGame): GameInstance {
     let shuttle = 0;
     let w = cfg.window;
     let pending = 0;
-    const MAX_LEVEL = 12, PER_LEVEL = 4;
+    const MAX_LEVEL = cfg.elim ? 12 : 4, PER_LEVEL = 4;
     function nextShuttle() {
       const list = alive();
       if (!list.length) return finish({});
@@ -375,7 +375,7 @@ export function createSpods(ctx: GameCtx, game: SpGame): GameInstance {
       w = Math.round(cfg.window * Math.pow(0.9, level - 1));
       round = shuttle + 1; of = MAX_LEVEL * PER_LEVEL;
       const b = `רמה ${level} · מעבורת ${(shuttle % PER_LEVEL) + 1}/${PER_LEVEL}`;
-      between(b, shuttle === 0 ? T.between : Math.max(1200, T.between * 0.6), fire, `${(w / 1000).toFixed(1)} שניות לנגיעה`);
+      between(b, shuttle === 0 ? T.between : (FAST ? 250 : 2500), fire, `${(w / 1000).toFixed(1)} שניות לנגיעה`);
     }
     function fire() {
       phase = "run";
@@ -418,7 +418,7 @@ export function createSpods(ctx: GameCtx, game: SpGame): GameInstance {
       push();
       const ps = pods();
       if (!ps.length) return finish({});
-      const delay = T.lead + 500 + Math.random() * (cfg.delay ?? 4000);
+      const delay = T.lead + 500 + Math.random() * (cfg.delay ?? 4000) * WF;
       light({ pod: rnd(ps), c: -1, zones: heat.map((a) => a.c), txt: "גנוב!", window: 15000, delay },
         (a, rt) => {
           record(a, rt); a.score++; a.extra = `${a.score} 🦝`;
@@ -449,7 +449,7 @@ export function createSpods(ctx: GameCtx, game: SpGame): GameInstance {
       const a = rnd(list);
       const ps = pods();
       if (!ps.length) return finish({});
-      const delay = T.lead + 500 + Math.random() * 2500;
+      const delay = T.lead + 500 + Math.random() * 2500 * WF;
       round = n + 1; of = 0;
       setBanner("הישרדות", `${list.length} שורדים · ${(w / 1000).toFixed(1)} שנ'`);
       push();

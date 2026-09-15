@@ -7,7 +7,7 @@ import { chromium } from "playwright";
 import { spawn } from "child_process";
 
 const GAME = process.env.SP_GAME || "colors";
-const PORT = Number(process.env.PORT || 8797);
+const PORT = Number(process.env.PORT || 8800 + Math.floor(Math.random() * 150));
 const NAMES = { colors: "מרוץ הצבעים", duel: "דו-קרב", star: "כוכב הזריזות", beep: "מבחן הביפ", steal: "גניבת הסבב", survive: "הישרדות", relay: "מרוץ שליחים", stations: "תחנות אש", statue: "הפסל", pacer: "בדיוק בזמן" };
 const srv = spawn("npx", ["tsx", "src/index.ts"], { env: { ...process.env, PORT: String(PORT), SP_FAST: process.env.SP_FAST || "1" }, stdio: "pipe" });
 srv.stderr.on("data", (d) => { const s = String(d); if (/error|Error/.test(s)) console.log("SRV:", s.slice(0, 300)); });
@@ -58,7 +58,7 @@ try {
   await shot(coach, "5-coach-live");
   // הפסקה והמשך
   try { await coach.click("text=הפסקה", { timeout: 1500 }); await sleep(400); await shot(coach, "6-pause"); await coach.click("text=המשך", { timeout: 1500 }); } catch (e) { console.log("pause skipped", String(e).slice(0, 60)); }
-  const over = await waitPhase(coach, "over", 90000);
+  const over = await waitPhase(coach, "over", 300000);
   console.log("over:", JSON.stringify(over).slice(0, 300));
   if (over.phase !== "over") { ok = false; console.log("✗ לא הגיע ל-over"); }
   await shot(coach, "7-over");
