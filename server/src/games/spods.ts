@@ -270,10 +270,10 @@ export function createSpods(ctx: GameCtx, game: SpGame): GameInstance {
       round = m + 1;
       focus = [A, B];
       hitsIn = { [A]: 0, [B]: 0 };
-      between(`דו-קרב ${round}/${of}`, T.between + 2000, () => countdown(`${nameOf(A)} נגד ${nameOf(B)}`, runMatch, "גב אל גב במרכז!"), `${nameOf(A)} 🆚 ${nameOf(B)} — למרכז!`);
+      between(`דו-קרב ${round}/${of}`, T.between + (FAST ? 200 : 2000), () => countdown(`${nameOf(A)} נגד ${nameOf(B)}`, runMatch, "גב אל גב במרכז!"), `${nameOf(A)} 🆚 ${nameOf(B)} — למרכז!`);
     }
     function runMatch() {
-      matchEnd = now() + cfg.secs * 1000 * (FAST ? 0.25 : 1);
+      matchEnd = now() + cfg.secs * 1000 * (FAST ? 0.15 : 1);
       until = matchEnd;
       setBanner(`${nameOf(focus![0])} 🆚 ${nameOf(focus![1])}`, "");
       push();

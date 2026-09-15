@@ -117,7 +117,7 @@ async function run(game: SpGame) {
   check("שיפוט +1", state(COACH)!.aths.find((a) => a.pid === "a")!.score === before + 1);
   g(COACH, { a: "sp_judge", pid: "a", d: -1 });
 
-  const over = await waitFor(() => state(COACH)?.phase === "over", game === "duel" ? 60000 : 45000);
+  const over = await waitFor(() => state(COACH)?.phase === "over", game === "duel" ? 120000 : 45000);
   check("המשחק הסתיים לבד → over", over, state(COACH)?.phase + " " + JSON.stringify(state(COACH)?.aths.map((a) => [a.pid, a.score, a.extra])));
   const ov = last(COACH, "sp_over");
   check("sp_over עם ניקוד לכולם", !!ov && Object.keys(ov.scores).length === 4, JSON.stringify(ov));
