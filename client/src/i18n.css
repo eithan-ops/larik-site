@@ -1,0 +1,54 @@
+/* ============================================================
+   LARIK — שכבת השפות (נטענת אחרונה, אחרי stickers.css)
+   שלושה דברים חיים כאן: (1) מה משתנה בין RTL ל-LTR — טקסט ופריסה בלבד,
+   לעולם לא עולם המשחק/הג'ויסטיק; (2) פונט לכל כתב; (3) כפתור 🌐.
+   ============================================================ */
+
+/* ---- כיווניות ---- */
+/* הצל הקשיח של המדבקה "נופל" לכיוון סוף השורה: שמאלה בעברית/ערבית, ימינה בשאר */
+[dir="ltr"]{ --hard-x:3px; }
+/* חצים וסמלי "חזרה/הבא" — מתהפכים עם הכיוון (אימוג'י ותמונות לא) */
+[dir="rtl"] .mirror{ transform:none; }
+[dir="ltr"] .mirror{ display:inline-block; transform:scaleX(-1); }
+/* דברים שתמיד LTR: קוד חדר, מספרים, כתובות */
+.code-big,.ltr{ direction:ltr; unicode-bidi:isolate; }
+/* שמות שחקנים בכל כתב בתוך משפט — לא שוברים את כיוון המשפט */
+bdi{ unicode-bidi:isolate; }
+
+/* ---- פונטים לפי כתב ----
+   עברית+לטינית: Suez One + Assistant (נטענים תמיד). ערבית/קוריאנית/יפנית נטענים רק לשפה שלהן (lib/locale.ts). */
+:lang(ar){
+  --font-display:"Lalezar","Suez One",serif;
+  --font-body:"Cairo Variable","Cairo","Assistant Variable",system-ui,sans-serif;
+  line-height:1.5;
+}
+:lang(ko){
+  --font-display:"Jua","Suez One",sans-serif;
+  --font-body:"Noto Sans KR Variable","Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
+  word-break:keep-all;           /* לא שוברים מילה באמצע */
+}
+:lang(ja){
+  --font-display:"Dela Gothic One","Suez One",sans-serif;
+  --font-body:"Noto Sans JP Variable","Noto Sans JP","Hiragino Sans","Yu Gothic",system-ui,sans-serif;
+  line-break:strict;
+}
+/* כינויים ארוכים בכל כתב — נשברים במקום לגלוש */
+.pbadge .nm,.poster-name{ overflow-wrap:anywhere; }
+
+/* ---- 🌐 ---- */
+.lang-corner{ position:absolute; bottom:calc(14px + env(safe-area-inset-bottom, 0px)); inset-inline-end:14px; z-index:3; }
+.lang-btn{
+  font-size:18px; line-height:1; padding:7px 9px; border-radius:12px; cursor:pointer;
+  background:var(--paper); color:var(--on-paper); border:var(--stroke-w) solid var(--stroke);
+  box-shadow:var(--hard-x) var(--hard-y) 0 var(--hard); opacity:.85; rotate:-3deg;
+}
+.lang-menu{
+  position:absolute; bottom:46px; inset-inline-end:0; min-width:150px; padding:6px;
+  background:var(--paper); color:var(--on-paper); border:var(--stroke-w) solid var(--stroke); border-radius:14px;
+  box-shadow:var(--hard-x) var(--hard-y) 0 var(--hard); display:flex; flex-direction:column; gap:2px;
+}
+.lang-item{
+  background:none; border:none; cursor:pointer; text-align:start; font-family:var(--font-body); font-weight:700;
+  font-size:15px; padding:8px 10px; border-radius:9px; color:inherit;
+}
+.lang-item.sel{ background:var(--a-yellow); color:var(--on-yellow); }

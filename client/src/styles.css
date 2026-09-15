@@ -140,7 +140,7 @@ input{font-family:inherit}
 .code-big{
   font-size:40px;font-weight:900;letter-spacing:12px;text-align:center;
   color:var(--gold);text-shadow:0 0 24px rgba(255,201,60,.45);
-  padding-left:12px; /* מפצה על הרווח שנוסף אחרי האות האחרונה (letter-spacing) */
+  padding-inline-end:12px; /* מפצה על הרווח שנוסף אחרי האות האחרונה (letter-spacing) — בשני הכיוונים */
 }
 
 /* ---------- קטלוג המשחקים ---------- */
@@ -149,7 +149,7 @@ input{font-family:inherit}
   display:flex;gap:13px;align-items:center;
   background:linear-gradient(160deg,var(--card),var(--bg2));
   border:1.5px solid var(--line);border-radius:20px;padding:12px;margin-bottom:10px;
-  width:100%;text-align:right;color:var(--text);
+  width:100%;text-align:start;color:var(--text);
   transition:transform .13s cubic-bezier(.34,1.56,.64,1),border-color .15s,box-shadow .2s;
 }
 .gamecard:active{transform:scale(.97)}
@@ -210,7 +210,7 @@ input{font-family:inherit}
 .rub-bar div{height:100%;background:linear-gradient(90deg,var(--brand1),var(--pink));border-radius:99px;transition:width .1s}
 .duo-hold{margin-top:8px;padding:13px;font-size:15px;background:linear-gradient(135deg,#2dd4bf,#6ae8d8);color:#052723}
 .duo-hold.holding{transform:scale(.96);box-shadow:0 0 24px rgba(45,212,191,.5)}
-.duo-dots{display:inline-flex;gap:6px;margin-right:8px}
+.duo-dots{display:inline-flex;gap:6px;margin-inline-start:8px}
 .duo-dots i{width:10px;height:10px;border-radius:50%;background:#0527234d;display:inline-block}
 .duo-dots i.on{background:#052723;box-shadow:0 0 8px #fff}
 .throw-row{display:flex;gap:8px;overflow-x:auto;padding:8px 2px;justify-content:safe center}
@@ -227,7 +227,7 @@ input{font-family:inherit}
 @keyframes shakehard{10%{transform:translate(-8px,4px)}30%{transform:translate(7px,-6px)}50%{transform:translate(-6px,-3px)}70%{transform:translate(5px,5px)}90%{transform:translate(-3px,2px)}}
 
 /* ---------- כפתור יציאה ממשחק (מארח) ---------- */
-.exit-fab{position:fixed;top:12px;left:12px;z-index:70;background:#000a;border:1.5px solid var(--line2);color:var(--text);border-radius:99px;padding:8px 14px;font-size:13px;font-weight:700;backdrop-filter:blur(8px)}
+.exit-fab{position:fixed;top:12px;inset-inline-end:12px;z-index:70;background:#000a;border:1.5px solid var(--line2);color:var(--text);border-radius:99px;padding:8px 14px;font-size:13px;font-weight:700;backdrop-filter:blur(8px)}
 
 /* ---------- חיווי "אתה בפנים" בלובי ---------- */
 .joined-banner{

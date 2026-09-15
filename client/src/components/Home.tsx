@@ -6,14 +6,15 @@ import QRScanner from "./QRScanner";
 import { myGroups, openRoomForGroup, type SavedGroup } from "../lib/group";
 import { loadStreak } from "../lib/daily";
 import { openDailyRoom, dailyBoard, myDailyRun, type DailyBoard } from "../lib/wallDaily";
+import { t } from "../lib/locale";
+import LangSwitch from "./LangSwitch";
 
 /**
  * מסך הבית — "אלבום המדבקות קם לחיים" 🎪
  * כפתור ענק אחד ששולט במסך (פתח חדר), מדף המשחקים ("מה משחקים כאן?"),
  * והצטרפות לחברים בעדיפות שלישית. הרקע חי: דמויות המשחקים מציצות מהקצוות.
  */
-/** הטקסט שנשלח לחברים עם הקישור — בקול של המותג */
-const SHARE_TEXT = "ערב משחקים שלם בטלפון 🎉 בלי קופסה, בלי הורדות, בלי תירוצים. משחקים. צוחקים. מתחברים 👇";
+/** הטקסט שנשלח לחברים עם הקישור — בקול של המותג (לפי השפה) */
 const SHARE_URL = "https://larik.ai";
 
 export default function Home() {
@@ -35,6 +36,7 @@ export default function Home() {
   /** שיתוף: תמונת ההירו + משפט + קישור. נופל ברכות לוואטסאפ / העתקה. */
   async function share() {
     track("share_click");
+    const SHARE_TEXT = t("app.share_text");
     try {
       // ניסיון לצרף את תמונת ההירו לשיתוף עצמו (נתמך ברוב הטלפונים)
       let files: File[] | undefined;
@@ -55,7 +57,7 @@ export default function Home() {
     if (!w) {
       try {
         await navigator.clipboard.writeText(`${SHARE_TEXT}\n${SHARE_URL}`);
-        setShared("הקישור הועתק! 📋 שלחו לחברים");
+        setShared(t("app.share_copied"));
         setTimeout(() => setShared(""), 2500);
       } catch { /* אין מה לעשות */ }
     }
@@ -69,7 +71,7 @@ export default function Home() {
       track("room_created");
       navigate(`/r/${c}`);
     } catch {
-      setErr("השרת מתעורר... נסו שוב עוד כמה שניות 😴");
+      setErr(t("app.err_waking"));
     }
     setBusy(false);
   }
@@ -81,7 +83,7 @@ export default function Home() {
     track("wall_daily_open");
     const c = await openDailyRoom();
     if (c) navigate(`/r/${c}`);
-    else setErr("השרת מתעורר... נסו שוב עוד כמה שניות 😴");
+    else setErr(t("app.err_waking"));
     setBusy(false);
   }
 
@@ -91,7 +93,7 @@ export default function Home() {
     setErr("");
     const c = await openRoomForGroup(g.id);
     if (c) { track("room_created", { from: "group" }); navigate(`/r/${c}`); }
-    else setErr("השרת מתעורר... נסו שוב עוד כמה שניות 😴");
+    else setErr(t("app.err_waking"));
     setBusy(false);
   }
 
@@ -99,28 +101,29 @@ export default function Home() {
     setScanning(false);
     const m = text.match(/\/r\/([a-zA-Z]{4})/) || text.match(/^([a-zA-Z]{4})$/);
     if (m) { setErr(""); navigate(`/r/${m[1].toUpperCase()}`); }
-    else setErr("זה לא QR של חדר LARIK 🤔 — סרקו את הקוד מהמסך של המארח");
+    else setErr(t("app.err_not_qr"));
   }
 
   return (
     <main className="home-live">
       {scanning && <QRScanner onScan={onScan} onClose={() => setScanning(false)} />}
 
-      <button className="show-corner" onClick={() => { location.href = "/s"; }} aria-label="מופע">
-        🕯️<small>מופע</small>
+      <button className="show-corner" onClick={() => { location.href = "/s"; }} aria-label={t("home.show")}>
+        🕯️<small>{t("home.show")}</small>
       </button>
 
-      <button className="share-corner" onClick={share} aria-label="שתפו חברים">
-        📤<small>שתפו</small>
+      <button className="share-corner" onClick={share} aria-label={t("home.share_aria")}>
+        📤<small>{t("home.share")}</small>
       </button>
+      <LangSwitch />
       {shared && <div className="share-toast popin">{shared}</div>}
 
       <div className="home-hero">
         <img className="logo-sticker" src="/stickers/logo-larik.webp" alt="LARIK" />
-        <p className="logo-sub">משחקים. צוחקים. מתחברים.</p>
+        <p className="logo-sub">{t("app.tagline")}</p>
         <p className="home-pitch">
-          ערב משחקים שלם — בלי קופסה, בלי חלקים, בלי הורדות.
-          <br />הטלפון של כל אחד הופך לחלק מהמשחק.
+          {t("app.pitch1")}
+          <br />{t("app.pitch2")}
         </p>
       </div>
 
@@ -128,40 +131,40 @@ export default function Home() {
         {/* חבורה שנשמרה עולה מעל "חדר חדש" — למי שכבר יש עונה, זו הפעולה שהוא בא בשבילה */}
         {groups.length > 0 && (
           <button className="mega-cta" onClick={() => hostForGroup(groups[0])} disabled={busy}>
-            {busy ? "פותח חדר..." : <>🏅 ערב של {groups[0].name}</>}
+            {busy ? t("home.opening") : t("home.group_evening", { name: groups[0].name })}
           </button>
         )}
 
         <button className={groups.length ? "shelf-cta" : "mega-cta"} onClick={host} disabled={busy}>
-          {busy && !groups.length ? "פותח חדר..." : <>🎉 פתח חדר חדש</>}
+          {busy && !groups.length ? t("home.opening") : t("home.new_room")}
         </button>
 
         <button className="shelf-cta" onClick={() => { track("shelf_open"); navigate("/play"); }}>
-          👀 מה משחקים כאן?
+          {t("home.whats_here")}
         </button>
 
         <button className="join-cta" onClick={() => { setErr(""); setJoining(!joining); }}>
-          📷 הצטרפו לחברים
+          {t("home.join_friends")}
         </button>
 
         {/* סולו: הסיבה לפתוח את האפליקציה גם כשאין חבורה בסלון.
             החומה קודמת לטריוויה כי היא לא צורכת תוכן ואינסופית מעצם היותה משחק. */}
         <button className="join-cta" onClick={wallDaily} disabled={busy}>
-          🏰 האתגר היומי של החומה
-          {mine?.date === board?.date && mine && <> · השיא שלך היום {mine.score}</>}
+          {t("home.wall_daily")}
+          {mine?.date === board?.date && mine && t("home.your_best_today", { score: mine.score })}
         </button>
 
         <button className="join-cta" onClick={() => navigate("/daily")}>
-          🧠 הטריוויה היומית{streak.days > 0 && <> · רצף {streak.days} 🔥</>}
+          {t("home.daily_trivia")}{streak.days > 0 && t("home.streak", { days: streak.days })}
         </button>
       </div>
 
       {joining && (
         <div className="card join-panel popin">
           <button className="btn social" onClick={() => { setJoining(false); setScanning(true); }}>
-            📷 סרוק QR של המארח
+            {t("home.scan_qr")}
           </button>
-          <div className="divider">או הצטרף עם קוד</div>
+          <div className="divider">{t("home.or_code")}</div>
           <input
             className="input"
             placeholder="ABCD"
@@ -172,7 +175,7 @@ export default function Home() {
           />
           <button className="btn ghost" style={{ marginTop: 8 }} disabled={code.length !== 4}
             onClick={() => navigate(`/r/${code}`)}>
-            הצטרף 🚪
+            {t("home.join")}
           </button>
         </div>
       )}
@@ -187,7 +190,7 @@ export default function Home() {
       {board && board.top.length > 0 && (
         <div className="card popin" style={{ marginTop: 12, width: "100%", maxWidth: 340 }}>
           <div className="sub" style={{ marginBottom: 4 }}>
-            🏰 האתגר של היום · {board.runs} {board.runs === 1 ? "ריצה" : "ריצות"}
+            {t("home.today_runs", { n: board.runs })}
           </div>
           {board.top.slice(0, 3).map((e, i) => (
             <div key={i} style={{
@@ -201,7 +204,7 @@ export default function Home() {
         </div>
       )}
 
-      <p className="sub home-foot">⚡ בלי התקנה · 🔒 בלי הרשמה · חינם</p>
+      <p className="sub home-foot">{t("app.foot")}</p>
     </main>
   );
 }

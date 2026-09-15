@@ -18,6 +18,8 @@ import { getTriviaBank } from "./triviaBank";
 import { WallDaily, dailyDate, dailySeed } from "./wallDaily";
 import { statRoomCreated, statPlayerJoined, statGameStarted, statConcurrent, statsPage, STATS_KEY, stats } from "./stats";
 import { CATALOG } from "../../shared/protocol";
+import { langForCountry, dirOf } from "../../shared/i18n";
+import geoip from "geoip-country";
 import { createForehead } from "./games/forehead";
 import { createPods } from "./games/pods";
 import { createBombs } from "./games/bombs";
@@ -107,8 +109,35 @@ const MIME: Record<string, string> = {
   ".webmanifest": "application/manifest+json", ".ico": "image/x-icon",
 };
 
+/** המדינה של הבקשה לפי IP (Render מעביר את ה-IP המקורי ב-X-Forwarded-For). לוקאלי/לא ידוע → "" */
+function countryOf(req: import("http").IncomingMessage): string {
+  const ip = String(req.headers["x-forwarded-for"] || req.socket.remoteAddress || "").split(",")[0].trim().replace(/^::ffff:/, "");
+  try { return geoip.lookup(ip)?.country ?? ""; } catch { return ""; }
+}
+
+/**
+ * הזרקת שפה ל-HTML של האפליקציה — הכלל: שפה לפי המדינה שבה פותחים (ישראל→he, ארה"ב→en, אחרת→en).
+ * ה-<html lang dir> נכון כבר בבייט הראשון (אין הבהוב של עברית/כיווניות), ו-window.__LARIK נותן ללקוח
+ * את המדינה לחפיסות תוכן עתידיות. ?l= בקישור לחדר ובחירה ידנית (🌐) גוברים — זה קורה בלקוח.
+ */
+function localizeHtml(html: string, country: string): string {
+  // מדינה לא ידועה (IP פרטי/פיתוח מקומי) ≠ מדינה לא נתמכת: משאירים את ברירת המחדל של ה-HTML (עברית)
+  const lang = country ? langForCountry(country) : "he";
+  const boot = `<script>window.__LARIK=${JSON.stringify({ country, lang })}</script>`;
+  return html
+    .replace(/<html\s+lang="[^"]*"\s+dir="[^"]*">/, `<html lang="${lang}" dir="${dirOf(lang)}">`)
+    .replace("</head>", `${boot}</head>`);
+}
+
 const http = createServer((req, res) => {
   const url = new URL(req.url || "/", "http://x");
+  // הלקוח (PWA שנטען מהמטמון) שואל את המדינה — הזרקת ה-HTML לא זמינה לו
+  if (url.pathname === "/api/geo") {
+    const country = countryOf(req);
+    res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "no-store", "Access-Control-Allow-Origin": "*" });
+    res.end(JSON.stringify({ country, lang: langForCountry(country) }));
+    return;
+  }
   if (url.pathname === "/api/create-room") {
     // ?code=ARIEL — קוד קבוע לאירועים (מודפס על כרטיסים); אם החדר כבר קיים מחזירים אותו
     const wanted = (url.searchParams.get("code") || "").toUpperCase().replace(/[^A-Z]/g, "").slice(0, 10);
@@ -319,6 +348,13 @@ const http = createServer((req, res) => {
     }
     if (!existsSync(file) || statSync(file).isDirectory()) {
       file = join(CLIENT_DIST, isShowApp ? "show.html" : "index.html");
+    }
+    // שני ה-shell-ים של האפליקציות מקבלים שפה לפי מדינה; עמודי ה-SEO הסטטיים נשארים כמו שהם
+    const isAppShell = file === join(CLIENT_DIST, "index.html") || file === join(CLIENT_DIST, "show.html");
+    if (isAppShell) {
+      res.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" });
+      res.end(localizeHtml(readFileSync(file, "utf-8"), countryOf(req)));
+      return;
     }
     res.writeHead(200, { "Content-Type": MIME[extname(file)] || "application/octet-stream" });
     res.end(readFileSync(file));
