@@ -1,6 +1,6 @@
 /* ===== מטרונובול 🎾 — מסך מלא משלו, בשפת המדבקות ===== */
 .mb-wrap{position:fixed; inset:0; width:100vw; height:100vh; height:100dvh; z-index:60; background:#14110E; overflow:hidden;
-  touch-action:none; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; overscroll-behavior:none; direction:rtl;
+  touch-action:none; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; overscroll-behavior:none;
   font-family:var(--font-body,"Assistant Variable",Assistant,sans-serif); color:#FFF3DC;}
 #root>.mb-wrap{position:fixed; z-index:60;}
 .mb-cv{position:absolute; left:0; right:0; top:0; height:62%; width:100%; display:block;}
@@ -110,7 +110,7 @@
 .mb-result li .nm{display:flex; align-items:center; gap:6px; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; font-size:15px;}
 .mb-result li small{grid-column:2; font-size:11px; color:#C8B78E; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
 .mb-result li b{grid-column:3; grid-row:1/3; font-family:var(--font-display,"Suez One",serif); font-weight:400; font-size:22px; color:#5FD44A;}
-.mb-result li i{grid-column:4; grid-row:1/3; font-style:normal; font-size:13px; color:#FFC531; font-variant-numeric:tabular-nums; min-width:44px; text-align:right;}
+.mb-result li i{grid-column:4; grid-row:1/3; font-style:normal; font-size:13px; color:#FFC531; font-variant-numeric:tabular-nums; min-width:44px; text-align:end;}
 .mb-result li.me{outline:3px solid #FFC531;} .mb-result li.lead{box-shadow:-3px 4px 0 #FFC531;}
 .mb-result .sub,.mb-over .sub{margin:0; font-size:13px; font-weight:800; color:#C8B78E;}
 .mb-over li{display:grid; grid-template-columns:26px 1fr auto auto; gap:8px; align-items:center; padding:7px 12px; border-radius:12px; background:#231F1A; border:2.5px solid #0C0906; box-shadow:-3px 4px 0 var(--gc,#3DC63D); font-weight:800;}

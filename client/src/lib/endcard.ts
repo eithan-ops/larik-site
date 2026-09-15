@@ -12,7 +12,6 @@
  * עברית מרונדרת נכון כי הדפדפן עושה את ה-bidi, בניגוד לרינדור בצד שרת.
  */
 import QRCode from "qrcode";
-import type { Award } from "../../../shared/protocol";
 
 const W = 1080;
 const H = 1920;
@@ -36,7 +35,8 @@ export const CARD_STYLES: CardStyle[] = ["player", "wanted", "poster", "news"];
 export interface EndCardData {
   name: string;
   emoji: string;
-  award: Award;
+  /** התואר אחרי תרגום (Ceremony מריץ lt() לפני שמגיעים לכאן — ה-canvas מצייר טקסט מוכן) */
+  award: { id: string; emoji: string; title: string; detail?: string; headline?: string };
   points: number;
   place: number;        // מקום בלוח הערב (1 = ראשון)
   totalPlayers: number;

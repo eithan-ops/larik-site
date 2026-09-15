@@ -27,6 +27,13 @@ const MIGRATED = [
   "client/src/lib/locale.ts",
   "client/src/main.tsx",
   "client/src/App.tsx",
+  // שלב B — השרת שולח מפתחות, מטרונובול מקצה לקצה
+  "client/src/games/metro.tsx",
+  "client/src/games/metroSprites.ts",
+  "shared/metro.ts",
+  "server/src/awards.ts",
+  "server/src/engine.ts",
+  "server/src/games/metro.ts",
 ];
 
 function walk(dir, out = []) {
@@ -60,16 +67,22 @@ const mode = process.argv[2] || "";
 const files = [...walk(join(ROOT, "client/src")), ...walk(join(ROOT, "server/src")), ...walk(join(ROOT, "shared"))];
 
 if (mode === "--keys") {
+  // כל מרחב-שמות (common.json, metro.json, …) חייב להיות זהה במפתחות בין עברית לכל שפה
   const dir = join(ROOT, "client/src/locales");
-  const he = Object.keys(JSON.parse(readFileSync(join(dir, "he/common.json"), "utf-8")));
+  const nss = readdirSync(join(dir, "he")).filter((f) => f.endsWith(".json"));
   let bad = 0;
   for (const l of readdirSync(dir)) {
     if (!statSync(join(dir, l)).isDirectory() || l === "he") continue;
-    const keys = new Set(Object.keys(JSON.parse(readFileSync(join(dir, l, "common.json"), "utf-8"))));
-    const missing = he.filter((k) => !keys.has(k));
-    const extra = [...keys].filter((k) => !he.includes(k));
-    if (missing.length || extra.length) { bad++; console.error(`✗ ${l}: missing ${missing.length} ${JSON.stringify(missing.slice(0, 5))} extra ${extra.length} ${JSON.stringify(extra.slice(0, 5))}`); }
-    else console.log(`✓ ${l}: ${keys.size} keys`);
+    for (const ns of nss) {
+      const he = Object.keys(JSON.parse(readFileSync(join(dir, "he", ns), "utf-8")));
+      let keys;
+      try { keys = new Set(Object.keys(JSON.parse(readFileSync(join(dir, l, ns), "utf-8")))); }
+      catch { bad++; console.error(`✗ ${l}/${ns}: missing file`); continue; }
+      const missing = he.filter((k) => !keys.has(k));
+      const extra = [...keys].filter((k) => !he.includes(k));
+      if (missing.length || extra.length) { bad++; console.error(`✗ ${l}/${ns}: missing ${missing.length} ${JSON.stringify(missing.slice(0, 5))} extra ${extra.length} ${JSON.stringify(extra.slice(0, 5))}`); }
+      else console.log(`✓ ${l}/${ns}: ${keys.size} keys`);
+    }
   }
   process.exit(bad ? 1 : 0);
 }

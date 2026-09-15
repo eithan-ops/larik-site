@@ -8,7 +8,6 @@ import { MB } from "../../../shared/metro";
 const INK = "#0C0906";
 export type BallPose = "idle" | "land" | "fly";
 const POSE_I: Record<BallPose, number> = { idle: 0, land: 1, fly: 2 };
-export const BALL_NAMES = MB.CHAR_NAMES;
 
 let atlas: HTMLImageElement | null = null;
 let sheets: (HTMLCanvasElement | null)[] = [];

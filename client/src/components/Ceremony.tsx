@@ -6,7 +6,7 @@ import { shareEndCard } from "../lib/endcard";
 import { rememberGroup } from "../lib/group";
 import InstallPrompt from "./InstallPrompt";
 import { track } from "../lib/analytics";
-import { t, roomUrl } from "../lib/locale";
+import { t, lt, roomUrl } from "../lib/locale";
 
 const COLORS = ["#8b5cf6", "#ec4899", "#ffc93c", "#34e89e", "#5c8aff"];
 const DRUMROLL_MS = 1700;
@@ -30,7 +30,10 @@ export default function Ceremony({ room, me, isHost, onSaveGroup, onBackToLobby 
   const [carding, setCarding] = useState(false);
   const [groupName, setGroupName] = useState("");
   const [namingGroup, setNamingGroup] = useState(false);
-  const myAward = c.awards?.[me];
+  const raw = c.awards?.[me];
+  // התואר מגיע כמפתחות — מתורגם כאן פעם אחת, וכרטיס השיתוף (canvas) מקבל טקסט מוכן
+  const myAward = raw ? { ...raw, title: lt(raw.title), detail: raw.detail ? lt(raw.detail) : undefined, headline: raw.headline ? lt(raw.headline) : undefined } : undefined;
+  const title = lt(c.title);
   const group = c.group ?? room.group;
 
   // חבורה שנוצרה או שוחקה — נשמרת במכשיר, כך שהיא תופיע במסך הבית בפעם הבאה
@@ -58,7 +61,7 @@ export default function Ceremony({ room, me, isHost, onSaveGroup, onBackToLobby 
       .filter((p) => c.eveningScores[p.id] !== undefined)
       .sort((a, b) => (c.eveningScores[b.id] ?? 0) - (c.eveningScores[a.id] ?? 0));
     const out = await shareEveningBoard({
-      title: c.title,
+      title,
       rows: ranking0.map((p) => ({ name: p.name, emoji: p.emoji, score: c.eveningScores[p.id] ?? 0 })),
       clownName: loser ? `${loser.emoji} ${loser.name}` : undefined,
     });
@@ -163,12 +166,12 @@ export default function Ceremony({ room, me, isHost, onSaveGroup, onBackToLobby 
         /* משחק שיתופי — אין מנצח יחיד, כולם ביחד */
         <>
           <div className="huge popin">🙌</div>
-          <div className="big" style={{ fontSize: 26, padding: "0 10px" }}>{c.title}</div>
+          <div className="big" style={{ fontSize: 26, padding: "0 10px" }}>{title}</div>
           <p className="sub" style={{ marginTop: 8, fontSize: 16 }}>{t("ceremony.coop_done")}</p>
         </>
       )}
 
-      <span className="chip popin" style={{ marginTop: 14 }}>{c.title}</span>
+      <span className="chip popin" style={{ marginTop: 14 }}>{title}</span>
 
       {/* התואר האישי — מגיע אחרי ההכרזה הכללית, כי הוא ההפתעה השנייה של הרגע */}
       {myAward && (

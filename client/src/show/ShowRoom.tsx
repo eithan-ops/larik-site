@@ -48,7 +48,8 @@ export default function ShowRoom({ code }: { code: string }) {
       onRoom: (r) => { setRoom(r); roomRef.current = r; },
       onGame: (d) => hub.emit(d, 0),
       onCue: (d, at) => hub.emit(d, at),
-      onError: (m) => { if (!roomRef.current) setFatal(m || t("roomGone")); },
+      // השרת שולח מפתח ({k}) — לאפליקציית המופע יש מילון משלה, אז ההודעה שלה
+      onError: (m) => { if (!roomRef.current) setFatal(typeof m === "string" && m ? m : t("roomGone")); },
       onStatus: () => { /* צ'יפ סטטוס לא קריטי במופע */ },
     });
     connRef.current = conn;

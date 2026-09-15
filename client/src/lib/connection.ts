@@ -9,7 +9,7 @@
  *    לאודיו — ממירים לזמן AudioContext לתזמון מושלם ברמת הדגימה.
  * 5. פינג מתחדש כל 15 שניות לתיקון סחיפה.
  */
-import type { ClientMsg, ServerMsg, RoomSnapshot, GameServerMsg } from "../../../shared/protocol";
+import type { ClientMsg, ServerMsg, RoomSnapshot, GameServerMsg, LText } from "../../../shared/protocol";
 import { myGpid } from "./group";
 import { seenBlob } from "./seen";
 
@@ -20,7 +20,7 @@ export interface ConnectionEvents {
   onGame(d: GameServerMsg): void;
   /** אירוע מתוזמן — ייקרא בדיוק בזמן (סטייה אופיינית <30ms) */
   onCue: CueHandler;
-  onError(msg: string): void;
+  onError(msg: LText): void; // מפתח+פרמטרים מהשרת — Room מריץ lt()
   onWelcome(playerId: string, room: RoomSnapshot): void;
   onStatus(s: "connecting" | "open" | "closed"): void;
 }

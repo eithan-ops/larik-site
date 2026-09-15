@@ -31,7 +31,7 @@ export const MB = {
   LOCK_BEATS: 4,       // …במשך 4 פעימות טובות ברצף
   ACC_MAX: 500, SPEED_MAX: 500, SPEED_WINDOW_MS: 25000,
   UNISON_BONUS: 100, LEADER_PER_LOCK: 20,
-  CHAR_NAMES: ["הסגול", "הכתום", "הכחול", "האדום", "הצהוב", "הוורוד", "הירוק", "הטורקיז"],
+  CHARS: 8,            // שמות הכדורים: metro.char.0…7 ב-locales (לפי צבע)
   CHAR_COLORS: ["#9B4DFF", "#FF8A2B", "#2F7BFF", "#FF3B3B", "#FFD21F", "#FF5FB0", "#5FD44A", "#2EDCE6"],
   CHAR_HUES: [270, 25, 220, 0, 48, 325, 110, 185],
 } as const;
@@ -42,19 +42,19 @@ export const mbLevelOf = (bpm: number) => Math.max(1, Math.min(MB.LEVELS, Math.r
 
 /* ---------- רצפות = צלילים ---------- */
 /** פיזיקת הרצפה (אופציה של המארח): h = מכפיל גובה · sq = מכפיל מעיכה · sink = כמה הכדור שוקע בנחיתה (יחסית לרדיוס) · wob = נדנוד צדדי באוויר · hang = "ריחוף" בשיא (0..1) */
-export interface MbPhys { h: number; sq: number; sink: number; wob: number; hang: number; hint: string }
-export interface MbFloor { id: string; ic: string; name: string; sfx: string; tint: string; phys: MbPhys }
+export interface MbPhys { h: number; sq: number; sink: number; wob: number; hang: number } // הסבר לשחקן: metro.floor.<id>.hint
+export interface MbFloor { id: string; ic: string; sfx: string; tint: string; phys: MbPhys } // שם: metro.floor.<id>
 export const MB_FLOORS: MbFloor[] = [
-  { id: "parquet", ic: "🪵", name: "פרקט", sfx: "wood", tint: "#B8783A", phys: { h: 1, sq: 1, sink: 0, wob: 0, hang: 0, hint: "רגיל" } },
-  { id: "ceramic", ic: "🧱", name: "קרמיקה", sfx: "tile", tint: "#DDE9F0", phys: { h: 0.85, sq: 0.45, sink: 0, wob: 0, hang: 0, hint: "קשיח — קפיצה נמוכה וחדה" } },
-  { id: "rubber", ic: "⬛", name: "גומי", sfx: "rubber", tint: "#3A3A44", phys: { h: 1.1, sq: 1.7, sink: 0.12, wob: 0, hang: 0, hint: "נמעך עמוק וקופץ" } },
-  { id: "drum", ic: "🥁", name: "תוף", sfx: "drum", tint: "#F0E6D0", phys: { h: 1.35, sq: 1.3, sink: 0.2, wob: 0, hang: 0, hint: "טרמפולינה — הכי גבוה" } },
-  { id: "water", ic: "💧", name: "מים", sfx: "water", tint: "#2FB7D8", phys: { h: 0.9, sq: 0.8, sink: 0.55, wob: 0.06, hang: 0, hint: "שוקע במים ויוצא" } },
-  { id: "space", ic: "🤖", name: "חללית", sfx: "beep", tint: "#4A5566", phys: { h: 1.25, sq: 0.7, sink: 0, wob: 0.1, hang: 0.55, hint: "כבידה נמוכה — מרחף בשיא" } },
-  { id: "bubble", ic: "🫧", name: "בועות", sfx: "pop", tint: "#F4B8D2", phys: { h: 0.8, sq: 1.4, sink: 0.25, wob: 0.04, hang: 0, hint: "רך ומתפוצץ" } },
-  { id: "grass", ic: "🌿", name: "דשא", sfx: "thump", tint: "#4FB84A", phys: { h: 0.75, sq: 1.1, sink: 0.08, wob: 0, hang: 0, hint: "רך ונמוך" } },
+  { id: "parquet", ic: "🪵", sfx: "wood", tint: "#B8783A", phys: { h: 1, sq: 1, sink: 0, wob: 0, hang: 0 } },
+  { id: "ceramic", ic: "🧱", sfx: "tile", tint: "#DDE9F0", phys: { h: 0.85, sq: 0.45, sink: 0, wob: 0, hang: 0 } },
+  { id: "rubber", ic: "⬛", sfx: "rubber", tint: "#3A3A44", phys: { h: 1.1, sq: 1.7, sink: 0.12, wob: 0, hang: 0 } },
+  { id: "drum", ic: "🥁", sfx: "drum", tint: "#F0E6D0", phys: { h: 1.35, sq: 1.3, sink: 0.2, wob: 0, hang: 0 } },
+  { id: "water", ic: "💧", sfx: "water", tint: "#2FB7D8", phys: { h: 0.9, sq: 0.8, sink: 0.55, wob: 0.06, hang: 0 } },
+  { id: "space", ic: "🤖", sfx: "beep", tint: "#4A5566", phys: { h: 1.25, sq: 0.7, sink: 0, wob: 0.1, hang: 0.55 } },
+  { id: "bubble", ic: "🫧", sfx: "pop", tint: "#F4B8D2", phys: { h: 0.8, sq: 1.4, sink: 0.25, wob: 0.04, hang: 0 } },
+  { id: "grass", ic: "🌿", sfx: "thump", tint: "#4FB84A", phys: { h: 0.75, sq: 1.1, sink: 0.08, wob: 0, hang: 0 } },
 ];
-export const MB_PHYS_OFF: MbPhys = { h: 1, sq: 1, sink: 0, wob: 0, hang: 0, hint: "" };
+export const MB_PHYS_OFF: MbPhys = { h: 1, sq: 1, sink: 0, wob: 0, hang: 0 };
 export const mbFloor = (id: string) => MB_FLOORS.find((f) => f.id === id) ?? MB_FLOORS[0];
 
 /* ---------- מודל טאפ-טמפו (משותף) ---------- */
@@ -102,12 +102,12 @@ export function mbHeight(bpm: number): number {
 
 /* ---------- דפוסי קצב (אופציה של המארח) ---------- */
 export type MbPattern = "plain" | "rest" | "accel" | "switch";
-export interface MbPatternInfo { id: MbPattern; ic: string; name: string; desc: string }
+export interface MbPatternInfo { id: MbPattern; ic: string } // שם/הסבר: metro.pat.<id> / metro.pat.<id>.desc
 export const MB_PATTERNS: MbPatternInfo[] = [
-  { id: "plain", ic: "🔁", name: "רגיל", desc: "קצב אחד קבוע" },
-  { id: "rest", ic: "✋", name: "הפסקה", desc: "כל פעימה רביעית — שקט! הכדור מרחף" },
-  { id: "accel", ic: "🚀", name: "מאיץ", desc: "הקצב עולה לאט לאורך הסבב" },
-  { id: "switch", ic: "🔀", name: "מתחלף", desc: "באמצע הסבב הקצב קופץ לקצב אחר" },
+  { id: "plain", ic: "🔁" },
+  { id: "rest", ic: "✋" },
+  { id: "accel", ic: "🚀" },
+  { id: "switch", ic: "🔀" },
 ];
 export const mbPattern = (id: string) => MB_PATTERNS.find((p) => p.id === id) ?? MB_PATTERNS[0];
 export const MB_ACCEL = 1.25;        // מאיץ: עד ×1.25 בסוף הסבב

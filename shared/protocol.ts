@@ -61,14 +61,21 @@ export interface PlayerFacts {
   abGoes?: number;          // התהום — כמה פעמים המשיך במדף
 }
 
+/**
+ * טקסט שהשרת שולח לתצוגה. מחרוזת = טקסט מוכן (ישן, עברית); אובייקט = מפתח תרגום + פרמטרים,
+ * והטלפון מרנדר בשפה שלו דרך lt() (client/lib/locale). כך חדר עם 4 שפות מקבל 4 טקסים נכונים
+ * מאותה הודעה. שמות שחקנים תמיד כפרמטר — לעולם לא משורשרים בשרת.
+ */
+export type LText = string | { k: string; p?: Record<string, string | number> };
+
 /** התואר האישי שמופיע על כרטיס הסיום של השחקן */
 export interface Award {
   id: string;
   emoji: string;
-  title: string;    // "האצבע הכי מהירה"
-  detail?: string;  // "0.41 שניות"
+  title: LText;    // {k:"awards.fastest.title"} → "האצבע הכי מהירה"
+  detail?: LText;  // {k:"awards.fastest.detail", p:{sec:"0.41"}} → "0.41 שניות"
   /** כותרת עיתונאית לסגנון "עיתון הערב" */
-  headline?: string;
+  headline?: LText;
 }
 
 /* ---- החבורה שלנו ---- */
@@ -94,7 +101,7 @@ export interface GroupSummary {
 }
 
 export interface CeremonyInfo {
-  title: string;
+  title: LText;
   winnerId?: string;
   /** תיקו אמיתי = כמה מנצחים; תמיד כולל את winnerId */
   winnerIds?: string[];
@@ -147,7 +154,7 @@ export type ServerMsg =
   | { t: "room"; room: RoomSnapshot }
   | { t: "game"; d: GameServerMsg } // אירוע משחק מיידי
   | { t: "cue"; at: number; d: GameServerMsg } // אירוע מתוזמן: לבצע בזמן-שרת at
-  | { t: "error"; msg: string };
+  | { t: "error"; msg: LText };
 
 /* ---- הודעות משחק (מזוהות לפי a) ---- */
 // על המצח
