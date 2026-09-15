@@ -6,6 +6,7 @@ import { shareEndCard } from "../lib/endcard";
 import { rememberGroup } from "../lib/group";
 import InstallPrompt from "./InstallPrompt";
 import { track } from "../lib/analytics";
+import { t, roomUrl } from "../lib/locale";
 
 const COLORS = ["#8b5cf6", "#ec4899", "#ffc93c", "#34e89e", "#5c8aff"];
 const DRUMROLL_MS = 1700;
@@ -61,7 +62,7 @@ export default function Ceremony({ room, me, isHost, onSaveGroup, onBackToLobby 
       rows: ranking0.map((p) => ({ name: p.name, emoji: p.emoji, score: c.eveningScores[p.id] ?? 0 })),
       clownName: loser ? `${loser.emoji} ${loser.name}` : undefined,
     });
-    if (out === "downloaded") { setShareMsg("התמונה ירדה — שלחו אותה לקבוצה 💬"); setTimeout(() => setShareMsg(""), 3000); }
+    if (out === "downloaded") { setShareMsg(t("ceremony.image_downloaded")); setTimeout(() => setShareMsg(""), 3000); }
   }
 
   /** הכרטיס האישי — לכל טלפון יש אחד משלו, וזה מה שמייצר את השיתופים */
@@ -75,7 +76,7 @@ export default function Ceremony({ room, me, isHost, onSaveGroup, onBackToLobby 
       .sort((a, b) => (c.eveningScores[b.id] ?? 0) - (c.eveningScores[a.id] ?? 0));
     try {
       const out = await shareEndCard({
-        name: meP?.name ?? "שחקן",
+        name: meP?.name ?? t("app.player"),
         emoji: meP?.emoji ?? "🙂",
         award: myAward,
         points: c.eveningScores[me] ?? 0,
@@ -85,9 +86,9 @@ export default function Ceremony({ room, me, isHost, onSaveGroup, onBackToLobby 
         roomCode: room.code,
         groupName: group?.name,
         groupEvening: group?.evenings,
-        joinUrl: `${location.origin}/r/${room.code}`,
+        joinUrl: roomUrl(room.code),
       });
-      if (out === "downloaded") { setShareMsg("הכרטיס ירד — שלחו אותו לחבר'ה 💬"); setTimeout(() => setShareMsg(""), 3000); }
+      if (out === "downloaded") { setShareMsg(t("ceremony.card_downloaded")); setTimeout(() => setShareMsg(""), 3000); }
     } finally {
       setCarding(false);
     }
@@ -116,7 +117,7 @@ export default function Ceremony({ room, me, isHost, onSaveGroup, onBackToLobby 
     return (
       <main className="fullscreen" style={{ background: "radial-gradient(circle at 50% 40%, #171029, #060411)" }}>
         <div className="huge shake">🥁</div>
-        <div className="big" style={{ marginTop: 16, color: "var(--muted)" }}>ורגע האמת...</div>
+        <div className="big" style={{ marginTop: 16, color: "var(--muted)" }}>{t("ceremony.drumroll")}</div>
       </main>
     );
   }
@@ -134,7 +135,7 @@ export default function Ceremony({ room, me, isHost, onSaveGroup, onBackToLobby 
       {iWon ? (
         <>
           <div className="huge popin">👑</div>
-          <div className="big" style={{ color: "var(--gold)" }}>{winnerIds.length > 1 ? "תיקו — ניצחתם ביחד!" : "ניצחת!"}</div>
+          <div className="big" style={{ color: "var(--gold)" }}>{winnerIds.length > 1 ? t("ceremony.tie_won") : t("ceremony.you_won")}</div>
           {winnerIds.length > 1 && (
             <p className="sub" style={{ marginTop: 8, fontSize: 16 }}>
               {winners.map((w) => `${w!.emoji} ${w!.name}`).join(" · ")}
@@ -144,18 +145,18 @@ export default function Ceremony({ room, me, isHost, onSaveGroup, onBackToLobby 
       ) : iLost ? (
         <>
           <div className="huge shake">🤡</div>
-          <div className="big" style={{ color: "#ff8a8a" }}>הליצן של הסיבוב</div>
+          <div className="big" style={{ color: "#ff8a8a" }}>{t("ceremony.clown")}</div>
         </>
       ) : winner ? (
         <>
           <div className="huge popin">{winnerIds.length > 1 ? "🤝" : winner.emoji}</div>
           <div className="big">
             {winnerIds.length > 1
-              ? `תיקו! ${winners.map((w) => w!.name).join(" ו")} ניצחו`
-              : `${winner.name} ניצח!`}
+              ? t("ceremony.tie_named", { names: winners.map((w) => w!.name).join(t("ceremony.and")) })
+              : t("ceremony.won_named", { name: winner.name })}
           </div>
           {loser && <p className="sub" style={{ marginTop: 8, fontSize: 16 }}>
-            הליצן של הסיבוב: <b style={{ color: "#ff8a8a" }}>{loser.emoji} {loser.name}</b> 🤡
+            {t("ceremony.clown_named")}<b style={{ color: "#ff8a8a" }}>{loser.emoji} <bdi>{loser.name}</bdi></b> 🤡
           </p>}
         </>
       ) : (
@@ -163,7 +164,7 @@ export default function Ceremony({ room, me, isHost, onSaveGroup, onBackToLobby 
         <>
           <div className="huge popin">🙌</div>
           <div className="big" style={{ fontSize: 26, padding: "0 10px" }}>{c.title}</div>
-          <p className="sub" style={{ marginTop: 8, fontSize: 16 }}>שיחקתם כצוות — כל הכבוד!</p>
+          <p className="sub" style={{ marginTop: 8, fontSize: 16 }}>{t("ceremony.coop_done")}</p>
         </>
       )}
 
@@ -175,20 +176,20 @@ export default function Ceremony({ room, me, isHost, onSaveGroup, onBackToLobby 
           marginTop: 14, width: "100%", maxWidth: 340, textAlign: "center",
           animationDelay: ".5s", animationFillMode: "backwards",
         }}>
-          <div className="sub" style={{ fontSize: 12, letterSpacing: ".08em" }}>התואר שלך הערב</div>
+          <div className="sub" style={{ fontSize: 12, letterSpacing: ".08em" }}>{t("ceremony.your_award")}</div>
           <div style={{ fontSize: 46, lineHeight: 1.1, marginTop: 4 }}>{myAward.emoji}</div>
           <div style={{ fontFamily: "var(--font-display)", fontSize: 24, marginTop: 2 }}>{myAward.title}</div>
           {myAward.detail && (
             <div className="sub" style={{ marginTop: 4, fontSize: 14, fontWeight: 700 }}>{myAward.detail}</div>
           )}
           <button className="btn social" style={{ marginTop: 12 }} onClick={shareCard} disabled={carding}>
-            {carding ? "מכין את הכרטיס…" : "📸 שתפו את הכרטיס שלכם"}
+            {carding ? t("ceremony.preparing_card") : t("ceremony.share_card")}
           </button>
         </div>
       )}
 
       <div className="card" style={{ marginTop: 14, width: "100%", maxWidth: 340 }}>
-        <div className="sub" style={{ marginBottom: 6 }}>לוח הערב 🌙</div>
+        <div className="sub" style={{ marginBottom: 6 }}>{t("ceremony.evening_board")}</div>
         {ranking.map((p, i) => {
           const medal = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : "·";
           return (
@@ -199,7 +200,7 @@ export default function Ceremony({ room, me, isHost, onSaveGroup, onBackToLobby 
               background: i === 0 ? "rgba(255,201,60,.1)" : undefined,
               borderRadius: 12, fontWeight: i === 0 ? 800 : 500,
             }}>
-              <span>{medal} {p.emoji} {p.name}{p.id === me ? " (אני)" : ""}</span>
+              <span>{medal} {p.emoji} <bdi>{p.name}</bdi>{p.id === me ? t("lobby.me") : ""}</span>
               <b style={{ color: i === 0 ? "var(--gold)" : "var(--money)" }}>{c.eveningScores[p.id] ?? 0}</b>
             </div>
           );
@@ -210,7 +211,7 @@ export default function Ceremony({ room, me, isHost, onSaveGroup, onBackToLobby 
       {group ? (
         <div className="card popin" style={{ marginTop: 12, width: "100%", maxWidth: 340 }}>
           <div className="sub" style={{ marginBottom: 6 }}>
-            🏅 {group.name} · עונה {group.seasonNo} · ערב {group.evenings}
+            {t("ceremony.group_line", { name: group.name, season: group.seasonNo, evening: group.evenings })}
           </div>
           {group.table.slice(0, 6).map((m, i) => (
             <div key={m.pid} style={{
@@ -229,17 +230,17 @@ export default function Ceremony({ room, me, isHost, onSaveGroup, onBackToLobby 
             </p>
           )}
           <p className="sub" style={{ marginTop: 4, fontSize: 11.5 }}>
-            העונה נסגרת בעוד {group.daysLeftInSeason} ימים
+            {t("ceremony.season_ends", { n: group.daysLeftInSeason })}
           </p>
         </div>
       ) : isHost && (
         namingGroup ? (
           <div className="card popin" style={{ marginTop: 12, width: "100%", maxWidth: 340 }}>
-            <div className="sub" style={{ marginBottom: 6 }}>איך קוראים לחבורה?</div>
+            <div className="sub" style={{ marginBottom: 6 }}>{t("ceremony.group_name_q")}</div>
             <input
               autoFocus value={groupName} maxLength={24}
               onChange={(e) => setGroupName(e.target.value)}
-              placeholder="הרביעייה מהמילואים"
+              placeholder={t("ceremony.group_name_ph")}
               style={{
                 width: "100%", padding: "10px 12px", borderRadius: 12, fontSize: 16,
                 border: "2px solid var(--line2)", background: "var(--card2)", color: "var(--text)",
@@ -250,12 +251,12 @@ export default function Ceremony({ room, me, isHost, onSaveGroup, onBackToLobby 
               disabled={!groupName.trim()}
               onClick={() => { Sfx.ding(); onSaveGroup(groupName.trim()); setNamingGroup(false); }}
             >
-              שמרו את החבורה 🏅
+              {t("ceremony.save_group")}
             </button>
           </div>
         ) : (
           <button className="btn gold" style={{ marginTop: 12, maxWidth: 340 }} onClick={() => setNamingGroup(true)}>
-            🏅 שמרו את החבורה ופתחו עונה
+            {t("ceremony.save_group_open")}
           </button>
         )
       )}
@@ -264,17 +265,17 @@ export default function Ceremony({ room, me, isHost, onSaveGroup, onBackToLobby 
       <InstallPrompt />
 
       <button className="btn ghost" style={{ marginTop: 10, maxWidth: 340 }} onClick={share}>
-        📤 שתפו את לוח הערב
+        {t("ceremony.share_board")}
       </button>
       {shareMsg && <p className="sub popin" style={{ marginTop: 8, fontSize: 12.5, fontWeight: 700 }}>{shareMsg}</p>}
 
       {isHost ? (
         <button className="btn" style={{ marginTop: 10, maxWidth: 340 }} onClick={onBackToLobby}>
-          עוד משחק! 🔁
+          {t("ceremony.again")}
         </button>
       ) : (
         <p className="sub popin" style={{ marginTop: 12, fontSize: 13 }}>
-          👑 המארח בוחר את המשחק הבא...
+          {t("ceremony.host_next")}
         </p>
       )}
     </main>

@@ -9,8 +9,9 @@
     "test": "tsx test/flow.test.ts"
   },
   "dependencies": {
-    "ws": "^8.18.0",
-    "tsx": "^4.19.0"
+    "geoip-country": "^5.0.202609120131",
+    "tsx": "^4.19.0",
+    "ws": "^8.18.0"
   },
   "devDependencies": {
     "@types/node": "^20",

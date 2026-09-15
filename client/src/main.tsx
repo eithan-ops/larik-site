@@ -13,7 +13,9 @@ import "./abyss.css";      // מסך התהום (מסך מלא משלו)
 import "./floors.css";     // מסך הקומות (מסך מלא משלו)
 import "./tanks.css";      // מסך התותחים (מסך מלא משלו)
 import "./metro.css";      // מסך המטרונובול (מסך מלא משלו)
+import "./i18n.css";       // כיווניות, פונטים לכל כתב, 🌐 — חייב אחרון
 import { initAnalytics } from "./lib/analytics";
+import { initLocale } from "./lib/locale";
 
 initAnalytics();
 
@@ -25,8 +27,11 @@ if ("serviceWorker" in navigator && import.meta.env.PROD) {
 // חייב לרוץ לפני הרינדור — כרום יורה את אירוע ההתקנה מוקדם, ומי שלא תפס אותו איבד אותו
 watchInstallPrompt();
 
-ReactDOM.createRoot(document.getElementById("root")!).render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>
-);
+// השפה נטענת לפני הרינדור הראשון (chunk אחד קטן של השפה הנוכחית בלבד) — אין הבהוב של עברית בטלפון זר
+void initLocale().then(() => {
+  ReactDOM.createRoot(document.getElementById("root")!).render(
+    <React.StrictMode>
+      <App />
+    </React.StrictMode>
+  );
+});

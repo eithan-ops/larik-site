@@ -4,6 +4,7 @@ import { createRoom } from "../lib/connection";
 import { track } from "../lib/analytics";
 import { CATALOG, SPODS_CATEGORY } from "../../../shared/protocol";
 import { GAME_COLORS } from "../games/registry";
+import { t, gameText } from "../lib/locale";
 
 /**
  * מדף המשחקים 🗂️ — כל משחק הוא פוסטר-מדבקה בצבע החתימה שלו.
@@ -36,19 +37,19 @@ export default function GamesShelf() {
   return (
     <main className="shelf">
       <div className="shelf-head">
-        <button className="shelf-back" onClick={() => navigate("/")} aria-label="חזרה">→</button>
-        <h1 className="shelf-title">כל המשחקים</h1>
+        <button className="shelf-back mirror" onClick={() => navigate("/")} aria-label={t("shelf.back")}>→</button>
+        <h1 className="shelf-title">{t("shelf.all_games")}</h1>
       </div>
-      <p className="sub shelf-sub">לחצו על מדבקה כדי לקלף אותה ולקרוא איך משחקים 👆</p>
+      <p className="sub shelf-sub">{t("shelf.tap_hint")}</p>
 
       <div className="shelf-grid">
         {CATALOG.filter((g) => g.category !== SPODS_CATEGORY).map((g) => renderPoster(g))}
       </div>
 
       <div className="shelf-head" style={{ marginTop: 18 }}>
-        <h2 className="shelf-title" style={{ fontSize: 22 }}>🏃 {SPODS_CATEGORY}</h2>
+        <h2 className="shelf-title" style={{ fontSize: 22 }}>🏃 {t("games.spods.category")}</h2>
       </div>
-      <p className="sub shelf-sub">טלפון אחד הוא השלט של המאמן, כל השאר פודים של אור בחצר. הילדים רצים, הטלפונים מודדים. 10 משחקים.</p>
+      <p className="sub shelf-sub">{t("shelf.spods_sub")}</p>
       <div className="shelf-grid">
         {CATALOG.filter((g) => g.category === SPODS_CATEGORY).map((g) => renderPoster(g))}
       </div>
@@ -60,6 +61,7 @@ export default function GamesShelf() {
     {
           const color = GAME_COLORS[g.id] ?? "#FFC531";
           const flipped = open === g.id;
+          const gt = gameText(g);
           return (
             <div
               key={g.id}
@@ -75,16 +77,16 @@ export default function GamesShelf() {
                     <div className="poster-art poster-art-fb">{g.icon}</div>
                   )}
                   <div className="poster-meta">
-                    <b className="poster-name">{g.icon} {g.name}</b>
-                    <span className="poster-tag">{g.tagline}</span>
+                    <b className="poster-name">{g.icon} {gt.name}</b>
+                    <span className="poster-tag">{gt.tagline}</span>
                     <span className="poster-chip">👥 {g.minPlayers}-{g.maxPlayers}</span>
                   </div>
                 </div>
                 {/* אחורי — ההסבר */}
                 <div className="poster-face poster-back" style={{ "--gc": color } as CSSProperties}>
-                  <b className="poster-name">{g.icon} {g.name}</b>
-                  <p className="poster-howto">{g.howTo ?? g.tagline}</p>
-                  <span className="poster-chip">👥 {g.minPlayers}-{g.maxPlayers} שחקנים</span>
+                  <b className="poster-name">{g.icon} {gt.name}</b>
+                  <p className="poster-howto">{gt.howTo}</p>
+                  <span className="poster-chip">{t("shelf.players_chip", { min: g.minPlayers, max: g.maxPlayers })}</span>
                   <button className="btn wa poster-play" disabled={busy}
                     onClick={(e) => {
                       e.stopPropagation();
@@ -93,7 +95,7 @@ export default function GamesShelf() {
                       if (g.id === "show") { location.href = "/s"; return; }
                       host();
                     }}>
-                    {busy ? "פותחים חדר..." : "🎉 שחקו בזה"}
+                    {busy ? t("shelf.opening") : t("shelf.play_this")}
                   </button>
                 </div>
               </div>
@@ -107,12 +109,12 @@ function ShelfFooter({ host, busy }: { host: () => void; busy: boolean }) {
   return (
     <>
       <div className="card shelf-how">
-        <b>איך זה עובד?</b>
-        <p className="sub">1️⃣ אחד פותח חדר ומקבל קוד ו-QR &nbsp;·&nbsp; 2️⃣ החברים סורקים עם המצלמה &nbsp;·&nbsp; 3️⃣ בוחרים משחק ומשחקים. בלי הורדות, בלי הרשמה, חינם.</p>
+        <b>{t("shelf.how_title")}</b>
+        <p className="sub">{t("shelf.how_body")}</p>
       </div>
 
       <button className="btn" onClick={host} disabled={busy} style={{ marginTop: 12 }}>
-        {busy ? "פותח חדר..." : "🎉 פתח חדר חדש"}
+        {busy ? t("home.opening") : t("home.new_room")}
       </button>
     </>
   );

@@ -8,6 +8,7 @@ import { useState } from "react";
 import { Sfx, vibrate } from "../lib/audio";
 import { track } from "../lib/analytics";
 import { installMode, runInstall, dismissInstall } from "../lib/install";
+import { t } from "../lib/locale";
 
 export default function InstallPrompt() {
   const [mode] = useState(installMode);
@@ -33,7 +34,7 @@ export default function InstallPrompt() {
     <div className="card popin" style={{ marginTop: 12, width: "100%", maxWidth: 340, position: "relative" }}>
       <button
         onClick={close}
-        aria-label="לא עכשיו"
+        aria-label={t("install.not_now")}
         style={{
           position: "absolute", top: 6, insetInlineEnd: 8, background: "none", border: "none",
           color: "var(--muted)", fontSize: 18, lineHeight: 1, padding: 4,
@@ -44,28 +45,28 @@ export default function InstallPrompt() {
 
       <div style={{ fontSize: 32, textAlign: "center" }}>📲</div>
       <div style={{ fontFamily: "var(--font-display)", fontSize: 19, textAlign: "center", marginTop: 2 }}>
-        שימו את לאריק על מסך הבית
+        {t("install.title")}
       </div>
       <p className="sub" style={{ textAlign: "center", marginTop: 4, fontSize: 13 }}>
-        בלחיצה אחת בפעם הבאה, בלי סרגל דפדפן
+        {t("install.sub")}
       </p>
 
       {mode === "prompt" ? (
         <button className="btn gold" style={{ marginTop: 10 }} onClick={install}>
-          הוסיפו למסך הבית
+          {t("install.add")}
         </button>
       ) : howTo ? (
         /* אייפון לא נותן דיאלוג התקנה — אפשר רק להראות את שני הצעדים */
         <div style={{ marginTop: 10, fontSize: 14.5, lineHeight: 1.7 }}>
-          <div>1. לחצו על <b>שיתוף</b> <span style={{ fontSize: 17 }}>􀈂</span> בסרגל התחתון</div>
-          <div>2. גללו ובחרו <b>"הוסף למסך הבית"</b></div>
+          <div>{t("install.ios1", { icon: "􀈂" })}</div>
+          <div>{t("install.ios2")}</div>
           <p className="sub" style={{ marginTop: 6, fontSize: 12 }}>
-            ככה גם אפשר יהיה לקבל תזכורת כשהחבורה לא נפגשה הרבה זמן
+            {t("install.ios_note")}
           </p>
         </div>
       ) : (
         <button className="btn gold" style={{ marginTop: 10 }} onClick={() => { setHowTo(true); track("install_ios_howto"); }}>
-          איך עושים את זה?
+          {t("install.how")}
         </button>
       )}
     </div>
