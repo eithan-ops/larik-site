@@ -38,7 +38,10 @@ import { createAbyss } from "./games/abyss";
 import { createFloors } from "./games/floors";
 import { createTanks } from "./games/tanks";
 import { createMetro } from "./games/metro";
+import { createSpods } from "./games/spods";
+import { SP_GAME_IDS } from "../../shared/spods";
 import type { ClientMsg } from "../../shared/protocol";
+import type { GameCtx } from "./engine";
 
 const PORT = Number(process.env.PORT || 8787);
 const CLIENT_DIST = resolve(process.cwd(), "../client/dist");
@@ -78,6 +81,8 @@ const manager = new RoomManager(transport, {
   floors: createFloors,
   tanks: createTanks,
   metro: createMetro,
+  // ספורט פודים 🏃 — עשרה מזהי קטלוג, מנוע אחד
+  ...Object.fromEntries(SP_GAME_IDS.map((g) => [`sp_${g}`, (ctx: GameCtx) => createSpods(ctx, g)])),
 }, {
   playerJoined: statPlayerJoined,
   gameStarted: statGameStarted,

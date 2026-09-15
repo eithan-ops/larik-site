@@ -2,7 +2,7 @@ import { useState, type CSSProperties } from "react";
 import { navigate } from "../App";
 import { createRoom } from "../lib/connection";
 import { track } from "../lib/analytics";
-import { CATALOG } from "../../../shared/protocol";
+import { CATALOG, SPODS_CATEGORY } from "../../../shared/protocol";
 import { GAME_COLORS } from "../games/registry";
 
 /**
@@ -14,6 +14,7 @@ import { GAME_COLORS } from "../games/registry";
 const POSTER_IDS = new Set([
   "whomost", "wall", "alias", "bombs", "forehead", "deathtouch",
   "demons", "trivia", "colorrules", "impostor", "undercover", "simon", "hofrim", "thieves", "abyss", "tanks", "metro",
+  "sp_colors", "sp_duel", "sp_star", "sp_beep", "sp_steal", "sp_survive", "sp_relay", "sp_stations", "sp_statue", "sp_pacer",
 ]);
 
 export default function GamesShelf() {
@@ -41,7 +42,22 @@ export default function GamesShelf() {
       <p className="sub shelf-sub">לחצו על מדבקה כדי לקלף אותה ולקרוא איך משחקים 👆</p>
 
       <div className="shelf-grid">
-        {CATALOG.map((g) => {
+        {CATALOG.filter((g) => g.category !== SPODS_CATEGORY).map((g) => renderPoster(g))}
+      </div>
+
+      <div className="shelf-head" style={{ marginTop: 18 }}>
+        <h2 className="shelf-title" style={{ fontSize: 22 }}>🏃 {SPODS_CATEGORY}</h2>
+      </div>
+      <p className="sub shelf-sub">טלפון אחד הוא השלט של המאמן, כל השאר פודים של אור בחצר. הילדים רצים, הטלפונים מודדים. 10 משחקים.</p>
+      <div className="shelf-grid">
+        {CATALOG.filter((g) => g.category === SPODS_CATEGORY).map((g) => renderPoster(g))}
+      </div>
+      <ShelfFooter host={host} busy={busy} />
+    </main>
+  );
+
+  function renderPoster(g: (typeof CATALOG)[number]) {
+    {
           const color = GAME_COLORS[g.id] ?? "#FFC531";
           const flipped = open === g.id;
           return (
@@ -83,9 +99,13 @@ export default function GamesShelf() {
               </div>
             </div>
           );
-        })}
-      </div>
+    }
+  }
+}
 
+function ShelfFooter({ host, busy }: { host: () => void; busy: boolean }) {
+  return (
+    <>
       <div className="card shelf-how">
         <b>איך זה עובד?</b>
         <p className="sub">1️⃣ אחד פותח חדר ומקבל קוד ו-QR &nbsp;·&nbsp; 2️⃣ החברים סורקים עם המצלמה &nbsp;·&nbsp; 3️⃣ בוחרים משחק ומשחקים. בלי הורדות, בלי הרשמה, חינם.</p>
@@ -94,6 +114,6 @@ export default function GamesShelf() {
       <button className="btn" onClick={host} disabled={busy} style={{ marginTop: 12 }}>
         {busy ? "פותח חדר..." : "🎉 פתח חדר חדש"}
       </button>
-    </main>
+    </>
   );
 }

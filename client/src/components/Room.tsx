@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { navigate } from "../App";
 import type { RoomSnapshot } from "../../../shared/protocol";
-import { CATALOG } from "../../../shared/protocol";
+import { CATALOG, SPODS_CATEGORY } from "../../../shared/protocol";
 import { Connection, defaultServerUrl } from "../lib/connection";
 import { unlockAudio, Sfx, vibrate } from "../lib/audio";
 import { armPhone } from "../lib/sensors";
@@ -360,6 +360,7 @@ const CATEGORIES: { icon: string; name: string; ids: string[] }[] = [
   { icon: "⚡", name: "אקשן", ids: ["metro", "tanks", "floors", "thieves", "abyss", "colorrules", "pods", "demons"] },
   { icon: "🤝", name: "ביחד נגד המכונה", ids: ["wall", "hofrim", "bombs", "simon"] },
   { icon: "🧠", name: "מוח", ids: ["trivia", "deathtouch"] },
+  { icon: "🏃", name: SPODS_CATEGORY, ids: CATALOG.filter((g) => g.category === SPODS_CATEGORY).map((g) => g.id) },
 ];
 /* סדר ההמלצה של "המנחה" — הכי חברתיים קודם */
 const RECO_ORDER = ["impostor", "undercover", "whomost", "alias", "metro", "tanks", "floors", "wall", "hofrim", "thieves", "abyss", "bombs", "colorrules", "trivia", "forehead", "demons", "simon", "pods", "deathtouch"];

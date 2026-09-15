@@ -23,6 +23,8 @@ import AbyssView from "./abyss";
 import FloorsView from "./floors";
 import TanksView from "./tanks";
 import MetroView from "./metro";
+import SpodsView from "./spods";
+import { SP_GAME_IDS } from "../../../shared/spods";
 
 // GameHub עבר ל-lib/gamehub (משותף לאפליקציית המופע) — מייצאים מחדש לתאימות
 export { GameHub };
@@ -52,6 +54,9 @@ export const GAME_COLORS: Record<string, string> = {
   floors: "#FF7A29",      // כתום מגדל
   tanks: "#E8433F",       // אדום פיצוץ
   metro: "#3DC63D",       // ירוק כדור
+  // ספורט פודים 🏃 — כל משחק בצבע חתימה משלו
+  sp_colors: "#FF3B3B", sp_duel: "#FF7A29", sp_star: "#FFC531", sp_beep: "#3DC63D", sp_steal: "#A855F7",
+  sp_survive: "#E23FA0", sp_relay: "#2F7BFF", sp_stations: "#FF5C2B", sp_statue: "#0FA3A3", sp_pacer: "#2EDCE6",
 };
 
 export const GAME_VIEWS: Record<string, ComponentType<GameViewProps>> = {
@@ -75,4 +80,5 @@ export const GAME_VIEWS: Record<string, ComponentType<GameViewProps>> = {
   floors: FloorsView,
   tanks: TanksView,
   metro: MetroView,
+  ...Object.fromEntries(SP_GAME_IDS.map((g) => [`sp_${g}`, SpodsView])),
 };

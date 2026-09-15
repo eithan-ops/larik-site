@@ -1,0 +1,55 @@
+/* ===== ספורט פודים 🏃 — הפוד (מסך מלא) והשלט (מסך מאמן) ===== */
+
+/* ---- הפוד ---- */
+.sp-pod{position:fixed; inset:0; z-index:10; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:24px;
+  touch-action:none; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; overscroll-behavior:none; direction:rtl; transition:background .12s;
+  font-family:var(--font-body,"Assistant Variable",Assistant,sans-serif); color:#FFF3DC; box-sizing:border-box;}
+#root>.sp-pod{position:fixed; z-index:10;}
+.sp-lit{border:none; cursor:pointer;}
+.sp-podnum{font-family:var(--font-display,"Suez One",serif); font-size:min(52vw,240px); line-height:1; color:#FFF3DC; text-shadow:-6px 8px 0 #000;}
+.sp-podlbl{font-size:22px; font-weight:900; letter-spacing:.2em; color:#C8B78E; margin-top:-6px;}
+.sp-chip{display:inline-block; margin-top:18px; padding:8px 18px; border-radius:99px; font-weight:900; font-size:18px; border:3px solid #0C0906; box-shadow:-3px 4px 0 #0C0906;}
+.sp-chip.dim{background:#2A2119; color:#C8B78E;}
+.sp-banner{margin-top:22px; font-size:20px; font-weight:800; color:#FFF3DC; max-width:90vw;}
+.sp-hint{margin-top:8px; font-size:14px; font-weight:700; color:#C8B78E;}
+.sp-score{margin-top:10px; font-size:15px; font-weight:700; color:#C8B78E;} .sp-score b{color:#FFC531; font-size:20px;}
+.sp-txt{font-family:var(--font-display,"Suez One",serif); font-size:min(18vw,96px); line-height:1.05; font-weight:400; word-break:break-word; max-width:96vw;}
+.sp-ic{font-size:min(40vw,190px); line-height:1; filter:drop-shadow(0 8px 20px rgba(0,0,0,.35));}
+.sp-sub{margin-top:10px; font-size:min(7vw,32px); font-weight:900; opacity:.9;}
+.sp-hand{font-size:min(30vw,140px); line-height:1; margin-top:8px; animation:sphand .7s ease-in-out infinite alternate;}
+@keyframes sphand{from{transform:translateY(0);} to{transform:translateY(-14px);}}
+.sp-fb{position:absolute; top:14%; left:50%; transform:translateX(-50%); background:#FFF3DC; color:#0C0906; font-family:var(--font-display,"Suez One",serif); font-size:40px; padding:8px 26px; border-radius:18px; border:3px solid #0C0906; box-shadow:-5px 6px 0 #FFC531; white-space:nowrap; z-index:5;}
+.sp-fb.good{box-shadow:-5px 6px 0 #3DDC3D;} .sp-fb.bad{box-shadow:-5px 6px 0 #FF3B3B;}
+/* גניבת הסבב — פסי צבע, כל ספורטאי נוגע בפס שלו */
+.sp-zones{position:absolute; inset:0; display:flex; flex-direction:row;}
+.sp-zone{flex:1; display:flex; align-items:flex-end; justify-content:center; padding-bottom:12vh; font-size:min(7vw,34px); font-weight:900; border-inline:3px solid #0C0906; cursor:pointer;}
+.sp-zone span{background:rgba(0,0,0,.35); padding:6px 12px; border-radius:12px; color:#fff;}
+.sp-zones-title{position:absolute; top:12vh; left:0; right:0; text-align:center; font-family:var(--font-display,"Suez One",serif); font-size:min(16vw,80px); color:#0C0906; text-shadow:-3px 4px 0 #FFF3DC; pointer-events:none;}
+
+/* ---- השלט ---- */
+.sp-coach{direction:rtl; padding-top:54px;}
+.sp-head{display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:8px;}
+.sp-title{display:flex; align-items:center; gap:8px; flex-wrap:wrap;} .sp-title b{font-size:20px;} .sp-ic-s{font-size:28px;}
+.sp-timer{min-width:56px; height:56px; border-radius:50%; display:grid; place-items:center; background:#231F1A; border:3px solid #0C0906; box-shadow:-3px 4px 0 #FFC531; font-family:var(--font-display,"Suez One",serif); font-size:22px; color:#FFC531; padding:0 8px;}
+.sp-timer.warm{box-shadow:-3px 4px 0 #FF7A29; color:#FF7A29;}
+.sp-bannerbox{background:#FFF3DC; color:#0C0906; border:3px solid #0C0906; box-shadow:-5px 6px 0 #3DDC3D; border-radius:18px; padding:12px 16px; margin:6px 0 10px; display:flex; flex-direction:column; gap:2px; rotate:-.6deg;}
+.sp-bannerbox b{font-family:var(--font-display,"Suez One",serif); font-weight:400; font-size:24px; line-height:1.15;}
+.sp-bannerbox small{font-size:13.5px; font-weight:800; color:#4A3F35;}
+.sp-bannerbox.pause{box-shadow:-5px 6px 0 #FF7A29;} .sp-bannerbox.over{box-shadow:-5px 6px 0 #FFC531;} .sp-bannerbox.count{box-shadow:-5px 6px 0 #FF3B3B;}
+.sp-bannerbox .chip{align-self:flex-start; margin-top:4px;}
+.sp-ctl{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px;}
+.sp-ctl .btn{flex:1; min-width:120px; padding:14px 10px;}
+.sp-ctl .btn.danger{border-color:#FF3B3B; color:#FF8A8A;}
+.sp-card{padding:12px 14px; margin-bottom:10px;}
+.sp-row{display:flex; align-items:center; gap:8px; padding:7px 0; border-bottom:1px solid rgba(255,255,255,.07); flex-wrap:wrap;}
+.sp-row:last-child{border-bottom:none;}
+.sp-row.out{opacity:.5;} .sp-row.focus{background:rgba(255,197,49,.08); border-radius:10px; padding-inline:6px; margin-inline:-6px;}
+.sp-dot{width:18px; height:18px; border-radius:50%; border:2px solid #0C0906; flex:0 0 auto;}
+.sp-name{font-weight:800; font-size:15px; flex:1; min-width:70px; display:flex; align-items:center; gap:6px;}
+.sp-rank{font-family:var(--font-display,"Suez One",serif); color:#FFC531; font-size:15px; width:18px;}
+.sp-rowctl{display:flex; align-items:center; gap:6px; flex-wrap:wrap;}
+.sp-extra{font-size:12px; color:var(--muted,#C8B78E); font-weight:700;}
+.sp-scorev{font-family:var(--font-display,"Suez One",serif); font-size:20px; color:#FFC531; min-width:34px; text-align:center;}
+.opt.tiny{padding:5px 9px; font-size:12px;}
+.sp-sel{background:#231F1A; color:#FFF3DC; border:1.5px solid rgba(255,255,255,.2); border-radius:10px; padding:5px 6px; font-family:inherit; font-size:12px; font-weight:700;}
+.sp-podn{font-family:var(--font-display,"Suez One",serif); font-size:20px; color:#FFC531; width:26px; text-align:center;}

@@ -2,6 +2,7 @@
  * LARIK Games — הפרוטוקול המשותף (לקוח ↔ שרת)
  * כל הזמנים במילישניות של "שעון השרת" — הלקוח ממיר דרך שכבת הסנכרון.
  */
+import { SP_DEFS, SP_GAME_IDS } from "./spods";
 
 export interface PlayerInfo {
   id: string;
@@ -574,7 +575,21 @@ export interface GameMeta {
   configOptions?: { key: string; label: string; values: { v: string; label: string }[] }[];
   /** משחק שחי כעמוד נפרד ולא כחדר — המדף שולח לכאן במקום לפתוח חדר */
   external?: string;
+  /** קטגוריה במדף ובקטלוג המארח (משחקים בלי קטגוריה משויכים לפי הרשימה הישנה ב-Room) */
+  category?: string;
 }
+
+/** קטגוריית "ספורט פודים" 🏃 — עשרה משחקים על מנוע אחד (shared/spods.ts); המארח = השלט, השאר = פודים */
+export const SPODS_CATEGORY = "ספורט פודים";
+const SPODS_CATALOG: GameMeta[] = SP_GAME_IDS.map((g) => {
+  const d = SP_DEFS[g];
+  return {
+    id: `sp_${g}`, name: d.name, icon: d.icon, tagline: d.tagline,
+    howTo: `${d.howTo} 📱 הטלפון של המארח הוא השלט של המאמן — הוא לא פוד. ${d.setup}`,
+    minPlayers: 2, maxPlayers: 9, category: SPODS_CATEGORY,
+    configOptions: d.settings.map((s) => ({ key: s.key, label: s.label, values: s.values.map((v) => ({ v: String(v.v), label: v.label })) })),
+  };
+});
 
 export const CATALOG: GameMeta[] = [
   {
@@ -848,4 +863,5 @@ export const CATALOG: GameMeta[] = [
       { key: "phys", label: "פיזיקת רצפה", values: [{ v: "off", label: "כבוי" }, { v: "on", label: "דלוק 🪂" }] },
     ],
   },
+  ...SPODS_CATALOG,
 ];
