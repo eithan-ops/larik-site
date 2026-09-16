@@ -115,15 +115,16 @@ const TRAIT_IDS: TraitId[] = ["burn", "frost", "chain", "poison", "blast", "pier
 /** ערימה שמזכה באבולוציה (בתנאי שדרגת הנשק מספיקה) */
 const EVO_STACKS = 5;
 const EVO_TIER = 4;
-const EVO: Record<TraitId, { name: string; emoji: string }> = {
-  burn:   { name: "לשון הדרקון",   emoji: "🐉" },
-  frost:  { name: "עידן הקרח",     emoji: "🧊" },
-  chain:  { name: "זעם הסופה",     emoji: "⚡" },
-  poison: { name: "נשימת הביצה",   emoji: "☣️" },
-  blast:  { name: "יום הדין",      emoji: "☄️" },
-  pierce: { name: "רומח הנצח",     emoji: "🔱" },
-  multi:  { name: "גשם הכוכבים",   emoji: "🌠" },
-  vamp:   { name: "צמא הנצח",      emoji: "🩸" },
+/** שמות האבולוציות: locales/<lang>/wall.json → wall.evo.<trait> */
+const EVO: Record<TraitId, { emoji: string }> = {
+  burn:   { emoji: "🐉" },
+  frost:  { emoji: "🧊" },
+  chain:  { emoji: "⚡" },
+  poison: { emoji: "☣️" },
+  blast:  { emoji: "☄️" },
+  pierce: { emoji: "🔱" },
+  multi:  { emoji: "🌠" },
+  vamp:   { emoji: "🩸" },
 };
 
 /* ---- שחקנים ---- */
@@ -171,54 +172,54 @@ interface Hero {
  * שלוש משפחות: מגברים (אחוזים — אבל כאלה שרואים ומרגישים), תכונות (התנהגות+מראה),
  * וקלפי תפקיד. `roles` מגביל קלף לתפקידים שבהם הוא באמת עושה משהו — הדראפט
  * לעולם לא מציע קלף מת (זה מה שהפך את הבריכה של התותחן ל-6 קלפים בלבד). */
-type Card = WallCard & { roles?: WallRole[]; kind: "amp" | "trait" | "role" };
+type Card = WallCard & { roles?: WallRole[]; kind: "amp" | "trait" | "role" };   // שם/תיאור: wall.card.<id> / .d
 
 const AMPS: Card[] = [
-  { kind: "amp", id: "dmg",    name: "עוצמה",        emoji: "💥", desc: "‎+18% נזק — והקליע מתעבה" },
-  { kind: "amp", id: "rate",   name: "קצב אש",       emoji: "⚡", desc: "‎+12% מהירות ירי/מכות" },
-  { kind: "amp", id: "crit",   name: "קטלניות",      emoji: "🎯", desc: "‎+8% סיכוי לנזק כפול" },
-  { kind: "amp", id: "range",  name: "טווח",         emoji: "📏", desc: "‎+12% טווח ורדיוס פגיעה" },
-  { kind: "amp", id: "armor",  name: "שובר שריון",   emoji: "🔨", desc: "‎+35% נזק למשוריינים ולבוס" },
-  { kind: "amp", id: "exec",   name: "מכת חסד",      emoji: "💀", desc: "‎+45% נזק לאויב מתחת ל-35% חיים" },
-  { kind: "amp", id: "momo",   name: "מומנטום",      emoji: "⏱️", desc: "כל הריגה ‎+4% נזק ל-4 שניות (מצטבר)" },
-  { kind: "amp", id: "xp",     name: "חוכמת קרב",    emoji: "🧠", desc: "‎+12% ניסיון מהריגות" },
-  { kind: "amp", id: "wall",   name: "בנאי החומה",   emoji: "🧱", desc: "מתקן מיד 12% מחיי החומה" },
+  { kind: "amp", id: "dmg",    emoji: "💥" },
+  { kind: "amp", id: "rate",   emoji: "⚡" },
+  { kind: "amp", id: "crit",   emoji: "🎯" },
+  { kind: "amp", id: "range",  emoji: "📏" },
+  { kind: "amp", id: "armor",  emoji: "🔨" },
+  { kind: "amp", id: "exec",   emoji: "💀" },
+  { kind: "amp", id: "momo",   emoji: "⏱️" },
+  { kind: "amp", id: "xp",     emoji: "🧠" },
+  { kind: "amp", id: "wall",   emoji: "🧱" },
   // חיים/תנועה רלוונטיים רק למי שבשטח
-  { kind: "amp", id: "hp",     name: "חוסן",         emoji: "❤️", desc: "‎+25% חיים מרביים + ריפוי מלא", roles: ["heli"] },
-  { kind: "amp", id: "speed",  name: "זריזות",       emoji: "👟", desc: "‎+10% מהירות תנועה", roles: ["heli"] },
+  { kind: "amp", id: "hp",     emoji: "❤️", roles: ["heli"] },
+  { kind: "amp", id: "speed",  emoji: "👟", roles: ["heli"] },
   // ...ולמי שעל החומה יש מקבילה משלו
-  { kind: "amp", id: "sentry", name: "מוצב מבוצר",   emoji: "🎖️", desc: "סופג את יריית הצלף הראשונה בכל גל", roles: ["archer", "cannon", "mg"] },
+  { kind: "amp", id: "sentry", emoji: "🎖️", roles: ["archer", "cannon", "mg"] },
 ];
 
 const TRAIT_CARDS: Card[] = [
-  { kind: "trait", id: "burn",   name: "בעירה",      emoji: "🔥", desc: "הפגיעה מציתה — האויב ממשיך לבעור" },
-  { kind: "trait", id: "frost",  name: "כפור",       emoji: "❄️", desc: "הפגיעה מקפיאה — האויב מאט" },
-  { kind: "trait", id: "chain",  name: "שרשרת ברק",  emoji: "⚡", desc: "הפגיעה קופצת לאויב נוסף בקרבת מקום" },
-  { kind: "trait", id: "poison", name: "רעל",        emoji: "☠️", desc: "רעל מצטבר שממשיך לכרסם" },
-  { kind: "trait", id: "blast",  name: "נפץ",        emoji: "💥", desc: "כל הריגה מפוצצת פיצוץ קטן" },
-  { kind: "trait", id: "pierce", name: "חדירה",      emoji: "🗡️", desc: "עובר דרך אויב נוסף ומתעלם משריון" },
-  { kind: "trait", id: "multi",  name: "כפילות",     emoji: "✨", desc: "קליע נוסף בכל ירייה" },
-  { kind: "trait", id: "vamp",   name: "ערפד",       emoji: "🩸", desc: "כל הריגה מרפאת אותך" },
+  { kind: "trait", id: "burn",   emoji: "🔥" },
+  { kind: "trait", id: "frost",  emoji: "❄️" },
+  { kind: "trait", id: "chain",  emoji: "⚡" },
+  { kind: "trait", id: "poison", emoji: "☠️" },
+  { kind: "trait", id: "blast",  emoji: "💥" },
+  { kind: "trait", id: "pierce", emoji: "🗡️" },
+  { kind: "trait", id: "multi",  emoji: "✨" },
+  { kind: "trait", id: "vamp",   emoji: "🩸" },
 ];
 
 const ROLE_CARDS: Card[] = [
-  { kind: "role", id: "radius",    name: "פגז מצרר",   emoji: "💣", desc: "‎+25% רדיוס פיצוץ", roles: ["cannon"] },
-  { kind: "role", id: "heatc",     name: "קירור-על",   emoji: "🧊", desc: "‎+30% קיבולת חום", roles: ["mg"] },
-  { kind: "role", id: "tracer",    name: "קליעי נותב", emoji: "🌟", desc: "הנזק גדל ככל שהצרור נמשך", roles: ["mg"] },
+  { kind: "role", id: "radius",    emoji: "💣", roles: ["cannon"] },
+  { kind: "role", id: "heatc",     emoji: "🧊", roles: ["mg"] },
+  { kind: "role", id: "tracer",    emoji: "🌟", roles: ["mg"] },
   /* ---- 🚁 הליקופטר: כל השדרוגים נוגעים לפצצות שהוא מטיל ----
    * תשע קלפים ייעודיים, ומעליהם 8 התכונות האוניברסליות שחלות אוטומטית על נזק
    * הפצצה (בעירה/כפור/שרשרת/רעל/נפץ/חדירה/כפילות/ערפד) — כי הכול עובר
    * ב-damageEnemy. בפועל: בריכה עמוקה מאוד לתפקיד אחד. */
-  { kind: "role", id: "payload", name: "מטען כבד",    emoji: "🧨", desc: "‎+30% נזק פצצה", roles: ["heli"] },
-  { kind: "role", id: "salvo",   name: "מנת יתר",     emoji: "📦", desc: "‎+1 פצצה בכל הטלה", roles: ["heli"] },
-  { kind: "role", id: "blastr",  name: "הדף רחב",     emoji: "🎯", desc: "‎+25% רדיוס הפיצוץ", roles: ["heli"] },
-  { kind: "role", id: "fuse",    name: "פתיל מהיר",   emoji: "⏱️", desc: "הפצצה נופלת מהר — פוגעת לפני שהספיקו לזוז", roles: ["heli"] },
-  { kind: "role", id: "napalm",  name: "נפאלם",       emoji: "🔥", desc: "הפיצוץ משאיר שלולית אש בוערת", roles: ["heli"] },
-  { kind: "role", id: "guided",  name: "פצצה מונחית", emoji: "🧲", desc: "הפצצה נמשכת לאויב הקרוב בדרך למטה", roles: ["heli"] },
-  { kind: "role", id: "cluster", name: "מצרר",        emoji: "💥", desc: "הפצצה מתפצלת ל-3 פצצות משנה", roles: ["heli"] },
-  { kind: "role", id: "shock",   name: "גל הדף",      emoji: "🌀", desc: "הפיצוץ הודף אויבים אחורה מהחומה", roles: ["heli"] },
-  { kind: "role", id: "plating", name: "שריון גחון",  emoji: "🛡️", desc: "‎-30% נזק מאש נגד-מטוסים", roles: ["heli"] },
-  { kind: "role", id: "tank",    name: "מיכל מורחב",  emoji: "🛢️", desc: "‎+25% קיבולת דלק — יותר זמן באוויר", roles: ["heli"] },
+  { kind: "role", id: "payload", emoji: "🧨", roles: ["heli"] },
+  { kind: "role", id: "salvo",   emoji: "📦", roles: ["heli"] },
+  { kind: "role", id: "blastr",  emoji: "🎯", roles: ["heli"] },
+  { kind: "role", id: "fuse",    emoji: "⏱️", roles: ["heli"] },
+  { kind: "role", id: "napalm",  emoji: "🔥", roles: ["heli"] },
+  { kind: "role", id: "guided",  emoji: "🧲", roles: ["heli"] },
+  { kind: "role", id: "cluster", emoji: "💥", roles: ["heli"] },
+  { kind: "role", id: "shock",   emoji: "🌀", roles: ["heli"] },
+  { kind: "role", id: "plating", emoji: "🛡️", roles: ["heli"] },
+  { kind: "role", id: "tank",    emoji: "🛢️", roles: ["heli"] },
 ];
 
 const ALL_CARDS = [...AMPS, ...TRAIT_CARDS, ...ROLE_CARDS];
@@ -1062,7 +1063,7 @@ export function createWall(ctx: GameCtx): GameInstance {
     for (const t of TRAIT_IDS) {
       if (h.traits[t] >= EVO_STACKS && !h.evos.includes(t)) {
         h.evos.push(t);
-        ctx.broadcast({ a: "wl_evo", pid, trait: t, name: EVO[t].name, emoji: EVO[t].emoji });
+        ctx.broadcast({ a: "wl_evo", pid, trait: t, emoji: EVO[t].emoji });
       }
     }
   }
@@ -1079,7 +1080,7 @@ export function createWall(ctx: GameCtx): GameInstance {
       const i = pool.findIndex((c) => c.id === "pierce");
       if (i >= 0) {
         const c = pool.splice(i, 1)[0];
-        cards.push({ id: c.id, emoji: c.emoji, tier: 1, name: c.name, desc: c.desc });
+        cards.push({ id: c.id, emoji: c.emoji, tier: 1 });
       }
     }
     while (cards.length < 3 && pool.length) {
@@ -1087,11 +1088,7 @@ export function createWall(ctx: GameCtx): GameInstance {
       const tier = (h.picks[c.id] ?? 0) + 1;
       // תכונה שעל סף אבולוציה מסומנת — זה מה שגורם לרדוף אחרי בילד
       const nextIsEvo = c.kind === "trait" && tier >= EVO_STACKS && h.tier >= EVO_TIER && !h.evos.includes(c.id as TraitId);
-      cards.push({
-        id: c.id, emoji: nextIsEvo ? EVO[c.id as TraitId].emoji : c.emoji, tier,
-        name: nextIsEvo ? EVO[c.id as TraitId].name : (tier > 1 ? `${c.name} ${["", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"][Math.min(tier, 10)]}` : c.name),
-        desc: nextIsEvo ? "🌟 אבולוציה! הנשק שלך משתנה" : c.desc,
-      });
+      cards.push({ id: c.id, emoji: nextIsEvo ? EVO[c.id as TraitId].emoji : c.emoji, tier, evo: nextIsEvo || undefined });
     }
     hands.set(pid, cards);
     ctx.sendTo(pid, { a: "wl_levelup", level: h.level, cards });
@@ -1145,7 +1142,7 @@ export function createWall(ctx: GameCtx): GameInstance {
     }
     sendMods(pid); // הלקוח חייב לדעת — אחרת שערי הקצב/מהירות שלו חוסמים את השדרוג
     sendStyle(pid); // ...וכל החדר צריך לדעת, כדי שיראו את הנשק שלך משתנה
-    ctx.broadcast({ a: "wl_picked", pid, name: card.name, emoji: card.emoji });
+    ctx.broadcast({ a: "wl_picked", pid, id: card.id, emoji: card.emoji, evo: card.evo });
     // עוד רמה ממתינה?
     const pending = pendingLevels.get(pid) ?? 0;
     if (pending > 0) { pendingLevels.set(pid, pending - 1); queueDraft(pid); }
@@ -1209,7 +1206,7 @@ export function createWall(ctx: GameCtx): GameInstance {
     for (const id of [...enemies.keys()]) enemies.delete(id);
     ctx.broadcast({ a: "wl_wall", hp: 0, max: wallMax });
     const remainS = Math.ceil(Math.max(0, waveEndsAt - now()) / 1000);
-    const nearMiss = remainS > 0 && remainS <= 12 ? `עוד ${remainS} שניות והייתם שורדים את גל ${wave}! 😩` : undefined;
+    const nearMiss = remainS > 0 && remainS <= 12 ? { s: remainS, wave } : undefined;
     // ריצה יומית נרשמת כאן ולא ב-finish(): בסולו אין מי שילחץ "סיימנו",
     // ושחקן שמת וסגר את הלשונית היה מאבד בדיוק את הריצה שבאנו לספור.
     if (cfg.seed) {
@@ -1237,7 +1234,7 @@ export function createWall(ctx: GameCtx): GameInstance {
     const scores: Record<string, number> = {};
     for (const p of ps) scores[p] = Math.round(Math.max(0, score(p)));
     ctx.end({
-      title: `החומה 🏰 עמדתם עד גל ${bestWave}!`,
+      title: { k: "wall.end.title", p: { wave: bestWave } },
       winnerId: winner,
       loserId: loser !== winner ? loser : undefined,
       scores,
