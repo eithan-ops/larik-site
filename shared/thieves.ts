@@ -14,7 +14,7 @@ export type ThRarity = "c" | "u" | "r" | "x" | "e";            // רגיל · ל
 export type ThKind = "passive" | "button" | "instant";
 
 export interface ThCard {
-  id: string; ic: string; t: string; d: string;                // אימוג'י · שם (2 מילים) · הסבר (≤8 מילים)
+  id: string; ic: string;                                     // שם/הסבר: locales/<lang>/thieves.json → thieves.card.<id> / .d
   track: ThTrack; rarity: ThRarity; kind: ThKind;
   stack?: number;                                              // כמה פעמים אפשר לקחת (ברירת מחדל 1)
   needs?: string[];                                            // דורש קלפים (דרגה)
@@ -54,41 +54,41 @@ export const TH_BASE_MODS: ThMods = {
 /** הבנק — עולם 1, v1 (32). `sheet` = תא בגיליון האייקונים: 4 גיליונות × 8 (2 שורות × 4) */
 export const TH_CARDS: ThCard[] = [
   /* 🦝 השחקן */
-  { id: "sole", ic: "🏃", t: "סוליות רוח", d: "רץ 10% מהר יותר. נערם.", track: "p", rarity: "c", kind: "passive", stack: 3, sheet: 0 },
-  { id: "sack", ic: "🎒", t: "שק גדול", d: "סוחב צ'אנק אחד יותר. נערם עד 5.", track: "p", rarity: "c", kind: "passive", stack: 2, sheet: 1 },
-  { id: "dash", ic: "💨", t: "דאש", d: "כפתור: זינוק קדימה. חלוקים מפספסים.", track: "p", rarity: "u", kind: "button", cd: 6000, sheet: 2 },
-  { id: "feather", ic: "🪶", t: "קל רגליים", d: "שלל גנוב מאט אותך פחות. נערם.", track: "p", rarity: "c", kind: "passive", stack: 2, sheet: 3 },
-  { id: "pick", ic: "⛏️", t: "מכוש כבד", d: "חוצב מהר יותר. נערם.", track: "p", rarity: "c", kind: "passive", stack: 2, sheet: 4 },
-  { id: "magnet", ic: "🧲", t: "מגנט", d: "מרים שלל שנפל מרחוק.", track: "p", rarity: "u", kind: "passive", sheet: 5 },
-  { id: "bubble", ic: "🫧", t: "בועה", d: "כפתור: 2 שנ' אי אפשר להפיל אותך.", track: "p", rarity: "u", kind: "button", cd: 20000, sheet: 6 },
-  { id: "pie", ic: "🥧", t: "עוגה", d: "כפתור: זורק עוגה. פגיעה = מהומם שנייה.", track: "p", rarity: "u", kind: "button", cd: 8000, sheet: 7 },
-  { id: "wrench", ic: "🔧", t: "מפתח שוודי", d: "נגיעה במגדל זר מכבה אותו ל-8 שנ'.", track: "p", rarity: "u", kind: "passive", cd: 20000, sheet: 8 },
-  { id: "rage", ic: "🔥", t: "זעם ארוך", d: "הזעם נמשך 25 שנ' וחזק יותר.", track: "p", rarity: "u", kind: "passive", sheet: 9 },
-  { id: "soft", ic: "🐢", t: "נפילה רכה", d: "כשמפילים אותך השלל נופל לידך.", track: "p", rarity: "c", kind: "passive", sheet: 10 },
-  { id: "stretch", ic: "🏡", t: "ישורת הבית", d: "+30% מהירות ליד הבית עם שלל.", track: "p", rarity: "c", kind: "passive", sheet: 11 },
-  { id: "ladder", ic: "🪜", t: "סולם", d: "גדרות וחומות לא מאטות אותך.", track: "p", rarity: "u", kind: "passive", pos: "low", sheet: 12 },
-  { id: "banana", ic: "🍌", t: "בננה", d: "עם שלל ביד אתה משאיר בננות. דורך = מחליק.", track: "p", rarity: "u", kind: "passive", sheet: 13 },
+  { id: "sole", ic: "🏃", track: "p", rarity: "c", kind: "passive", stack: 3, sheet: 0 },
+  { id: "sack", ic: "🎒", track: "p", rarity: "c", kind: "passive", stack: 2, sheet: 1 },
+  { id: "dash", ic: "💨", track: "p", rarity: "u", kind: "button", cd: 6000, sheet: 2 },
+  { id: "feather", ic: "🪶", track: "p", rarity: "c", kind: "passive", stack: 2, sheet: 3 },
+  { id: "pick", ic: "⛏️", track: "p", rarity: "c", kind: "passive", stack: 2, sheet: 4 },
+  { id: "magnet", ic: "🧲", track: "p", rarity: "u", kind: "passive", sheet: 5 },
+  { id: "bubble", ic: "🫧", track: "p", rarity: "u", kind: "button", cd: 20000, sheet: 6 },
+  { id: "pie", ic: "🥧", track: "p", rarity: "u", kind: "button", cd: 8000, sheet: 7 },
+  { id: "wrench", ic: "🔧", track: "p", rarity: "u", kind: "passive", cd: 20000, sheet: 8 },
+  { id: "rage", ic: "🔥", track: "p", rarity: "u", kind: "passive", sheet: 9 },
+  { id: "soft", ic: "🐢", track: "p", rarity: "c", kind: "passive", sheet: 10 },
+  { id: "stretch", ic: "🏡", track: "p", rarity: "c", kind: "passive", sheet: 11 },
+  { id: "ladder", ic: "🪜", track: "p", rarity: "u", kind: "passive", pos: "low", sheet: 12 },
+  { id: "banana", ic: "🍌", track: "p", rarity: "u", kind: "passive", sheet: 13 },
   /* 🏠 הבית */
-  { id: "t2", ic: "🗼", t: "מגדל 2", d: "המגדל יורה כל שנייה וטווח גדול יותר.", track: "h", rarity: "c", kind: "passive", sheet: 16 },
-  { id: "t3", ic: "🗼", t: "מגדל 3", d: "חלוקים דביקים: ‎-50% מהירות ל-3 שנ'.", track: "h", rarity: "u", kind: "passive", needs: ["t2"], sheet: 17 },
-  { id: "rear", ic: "🏯", t: "מגדל אחורי", d: "מגדל קטן בגב — אין יותר שטח מת.", track: "h", rarity: "r", kind: "passive", needs: ["t2"], sheet: 18 },
-  { id: "fence", ic: "🧱", t: "גדר", d: "זרים זזים בחצי מהירות במאורה שלך.", track: "h", rarity: "c", kind: "passive", sheet: 19 },
-  { id: "wall", ic: "🏰", t: "חומה", d: "זרים כמעט לא זזים במאורה שלך.", track: "h", rarity: "u", kind: "passive", needs: ["fence"], sheet: 19 },
-  { id: "honey", ic: "🍯", t: "מלכודת דבש", d: "פולש נדבק שנייה בכניסה.", track: "h", rarity: "c", kind: "passive", sheet: 20 },
-  { id: "bell", ic: "🔔", t: "פעמון מוקדם", d: "התרעה ברגע שמישהו מתקרב לבית.", track: "h", rarity: "c", kind: "passive", sheet: 21 },
-  { id: "vault", ic: "🔒", t: "כספת", d: "הגביש הכי בשל חסין לגניבה, מייצר חצי.", track: "h", rarity: "u", kind: "passive", sheet: 22 },
-  { id: "fert", ic: "🌱", t: "דשן", d: "גבישים מבשילים 30% מהר יותר. נערם.", track: "h", rarity: "c", kind: "passive", stack: 2, sheet: 23 },
-  { id: "shelf", ic: "📦", t: "מדף", d: "הכנסת המאורה ‎+15%. נערם.", track: "h", rarity: "c", kind: "passive", stack: 3, sheet: 30 },
-  { id: "mine", ic: "🧨", t: "מוקש", d: "הפולש הראשון עף ומהומם. נטען בכל עצירה.", track: "h", rarity: "u", kind: "passive", sheet: 23 },
+  { id: "t2", ic: "🗼", track: "h", rarity: "c", kind: "passive", sheet: 16 },
+  { id: "t3", ic: "🗼", track: "h", rarity: "u", kind: "passive", needs: ["t2"], sheet: 17 },
+  { id: "rear", ic: "🏯", track: "h", rarity: "r", kind: "passive", needs: ["t2"], sheet: 18 },
+  { id: "fence", ic: "🧱", track: "h", rarity: "c", kind: "passive", sheet: 19 },
+  { id: "wall", ic: "🏰", track: "h", rarity: "u", kind: "passive", needs: ["fence"], sheet: 19 },
+  { id: "honey", ic: "🍯", track: "h", rarity: "c", kind: "passive", sheet: 20 },
+  { id: "bell", ic: "🔔", track: "h", rarity: "c", kind: "passive", sheet: 21 },
+  { id: "vault", ic: "🔒", track: "h", rarity: "u", kind: "passive", sheet: 22 },
+  { id: "fert", ic: "🌱", track: "h", rarity: "c", kind: "passive", stack: 2, sheet: 23 },
+  { id: "shelf", ic: "📦", track: "h", rarity: "c", kind: "passive", stack: 3, sheet: 30 },
+  { id: "mine", ic: "🧨", track: "h", rarity: "u", kind: "passive", sheet: 23 },
   /* 🃏 ג'וקרים */
-  { id: "rain", ic: "🌀", t: "גשם זהב", d: "עכשיו: 10 צ'אנקים נופלים בכל המפה.", track: "j", rarity: "x", kind: "instant", sheet: 24 },
-  { id: "bull", ic: "🐂", t: "ריצת פרים", d: "15 שנ' כולם פי 1.5 מהר.", track: "j", rarity: "x", kind: "instant", sheet: 25 },
-  { id: "dark", ic: "🌙", t: "חושך", d: "20 שנ' בלי מיני-מפה לאף אחד.", track: "j", rarity: "x", kind: "instant", sheet: 31 },
-  { id: "bighead", ic: "💀", t: "ראש גדול", d: "ההכנסה ‎+25%. אתה 15% איטי.", track: "j", rarity: "x", kind: "passive", pos: "high", sheet: 29 },
+  { id: "rain", ic: "🌀", track: "j", rarity: "x", kind: "instant", sheet: 24 },
+  { id: "bull", ic: "🐂", track: "j", rarity: "x", kind: "instant", sheet: 25 },
+  { id: "dark", ic: "🌙", track: "j", rarity: "x", kind: "instant", sheet: 31 },
+  { id: "bighead", ic: "💀", track: "j", rarity: "x", kind: "passive", pos: "high", sheet: 29 },
   /* ⭐ אבולוציות — מוצעות אוטומטית כשיש שני המרכיבים */
-  { id: "ghost", ic: "🌪️", t: "רוח הרפאים", d: "כפתור: 5 שנ' מהירות מלאה עם שלל.", track: "p", rarity: "e", kind: "button", cd: 45000, evo: ["dash", "sole"], sheet: 26 },
-  { id: "fort", ic: "🛡️", t: "מצודה", d: "המגדל יורה כפול על מי שסוחב גביש שלך.", track: "h", rarity: "e", kind: "passive", evo: ["t2", "bell"], sheet: 27 },
-  { id: "circus", ic: "🎪", t: "קרקס", d: "כל הפלה שלך מהממת ומשאירה בננה.", track: "p", rarity: "e", kind: "passive", evo: ["pie", "banana"], sheet: 28 },
+  { id: "ghost", ic: "🌪️", track: "p", rarity: "e", kind: "button", cd: 45000, evo: ["dash", "sole"], sheet: 26 },
+  { id: "fort", ic: "🛡️", track: "h", rarity: "e", kind: "passive", evo: ["t2", "bell"], sheet: 27 },
+  { id: "circus", ic: "🎪", track: "p", rarity: "e", kind: "passive", evo: ["pie", "banana"], sheet: 28 },
 ];
 export const thCard = (id: string) => TH_CARDS.find((c) => c.id === id);
 

@@ -721,7 +721,7 @@ export function createThieves(ctx: GameCtx): GameInstance {
     const order = [...thieves.entries()].sort((a, b) => b[1].gold - a[1].gold);
     const total = order.reduce((s, [, t]) => s + t.gold, 0);
     ctx.end({
-      title: `🥷 הצפירה! ${Math.round(total).toLocaleString()} זהב נשאר בחדר`,
+      title: { k: "thieves.end.title", p: { n: Math.round(total) } },
       winnerId: order[0]?.[0],
       scores,
       facts: Object.fromEntries([...thieves.entries()].map(([pid, t]) => [pid, { points: Math.round(t.gold), spent: Math.round(t.spent), cards: t.cards.length, thefts: t.thefts, robbed: t.robbed, tackles: t.tackles }])),

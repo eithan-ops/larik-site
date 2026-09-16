@@ -29,6 +29,11 @@ import type { ThImages, ThFxKind } from "./thievesAssets";
 import { loadRaccoon, drawRaccoon, racIcon, racReady, RP } from "./thievesSprites";
 import type { RacPose } from "./thievesSprites";
 import "../thieves.css";
+import { t } from "../lib/locale";
+
+/** שם/תיאור קלף לפי מזהה — הטקסט יושב ב-locales/<lang>/thieves.json */
+const cn = (id: string) => t(`thieves.card.${id}`);
+const cd = (id: string) => t(`thieves.card.${id}.d`);
 
 const TS = 30;                     // פיקסלים לתא
 const SPD = 6.0;                   // חייב להיות זהה לשרת
@@ -40,7 +45,6 @@ const RATE = [0.2, 0.6, 1.2];
 const HIST_MS = 1500;
 const STEAL_HOLD = 450;
 const RAR_COL: Record<string, string> = { c: "#C8B78E", u: "#5AC8FA", r: "#B37BE0", x: "#46E0C0", e: "#F2C14E" };
-const TRACK_TX: Record<string, string> = { p: "🦝 שחקן", h: "🏠 בית", j: "🃏 ג'וקר" };
 
 interface Other { x: number; y: number; tx: number; ty: number; vx: number; vy: number; st: number; carry: number; stolen: number; rage: number; slow: number; gold: number; face: number; stunUntil: number; bubbleUntil: number; ghostUntil: number; dashUntil: number; grabAt: number; hitAt: number }
 interface TowerC { st: ThTowerSt; until: number; since: number; aim: number }
@@ -133,7 +137,7 @@ export default function ThievesView({ room, me, conn, hub }: GameViewProps) {
   useEffect(() => { const w = window as unknown as { __thDbg?: unknown; __thSfx?: unknown }; w.__thDbg = G.current; w.__thSfx = SFX.current; }, []);
 
   const pcol = (pid: string) => PCOL[Math.max(0, G.current.players.findIndex((p) => p.id === pid)) % PCOL.length];
-  const pname = (pid: string) => G.current.players.find((p) => p.id === pid)?.name ?? "מישהו";
+  const pname = (pid: string) => G.current.players.find((p) => p.id === pid)?.name ?? t("thieves.someone");
 
   /* ---- סאונד ---- */
   const audio = useRef<{ ctx: AudioContext | null; note: number; noteT: number }>({ ctx: null, note: 0, noteT: 0 });
@@ -272,7 +276,7 @@ export default function ThievesView({ room, me, conn, hub }: GameViewProps) {
           g.endsAt = d.endsAt; g.nextPauseAt = d.nextPauseAt;
           for (const [den, st, until] of d.towers) { const tw = g.towers.get(den); if (tw) { tw.st = st as ThTowerSt; tw.until = until; tw.since = performance.now(); } }
           unpause();
-          setToast(g.k >= g.timing.pauses ? "🚨 אין יותר עצירות — עד הצפירה!" : "▶️ ממשיכים!");
+          setToast(g.k >= g.timing.pauses ? t("thieves.no_more_pauses") : t("thieves.resume"));
           break;
         }
         case "th_cd": {
@@ -298,10 +302,10 @@ export default function ThievesView({ room, me, conn, hub }: GameViewProps) {
           } else if (d.k === "boom") {
             fx("pow", d.x ?? 0, (d.y ?? 0) - 0.5, 3.6, 480, false, 0.5); g.shake = Math.max(g.shake, 9);
             if (!sfx("crumble")) tone(90, 0.4, "sawtooth", 0.22, 40);
-            if (d.pid === me) setToast("🧨 מוקש! עפת");
+            if (d.pid === me) setToast(t("thieves.mine_hit"));
           } else if (d.k === "honey") {
             fx("honey", d.x ?? 0, d.y ?? 0, 1.8, 900, false, 0.3);
-            if (d.pid === me) { setToast("🍯 נדבקת בדבש!"); if (!sfx("gulp", { gain: 0.6 })) tone(200, 0.2, "sine", 0.2, 120); }
+            if (d.pid === me) { setToast(t("thieves.honey_hit")); if (!sfx("gulp", { gain: 0.6 })) tone(200, 0.2, "sine", 0.2, 120); }
           } else if (d.k === "wrench") {
             fx("sparkle", d.x ?? 0, (d.y ?? 0) - 0.6, 2.4, 500); zapSnd();
           }
@@ -314,7 +318,7 @@ export default function ThievesView({ room, me, conn, hub }: GameViewProps) {
         }
         case "th_stun": {
           const now = performance.now();
-          if (d.pid === me) { g.me.stunUntil = now + d.ms; g.me.hitAt = now; g.shake = Math.max(g.shake, 7); setToast(d.why === "pie" ? "🥧 עוגה בפרצוף!" : d.why === "banana" ? "🍌 החלקת!" : d.why === "circus" ? "🎪 מהומם!" : ""); }
+          if (d.pid === me) { g.me.stunUntil = now + d.ms; g.me.hitAt = now; g.shake = Math.max(g.shake, 7); setToast(d.why === "pie" ? t("thieves.stun_pie") : d.why === "banana" ? t("thieves.stun_banana") : d.why === "circus" ? t("thieves.stun_circus") : ""); }
           else { const o = g.others.get(d.pid); if (o) { o.stunUntil = now + d.ms; o.hitAt = now; } }
           const p = d.pid === me ? g.me : g.others.get(d.pid);
           if (p) { if (d.why === "pie") fx("pie", p.x, p.y - 0.8, 2.4, 700, false, 0.4); fx("stars", p.x, p.y - 1.4, 1.6, d.ms, false, 0.2); }
@@ -325,7 +329,7 @@ export default function ThievesView({ room, me, conn, hub }: GameViewProps) {
         case "th_banana_gone": { g.bananas.delete(d.id); break; }
         case "th_rain": {
           for (const [id, x, y, v] of d.items) g.items.set(id, { lvl: 0, v, state: "ground", den: "", carrier: "", gx: x, gy: y, pulse: 1, nugget: true });
-          setBanner({ ic: "🌀", t: "גשם זהב!", s: "צ'אנקים בכל המפה — מי שמרים, שלו" });
+          setBanner({ ic: "🌀", t: t("thieves.rain"), s: t("thieves.rain_s") });
           setTimeout(() => setBanner(null), 2200);
           if (!sfx("rumble", { gain: 0.6 })) tone(200, 0.4, "sawtooth", 0.2, 120);
           for (const [, x, y] of d.items) fx("dust", x, y, 1.6, 500, false, 0.6);
@@ -339,19 +343,19 @@ export default function ThievesView({ room, me, conn, hub }: GameViewProps) {
         }
         case "th_bull": {
           g.bullUntil = performance.now() + d.ms;
-          setBanner({ ic: "🐂", t: "ריצת פרים!", s: "כולם פי 1.5 מהר — 15 שניות" }); setTimeout(() => setBanner(null), 2200);
+          setBanner({ ic: "🐂", t: t("thieves.bull"), s: t("thieves.bull_s") }); setTimeout(() => setBanner(null), 2200);
           if (!sfx("warsting")) alarmSiren();
           break;
         }
         case "th_dark": {
           g.darkUntil = performance.now() + d.ms;
-          setBanner({ ic: "🌙", t: "חושך!", s: "20 שניות בלי מיני-מפה" }); setTimeout(() => setBanner(null), 2200);
+          setBanner({ ic: "🌙", t: t("thieves.dark"), s: t("thieves.dark_s") }); setTimeout(() => setBanner(null), 2200);
           break;
         }
         case "th_warn": {
           g.warn = { pid: d.pid, t: 3 };
           sfx("chirp", { rate: 0.78 + 0.07 * (pidx(d.pid) % 8) });
-          setToast(`🔔 ${pname(d.pid)} מתקרב לבית שלך!`);
+          setToast(t("thieves.warn", { name: pname(d.pid) }));
           break;
         }
         /* ---- 🗼 המגדל ---- */
@@ -368,9 +372,9 @@ export default function ThievesView({ room, me, conn, hub }: GameViewProps) {
             if (d.st === "ok" && prev !== "ok") fx("ring", tp.x, tp.y - 0.4, 2.4, 500, true, 1.2);
           }
           if (d.den === me) {
-            if (d.st === "hot") setToast("🔥 המגדל שלך התחמם — 4 שניות קירור");
-            else if (d.st === "off") { g.shake = Math.max(g.shake, 8); setToast(`🔧 ${pname(d.by ?? "")} כיבה לך את המגדל!`); }
-            else if (d.st === "ok" && prev !== "ok") setToast("🗼 המגדל שלך חזר לפעול!");
+            if (d.st === "hot") setToast(t("thieves.tower_hot"));
+            else if (d.st === "off") { g.shake = Math.max(g.shake, 8); setToast(t("thieves.tower_off_by", { name: pname(d.by ?? "") })); }
+            else if (d.st === "ok" && prev !== "ok") setToast(t("thieves.tower_back"));
           }
           break;
         }
@@ -385,7 +389,7 @@ export default function ThievesView({ room, me, conn, hub }: GameViewProps) {
           if (d.pid === me) {
             g.me.slowUntil = performance.now() + d.ms; g.me.slowMul = d.ms >= 3000 ? 0.5 : 0.7; g.shake = Math.max(g.shake, 7); thudSnd(d.x, d.y, true);
             g.corr.x += d.x - g.me.x; g.corr.y += d.y - g.me.y;
-            setToast(d.ms >= 3000 ? "🍯 חלוק דביק! איטי 3 שניות" : "🐌 חלוק מהמגדל! איטי 2 שניות");
+            setToast(d.ms >= 3000 ? t("thieves.sticky_pebble") : t("thieves.pebble"));
           } else {
             const o = g.others.get(d.pid); if (o) o.slow = 1;
             thudSnd(d.x, d.y, false);
@@ -393,8 +397,8 @@ export default function ThievesView({ room, me, conn, hub }: GameViewProps) {
           break;
         }
         case "th_act_done": {
-          if (d.kind === "disable") addFeed(`🔧 ${pname(d.by)} כיבה את המגדל של ${pname(d.den)}`);
-          if (d.by === me && d.kind === "disable") setToast(`🔧 המגדל של ${pname(d.den)} כבוי — עכשיו!`);
+          if (d.kind === "disable") addFeed(t("thieves.feed_disabled", { name: pname(d.by), target: pname(d.den) }));
+          if (d.by === me && d.kind === "disable") setToast(t("thieves.tower_off_now", { name: pname(d.den) }));
           break;
         }
         case "th_pos": {
@@ -450,7 +454,7 @@ export default function ThievesView({ room, me, conn, hub }: GameViewProps) {
         }
         case "th_go":
           g.go = true; setCountdown(0);
-          setBanner({ ic: "🥷", t: "צאו!", s: "ההר מחכה — מי מגיע ראשון?" });
+          setBanner({ ic: "🥷", t: t("thieves.go"), s: t("thieves.go_s") });
           setTimeout(() => setBanner(null), 1400);
           goSound(); g.flash = 0.12; g.flashCol = "#F2C14E";
           SFX.current?.startMusic();
@@ -479,7 +483,7 @@ export default function ThievesView({ room, me, conn, hub }: GameViewProps) {
             bell();
             const den = g.dens.get(d.den);
             if (den) { g.ping = { x: den.x, y: den.y, col: pcol(d.den), t: 4 }; fx("ring", den.x, den.y, 3.4, 700, true, 1.4); }
-            if (d.den !== me) addFeed(`🔔 גביש בשל אצל ${pname(d.den)}!`);
+            if (d.den !== me) addFeed(t("thieves.feed_ripe", { name: pname(d.den) }));
           }
           break;
         }
@@ -487,28 +491,28 @@ export default function ThievesView({ room, me, conn, hub }: GameViewProps) {
           const it = g.items.get(d.id) ?? { lvl: d.lvl, v: d.v ?? 1, state: "carried" as const, den: d.from, carrier: d.by, gx: 0, gy: 0, pulse: 0 };
           it.lvl = d.lvl; it.state = "carried"; it.carrier = d.by; it.den = d.from; if (d.v) it.v = d.v;
           g.items.set(d.id, it);
-          if (d.by === me) { g.me.stolen = 1; g.me.grabAt = performance.now(); g.zoom = 0.04; if (!sfx("grab")) tone(660, 0.12, "sawtooth", 0.2, 440); setToast("🥷 רוץ הביתה!!"); setHud((h) => ({ ...h, stolen: true })); }
+          if (d.by === me) { g.me.stolen = 1; g.me.grabAt = performance.now(); g.zoom = 0.04; if (!sfx("grab")) tone(660, 0.12, "sawtooth", 0.2, 440); setToast(t("thieves.run_home")); setHud((h) => ({ ...h, stolen: true })); }
           else { const o = g.others.get(d.by); if (o) o.grabAt = performance.now(); }
           if (d.from === me) {
             g.shake = 12; g.flash = 0.2; g.flashCol = "#E5484D";
             if (!sfx("stolen")) { tone(760, 0.16, "square", 0.3, 560); tone(560, 0.16, "square", 0.26, 420); }
             sfx("chirp", { rate: 0.78 + 0.07 * (pidx(d.by) % 8), delay: 0.2 });
-            setToast(`😱 ${pname(d.by)} גנב לך את הגביש!`);
+            setToast(t("thieves.stolen_from_you", { name: pname(d.by) }));
           }
-          addFeed(`🥷 ${pname(d.by)} גנב מ${pname(d.from)}!`);
+          addFeed(t("thieves.feed_stole", { name: pname(d.by), target: pname(d.from) }));
           break;
         }
         case "th_nope": {
           nopeSnd(); g.shake = Math.max(g.shake, 4);
-          setToast(d.why === "far" ? "🚶 תיכנס למאורה שלהם" : d.why === "empty" ? "🕳️ אין שם מה לגנוב" : d.why === "gold" ? "💰 אין לך מספיק זהב לזה" : "🎒 קודם תביא את השלל הביתה");
+          setToast(d.why === "far" ? t("thieves.deny_far") : d.why === "empty" ? t("thieves.deny_empty") : d.why === "gold" ? t("thieves.deny_gold") : t("thieves.deny_carry"));
           break;
         }
         case "th_tackle": {
           g.shake = Math.max(g.shake, 8); if (!sfx("pow")) tone(95, 0.14, "square", 0.3);
           g.stop = Math.max(g.stop, 0.08);                                       // hit-stop — העולם קופא לרגע
           { const p = d.carrier === me ? g.me : g.others.get(d.carrier); if (p) { fx("pow", p.x, p.y - 0.3, 3.2, 380, false, 0.35); p.hitAt = performance.now(); } }
-          if (d.carrier === me) { g.me.stolen = 0; setToast("💥 הפילו אותך!"); setHud((h) => ({ ...h, stolen: false })); }
-          addFeed(`💥 ${pname(d.by)} הפיל את ${pname(d.carrier)}!`);
+          if (d.carrier === me) { g.me.stolen = 0; setToast(t("thieves.you_dropped")); setHud((h) => ({ ...h, stolen: false })); }
+          addFeed(t("thieves.feed_dropped", { name: pname(d.by), target: pname(d.carrier) }));
           break;
         }
         case "th_drop": {
@@ -530,27 +534,27 @@ export default function ThievesView({ room, me, conn, hub }: GameViewProps) {
           if (it) { it.state = "den"; it.den = d.by; it.carrier = ""; it.pulse = 1; }
           if (d.by === me) {
             g.me.stolen = 0; setHud((h) => ({ ...h, stolen: false }));
-            if (d.from === me) { setToast("🏠 החזרת את הגביש שלך!"); if (!sfx("home", { gain: 0.8 })) tone(520, 0.2, "triangle", 0.3); }
-            else { setToast("💰 השלל שלך!"); if (!sfx("home")) { tone(392, 0.1, "triangle", 0.3); tone(523, 0.1, "triangle", 0.3); setTimeout(() => tone(659, 0.16, "triangle", 0.32), 90); } }
+            if (d.from === me) { setToast(t("thieves.returned_yours")); if (!sfx("home", { gain: 0.8 })) tone(520, 0.2, "triangle", 0.3); }
+            else { setToast(t("thieves.loot_yours")); if (!sfx("home")) { tone(392, 0.1, "triangle", 0.3); tone(523, 0.1, "triangle", 0.3); setTimeout(() => tone(659, 0.16, "triangle", 0.32), 90); } }
             { const den = g.dens.get(me); if (den) { fx("sparkle", den.x, den.y - 0.3, 3, 600); g.parts.push(...burst(den.x, den.y - 0.5, "#FFD152", 10)); } }
           } else if (d.from === me) {
             if (!sfx("receipt")) tone(300, 0.25, "sine", 0.16, 200);
-            setToast(`📄 ${pname(d.by)} לקח את הגביש שלך הביתה`);
+            setToast(t("thieves.took_yours_home", { name: pname(d.by) }));
           }
-          if (d.from !== d.by) addFeed(`🏠 ${pname(d.by)} הביא שלל של ${pname(d.from)}`);
+          if (d.from !== d.by) addFeed(t("thieves.feed_brought", { name: pname(d.by), target: pname(d.from) }));
           break;
         }
         case "th_rage":
           if (d.pid === me) { g.me.rageUntil = performance.now() + d.secs * 1000; setHud((h) => ({ ...h, rage: true })); if (!sfx("rage")) tone(180, 0.3, "sawtooth", 0.22, 420); setTimeout(() => setHud((h) => ({ ...h, rage: false })), d.secs * 1000); }
           break;
         case "th_first":
-          setBanner({ ic: "⚔️", t: `${pname(d.by)} פתח את המלחמה!`, s: `הגניבה הראשונה — מ${pname(d.from)}` });
+          setBanner({ ic: "⚔️", t: t("thieves.war_opened", { name: pname(d.by) }), s: t("thieves.war_opened_s", { name: pname(d.from) }) });
           setTimeout(() => setBanner(null), 2600);
           if (!sfx("warsting")) alarmSiren();
           break;
         case "th_empty":
           g.empty = true; setHud((h) => ({ ...h, empty: true }));
-          setBanner({ ic: "⛰️", t: "ההר נגמר!", s: "הזהב היחיד שנשאר — אצל החברים שלכם" });
+          setBanner({ ic: "⛰️", t: t("thieves.mtn_over"), s: t("thieves.mtn_over_s") });
           setTimeout(() => setBanner(null), 3000);
           if (!sfx("rumble")) tone(200, 0.5, "sawtooth", 0.24, 120); g.shake = Math.max(g.shake, 10);
           if (!g.paused) SFX.current?.musicRate(1.06);
@@ -558,7 +562,7 @@ export default function ThievesView({ room, me, conn, hub }: GameViewProps) {
           break;
         case "th_alarm":
           g.alarm = true; setHud((h) => ({ ...h, alarm: true }));
-          setBanner({ ic: "🚨", t: "דקה אחרונה!", s: "כל ההכנסות פי 3" });
+          setBanner({ ic: "🚨", t: t("thieves.last_minute"), s: t("thieves.last_minute_s") });
           setTimeout(() => setBanner(null), 2600);
           alarmSiren(); setTimeout(alarmSiren, 950);
           SFX.current?.musicRate(1.14);
@@ -568,7 +572,7 @@ export default function ThievesView({ room, me, conn, hub }: GameViewProps) {
           // מי שמוביל — פוזת ניצחון; הרגע נספר למעלה אצל כולם
           let best = "", bg = -1; for (const [pid, o] of g.others.entries()) if (o.gold > bg) { bg = o.gold; best = pid; }
           g.won = g.me.gold >= bg; void best;
-          setBanner({ ic: "🔔", t: "הצפירה!", s: "מה שנשאר בבית — שלך" });
+          setBanner({ ic: "🔔", t: t("thieves.alarm"), s: t("thieves.alarm_s") });
           break;
         }
         case "th_left": g.others.delete(d.pid); break;
@@ -931,7 +935,7 @@ export default function ThievesView({ room, me, conn, hub }: GameViewProps) {
         if (r > 0 && frac <= 0.28) glow(g.mtn.x * TS, g.mtn.y * TS, "#FFB300", rr * TS * 1.1, 0.18 + 0.1 * Math.sin(ts / 200));
         ctx2.drawImage(mtnImg, g.mtn.x * TS - w / 2, g.mtn.y * TS - h * 0.58, w, h);
         ctx2.font = "800 13px Assistant, sans-serif"; ctx2.textAlign = "center";
-        const lbl = r > 0 ? `⛰️ ${g.mtn.left}` : "⛰️ ההר נגמר";
+        const lbl = r > 0 ? `⛰️ ${g.mtn.left}` : t("thieves.mtn_empty");
         ctx2.fillStyle = "#0009"; ctx2.fillText(lbl, g.mtn.x * TS + 1, g.mtn.y * TS - h * 0.58 - 5);
         ctx2.fillStyle = r > 0 ? "#E8D9BC" : "#8B7D6B"; ctx2.fillText(lbl, g.mtn.x * TS, g.mtn.y * TS - h * 0.58 - 6);
       } else if (r > 0) {
@@ -940,7 +944,7 @@ export default function ThievesView({ room, me, conn, hub }: GameViewProps) {
         ctx2.closePath(); ctx2.fillStyle = "#57524C"; ctx2.fill(); ctx2.strokeStyle = "#2C2825"; ctx2.lineWidth = 4; ctx2.stroke();
         ctx2.font = "800 13px Assistant, sans-serif"; ctx2.textAlign = "center"; ctx2.fillStyle = "#E8D9BC"; ctx2.fillText(`⛰️ ${g.mtn.left}`, 0, -r * TS - 10);
         ctx2.restore();
-      } else { ctx2.font = "800 13px Assistant, sans-serif"; ctx2.textAlign = "center"; ctx2.fillStyle = "#6B5F4E"; ctx2.fillText("⛰️ ההר נגמר", g.mtn.x * TS, g.mtn.y * TS); }
+      } else { ctx2.font = "800 13px Assistant, sans-serif"; ctx2.textAlign = "center"; ctx2.fillStyle = "#6B5F4E"; ctx2.fillText(t("thieves.mtn_empty"), g.mtn.x * TS, g.mtn.y * TS); }
 
       // מאורות (חותמות) + טווחי מגדל + אבנים
       const byDen = new Map<string, CItem[]>();
@@ -1187,7 +1191,7 @@ export default function ThievesView({ room, me, conn, hub }: GameViewProps) {
         ctx2.beginPath(); ctx2.moveTo(18, 0); ctx2.lineTo(-10, -10); ctx2.lineTo(-5, 0); ctx2.lineTo(-10, 10); ctx2.closePath();
         ctx2.fill(); ctx2.stroke(); ctx2.restore(); ctx2.globalAlpha = 1;
         ctx2.font = "800 12px Assistant, sans-serif"; ctx2.textAlign = "center";
-        ctx2.fillStyle = "#F3E7D3"; ctx2.fillText(g.warn && !g.items.size ? `🔔 ${pname(thiefPid)} מתקרב!` : `🏃 ${pname(thiefPid)} ${g.warn ? "מתקרב לבית!" : "עם הגביש שלך!"}`, W / 2, 118);
+        ctx2.fillStyle = "#F3E7D3"; ctx2.fillText(g.warn && !g.items.size ? t("thieves.approaching", { name: pname(thiefPid) }) : g.warn ? t("thieves.approaching_home", { name: pname(thiefPid) }) : t("thieves.has_your_crystal", { name: pname(thiefPid) }), W / 2, 118);
         const hisDen = g.dens.get(thiefPid);
         if (hisDen && audio.current.ctx && !g.warn && !g.paused) {
           const dHome = Math.hypot(thiefX - hisDen.x, thiefY - hisDen.y);
@@ -1201,7 +1205,7 @@ export default function ThievesView({ room, me, conn, hub }: GameViewProps) {
       ctx2.fillStyle = "rgba(16,13,10,.86)"; ctx2.fillRect(MX, MY, MW, MH);
       ctx2.strokeStyle = "#3A2E22"; ctx2.lineWidth = 2; ctx2.strokeRect(MX, MY, MW, MH);
       if (nowP < g.darkUntil) {
-        ctx2.font = "800 13px Assistant, sans-serif"; ctx2.textAlign = "center"; ctx2.fillStyle = "#8B7D6B"; ctx2.fillText("🌙 חושך", MX + MW / 2, MY + MH / 2 + 5);
+        ctx2.font = "800 13px Assistant, sans-serif"; ctx2.textAlign = "center"; ctx2.fillStyle = "#8B7D6B"; ctx2.fillText(t("thieves.dark_map"), MX + MW / 2, MY + MH / 2 + 5);
       } else {
         const mx2 = (x: number) => MX + (x / g.w) * MW, my2 = (y: number) => MY + (y / g.h) * MH;
         if (r > 0) { ctx2.fillStyle = "#57524C"; ctx2.beginPath(); ctx2.arc(mx2(g.mtn.x), my2(g.mtn.y), (r / g.w) * MW, 0, 6.283); ctx2.fill(); }
@@ -1252,7 +1256,7 @@ export default function ThievesView({ room, me, conn, hub }: GameViewProps) {
   void tickUi;
 
   return (
-    <div style={{ position: "fixed", inset: 0, width: "100vw", height: "100dvh", zIndex: 60, background: "#100D0A", overflow: "hidden", touchAction: "none", direction: "rtl" }}>
+    <div style={{ position: "fixed", inset: 0, width: "100vw", height: "100dvh", zIndex: 60, background: "#100D0A", overflow: "hidden", touchAction: "none" }}>
       <canvas ref={cvRef} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block" }} />
 
       {/* שעון + הר + טבעת "עד העצירה" */}
@@ -1263,8 +1267,8 @@ export default function ThievesView({ room, me, conn, hub }: GameViewProps) {
         fontSize: 15, display: "flex", gap: 12, alignItems: "center", whiteSpace: "nowrap",
       }}>
         <span>{hud.alarm ? "🚨" : "⏱"} {mins}:{secs}</span>
-        <span style={{ opacity: 0.85 }}>{hud.empty ? "⚔️ מלחמה" : `⛰️ ${hud.mtnPct}%`}</span>
-        {!hud.alarm && <span className="th-next" style={{ "--p": `${Math.round(hud.nextP * 360)}deg` } as CSSProperties} title="עד העצירה" />}
+        <span style={{ opacity: 0.85 }}>{hud.empty ? t("thieves.war") : `⛰️ ${hud.mtnPct}%`}</span>
+        {!hud.alarm && <span className="th-next" style={{ "--p": `${Math.round(hud.nextP * 360)}deg` } as CSSProperties} title={t("thieves.until_pause")} />}
       </div>
 
       {/* הזהב שלי + פס הבילד */}
@@ -1274,15 +1278,15 @@ export default function ThievesView({ room, me, conn, hub }: GameViewProps) {
         color: "#F2C14E", fontWeight: 800, fontFamily: "Assistant, sans-serif", fontSize: 20,
       }}>
         💰 {hud.gold.toLocaleString()}
-        {hud.carry > 0 && <span style={{ fontSize: 13, color: "#C8B78E", marginRight: 8 }}>+{hud.carry} ביד</span>}
-        {hud.rage && <span style={{ fontSize: 13, color: "#FF6B5E", marginRight: 8 }}>🔥 זעם!</span>}
+        {hud.carry > 0 && <span style={{ fontSize: 13, color: "#C8B78E", marginInlineEnd: 8 }}>{t("thieves.in_hand", { n: hud.carry })}</span>}
+        {hud.rage && <span style={{ fontSize: 13, color: "#FF6B5E", marginInlineEnd: 8 }}>{t("thieves.rage")}</span>}
         {hud.tower !== "ok" && (
           <div style={{ fontSize: 12, color: "#E8D9BC", marginTop: 2, whiteSpace: "nowrap" }}>
-            {hud.tower === "hot" ? `🔥 המגדל מתקרר ${hud.towerLeft}` : `💤 המגדל כבוי ${hud.towerLeft}`}
+            {hud.tower === "hot" ? t("thieves.tower_cooling", { n: hud.towerLeft }) : t("thieves.tower_off", { n: hud.towerLeft })}
           </div>
         )}
         {myCards.length > 0 && (
-          <div className="th-build">{[...new Set(myCards)].map((id) => { const c = thCard(id); const n = myCards.filter((x) => x === id).length; return c ? <i key={id} title={c.t}>{c.ic}{n > 1 ? `×${n}` : ""}</i> : null; })}</div>
+          <div className="th-build">{[...new Set(myCards)].map((id) => { const c = thCard(id); const n = myCards.filter((x) => x === id).length; return c ? <i key={id} title={cn(id)}>{c.ic}{n > 1 ? `×${n}` : ""}</i> : null; })}</div>
         )}
       </div>
 
@@ -1293,7 +1297,7 @@ export default function ThievesView({ room, me, conn, hub }: GameViewProps) {
             const c = thCard(id)!; const ready = (cds[id] ?? 0) <= sNowUi; const cdTot = c.cd ?? 1;
             const p = ready ? 360 : Math.round(360 * (1 - Math.max(0, cds[id] - sNowUi) / cdTot));
             return (
-              <button key={id} className={"th-btn" + (ready && !pause ? "" : " cd")} style={{ "--p": `${p}deg` } as CSSProperties} aria-label={c.t}
+              <button key={id} className={"th-btn" + (ready && !pause ? "" : " cd")} style={{ "--p": `${p}deg` } as CSSProperties} aria-label={cn(id)}
                 onPointerDown={(e) => { e.preventDefault(); aInit(); if (ready && !pause) conn.sendGame({ a: "th_use", id } as never); }}
                 onClick={(e) => e.preventDefault()}>
                 <span>{c.ic}</span>
@@ -1321,7 +1325,7 @@ export default function ThievesView({ room, me, conn, hub }: GameViewProps) {
             background: `#7A3CC8 url(${TH_IMG.btn}) center / 100% 100% no-repeat`, color: "#fff", fontFamily: "Assistant, sans-serif",
             boxShadow: "0 0 26px rgba(160,90,255,.65)", zIndex: 5, touchAction: "manipulation",
           }}>
-          <span style={{ position: "absolute", bottom: -6, left: "50%", transform: "translateX(-50%) rotate(-3deg)", background: "#F3E7D3", color: "#1B1510", borderRadius: 10, padding: "1px 9px", fontSize: 13, fontWeight: 900, border: "2px solid #1B1510", boxShadow: "2px 2px 0 rgba(226,63,60,.85)", whiteSpace: "nowrap" }}>🥷 לגנוב!</span>
+          <span style={{ position: "absolute", bottom: -6, left: "50%", transform: "translateX(-50%) rotate(-3deg)", background: "#F3E7D3", color: "#1B1510", borderRadius: 10, padding: "1px 9px", fontSize: 13, fontWeight: 900, border: "2px solid #1B1510", boxShadow: "2px 2px 0 rgba(226,63,60,.85)", whiteSpace: "nowrap" }}>{t("thieves.steal_btn")}</span>
         </button>
       )}
 
@@ -1329,13 +1333,13 @@ export default function ThievesView({ room, me, conn, hub }: GameViewProps) {
         <div style={{ position: "absolute", top: "calc(env(safe-area-inset-top, 0px) + 54px)", left: "50%", transform: "translateX(-50%)", background: "rgba(16,13,10,.92)", border: "2px solid #3A2E22", borderRadius: 14, padding: "8px 18px", color: "#F3E7D3", fontWeight: 800, fontFamily: "Assistant, sans-serif", fontSize: 16, whiteSpace: "nowrap", zIndex: 6 }}>{toast}</div>
       )}
       {stalled && (
-        <div style={{ position: "absolute", top: "calc(env(safe-area-inset-top, 0px) + 54px)", left: "50%", transform: "translateX(-50%)", background: "rgba(120,20,20,.92)", border: "2px solid #E5484D", borderRadius: 14, padding: "8px 16px", color: "#F3E7D3", fontWeight: 800, fontFamily: "Assistant, sans-serif", fontSize: 14, whiteSpace: "nowrap", zIndex: 8, pointerEvents: "none" }}>🔌 החיבור נפל — מתחבר מחדש…</div>
+        <div style={{ position: "absolute", top: "calc(env(safe-area-inset-top, 0px) + 54px)", left: "50%", transform: "translateX(-50%)", background: "rgba(120,20,20,.92)", border: "2px solid #E5484D", borderRadius: 14, padding: "8px 16px", color: "#F3E7D3", fontWeight: 800, fontFamily: "Assistant, sans-serif", fontSize: 14, whiteSpace: "nowrap", zIndex: 8, pointerEvents: "none" }}>{t("thieves.reconnecting")}</div>
       )}
       {countdown > 0 && (
         <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", pointerEvents: "none", zIndex: 7 }}>
           <div key={countdown} className="popin" style={{ textAlign: "center", fontFamily: "Assistant, sans-serif", color: "#F3E7D3" }}>
             <div style={{ fontSize: 96, fontWeight: 900, lineHeight: 1, textShadow: "5px 5px 0 rgba(226,63,60,.85)" }}>{countdown}</div>
-            <div style={{ fontSize: 16, fontWeight: 700, opacity: 0.85, marginTop: 8 }}>🥷 מתכוננים…</div>
+            <div style={{ fontSize: 16, fontWeight: 700, opacity: 0.85, marginTop: 8 }}>{t("thieves.get_ready")}</div>
           </div>
         </div>
       )}
@@ -1378,11 +1382,11 @@ function PauseScreen({ ui, me, gold, players, pcol, conn, sNow, onSelect, onBuy,
     <div className="th-pause">
       <div className="head">
         <div className={"ring" + (ui.phase === "draft" && secs <= 3 ? " hot" : "")} style={{ "--p": `${deg}deg` } as CSSProperties}><span>{secs}</span></div>
-        <h2>{ui.phase === "freeze" ? `🧊 עצירה ${ui.k}!` : ui.phase === "draft" ? "🛒 קונים שדרוג?" : "👁️ מי לקח מה"}</h2>
+        <h2>{ui.phase === "freeze" ? t("thieves.pause_n", { n: ui.k }) : ui.phase === "draft" ? t("thieves.shop_title") : t("thieves.reveal_title")}</h2>
       </div>
       {ui.phase === "freeze" && (
         <>
-          <p className="sub">כולם קפואים · דירוג הדקה</p>
+          <p className="sub">{t("thieves.pause_sub")}</p>
           <div className="th-rank">
             {ui.rank.map((pid, i) => (
               <div key={pid} className={"row" + (pid === me ? " me" : "")} style={{ "--c": pcol(pid) } as CSSProperties}>
@@ -1397,7 +1401,7 @@ function PauseScreen({ ui, me, gold, players, pcol, conn, sNow, onSelect, onBuy,
       )}
       {ui.phase === "draft" && (
         <>
-          <p className="sub">יש לך <span className="th-gold">💰 {gold.toLocaleString()}</span> · המחיר יורד מהניקוד{ui.discount ? " · 🏷️ הנחת מרדף 50%" : ""}</p>
+          <p className="sub">{t("thieves.you_have")} <span className="th-gold">💰 {gold.toLocaleString()}</span> · {t("thieves.price_from_score")}{ui.discount ? ` · ${t("thieves.chase_discount")}` : ""}</p>
           <div className="th-shelf">
             {ui.shelf.map((sc) => {
               const c = thCard(sc.id); if (!c) return null;
@@ -1406,17 +1410,17 @@ function PauseScreen({ ui, me, gold, players, pcol, conn, sNow, onSelect, onBuy,
               return (
                 <button key={sc.id} className={cls} style={{ "--rc": RAR_COL[c.rarity], "--sheet": `url(${sheetUrl})` } as CSSProperties} disabled={!!ui.bought}
                   onClick={() => { if (ui.bought) return; if (poor) return; if (sel) onBuy(sc.id); else onSelect(sc.id); }}>
-                  <span className="tr">{c.evo ? "⭐ אבולוציה" : TRACK_TX[c.track]}</span>
+                  <span className="tr">{c.evo ? t("thieves.evo") : t(`thieves.track.${c.track}`)}</span>
                   <span className="ic" style={c.sheet !== undefined ? { backgroundPosition: `${(c.sheet % 8) * (100 / 7)}% ${Math.floor(c.sheet / 8) * (100 / 3)}%` } : undefined}>{c.sheet === undefined ? c.ic : ""}</span>
-                  <b>{c.t}</b>
-                  <small>{c.d}</small>
-                  <span className={"pr" + (sc.price === 0 ? " free" : poor ? " no" : "")}>{sc.price === 0 ? "🎁 חינם" : `💰 ${sc.price}`}</span>
+                  <b>{cn(c.id)}</b>
+                  <small>{cd(c.id)}</small>
+                  <span className={"pr" + (sc.price === 0 ? " free" : poor ? " no" : "")}>{sc.price === 0 ? t("thieves.free") : `💰 ${sc.price}`}</span>
                 </button>
               );
             })}
           </div>
-          <p className="sub">{ui.bought ? `✓ קנית ${thCard(ui.bought)?.t ?? ""} — מחכים לכולם` : ui.sel ? "טאפ שוב לקנייה" : "טאפ לבחירה · טאפ שוב לקנייה"}</p>
-          {!ui.bought && <button className={"th-skip" + (ui.skip ? " on" : "")} onClick={onSkip}>{ui.skip ? "🐿️ אוגר — לא קונה הפעם" : "לא קונה הפעם"}</button>}
+          <p className="sub">{ui.bought ? t("thieves.bought_wait", { card: cn(ui.bought) }) : ui.sel ? t("thieves.tap_buy") : t("thieves.tap_hint")}</p>
+          {!ui.bought && <button className={"th-skip" + (ui.skip ? " on" : "")} onClick={onSkip}>{ui.skip ? t("thieves.skip_on") : t("thieves.skip")}</button>}
         </>
       )}
       {ui.phase === "reveal" && (
@@ -1433,7 +1437,7 @@ function PauseScreen({ ui, me, gold, players, pcol, conn, sNow, onSelect, onBuy,
               );
             })}
           </div>
-          <p className="sub">{ui.picks[me] ? `לקחת ${thCard(ui.picks[me]!)?.t}` : "אגרת — הזהב נשאר ניקוד"} · ממשיכים בעוד {secs}</p>
+          <p className="sub">{ui.picks[me] ? t("thieves.you_took", { card: cn(ui.picks[me]!) }) : t("thieves.you_saved")} · {t("thieves.resume_in", { n: secs })}</p>
         </>
       )}
     </div>
