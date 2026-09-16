@@ -1,6 +1,6 @@
 /* ===== הקומות 🏢 — מסך מלא משלו, בשפת המדבקות (גרייבוקס שלב A) ===== */
 .fl-wrap{position:fixed; inset:0; width:100vw; height:100vh; height:100dvh; z-index:60; background:#14110E; overflow:hidden;
-  touch-action:none; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; overscroll-behavior:none; direction:rtl;
+  touch-action:none; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; overscroll-behavior:none;
   font-family:var(--font-body,"Assistant Variable",Assistant,sans-serif); color:#FFF3DC;}
 .fl-cv{position:absolute; inset:0; width:100%; height:100%; display:block;}
 .fl-wrap button{font-family:inherit; cursor:pointer; -webkit-tap-highlight-color:transparent;}
@@ -34,7 +34,7 @@
 .fl-arrow.up{top:calc(max(10px, env(safe-area-inset-top,0px)) + 92px);}
 .fl-arrow.down{bottom:calc(env(safe-area-inset-bottom,0px) + 96px); flex-direction:column-reverse;}
 .fl-arrow .ic{font-size:16px; color:#FFC531; text-shadow:-1px 2px 0 #0C0906;}
-.fl-arrow .nm{font-size:11px; font-weight:800; background:rgba(0,0,0,.55); padding:1px 6px; border-radius:99px; white-space:nowrap; direction:rtl;}
+.fl-arrow .nm{font-size:11px; font-weight:800; background:rgba(0,0,0,.55); padding:1px 6px; border-radius:99px; white-space:nowrap;}
 /* כפתורי שדרוג פעיל — פינה שמאלית-תחתונה (הבקשה של איתן), 60px + hit-slop, טבעת קולדאון */
 .fl-btns{position:absolute; left:max(26px, env(safe-area-inset-left,0px)); bottom:calc(env(safe-area-inset-bottom,0px) + 116px); display:flex; flex-direction:column-reverse; gap:14px; direction:ltr;} /* מעל כפתור הקפיצה, אגודל שמאל */
 .fl-btn{width:60px; height:60px; border-radius:50%; border:0; padding:6px; margin:-6px; box-sizing:content-box; background:transparent; display:grid; place-items:center; position:relative; touch-action:none;}
@@ -46,7 +46,7 @@
 .fl-btn:active span{transform:scale(.9);}
 @keyframes flready{from{transform:scale(1.15); filter:brightness(1.4);} to{transform:scale(1);}}
 .fl-dead{position:absolute; left:50%; bottom:calc(env(safe-area-inset-bottom,0px) + 110px); transform:translateX(-50%); padding:8px 16px; border-radius:14px; font-weight:800; background:#231F1A; border:2.5px solid #0C0906; box-shadow:-3px 4px 0 #FF4438; pointer-events:none; white-space:nowrap;}
-.fl-feed{position:absolute; left:10px; top:calc(max(10px, env(safe-area-inset-top,0px)) + 92px); display:flex; flex-direction:column; gap:4px; pointer-events:none; max-width:60vw; direction:rtl;}
+.fl-feed{position:absolute; left:10px; top:calc(max(10px, env(safe-area-inset-top,0px)) + 92px); display:flex; flex-direction:column; gap:4px; pointer-events:none; max-width:60vw;}
 .fl-feed div{font-size:12px; font-weight:800; background:rgba(0,0,0,.5); padding:2px 8px; border-radius:99px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; animation:flin .2s ease-out both;}
 @keyframes flin{from{opacity:0; transform:translateY(-6px);} to{opacity:1; transform:none;}}
 
@@ -104,7 +104,7 @@
 .fl-draft .card i{font-style:normal; font-size:10px; font-weight:800; color:var(--rc,#C8B78E); background:rgba(0,0,0,.35); padding:1px 8px; border-radius:99px; margin-top:2px;}
 .fl-draft .card.sel{transform:scale(1.04); outline:4px solid #FFF3DC; outline-offset:-2px;}
 .fl-draft .card.locked{transform:scale(1.04); outline:4px solid #FFC531; outline-offset:-2px;}
-.fl-draft .card.locked::after{content:"✓"; position:absolute; top:6px; right:10px; font-size:22px; font-weight:900; color:#FFC531;}
+.fl-draft .card.locked::after{content:"✓"; position:absolute; top:6px; inset-inline-end:10px; font-size:22px; font-weight:900; color:#FFC531;}
 .fl-draft .card.dim{opacity:.35;}
 .fl-draft .card:active{transform:translate(3px,4px) scale(.98); box-shadow:0 0 0 #0C0906;}
 .fl-draft .hint{margin:0; font-size:13px; font-weight:800; color:#C8B78E;}

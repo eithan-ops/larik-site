@@ -39,6 +39,11 @@ const MIGRATED = [
   "client/src/games/tanksSprites.ts",
   "shared/tanks.ts",
   "server/src/games/tanks.ts",
+  // שלב D — הקומות
+  "client/src/games/floors.tsx",
+  "client/src/games/floorsSprites.ts",
+  "shared/floors.ts",
+  "server/src/games/floors.ts",
 ];
 
 function walk(dir, out = []) {

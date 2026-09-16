@@ -17,8 +17,14 @@ import {
 } from "../../../shared/floors";
 import type { FlSim, FlMods, FlInput, FloorsServerMsg, FlCardWire, FlTimingWire } from "../../../shared/floors";
 import { flAudioInit, flSfx } from "./floorsAudio";
-import { loadJelly, jellyReady, onJellyReady, jellyIcon, drawJelly, jellyIdle, P as JP, JELLY, JF, JWORLD } from "./floorsSprites";
+import { loadJelly, jellyReady, onJellyReady, jellyIcon, drawJelly, jellyIdle, P as JP, JF, JWORLD } from "./floorsSprites";
 import { vibrate } from "../lib/audio";
+import { t as tr } from "../lib/locale";
+
+/** שם/תיאור קלף לפי מזהה — הטקסט יושב ב-locales/<lang>/floors.json */
+const cn = (id: string) => tr(`floors.card.${id}`);
+const cd = (id: string) => tr(`floors.card.${id}.d`);
+const shoutText = (id: string) => tr(`floors.shout.${id}`);
 
 type Phase = "wait" | "pick" | "intro" | "run" | "freeze" | "draft" | "reveal" | "over";
 type OverMsg = Extract<FloorsServerMsg, { a: "fl_over" }>;
@@ -37,7 +43,6 @@ const INK = "#0C0906", PAPER = "#FFF3DC", SIG = "#FF7A29";
 /** צבע הקטע לפי הקומה (כל 100 — הגרפיקה מתחלפת, כמו במקור) */
 const SECTIONS = ["#7D8DA3", "#8FD3F4", "#C8955B", "#9AA5B1", "#E88AD1", "#E9E1C9", "#6FBF73", "#5CC8B0", "#CFE7FF", "#F7B7D2", "#BFEFFF"];
 const RAR_COL: Record<string, string> = { c: "#C8B78E", u: "#4D86FF", r: "#A855F7", chaos: "#FF7A29", cursed: "#9B6BFF", fun: "#FFC531", evo: "#FFC531" };
-const RAR_NAME: Record<string, string> = { c: "רגיל", u: "נדיר", r: "אגדי", chaos: "כאוס", cursed: "מקולל", fun: "קומי", evo: "אבולוציה" };
 const reduced = () => typeof matchMedia !== "undefined" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 declare global { interface Window { __flDbg?: unknown; __flFrames?: number; __flErr?: string; __flAuto?: boolean } }
@@ -79,7 +84,8 @@ export default function FloorsView({ room, me, conn, hub }: GameViewProps) {
   });
 
   const pl = (pid: string) => G.current.players.find((p) => p.id === pid);
-  const pname = (pid: string) => pl(pid)?.name ?? "מישהו";
+  const pname = (pid: string) => pl(pid)?.name ?? tr("floors.someone");
+  const YOU = () => tr("floors.you");
   const charOf = (pid: string) => G.current.chars[pid] ?? 0;
   const chEmoji = (pid: string) => FL.CHARS[charOf(pid)] ?? "🙂";
   const chColor = (pid: string) => FL.CHAR_COLORS[charOf(pid)] ?? "#fff";
@@ -148,7 +154,7 @@ export default function FloorsView({ room, me, conn, hub }: GameViewProps) {
             g.cam.bottom = -200;
             setPick(null); setPhaseBoth("intro");
             // ספירה לאחור מסונכרנת
-            const steps = ["3", "2", "1", "קדימה!"];
+            const steps = ["3", "2", "1", tr("floors.go")];
             steps.forEach((s, i) => setTimeout(() => { setCount(s); if (i < 3) flSfx.count(); else { flSfx.go(); vibrate(40); } }, Math.max(0, conn.untilServer(d.startAt - (3 - i) * 800))));
             setTimeout(() => { setCount(null); setPhaseBoth("run"); g.graceUntil = conn.serverNow() + FL.GRACE_MS; }, Math.max(0, conn.untilServer(d.startAt)));
             break;
@@ -165,7 +171,7 @@ export default function FloorsView({ room, me, conn, hub }: GameViewProps) {
               else g.others.set(pid, { x, y, tx: x, ty: y, dx, st, floor, combo, at: t, dead: false, out: false });
             }
             for (const [pid, o] of g.others) if (!seen.has(pid)) o.out = true;
-            if (d.lvl !== g.lastLvl) { if (d.lvl > g.lastLvl && g.phase === "run" && d.lvl >= 2) { flSfx.hurry(); setBanner({ ic: "⏰", t: d.lvl >= 4 ? "ספרינט!" : "מהר יותר!", cls: "short" }); } g.lastLvl = d.lvl; }
+            if (d.lvl !== g.lastLvl) { if (d.lvl > g.lastLvl && g.phase === "run" && d.lvl >= 2) { flSfx.hurry(); setBanner({ ic: "⏰", t: d.lvl >= 4 ? tr("floors.sprint_bang") : tr("floors.faster_bang"), cls: "short" }); } g.lastLvl = d.lvl; }
             break;
           }
           case "fl_freeze": {
@@ -183,7 +189,7 @@ export default function FloorsView({ room, me, conn, hub }: GameViewProps) {
           }
           case "fl_took": {
             if (d.pid === me) { g.cards.push(d.card.id); g.mods = myMods(); refreshButtons(); }
-            else addFeed(`${chEmoji(d.pid)} ${pname(d.pid)} לקח ${d.card.ic} ${d.card.t}`);
+            else addFeed(tr("floors.took", { em: chEmoji(d.pid), name: pname(d.pid), ic: d.card.ic, card: cn(d.card.id) }));
             break;
           }
           case "fl_reveal": {
@@ -196,7 +202,7 @@ export default function FloorsView({ room, me, conn, hub }: GameViewProps) {
               setReveal(null); g.frozen = false; setPhaseBoth("run");
               g.graceUntil = conn.serverNow() + FL.GRACE_MS;
               const sprint = g.cfg && d.k + 1 >= g.cfg.cycles;
-              setBanner({ ic: sprint ? "🏁" : "🏃", t: sprint ? "ספרינט הסיום!" : `דקה ${d.k + 2}`, s: "5 שניות חסד — אין פגיעות", cls: "short" });
+              setBanner({ ic: sprint ? "🏁" : "🏃", t: sprint ? tr("floors.final_sprint") : tr("floors.minute_n", { n: d.k + 2 }), s: tr("floors.grace"), cls: "short" });
               flSfx.go();
             }, Math.max(0, conn.untilServer(d.resumeAt)));
             break;
@@ -206,11 +212,11 @@ export default function FloorsView({ room, me, conn, hub }: GameViewProps) {
             if (d.pid === me) {
               g.dead = true; g.respawnAt = d.respawnAt; g.respawnFloor = d.floor;
               flBreakCombo(g.sim, g.mods);
-              if (d.lives <= 0) { g.out = true; setBanner({ ic: "💀", t: "נגמרו החיים", s: "צופים עד הסוף", cls: "long" }); }
-              else setBanner({ ic: "💔", t: `נפלת! נשארו ${d.lives}`, s: "חוזרים בעוד 3 שניות", cls: "long" });
+              if (d.lives <= 0) { g.out = true; setBanner({ ic: "💀", t: tr("floors.out"), s: tr("floors.out_s"), cls: "long" }); }
+              else setBanner({ ic: "💔", t: tr("floors.fell_left", { n: d.lives }), s: tr("floors.fell_s"), cls: "long" });
             } else {
               const o = g.others.get(d.pid); if (o) { o.dead = true; if (d.lives <= 0) o.out = true; }
-              addFeed(`${chEmoji(d.pid)} ${pname(d.pid)} נפל ${d.lives > 0 ? `(${d.lives} ❤️)` : "— בחוץ"}`);
+              addFeed(d.lives > 0 ? tr("floors.feed_fell", { em: chEmoji(d.pid), name: pname(d.pid), n: d.lives }) : tr("floors.feed_fell_out", { em: chEmoji(d.pid), name: pname(d.pid) }));
               setTimeout(() => { const o2 = g.others.get(d.pid); if (o2) o2.dead = false; }, Math.max(0, conn.untilServer(d.respawnAt)));
             }
             break;
@@ -222,10 +228,10 @@ export default function FloorsView({ room, me, conn, hub }: GameViewProps) {
               const s = g.sim; s.st = 2; s.dy = -FL.HAMMER_DROP; s.dx = d.dir * FL.HAMMER_FLING; s.coyote = 0;
               flBreakCombo(s, g.mods);
               g.fx.shake = 8; g.fx.flash = 0.5; g.fx.flashCol = "#FF4438"; flSfx.hit(true); vibrate(80);
-              setBanner({ ic: "🔨", t: `${pname(d.by)} הפיל אותך!`, cls: "short" });
+              setBanner({ ic: "🔨", t: tr("floors.knocked_you", { name: pname(d.by) }), cls: "short" });
             } else {
               const o = g.others.get(d.target); if (o) { burst(o.x, o.y + 20, "#FF4438", 8); }
-              if (d.by === me) { flSfx.hit(false); pop(g.sim.x, g.sim.y + 60, "🔨 בום!", "#FF4438", 18); }
+              if (d.by === me) { flSfx.hit(false); pop(g.sim.x, g.sim.y + 60, tr("floors.pop.boom"), "#FF4438", 18); }
             }
             break;
           }
@@ -240,16 +246,16 @@ export default function FloorsView({ room, me, conn, hub }: GameViewProps) {
             if (!d.shielded) anim(d.pid).hitAt = conn.serverNow();
             if (d.pid === me) {
               if (d.shielded) { flSfx.shield(); pop(g.sim.x, g.sim.y + 60, "🛡️", "#8FE9F5", 24); g.shieldReadyAt = conn.serverNow() + 20000; }
-              else { g.sim.slowUntil = g.sim.tick + Math.round(FL.SHOT_SLOW_MS / FL.TICK_MS); flSfx.hit(true); g.fx.flash = 0.35; g.fx.flashCol = "#8FE9F5"; vibrate(50); setBanner({ ic: "❄️", t: `${pname(d.by)} פגע בך`, cls: "short" }); }
-            } else { const o = g.others.get(d.pid); if (o) burst(o.x, o.y + 20, d.shielded ? "#8FE9F5" : "#FFFFFF", 8); if (d.by === me && !d.shielded) pop(g.sim.x, g.sim.y + 60, "❄️ פגיעה!", "#8FE9F5", 18); }
+              else { g.sim.slowUntil = g.sim.tick + Math.round(FL.SHOT_SLOW_MS / FL.TICK_MS); flSfx.hit(true); g.fx.flash = 0.35; g.fx.flashCol = "#8FE9F5"; vibrate(50); setBanner({ ic: "❄️", t: tr("floors.hit_you", { name: pname(d.by) }), cls: "short" }); }
+            } else { const o = g.others.get(d.pid); if (o) burst(o.x, o.y + 20, d.shielded ? "#8FE9F5" : "#FFFFFF", 8); if (d.by === me && !d.shielded) pop(g.sim.x, g.sim.y + 60, tr("floors.pop.hit"), "#8FE9F5", 18); }
             break;
           }
           case "fl_trap": { g.traps.set(d.id, { by: d.by, floor: d.floor, until: d.until }); if (d.by !== me) { /* שקט — מגלים ברגל */ } break; }
           case "fl_shout": {
             const tier = FL_SHOUTS.length - 1 - FL_SHOUTS.findIndex(([n]) => d.n >= n);
             if (d.pid !== me) {
-              if (d.n >= 15) { addFeed(`${chEmoji(d.pid)} ${pname(d.pid)}: ${d.text} (${d.n})`); flSfx.shout(tier, false); }
-              const o = g.others.get(d.pid); if (o) pop(o.x, o.y + 70, d.text, chColor(d.pid), 18);
+              if (d.n >= 15) { addFeed(`${chEmoji(d.pid)} ${pname(d.pid)}: ${shoutText(d.shout)} (${d.n})`); flSfx.shout(tier, false); }
+              const o = g.others.get(d.pid); if (o) pop(o.x, o.y + 70, shoutText(d.shout), chColor(d.pid), 18);
             }
             break;
           }
@@ -345,14 +351,14 @@ export default function FloorsView({ room, me, conn, hub }: GameViewProps) {
       land: (floor: number, gained: number) => {
         const g = G.current; flSfx.land(gained); anim(me).landAt = conn.serverNow();
         if (gained >= 2) { pop(g.sim.x, g.sim.y + 50, `+${gained}`, gained >= 3 ? "#FFC531" : PAPER, 14 + gained * 2); if (!g.reduced) burst(g.sim.x, g.sim.y, SECTIONS[Math.floor(floor / 100) % SECTIONS.length], 4, 2); }
-        if (floor % 50 === 0 && floor > g.seenFloor50) { g.seenFloor50 = floor; flSfx.aight(); pop(g.sim.x, g.sim.y + 90, `קומה ${floor}!`, "#FFC531", 24); vibrate(30); }
+        if (floor % 50 === 0 && floor > g.seenFloor50) { g.seenFloor50 = floor; flSfx.aight(); pop(g.sim.x, g.sim.y + 90, tr("floors.pop.floor_n", { n: floor }), "#FFC531", 24); vibrate(30); }
         if (slippery(floor)) { pop(g.sim.x, g.sim.y + 40, "🍌", "#FFC531", 20); }
       },
       wall: (v: number) => { const g = G.current; flSfx.wall(v); if (!g.reduced) burst(g.sim.x, g.sim.y + 20, "#FFF", 3, 2); },
       comboEnd: (n: number, bonus: number) => {
         const g = G.current; conn.sendGame({ a: "fl_combo", n, bonus });
         const text = flShout(n);
-        if (text) { const tier = FL_SHOUTS.length - 1 - FL_SHOUTS.findIndex(([m]) => n >= m); flSfx.shout(tier, true); pop(g.sim.x, g.sim.y + 90, `${text} +${bonus}`, "#FFC531", 22 + tier * 2); vibrate(20 + tier * 10); }
+        if (text) { const tier = FL_SHOUTS.length - 1 - FL_SHOUTS.findIndex(([m]) => n >= m); flSfx.shout(tier, true); pop(g.sim.x, g.sim.y + 90, `${shoutText(text)} +${bonus}`, "#FFC531", 22 + tier * 2); vibrate(20 + tier * 10); }
       },
       comboBreak: () => { /* המד מתרוקן — שקט */ },
     };
@@ -371,7 +377,7 @@ export default function FloorsView({ room, me, conn, hub }: GameViewProps) {
         if (g.mods.propeller && !g.propUsed) {
           g.propUsed = true; conn.sendGame({ a: "fl_prop" });
           flPlace(s, g.seed, flFloorAt(kill) + 6); s.st = 2; s.dy = 6; g.invulnUntil = t + 1500;
-          setBanner({ ic: "🚁", t: "כובע המדחף!", cls: "short" }); flSfx.respawn(); burst(s.x, s.y, "#FFF", 12, 6);
+          setBanner({ ic: "🚁", t: tr("floors.prop_bang"), cls: "short" }); flSfx.respawn(); burst(s.x, s.y, "#FFF", 12, 6);
         } else {
           g.dead = true; conn.sendGame({ a: "fl_fell" }); flSfx.fall(); vibrate([40, 30, 80]); g.fx.shake = 10;
         }
@@ -557,7 +563,7 @@ export default function FloorsView({ room, me, conn, hub }: GameViewProps) {
     ctx.save(); ctx.translate(x, y);
     // שם
     ctx.font = `800 ${Math.round((mine ? 12 : 11) * S)}px Assistant, sans-serif`; ctx.textAlign = "center"; ctx.lineWidth = 3; ctx.strokeStyle = INK; ctx.fillStyle = mine ? "#FFC531" : PAPER;
-    const label = mine ? "אתה" : pname(pid).slice(0, 8);
+    const label = mine ? YOU() : pname(pid).slice(0, 8);
     ctx.strokeText(label, 0, -h - 8 * S); ctx.fillText(label, 0, -h - 8 * S);
     if (combo >= 4) { ctx.font = `800 ${Math.round(11 * S)}px Assistant, sans-serif`; ctx.fillStyle = "#FFC531"; ctx.strokeText(`🔗${combo}`, 0, -h - 22 * S); ctx.fillText(`🔗${combo}`, 0, -h - 22 * S); }
     if (mine) { ctx.fillStyle = "#FFC531"; ctx.strokeStyle = INK; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0, 4 * S); ctx.lineTo(-5 * S, 11 * S); ctx.lineTo(5 * S, 11 * S); ctx.closePath(); ctx.fill(); ctx.stroke(); }
@@ -583,7 +589,6 @@ export default function FloorsView({ room, me, conn, hub }: GameViewProps) {
     return () => clearTimeout(tm);
   }, [draft?.until, draft?.locked, draft?.sel]);
 
-  const myChar = G.current.chars[me];
   const cardCounts = () => { const m = new Map<string, number>(); for (const id of G.current.cards) m.set(id, (m.get(id) ?? 0) + 1); return [...m.entries()]; };
 
   return (
@@ -594,11 +599,11 @@ export default function FloorsView({ room, me, conn, hub }: GameViewProps) {
       {(phase === "run" || phase === "freeze" || phase === "intro") && (
         <>
           <div className="fl-top">
-            <div className="fl-lives" aria-label="חיים">{Array.from({ length: Math.max(hud.lives, FL.LIVES) }).map((_, i) => <span key={i} className={i < hud.lives ? "on" : "off"}>{i < hud.lives ? "❤️" : "🖤"}</span>)}</div>
-            <div className="fl-floor"><b>{hud.floor}</b><small>קומה</small></div>
+            <div className="fl-lives" aria-label={tr("floors.lives")}>{Array.from({ length: Math.max(hud.lives, FL.LIVES) }).map((_, i) => <span key={i} className={i < hud.lives ? "on" : "off"}>{i < hud.lives ? "❤️" : "🖤"}</span>)}</div>
+            <div className="fl-floor"><b>{hud.floor}</b><small>{tr("floors.floor")}</small></div>
             <div className={"fl-timer" + (hud.secs <= 5 ? " hot" : hud.secs <= 10 ? " warm" : "")} style={{ "--p": `${hud.secs > 0 && G.current.cfg ? (hud.secs / ((hud.sprint ? G.current.cfg.sprintMs : G.current.cfg.runMs) / 1000)) * 360 : 0}deg` } as CSSProperties}><span>{hud.secs}</span></div>
           </div>
-          <div className="fl-sub"><span>#{hud.rank}/{hud.n}</span><span>{fmt(hud.score)} נק'</span>{hud.lvl >= 2 && <span className="fl-hurry">⏰ ×{hud.lvl}</span>}</div>
+          <div className="fl-sub"><span>#{hud.rank}/{hud.n}</span><span>{tr("floors.pts_n", { n: fmt(hud.score) })}</span>{hud.lvl >= 2 && <span className="fl-hurry">⏰ ×{hud.lvl}</span>}</div>
           <div className={"fl-combo" + (hud.combo > 0 ? " on" : "")}>
             <div className="fl-combobar"><i style={{ height: `${hud.comboFrac * 100}%` }} /></div>
             <b>{hud.combo > 0 ? hud.combo : ""}</b>
@@ -614,36 +619,36 @@ export default function FloorsView({ room, me, conn, hub }: GameViewProps) {
               return <button key={b.id} className={"fl-btn" + (left > 0 ? " cd" : "")} style={{ "--p": `${left > 0 ? (1 - left / b.cd) * 360 : 360}deg` } as CSSProperties} onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); useButton(b.id); }}><span>{b.ic}</span></button>;
             })}
           </div>
-          {!hud.out && <div className={"fl-jump" + (hud.jumpOn ? " on" : "")} aria-hidden="true"><span>⤒</span><small>קפיצה</small></div>}
-          {hud.dead && !hud.out && <div className="fl-dead">💔 חוזרים בעוד רגע…</div>}
-          {hud.out && <div className="fl-dead">👁️ צופה — נגמרו החיים</div>}
+          {!hud.out && <div className={"fl-jump" + (hud.jumpOn ? " on" : "")} aria-hidden="true"><span>⤒</span><small>{tr("floors.jump")}</small></div>}
+          {hud.dead && !hud.out && <div className="fl-dead">{tr("floors.back_soon")}</div>}
+          {hud.out && <div className="fl-dead">{tr("floors.spectating")}</div>}
         </>
       )}
       {feed.length > 0 && phase !== "over" && <div className="fl-feed">{feed.map((f) => <div key={f.id}>{f.tx}</div>)}</div>}
       {count && <div className="fl-count" key={count}>{count}</div>}
-      {phase === "intro" && <div className="fl-howto"><span>👉 אגודל ימין: גוררים לרוץ</span><span>👈 אגודל שמאל: טאפ = קפיצה · להחזיק = קופץ לבד</span></div>}
+      {phase === "intro" && <div className="fl-howto"><span>{tr("floors.howto_right")}</span><span>{tr("floors.howto_left")}</span></div>}
       {banner && <div className={"fl-banner " + (banner.cls ?? "")}><span className="ic">{banner.ic}</span><b>{banner.t}</b>{banner.s && <small>{banner.s}</small>}</div>}
       {flash && <div className="fl-flash" style={{ background: flash }} />}
 
       {/* בחירת דמות */}
       {phase === "pick" && pick && (
         <div className="fl-pick">
-          <h2>איזה צבע אתה?</h2>
-          <p className="sub">כל צבע לשחקן אחד. אחר כך: "מי זה הסגול עם הכתר?"</p>
+          <h2>{tr("floors.pick_title")}</h2>
+          <p className="sub">{tr("floors.pick_sub")}</p>
           <div className="grid four">
             {FL.CHARS.map((_ch, i) => {
               const owner = Object.entries(pick.taken).find(([, c]) => c === i)?.[0];
               const mineC = owner === me;
               return (
                 <button key={i} className={"tile" + (owner ? (mineC ? " mine" : " taken") : "")} style={{ "--cc": FL.CHAR_COLORS[i] } as CSSProperties} disabled={!!owner && !mineC} onClick={() => pickChar(i)}>
-                  {spr && jellyReady() ? <JellyTile c={i} size={tileSize} win={mineC} /> : <span className="em">{FL.CHARS[i]}</span>}<b style={{ color: FL.CHAR_COLORS[i] }}>{JELLY[i]?.name ?? FL.CHAR_NAMES[i]}</b>
-                  {owner && <small>{mineC ? "אתה" : pname(owner)}</small>}
+                  {spr && jellyReady() ? <JellyTile c={i} size={tileSize} win={mineC} /> : <span className="em">{FL.CHARS[i]}</span>}<b style={{ color: FL.CHAR_COLORS[i] }}>{tr(`floors.char.${i}`)}</b>
+                  {owner && <small>{mineC ? YOU() : pname(owner)}</small>}
                 </button>
               );
             })}
           </div>
           <button className={"easy" + (autoJump ? " on" : "")} onClick={() => { flAudioInit(); flSfx.count(); setAutoJump((v) => !v); }}>
-            <span className="sw" /><span>🧒 מצב קל<br /><small>{autoJump ? "קצת יותר איטי, קירות רכים, נחיתה סלחנית — מומלץ לילדים" : "כבוי: מהירות מלאה כמו במקור"}</small></span>
+            <span className="sw" /><span>{tr("floors.easy")}<br /><small>{autoJump ? tr("floors.easy_on") : tr("floors.easy_off")}</small></span>
           </button>
           <PickTimer until={pick.until} conn={conn} />
         </div>
@@ -652,49 +657,49 @@ export default function FloorsView({ room, me, conn, hub }: GameViewProps) {
       {/* עצירה */}
       {phase === "freeze" && freeze && (
         <div className="fl-freeze">
-          <h2>✋ עצירה!</h2>
-          <ol>{freeze.rank.slice(0, 8).map((pid, i) => <li key={pid} className={pid === me ? "me" : ""}><span>{i + 1}</span><span className="nm"><Face c={charOf(pid)} size={26} pose={i === 0 ? JP.win : JP.idle} /> {pid === me ? "אתה" : pname(pid)}</span><b>{fmt(freeze.scores[pid] ?? 0)}</b></li>)}</ol>
+          <h2>{tr("floors.freeze")}</h2>
+          <ol>{freeze.rank.slice(0, 8).map((pid, i) => <li key={pid} className={pid === me ? "me" : ""}><span>{i + 1}</span><span className="nm"><Face c={charOf(pid)} size={26} pose={i === 0 ? JP.win : JP.idle} /> {pid === me ? YOU() : pname(pid)}</span><b>{fmt(freeze.scores[pid] ?? 0)}</b></li>)}</ol>
         </div>
       )}
 
       {/* דראפט */}
       {phase === "draft" && draft && (
         <div className="fl-draft">
-          <div className="head"><h2>בחר שדרוג</h2><DraftTimer until={draft.until} conn={conn} /></div>
+          <div className="head"><h2>{tr("floors.draft_title")}</h2><DraftTimer until={draft.until} conn={conn} /></div>
           <div className="cards">
             {draft.cards.map((c) => (
               <button key={c.id} className={"card" + (draft.sel === c.id ? " sel" : "") + (draft.locked === c.id ? " locked" : "") + (draft.locked && draft.locked !== c.id ? " dim" : "")} style={{ "--rc": RAR_COL[c.r] ?? "#C8B78E" } as CSSProperties} onClick={() => tapCard(c.id)} disabled={!!draft.locked}>
-                <span className="ic">{c.ic}</span><b>{c.t}</b><small>{c.d}</small><i>{RAR_NAME[c.r] ?? ""}{c.k === "button" ? " · כפתור" : ""}</i>
+                <span className="ic">{c.ic}</span><b>{cn(c.id)}</b><small>{cd(c.id)}</small><i>{tr(`floors.rar.${c.r}`)}{c.k === "button" ? ` · ${tr("floors.button")}` : ""}</i>
               </button>
             ))}
           </div>
-          <p className="hint">{draft.locked ? "נבחר ✓ — מחכים לכולם" : draft.sel ? "טאפ שוב לאישור" : "טאפ לבחירה, טאפ שוב לאישור"}</p>
+          <p className="hint">{draft.locked ? tr("floors.draft_locked") : draft.sel ? tr("floors.draft_confirm") : tr("floors.draft_hint")}</p>
         </div>
       )}
 
       {/* חשיפה */}
       {phase === "reveal" && reveal && (
         <div className="fl-reveal">
-          <h2>מי לקח מה</h2>
-          <div className="row">{Object.entries(reveal).map(([pid, c]) => <div key={pid} className={"who" + (pid === me ? " me" : "")}><Face c={charOf(pid)} size={40} /><b>{pid === me ? "אתה" : pname(pid).slice(0, 8)}</b><span className="cd">{c ? `${c.ic} ${c.t}` : "—"}</span></div>)}</div>
+          <h2>{tr("floors.reveal_title")}</h2>
+          <div className="row">{Object.entries(reveal).map(([pid, c]) => <div key={pid} className={"who" + (pid === me ? " me" : "")}><Face c={charOf(pid)} size={40} /><b>{pid === me ? YOU() : pname(pid).slice(0, 8)}</b><span className="cd">{c ? `${c.ic} ${cn(c.id)}` : "—"}</span></div>)}</div>
         </div>
       )}
 
       {/* סיום */}
       {phase === "over" && over && (
         <div className="fl-over">
-          <h2>🏢 סוף המגדל</h2>
+          <h2>{tr("floors.over_title")}</h2>
           <ol>{over.rows.map((r, i) => <li key={r.pid} className={r.pid === me ? "me" : ""}>
             <span className="pos">{i + 1}</span><Face c={r.c} size={34} pose={i === 0 ? JP.win : i === over.rows.length - 1 && over.rows.length > 1 ? JP.dizzy : JP.idle} />
-            <span className="nm">{r.pid === me ? "אתה" : pname(r.pid)}<small>קומה {r.maxFloor} · קומבו {r.bestCombo}{r.kills ? ` · 🎯${r.kills}` : ""}</small></span>
+            <span className="nm">{r.pid === me ? YOU() : pname(r.pid)}<small>{tr("floors.over_row", { f: r.maxFloor, c: r.bestCombo })}{r.kills ? ` · 🎯${r.kills}` : ""}</small></span>
             <b>{fmt(r.score)}</b>
           </li>)}</ol>
-          <div className="titles">{over.titles.map((t) => <span key={t.pid + t.ic}>{t.ic} {t.t}: <b>{t.pid === me ? "אתה" : pname(t.pid)}</b></span>)}</div>
-          <div className="mycards">{cardCounts().map(([id, n]) => { const c = flCard(id); return c ? <span key={id}>{c.ic} {c.t}{n > 1 ? ` ×${n}` : ""}</span> : null; })}</div>
-          <p className="sub">המארח ממשיך לטקס</p>
+          <div className="titles">{over.titles.map((x) => <span key={x.pid + x.ic}>{x.ic} {tr(x.t)}: <b>{x.pid === me ? YOU() : pname(x.pid)}</b></span>)}</div>
+          <div className="mycards">{cardCounts().map(([id, n]) => { const c = flCard(id); return c ? <span key={id}>{c.ic} {cn(id)}{n > 1 ? ` ×${n}` : ""}</span> : null; })}</div>
+          <p className="sub">{tr("floors.host_continues")}</p>
         </div>
       )}
-      {phase === "wait" && <div className="fl-waitmsg">🏢 המגדל נטען…{myChar !== undefined ? "" : ""}</div>}
+      {phase === "wait" && <div className="fl-waitmsg">{tr("floors.loading")}</div>}
     </div>
   );
 }
@@ -723,7 +728,7 @@ function JellyTile({ c, size, win }: { c: number; size: number; win: boolean }) 
 function PickTimer({ until, conn }: { until: number; conn: GameViewProps["conn"] }) {
   const [left, setLeft] = useState(0);
   useEffect(() => { const iv = setInterval(() => setLeft(Math.max(0, Math.ceil((until - conn.serverNow()) / 1000))), 200); return () => clearInterval(iv); }, [until]);
-  return <p className="timer">{until ? `${left} שניות` : "כולם בחרו — מתחילים!"}</p>;
+  return <p className="timer">{until ? tr("floors.seconds_n", { n: left }) : tr("floors.all_picked")}</p>;
 }
 function DraftTimer({ until, conn }: { until: number; conn: GameViewProps["conn"] }) {
   const [left, setLeft] = useState(10);

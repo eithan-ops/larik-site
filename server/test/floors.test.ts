@@ -67,7 +67,7 @@ async function main() {
   // קומבו
   g("a", { a: "fl_combo", n: 9, bonus: 81 });
   const sh = last("b", "fl_shout");
-  check("קומבו 9 → קריאה 'מתוק!' לכולם + בונוס 81", sh && sh.pid === "a" && sh.text === "מתוק!" && sh.bonus === 81);
+  check("קומבו 9 → קריאה sweet (מזהה) לכולם + בונוס 81", sh && sh.pid === "a" && sh.shout === "sweet" && sh.bonus === 81);
   g("a", { a: "fl_combo", n: 9, bonus: 500 });
   check("בונוס מנופח נחתך ל-n²", last("b", "fl_shout").bonus === 81);
   // מגע/קליע בלי קלפים — לא עובד
@@ -79,7 +79,7 @@ async function main() {
   check("fl_freeze הגיע כ-cue עם דירוג", cues("a", "fl_freeze").length === 1 && last("a", "fl_freeze").rank[0] === "a", JSON.stringify(last("a", "fl_freeze")?.rank));
   await sleep(700);
   const dr = last("a", "fl_draft"), drD = last("d", "fl_draft");
-  check("דראפט: 6 קלפים לשחקן, עם הסבר קצר", dr && dr.cards.length === 6 && dr.cards.every((c: any) => c.d.split(" ").length <= 8), dr?.cards.map((c: any) => c.id).join(","));
+  check("דראפט: 6 קלפים לשחקן, מזהים בלבד (הטקסט בלקוח)", dr && dr.cards.length === 6 && dr.cards.every((c: any) => c.id && c.ic && !c.t && !c.d), dr?.cards.map((c: any) => c.id).join(","));
   const cats = (cards: any[]) => cards.map((c: any) => c.id);
   check("6 קלפים שונים", new Set(cats(dr.cards)).size === 6);
   check("השחקן האחרון מקבל הצעה משלו (לא זהה)", drD && cats(drD.cards).join() !== cats(dr.cards).join());
