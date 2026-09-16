@@ -9,6 +9,7 @@
  * • ⚠️ הסנכרון (שעון, cue-ים, טיק) לא נוגע בקובץ הזה: t() הוא חיפוש במילון סטטי בזמן רינדור בלבד.
  */
 import { asLang, dirOf, type Lang } from "../../../shared/i18n";
+import type { LText } from "../../../shared/protocol";
 
 declare global {
   interface Window { __LARIK?: { country?: string; lang?: string } }
@@ -51,14 +52,33 @@ export function roomUrl(code: string, src?: "qr" | "wa" | "sh"): string {
   return `${location.origin}/r/${code}?l=${lang}${src ? `&s=${src}` : ""}`;
 }
 
-/** ה-JSON של כל שפה = chunk נפרד; רק אחד נטען. */
-const loaders = import.meta.glob<{ default: Dict }>("../locales/*/common.json");
+/**
+ * כל קובץ JSON = chunk נפרד; נטען רק לשפה הנוכחית. common נטען לפני הרינדור הראשון,
+ * מרחב-שמות של משחק (locales/<lang>/<game>.json) נטען כשהמשחק נבחר בלובי — כמה KB, פעם אחת.
+ */
+const loaders = import.meta.glob<{ default: Dict }>("../locales/*/*.json");
+const loadedNs = new Set<string>();
+const pendingNs = new Map<string, Promise<void>>();
+
+/** טוען מרחב-שמות (common / metro / …) לשפה הנוכחית ומאחד למילון. אין קובץ לשפה → נופל לאנגלית → כלום. */
+export function loadNs(ns: string): Promise<void> {
+  if (loadedNs.has(ns)) return Promise.resolve();
+  const p = pendingNs.get(ns);
+  if (p) return p;
+  const load = loaders[`../locales/${lang}/${ns}.json`] ?? loaders[`../locales/en/${ns}.json`];
+  const run = (async () => {
+    if (load) { try { dict = { ...dict, ...(await load()).default }; } catch { /* בלי תרגום — המפתחות יוצגו */ } }
+    loadedNs.add(ns); pendingNs.delete(ns);
+  })();
+  pendingNs.set(ns, run);
+  return run;
+}
+export const nsLoaded = (ns: string): boolean => loadedNs.has(ns);
 
 /** לקרוא פעם אחת לפני הרינדור הראשון */
 export async function initLocale(): Promise<Lang> {
   lang = resolveInitialLang();
-  const load = loaders[`../locales/${lang}/common.json`] ?? loaders["../locales/en/common.json"];
-  try { dict = (await load()).default; } catch { dict = {}; }
+  await loadNs("common");
   try { rules = new Intl.PluralRules(lang); } catch { rules = null; }
   document.documentElement.lang = lang;
   document.documentElement.dir = dirOf(lang);
@@ -92,6 +112,20 @@ export function t(key: string, params?: Params): string {
 
 export const has = (key: string): boolean => dict[key] !== undefined;
 
+/** טקסט מהשרת: מחרוזת (ישן) כמו שהיא, {k,p} מתורגם כאן */
+export function lt(x: LText | undefined | null): string {
+  if (x === undefined || x === null) return "";
+  return typeof x === "string" ? x : t(x.k, x.p);
+}
+
+/** מספרים לתצוגה בשפה הנוכחית (ערבית — ספרות מערביות, כמו במשחקים במפרץ) */
+const nf = () => { try { return new Intl.NumberFormat(lang, { numberingSystem: "latn" }); } catch { return null; } };
+let numFmt: Intl.NumberFormat | null | undefined;
+export function fmtNum(n: number): string {
+  if (numFmt === undefined) numFmt = nf();
+  return numFmt ? numFmt.format(n) : String(n);
+}
+
 function format(s: string, p: Params): string {
   // 1. ריבוי — {n, plural, one {...} other {...}}
   s = s.replace(/\{(\w+),\s*plural,\s*((?:\w+\s*\{[^{}]*\}\s*)+)\}/g, (_m, name: string, branches: string) => {
@@ -103,6 +137,12 @@ function format(s: string, p: Params): string {
   });
   // 2. השמה פשוטה — {name}
   return s.replace(/\{(\w+)\}/g, (m, k: string) => (p[k] === undefined ? m : String(p[k])));
+}
+
+/** תווית של אפשרות בלובי (configOptions): games.<id>.opt.<key> / games.<id>.opt.<key>.<v>, עם נפילה לעברית שבקטלוג */
+export function optText(gameId: string, key: string, fallback: string, v?: string): string {
+  const k = v === undefined ? `games.${gameId}.opt.${key}` : `games.${gameId}.opt.${key}.${v}`;
+  return has(k) ? t(k) : fallback;
 }
 
 /** טקסט של משחק מהקטלוג: שם/טאגליין/הסבר לפי השפה, עם נפילה לעברית שבקוד */

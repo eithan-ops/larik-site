@@ -189,19 +189,19 @@ export function createMetro(ctx: GameCtx): GameInstance {
     phase = "over"; token++;
     const rows: MbResultRow[] = [...ps.values()].map((p) => ({ pid: p.pid, c: p.c, acc: p.accN ? Math.round(p.accSum / p.accN) : 0, speed: 0, bonus: 0, round: 0, total: p.total, lockAt: p.bestLockMs < Infinity ? p.bestLockMs : 0, leader: false }))
       .sort((a, b) => b.total - a.total);
-    const titles: { pid: string; ic: string; t: string }[] = [];
+    const titles: { pid: string; ic: string; t: string }[] = []; // t = מפתח תרגום (metro.title.*), הלקוח מתרגם
     const by = (f: (p: P) => number, ic: string, t: string, ok: (v: number) => boolean) => { const best = [...ps.values()].sort((a, c) => f(c) - f(a))[0]; if (best && ok(f(best)) && !titles.some((x) => x.pid === best.pid)) titles.push({ pid: best.pid, ic, t }); };
-    by((p) => (p.bestLockMs < Infinity ? -p.bestLockMs : -1e9), "⚡", "האוזן הכי מהירה", (v) => v > -1e9);
-    by((p) => (p.accN ? p.accSum / p.accN : 0), "🎯", "המדויק", (v) => v >= 200);
-    if (!solo) by((p) => p.leadLocks, "🎶", "הקצב שכולם תפסו", (v) => v >= 1);
-    by((p) => p.taps, "🥁", "המתופף", (v) => v >= 30);
+    by((p) => (p.bestLockMs < Infinity ? -p.bestLockMs : -1e9), "⚡", "metro.title.ear", (v) => v > -1e9);
+    by((p) => (p.accN ? p.accSum / p.accN : 0), "🎯", "metro.title.precise", (v) => v >= 200);
+    if (!solo) by((p) => p.leadLocks, "🎶", "metro.title.lead", (v) => v >= 1);
+    by((p) => p.taps, "🥁", "metro.title.drummer", (v) => v >= 30);
     bc({ a: "mb_over", rows, titles });
     later(cfg.endMs, () => {
       const facts: Record<string, Record<string, number>> = {};
       for (const p of ps.values()) facts[p.pid] = { mbLocks: p.locks, mbBestLockMs: p.bestLockMs < Infinity ? p.bestLockMs : 0, mbAcc: p.accN ? Math.round(p.accSum / p.accN) : 0 };
       const w = rows[0];
       ctx.end({
-        title: solo ? `🎾 מטרונובול — ${w?.total ?? 0} נקודות` : w ? `🎾 מטרונובול — ${nameOf(w.pid)} עם ${w.total} נקודות` : "🎾 מטרונובול",
+        title: solo ? { k: "metro.end.solo", p: { n: w?.total ?? 0 } } : w ? { k: "metro.end.winner", p: { name: nameOf(w.pid), n: w.total } } : { k: "metro.end.plain" },
         winnerId: w?.pid, loserId: rows.length > 2 ? rows[rows.length - 1].pid : undefined,
         scores: Object.fromEntries(rows.map((x) => [x.pid, x.total])),
         facts: facts as any,

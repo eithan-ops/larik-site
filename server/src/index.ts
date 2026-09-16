@@ -372,7 +372,7 @@ wss.on("connection", (ws, req) => {
   const rejoinId = url.searchParams.get("pid") || "";
   const room = manager.get(code);
   if (!room) {
-    ws.send(JSON.stringify({ t: "error", msg: "החדר לא נמצא — בקש מהמארח QR חדש" }));
+    ws.send(JSON.stringify({ t: "error", msg: { k: "err.room_gone" } }));
     ws.close();
     return;
   }

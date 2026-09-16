@@ -38,7 +38,7 @@ test("התארים המדידים הולכים למי שבאמת הכי טוב",
   });
   assert.equal(out.a.id, "king");
   assert.equal(out.b.id, "fastest");
-  assert.equal(out.b.detail, "0.38 שניות");
+  assert.deepEqual(out.b.detail, { k: "awards.fastest.detail", p: { sec: "0.38" } });
   assert.equal(out.c.id, "clown");
 });
 
@@ -47,7 +47,7 @@ test("יותר שחקנים מתארים — אף אחד לא נשאר בלי כ
   for (let i = 0; i < 30; i++) facts[`p${i}`] = { games: 1 };
   const out = computeAwards(facts);
   assert.equal(Object.keys(out).length, 30);
-  for (const a of Object.values(out)) assert.ok(a.title.length > 0);
+  for (const a of Object.values(out)) assert.ok(typeof a.title === "object" && a.title.k.startsWith("awards."));
 });
 
 test("דטרמיניסטי — אותן עובדות מחזירות בדיוק אותם תארים", () => {
@@ -83,9 +83,9 @@ test("המתחזה למתקדמים: שלושת התארים הולכים למי
     d: { games: 2, points: 9, wins: 2 },
   });
   assert.equal(out.a.id, "uc_selfaware", "הכריז על עצמו וניחש נכון — התואר הנדיר");
-  assert.equal(out.a.detail, "הכריז וניחש נכון");
+  assert.deepEqual(out.a.detail, { k: "awards.uc_selfaware.detail", p: undefined });
   assert.equal(out.b.id, "uc_hunter", "הכי הרבה הצבעות נכונות");
-  assert.equal(out.b.detail, "הצביע נכון 3 פעמים");
+  assert.deepEqual(out.b.detail, { k: "awards.uc_hunter.detail", p: { n: 3 } });
   assert.equal(out.c.id, "uc_paranoid", "חשד בעצמו ולא היה המתחזה");
   assert.equal(out.d.id, "king", "מלך הערב נשאר מעל הכול");
 });

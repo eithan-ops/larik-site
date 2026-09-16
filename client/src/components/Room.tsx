@@ -10,7 +10,8 @@ import { setGround } from "../lib/ground";
 import QRCodeView from "./QRCodeView";
 import Ceremony from "./Ceremony";
 import { GAME_VIEWS, GAME_COLORS, GameHub } from "../games/registry";
-import { t, gameText, roomUrl } from "../lib/locale";
+import { t, lt, gameText, optText, roomUrl } from "../lib/locale";
+import { useNs } from "../lib/useNs";
 
 /** מזהה צבעוני שקט — במקום בחירת אווטר (הקהל מבוגר, לא צריך חיות) */
 const DOT_EMOJIS = ["🔵", "🟣", "🟢", "🟡", "🟠", "🔴", "🟤", "⚪", "🟦", "🟪", "🟩", "🟨"];
@@ -39,6 +40,8 @@ export default function Room({ code }: { code: string }) {
   const roomRef = useRef<RoomSnapshot | null>(null);
   const leavingRef = useRef(false); // סגירה מכוונת (עזיבה/ניווט) — לא ניתוק רשת
   const hub = useMemo(() => new GameHub(), []);
+  // מרחב-השמות של המשחק שנבחר נטען כבר בלובי — כשהמשחק מתחיל הטקסטים שלו כבר כאן
+  const nsReady = useNs(room?.gameId);
 
   function showToast(m: string) {
     setToast(m);
@@ -73,8 +76,9 @@ export default function Room({ code }: { code: string }) {
       onCue: (d, at) => hub.emit(d, at),
       // שגיאה לפני שנכנסנו לחדר (קוד שגוי / חדר שנסגר) = מסך שגיאה עם דרך חזרה, לא ספינר נצחי
       onError: (m) => {
-        if (!roomRef.current) { track("join_failed", { via: entrySource(), reason: m || "not_found" }); setFatal(m || t("lobby.room_not_found")); }
-        else showToast(m);
+        const txt = lt(m); // מפתח+פרמטרים מהשרת → טקסט בשפת הטלפון
+        if (!roomRef.current) { track("join_failed", { via: entrySource(), reason: typeof m === "string" ? (m || "not_found") : m.k }); setFatal(txt || t("lobby.room_not_found")); }
+        else showToast(txt);
       },
       onStatus: (s) => {
         // ניתוק אחרי שכבר היינו בפנים — פעם אחת לחדר, שנדע כמה חדרים סובלים מרשת
@@ -245,6 +249,7 @@ export default function Room({ code }: { code: string }) {
   }
 
   if (room.phase === "ceremony" && room.ceremony) {
+    if (!nsReady) return <main />; // כותרת הטקס של המשחק (metro.end.*) יושבת במרחב-השמות שלו
     return (
       <>
         {!isHost && <button className="exit-fab" onClick={leaveRoom}>{t("lobby.exit")}</button>}
@@ -272,6 +277,7 @@ export default function Room({ code }: { code: string }) {
       );
     }
     const View = GAME_VIEWS[room.gameId];
+    if (View && !nsReady) return <main />; // כמה עשרות ms במקרה הנדיר שהמשחק התחיל לפני שה-chunk הגיע
     if (View) return (
       <>
         {isHost ? (
@@ -490,7 +496,7 @@ function HostCatalog({ room, onSelect, onStart }: {
           </div>
           {sel?.configOptions?.map((opt) => (
             <div key={opt.key} style={{ marginTop: 8 }}>
-              <div className="sub" style={{ fontSize: 12.5 }}>{opt.label}</div>
+              <div className="sub" style={{ fontSize: 12.5 }}>{optText(sel.id, opt.key, opt.label)}</div>
               <div className="opt-row">
                 {opt.values.map((v) => (
                   <button key={v.v}
@@ -500,7 +506,7 @@ function HostCatalog({ room, onSelect, onStart }: {
                       setConfig(next);
                       onSelect(sel.id, next);
                     }}>
-                    {v.label}
+                    {optText(sel.id, opt.key, v.label, v.v)}
                   </button>
                 ))}
               </div>

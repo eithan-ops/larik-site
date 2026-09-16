@@ -80,7 +80,7 @@ test("התארים המדידים הולכים לשחקן הנכון", () => {
   const a = snap("p1").ceremony!.awards!;
   assert.equal(a.p1.id, "king", "המנצח לא קיבל מלך הערב");
   assert.equal(a.p2.id, "fastest", "המהיר לא קיבל את האצבע");
-  assert.equal(a.p2.detail, "0.41 שניות");
+  assert.deepEqual(a.p2.detail, { k: "awards.fastest.detail", p: { sec: "0.41" } });
   assert.equal(a.p3.id, "brain", "מי שענה נכון לא קיבל את המוח");
   assert.equal(a.p4.id, "clown", "הליצן לא קיבל ליצן");
 });
@@ -109,7 +109,7 @@ test("משחק שלא מדווח שום עובדה — עדיין מחלק תא�
 
   const a = snap("p3").ceremony!.awards!;
   assert.equal(Object.keys(a).length, 4);
-  for (const p of P) assert.ok(a[p].title.length > 0);
+  for (const p of P) assert.ok(typeof a[p].title === "object" && a[p].title.k.startsWith("awards."));
 });
 
 test("כל שחקן רואה את התואר של עצמו בסנפשוט שלו", () => {

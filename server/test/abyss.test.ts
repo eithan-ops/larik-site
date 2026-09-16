@@ -184,7 +184,7 @@ async function roomA() {
   const cer = snap.ceremony!;
   check("ניקוד הטקס = totals, המנצח = c", !!cer && cer.scores?.c === res2.totals.c && cer.winnerId === "c", JSON.stringify(cer?.scores));
   check("תארים לכל השחקנים", !!cer?.awards && Object.keys(cer.awards).length === 4);
-  check("הכותרת מזכירה את התהום", (cer?.title ?? "").includes("התהום"));
+  check("הכותרת מזכירה את התהום", JSON.stringify(cer?.title ?? "").includes("התהום"));
 }
 
 async function roomB() {

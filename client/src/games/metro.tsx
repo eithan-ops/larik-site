@@ -13,6 +13,7 @@ import type { MbBall, MbResultRow, MbProgRow, MbSched, MbPattern, MbOpts, MetroS
 import { mbAudioInit, mbAudioTime, mbLand, mbCancelScheduled, mbSfx, mbSay, mbPreloadVoices } from "./metroAudio";
 import { drawBall, ballIcon, loadBallSprite, onBallSpriteReady, type BallPose } from "./metroSprites";
 import { vibrate } from "../lib/audio";
+import { t, fmtNum } from "../lib/locale";
 
 type Phase = "wait" | "pick" | "set" | "count" | "match" | "result" | "over";
 type OverMsg = Extract<MetroServerMsg, { a: "mb_over" }>;
@@ -72,7 +73,7 @@ export default function MetroView({ room, me, conn, hub }: GameViewProps) {
     lastFrame: 0, hudAt: 0, countTimers: [] as number[],
   });
   const pl = (pid: string) => G.current.players.find((p) => p.id === pid);
-  const pname = (pid: string) => pid === me ? "אתה" : pl(pid)?.name ?? "מישהו";
+  const pname = (pid: string) => pid === me ? t("metro.you") : pl(pid)?.name ?? t("metro.someone");
   const cOf = (pid: string) => G.current.chars[pid] ?? 0;
   const colorOf = (pid: string) => MB.CHAR_COLORS[cOf(pid)];
   const isLeader = () => G.current.leader === me;
@@ -117,7 +118,7 @@ export default function MetroView({ room, me, conn, hub }: GameViewProps) {
           case "mb_go": {
             g.chars = d.chars; g.solo = d.solo; setSolo(d.solo); g.opts = d.opts; setOpts(d.opts);
             mbSay("intro");
-            setBanner({ ic: "🎾", t: "מטרונובול", s: d.solo ? `${d.rounds} קצבים — תפסו כל אחד` : `${d.rounds} סבבים — כל אחד קובע קצב`, cls: "long" });
+            setBanner({ ic: "🎾", t: t("games.metro.name"), s: d.solo ? t("metro.go_solo", { n: d.rounds }) : t("metro.go_multi", { n: d.rounds }), cls: "long" });
             break;
           }
           case "mb_round": {
@@ -126,25 +127,25 @@ export default function MetroView({ room, me, conn, hub }: GameViewProps) {
             setRnd({ r: d.r, of: d.of, leader: d.leader, until: d.until, level: d.level });
             setProg([]); setResult(null); setHint(""); setAsleep(true);
             setPhaseBoth("set");
-            if (g.solo) { const pt = mbPattern(d.pattern); setBanner({ ic: pt.id === "plain" ? "🎵" : pt.ic, t: pt.id === "plain" ? `קצב ${d.r + 1} מתוך ${d.of}` : `${pt.name}! ${pt.desc}`, s: pt.id === "plain" ? "תקשיבו… ואז תפסו אותו" : `קצב ${d.r + 1} מתוך ${d.of} — תקשיבו…`, cls: "long" }); mbSay("newtempo"); }
-            else if (d.leader === me) { setBanner({ ic: "🎛️", t: "הקצב שלך!", s: "כוונו את הכדור — כולם שומעים אותו", cls: "long" }); mbSay("yourturn"); vibrate([40, 40, 40]); }
-            else { setBanner({ ic: "👂", t: `${pname(d.leader)} קובע את הקצב`, s: "תקשיבו לכדור שלו…", cls: "long" }); mbSay("listen"); }
+            if (g.solo) { const pt = mbPattern(d.pattern); setBanner({ ic: pt.id === "plain" ? "🎵" : pt.ic, t: pt.id === "plain" ? t("metro.tempo_of", { r: d.r + 1, of: d.of }) : `${t(`metro.pat.${pt.id}`)}! ${t(`metro.pat.${pt.id}.desc`)}`, s: pt.id === "plain" ? t("metro.listen_then_catch") : t("metro.tempo_of_listen", { r: d.r + 1, of: d.of }), cls: "long" }); mbSay("newtempo"); }
+            else if (d.leader === me) { setBanner({ ic: "🎛️", t: t("metro.your_tempo_bang"), s: t("metro.tune_ball"), cls: "long" }); mbSay("yourturn"); vibrate([40, 40, 40]); }
+            else { setBanner({ ic: "👂", t: t("metro.x_sets_tempo", { name: pname(d.leader) }), s: t("metro.listen_his_ball"), cls: "long" }); mbSay("listen"); }
             break;
           }
           case "mb_lead": { applyLead(d.bpm, d.anchor, d.floor, { pattern: d.pattern, bpm: d.bpm, bpm2: d.bpm, anchor: d.anchor, until: 0 }); break; }
           case "mb_oops": {
             if (d.pid !== me) break;
-            setJudge({ t: g.sched.pattern === "rest" ? "✋ שקט!" : "✋ יותר מדי הקשות", cls: "b", id: Date.now() }); mbSfx.tap(0); vibrate([10, 30, 10]);
+            setJudge({ t: g.sched.pattern === "rest" ? t("metro.judge_quiet") : t("metro.judge_too_many"), cls: "b", id: Date.now() }); mbSfx.tap(0); vibrate([10, 30, 10]);
             break;
           }
           case "mb_count": {
             applyLead(d.bpm, d.startAt, d.floor, d.sched);
-            if (!isLeader() && d.sched.pattern !== "plain") { const pt = mbPattern(d.sched.pattern); setBanner({ ic: pt.ic, t: `${pt.name}: ${pt.desc}`, s: "עקבו אחרי הכדור — לא רק אחרי המספר", cls: "long" }); }
+            if (!isLeader() && d.sched.pattern !== "plain") { const pt = mbPattern(d.sched.pattern); setBanner({ ic: pt.ic, t: `${t(`metro.pat.${pt.id}`)}: ${t(`metro.pat.${pt.id}.desc`)}`, s: t("metro.follow_ball"), cls: "long" }); }
             g.startAt = d.startAt; g.until = d.until; g.my = mbNewBall(); g.balls.clear(); g.lastN.clear(); g.locked.clear(); g.unison = false;
             setCnt({ startAt: d.startAt, until: d.until }); setPhaseBoth("count"); setAsleep(true);
-            const t = d.startAt - conn.serverNow();
-            g.countTimers.push(window.setTimeout(() => { if (G.current.phase === "count") setPhaseBoth("match"); }, Math.max(0, t)));
-            if (!isLeader()) { if (t > 3600 && d.sched.pattern === "plain") setBanner({ ic: "👂", t: "תקשיבו לקצב…", s: "בעוד רגע — מקישים איתו", cls: "long" }); else if (t <= 3600) mbSay("catch"); }
+            const ms = d.startAt - conn.serverNow();
+            g.countTimers.push(window.setTimeout(() => { if (G.current.phase === "count") setPhaseBoth("match"); }, Math.max(0, ms)));
+            if (!isLeader()) { if (ms > 3600 && d.sched.pattern === "plain") setBanner({ ic: "👂", t: t("metro.listen_tempo"), s: t("metro.soon_tap"), cls: "long" }); else if (ms <= 3600) mbSay("catch"); }
             scheduleCount(d.startAt);
             break;
           }
@@ -152,14 +153,14 @@ export default function MetroView({ room, me, conn, hub }: GameViewProps) {
           case "mb_prog": { setProg(d.rows); for (const r of d.rows) { if (r.locked) g.locked.add(r.pid); else if (!g.unison) g.locked.delete(r.pid); } break; }
           case "mb_lock": {
             g.locked.add(d.pid);
-            if (d.pid === me) { mbSfx.lock(); mbSay("lock"); vibrate([20, 30, 60]); setBanner({ ic: "🔒", t: "נעול על הקצב!", s: `אחרי ${((d.at - g.startAt) / 1000).toFixed(1)} שניות — עכשיו להחזיק` }); setFlash("rgba(95,212,74,.35)"); }
-            else { mbSfx.otherLock(); if (isLeader()) setBanner({ ic: "🔒", t: `${pname(d.pid)} תפס את הקצב שלך`, s: "+20" }); }
+            if (d.pid === me) { mbSfx.lock(); mbSay("lock"); vibrate([20, 30, 60]); setBanner({ ic: "🔒", t: t("metro.locked_bang"), s: t("metro.locked_after", { sec: ((d.at - g.startAt) / 1000).toFixed(1) }) }); setFlash("rgba(95,212,74,.35)"); }
+            else { mbSfx.otherLock(); if (isLeader()) setBanner({ ic: "🔒", t: t("metro.x_caught_yours", { name: pname(d.pid) }), s: "+20" }); }
             break;
           }
           case "mb_unison": {
             g.unison = true; g.unisonAt = at;
             mbSfx.unison(); mbSay("unison"); vibrate([60, 40, 60, 40, 120]);
-            setBanner({ ic: "🎶", t: g.solo ? "תפסת את הקצב!" : "כולם ביחד!", s: `+${MB.UNISON_BONUS} לכולם`, cls: "long" }); setFlash("rgba(255,197,49,.45)");
+            setBanner({ ic: "🎶", t: g.solo ? t("metro.you_caught") : t("metro.all_together"), s: t("metro.bonus_all", { n: MB.UNISON_BONUS }), cls: "long" }); setFlash("rgba(255,197,49,.45)");
             confetti(); g.shake = 4;
             break;
           }
@@ -228,9 +229,9 @@ export default function MetroView({ room, me, conn, hub }: GameViewProps) {
     vibrate(good === 3 ? 12 : 6);
     if (g.phase === "match") {
       const id = Date.now();
-      setJudge(rest ? { t: "✋ שקט!", cls: "b", id } : good === 3 ? { t: "מושלם!", cls: "p", id } : good === 2 ? { t: "טוב", cls: "g", id } : good === 1 ? { t: "קרוב", cls: "o", id } : { t: off < 0 ? "מוקדם" : "מאוחר", cls: "b", id });
+      setJudge(rest ? { t: t("metro.judge_quiet"), cls: "b", id } : good === 3 ? { t: t("metro.judge_perfect"), cls: "p", id } : good === 2 ? { t: t("metro.judge_good"), cls: "g", id } : good === 1 ? { t: t("metro.judge_close"), cls: "o", id } : { t: off < 0 ? t("metro.judge_early") : t("metro.judge_late"), cls: "b", id });
       const lb = mbBpmAt(g.sched, at);
-      if (g.my.bpm > 0) { const rel = (g.my.bpm - lb) / lb; setHint(rel > MB.TEMPO_TOL ? "לאט יותר ⏪" : rel < -MB.TEMPO_TOL ? "מהר יותר ⏩" : rel > MB.LOCK_TOL ? "קצת לאט יותר" : rel < -MB.LOCK_TOL ? "קצת מהר יותר" : ""); }
+      if (g.my.bpm > 0) { const rel = (g.my.bpm - lb) / lb; setHint(rel > MB.TEMPO_TOL ? t("metro.hint_slower") : rel < -MB.TEMPO_TOL ? t("metro.hint_faster") : rel > MB.LOCK_TOL ? t("metro.hint_bit_slower") : rel < -MB.LOCK_TOL ? t("metro.hint_bit_faster") : ""); }
     }
     // הבזק נחיתה מקומי לכדור שלי
     g.landAt.set(me, performance.now());
@@ -386,7 +387,7 @@ export default function MetroView({ room, me, conn, hub }: GameViewProps) {
 
         // שורה אחורית קודם (עומק)
         back.forEach((b, i) => drawOne(b.pid, b.c, "back", backX(i, back.length), yB, rB, pname(b.pid).slice(0, 8)));
-        front.forEach((f, i) => drawOne(f.pid, f.c, f.kind, frontX(i, front.length), yF, rF, f.kind === "metro" ? "המטרונום" : f.kind === "me" ? "אתה" : pname(f.pid).slice(0, 9)));
+        front.forEach((f, i) => drawOne(f.pid, f.c, f.kind, frontX(i, front.length), yF, rF, f.kind === "metro" ? t("metro.metronome") : f.kind === "me" ? t("metro.you") : pname(f.pid).slice(0, 9)));
 
         /* טבעות אבק */
         for (const rg of g.rings) { rg.l -= dt * 3.6; rg.r += dt * 120; if (rg.l <= 0) continue; ctx.strokeStyle = rg.col; ctx.globalAlpha = Math.max(0, rg.l) * 0.7; ctx.lineWidth = 2 + rg.l * 2; ctx.beginPath(); ctx.ellipse(rg.x, rg.y, rg.r, rg.r * 0.32, 0, 0, Math.PI * 2); ctx.stroke(); }
@@ -457,14 +458,14 @@ export default function MetroView({ room, me, conn, hub }: GameViewProps) {
       {inRound && (
         <div className="mb-top">
           <div className="mb-me">
-            <div className="mb-chip big">🏅 <b>{total.toLocaleString("he-IL")}</b></div>
-            {solo && bestLocal > 0 && <div className="mb-chip small">שיא <b>{bestLocal.toLocaleString("he-IL")}</b></div>}
+            <div className="mb-chip big">🏅 <b>{fmtNum(total)}</b></div>
+            {solo && bestLocal > 0 && <div className="mb-chip small">{t("metro.best")} <b>{fmtNum(bestLocal)}</b></div>}
           </div>
           <div className="mb-mid">
-            <div className="mb-round">{solo ? "קצב" : "סבב"} <b>{rnd.r + 1}</b>/{rnd.of}</div>
-            {!solo && lead && <div className="mb-leadchip" style={{ "--cc": colorOf(lead) } as CSSProperties}><Face c={cOf(lead)} size={22} /> {lead === me ? "הקצב שלך" : `הקצב של ${pname(lead)}`}</div>}
-            {pattern !== "plain" && phase !== "set" && <div className="mb-tag pat">{mbPattern(pattern).ic} {mbPattern(pattern).name}</div>}
-            {phase === "match" && !solo && <div className="mb-tag">🔒 {lockedN}/{prog.length || Math.max(0, Object.keys(G.current.chars).length - 1)} נעולים</div>}
+            <div className="mb-round">{solo ? t("metro.tempo") : t("metro.round")} <b>{rnd.r + 1}</b>/{rnd.of}</div>
+            {!solo && lead && <div className="mb-leadchip" style={{ "--cc": colorOf(lead) } as CSSProperties}><Face c={cOf(lead)} size={22} /> {lead === me ? t("metro.your_tempo") : t("metro.tempo_of_x", { name: pname(lead) })}</div>}
+            {pattern !== "plain" && phase !== "set" && <div className="mb-tag pat">{mbPattern(pattern).ic} {t(`metro.pat.${pattern}`)}</div>}
+            {phase === "match" && !solo && <div className="mb-tag">🔒 {lockedN}/{prog.length || Math.max(0, Object.keys(G.current.chars).length - 1)} {t("metro.locked_n")}</div>}
           </div>
           <div className="mb-timerbox">
             {hud.left > 0 && phase !== "count" && <div className={"mb-timer" + (hud.left <= 5 ? " warm" : "")} style={{ "--p": `${Math.min(1, hud.left / hud.tot) * 360}deg` } as CSSProperties}><span>{hud.left}</span></div>}
@@ -475,7 +476,7 @@ export default function MetroView({ room, me, conn, hub }: GameViewProps) {
       {/* באנר */}
       {banner && <div className={"mb-banner " + (banner.cls ?? "")} key={banner.t + banner.ic}><span className="ic">{banner.ic}</span><div><b>{banner.t}</b>{banner.s && <small>{banner.s}</small>}</div></div>}
       {/* ספירה */}
-      {countN >= 0 && <div className="mb-count" key={countN}>{countN === 0 ? "קדימה!" : countN}</div>}
+      {countN >= 0 && <div className="mb-count" key={countN}>{countN === 0 ? t("metro.go") : countN}</div>}
 
       {/* בקרת הקובע */}
       {phase === "set" && lead === me && !solo && (
@@ -483,62 +484,62 @@ export default function MetroView({ room, me, conn, hub }: GameViewProps) {
           <div className="mb-lvrow">
             <button className="mb-lv" onPointerDown={(e) => { e.stopPropagation(); setLv(-5); }}>◀◀</button>
             <button className="mb-lv big" onPointerDown={(e) => { e.stopPropagation(); setLv(-1); }}>◀</button>
-            <div className="mb-lvnum"><small>רמה</small><b>{level}</b><small>{mbBpm(level)} BPM</small></div>
+            <div className="mb-lvnum"><small>{t("metro.level")}</small><b>{level}</b><small>{mbBpm(level)} BPM</small></div>
             <button className="mb-lv big" onPointerDown={(e) => { e.stopPropagation(); setLv(1); }}>▶</button>
             <button className="mb-lv" onPointerDown={(e) => { e.stopPropagation(); setLv(5); }}>▶▶</button>
           </div>
           <div className="mb-floors">
-            {MB_FLOORS.map((f) => <button key={f.id} className={"mb-fl" + (f.id === floorId ? " on" : "")} style={{ "--ft": f.tint } as CSSProperties} onPointerDown={(e) => { e.stopPropagation(); setFl(f.id); }}><span>{f.ic}</span><small>{f.name}</small></button>)}
+            {MB_FLOORS.map((f) => <button key={f.id} className={"mb-fl" + (f.id === floorId ? " on" : "")} style={{ "--ft": f.tint } as CSSProperties} onPointerDown={(e) => { e.stopPropagation(); setFl(f.id); }}><span>{f.ic}</span><small>{t(`metro.floor.${f.id}`)}</small></button>)}
           </div>
-          {opts.phys && <p className="mb-physhint">🪂 {mbFloor(floorId).phys.hint}</p>}
+          {opts.phys && <p className="mb-physhint">🪂 {t(`metro.floor.${mbFloor(floorId).id}.hint`)}</p>}
           {opts.patterns && (
             <div className="mb-pats">
-              {MB_PATTERNS.map((pt) => <button key={pt.id} className={"mb-pat" + (pt.id === pattern ? " on" : "")} onPointerDown={(e) => { e.stopPropagation(); setPat(pt.id); }} title={pt.desc}><span>{pt.ic}</span><small>{pt.name}</small></button>)}
+              {MB_PATTERNS.map((pt) => <button key={pt.id} className={"mb-pat" + (pt.id === pattern ? " on" : "")} onPointerDown={(e) => { e.stopPropagation(); setPat(pt.id); }} title={t(`metro.pat.${pt.id}.desc`)}><span>{pt.ic}</span><small>{t(`metro.pat.${pt.id}`)}</small></button>)}
             </div>
           )}
-          <button className="mb-done" onClick={setDone}>✓ זה הקצב!</button>
+          <button className="mb-done" onClick={setDone}>{t("metro.done")}</button>
         </div>
       )}
       {/* הקובע בזמן ההשוואה */}
       {(phase === "count" || phase === "match") && lead === me && !solo && (
         <div className="mb-leadpanel watch">
-          <h3>🔊 כולם מקישים לפי הקצב שלך</h3>
+          <h3>{t("metro.all_tap_yours")}</h3>
           <div className="mb-locklist">
             {Object.keys(G.current.chars).filter((p) => p !== me).map((p) => { const row = prog.find((x) => x.pid === p); const on = !!row?.locked; return <span key={p} className={"mb-lockchip" + (on ? " on" : "")} style={{ "--cc": colorOf(p) } as CSSProperties}><Face c={cOf(p)} size={20} /> {pname(p).slice(0, 8)} {on ? "🔒" : row && row.beats > 0 ? `${Math.round((row.pts / Math.max(1, row.beats)) * 10)}%` : "…"}</span>; })}
           </div>
-          <p className="sub">+20 על כל מי שתופס · +100 לכולם אם כולם נועלים יחד</p>
+          <p className="sub">{t("metro.lead_scoring")}</p>
         </div>
       )}
       {/* עוקב בזמן הכיוון */}
       {phase === "set" && lead !== me && (
         <div className="mb-pad listen">
           <div className="ear">👂</div>
-          <b>{solo ? "תקשיבו לקצב…" : `${pname(lead)} מכוון את הקצב`}</b>
-          <small>{solo ? "בעוד רגע מקישים" : "תקשיבו לכדור שלו — בעוד רגע מקישים איתו"}</small>
+          <b>{solo ? t("metro.listen_tempo") : t("metro.x_tuning", { name: pname(lead) })}</b>
+          <small>{solo ? t("metro.soon_tapping") : t("metro.listen_his_soon")}</small>
         </div>
       )}
       {/* משטח ההקשה */}
       {showPad && (
         <div className={"mb-pad" + (asleep ? " sleep" : "") + (G.current.locked.has(me) ? " locked" : "")}>
           {judge && <div className={"mb-judge " + judge.cls} key={judge.id}>{judge.t}</div>}
-          <b>{phase === "count" ? "תקשיבו… מקישים כשהכדור נוחת" : asleep ? "הקישו בקצב — כל המסך הוא כפתור" : G.current.locked.has(me) ? "🔒 נעול — להחזיק את הקצב" : hint || "הקישו כשהכדור של הקובע נוחת"}</b>
-          <small>{asleep ? "הכדור שלכם ישן עד ההקשה הראשונה" : hint && !G.current.locked.has(me) ? "מקישים איתו — לא רואים את המספר, רק שומעים" : "בלי לראות את המספר. רק לפי האוזן."}</small>
+          <b>{phase === "count" ? t("metro.pad_count") : asleep ? t("metro.pad_asleep") : G.current.locked.has(me) ? t("metro.pad_locked") : hint || t("metro.pad_tap")}</b>
+          <small>{asleep ? t("metro.pad_asleep_sub") : hint && !G.current.locked.has(me) ? t("metro.pad_hint_sub") : t("metro.pad_ear_sub")}</small>
         </div>
       )}
 
       {/* בחירת צבע */}
       {phase === "pick" && pick && (
         <div className="mb-pick">
-          <h2>איזה כדור אתה?</h2>
-          <p className="sub">כל צבע לשחקן אחד. אחר כך — כולם רואים את כל הכדורים קופצים.</p>
+          <h2>{t("metro.pick_title")}</h2>
+          <p className="sub">{t("metro.pick_sub")}</p>
           <div className="grid">
-            {MB.CHAR_NAMES.map((nm, i) => {
+            {Array.from({ length: MB.CHARS }, (_, i) => {
               const owner = Object.entries(pick.taken).find(([, c]) => c === i)?.[0];
               const mineC = owner === me;
               return (
                 <button key={i} className={"tile" + (owner ? (mineC ? " mine" : " taken") : "")} style={{ "--cc": MB.CHAR_COLORS[i] } as CSSProperties} disabled={!!owner && !mineC} onClick={() => pickChar(i)}>
-                  <img src={ballIcon(i, 128, mineC ? "land" : "idle")} alt="" /><b>{nm}</b>
-                  {owner && <small>{mineC ? "אתה" : pname(owner)}</small>}
+                  <img src={ballIcon(i, 128, mineC ? "land" : "idle")} alt="" /><b>{t(`metro.char.${i}`)}</b>
+                  {owner && <small>{mineC ? t("metro.you") : pname(owner)}</small>}
                 </button>
               );
             })}
@@ -550,24 +551,24 @@ export default function MetroView({ room, me, conn, hub }: GameViewProps) {
       {/* טבלת הסבב */}
       {phase === "result" && result && (
         <div className="mb-result">
-          <h2>{solo ? `קצב ${result.r + 1} מתוך ${result.of}` : `סבב ${result.r + 1} מתוך ${result.of}`}</h2>
-          <p className="lv">הקצב היה רמה <b>{result.level}</b> · {mbBpm(result.level)} BPM{result.pattern !== "plain" ? ` · ${mbPattern(result.pattern).ic} ${mbPattern(result.pattern).name}` : ""}{!solo && result.leader ? ` · קבע: ${pname(result.leader)}` : ""}</p>
+          <h2>{solo ? t("metro.tempo_of", { r: result.r + 1, of: result.of }) : t("metro.round_of", { r: result.r + 1, of: result.of })}</h2>
+          <p className="lv">{t("metro.tempo_was_level")} <b>{result.level}</b> · {mbBpm(result.level)} BPM{result.pattern !== "plain" ? ` · ${mbPattern(result.pattern).ic} ${t(`metro.pat.${result.pattern}`)}` : ""}{!solo && result.leader ? ` · ${t("metro.set_by", { name: pname(result.leader) })}` : ""}</p>
           <ol>
             {result.rows.map((r, i) => <ResultRow key={r.pid} r={r} i={i} me={me} name={pname(r.pid)} Face={Face} />)}
           </ol>
-          <p className="sub">{result.r + 1 < result.of ? (solo ? "קצב חדש בעוד רגע…" : "הקובע הבא בעוד רגע…") : "מסכמים…"}</p>
+          <p className="sub">{result.r + 1 < result.of ? (solo ? t("metro.next_tempo_soon") : t("metro.next_leader_soon")) : t("metro.summing_up")}</p>
         </div>
       )}
 
       {/* סיום */}
       {phase === "over" && over && (
         <div className="mb-over">
-          <h2>🎾 {solo ? "סיימת!" : over.rows[0]?.pid === me ? "ניצחת!" : `${pname(over.rows[0]?.pid ?? "")} ניצח`}</h2>
-          {solo && <p className="lv">{over.rows[0]?.total ?? 0} נקודות{bestLocal > 0 && (over.rows[0]?.total ?? 0) >= bestLocal ? " · 🏆 שיא חדש!" : bestLocal > 0 ? ` · השיא שלך ${bestLocal}` : ""}</p>}
+          <h2>🎾 {solo ? t("metro.over_solo") : over.rows[0]?.pid === me ? t("metro.over_you_won") : t("metro.over_x_won", { name: pname(over.rows[0]?.pid ?? "") })}</h2>
+          {solo && <p className="lv">{t("metro.points_n", { n: over.rows[0]?.total ?? 0 })}{bestLocal > 0 && (over.rows[0]?.total ?? 0) >= bestLocal ? ` · ${t("metro.new_best")}` : bestLocal > 0 ? ` · ${t("metro.your_best", { n: bestLocal })}` : ""}</p>}
           <ol>
-            {over.rows.map((r, i) => <li key={r.pid} className={r.pid === me ? "me" : ""}><span>{i + 1}</span><span className="nm"><Face c={r.c} size={26} pose={i === 0 ? "land" : "idle"} /> {pname(r.pid)}</span><small>{r.lockAt > 0 ? `⚡${(r.lockAt / 1000).toFixed(1)}ש'` : ""} {r.acc > 0 ? `🎯${Math.round(r.acc / 5)}%` : ""}</small><b>{r.total.toLocaleString("he-IL")}</b></li>)}
+            {over.rows.map((r, i) => <li key={r.pid} className={r.pid === me ? "me" : ""}><span>{i + 1}</span><span className="nm"><Face c={r.c} size={26} pose={i === 0 ? "land" : "idle"} /> {pname(r.pid)}</span><small>{r.lockAt > 0 ? `⚡${(r.lockAt / 1000).toFixed(1)}${t("metro.sec_short")}` : ""} {r.acc > 0 ? `🎯${Math.round(r.acc / 5)}%` : ""}</small><b>{fmtNum(r.total)}</b></li>)}
           </ol>
-          {over.titles.length > 0 && <div className="titles">{over.titles.map((t) => <span key={t.t} className={t.pid === me ? "me" : ""}>{t.ic} <b>{t.t}</b> — {pname(t.pid)}</span>)}</div>}
+          {over.titles.length > 0 && <div className="titles">{over.titles.map((x) => <span key={x.t} className={x.pid === me ? "me" : ""}>{x.ic} <b>{t(x.t)}</b> — {pname(x.pid)}</span>)}</div>}
         </div>
       )}
     </div>
@@ -579,9 +580,9 @@ function ResultRow({ r, i, me, name, Face }: { r: MbResultRow; i: number; me: st
     <li className={(r.pid === me ? "me" : "") + (r.leader ? " lead" : "")}>
       <span>{r.leader ? "🔊" : i + 1}</span>
       <span className="nm"><Face c={r.c} size={26} pose={i === 0 && !r.leader ? "land" : "idle"} /> {name}</span>
-      <small>{r.leader ? "קבע את הקצב" : r.lockAt > 0 ? `🔒 ${(r.lockAt / 1000).toFixed(1)}ש' · 🎯 ${Math.round(r.acc / 5)}%` : r.acc > 0 ? `🎯 ${Math.round(r.acc / 5)}% · לא נעל` : "לא תפס"}{r.bonus > 0 ? ` · +${r.bonus}` : ""}</small>
+      <small>{r.leader ? t("metro.row_set_tempo") : r.lockAt > 0 ? `🔒 ${(r.lockAt / 1000).toFixed(1)}${t("metro.sec_short")} · 🎯 ${Math.round(r.acc / 5)}%` : r.acc > 0 ? `🎯 ${Math.round(r.acc / 5)}% · ${t("metro.row_no_lock")}` : t("metro.row_no_catch")}{r.bonus > 0 ? ` · +${r.bonus}` : ""}</small>
       <b>+{r.round}</b>
-      <i>{r.total.toLocaleString("he-IL")}</i>
+      <i>{fmtNum(r.total)}</i>
     </li>
   );
 }
@@ -589,5 +590,5 @@ function ResultRow({ r, i, me, name, Face }: { r: MbResultRow; i: number; me: st
 function PickTimer({ until, conn }: { until: number; conn: GameViewProps["conn"] }) {
   const [left, setLeft] = useState(0);
   useEffect(() => { const iv = setInterval(() => setLeft(Math.max(0, Math.ceil((until - conn.serverNow()) / 1000))), 200); return () => clearInterval(iv); }, [until]);
-  return <p className="timer">{until ? `${left} שניות` : "כולם בחרו — מתחילים!"}</p>;
+  return <p className="timer">{until ? t("metro.seconds_n", { n: left }) : t("metro.all_picked")}</p>;
 }

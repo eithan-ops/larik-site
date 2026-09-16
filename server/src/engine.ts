@@ -6,7 +6,7 @@
  */
 import type {
   ClientMsg, ServerMsg, RoomSnapshot, PlayerInfo, GameServerMsg, GameClientMsg, CeremonyInfo,
-  PlayerFacts,
+  PlayerFacts, LText,
 } from "../../shared/protocol";
 import { CATALOG } from "../../shared/protocol";
 import { mergeFacts, computeAwards } from "./awards";
@@ -19,7 +19,8 @@ export interface Transport {
 }
 
 export interface GameEndResult {
-  title: string;
+  /** כותרת הטקס — עדיף {k, p} (הלקוח מתרגם); מחרוזת עברית = משחק שעוד לא הועבר */
+  title: LText;
   winnerId?: string;
   /** תיקו: כל המנצחים — כולם מקבלים +3 בלוח הערב */
   winnerIds?: string[];
@@ -180,7 +181,7 @@ export class Room {
     } else {
       const isFirst = this.players.size === 0;
       this.players.set(pid, {
-        id: pid, gpid, name: name.slice(0, 16) || "שחקן", emoji: emoji || "🙂",
+        id: pid, gpid, name: name.slice(0, 16) || "🙂", emoji: emoji || "🙂", // הלקוח תמיד שולח שם (app.player בשפה שלו) — זו רשת ביטחון בלבד
         armed: false, connected: true, isHost: isFirst,
       });
       if (isFirst) this.hostId = pid;
@@ -279,14 +280,14 @@ export class Room {
       case "start_game": {
         if (pid !== this.hostId || this.phase === "game" || !this.gameId) return;
         const factory = this.gameFactories[this.gameId];
-        if (!factory) { this.transport.send(pid, { t: "error", msg: "משחק לא קיים" }); return; }
+        if (!factory) { this.transport.send(pid, { t: "error", msg: { k: "err.no_game" } }); return; }
         // אכיפת מינימום שחקנים גם בשרת — לא סומכים רק על הלקוח
         const meta = CATALOG.find((g) => g.id === this.gameId);
         const connected = [...this.players.values()].filter((x) => x.connected);
         // מצב סולו עוקף את מינימום השחקנים — האתגר היומי הוא שחקן אחד בהגדרה
         const solo = (this.gameConfig as { solo?: boolean } | undefined)?.solo === true;
         if (meta && !solo && connected.length < meta.minPlayers) {
-          this.transport.send(pid, { t: "error", msg: `צריך לפחות ${meta.minPlayers} שחקנים` });
+          this.transport.send(pid, { t: "error", msg: { k: "err.need_players", p: { n: meta.minPlayers } } });
           return;
         }
         this.phase = "game";
