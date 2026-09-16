@@ -18,7 +18,8 @@ import { getTriviaBank } from "./triviaBank";
 import { WallDaily, dailyDate, dailySeed } from "./wallDaily";
 import { statRoomCreated, statPlayerJoined, statGameStarted, statConcurrent, statsPage, STATS_KEY, stats } from "./stats";
 import { CATALOG } from "../../shared/protocol";
-import { langForCountry, dirOf } from "../../shared/i18n";
+import { langForCountry, dirOf, type Lang } from "../../shared/i18n";
+import { SEO, homeUrl, langFromPath, hreflangLinks } from "../../shared/seo";
 import geoip from "geoip-country";
 import { createForehead } from "./games/forehead";
 import { createPods } from "./games/pods";
@@ -120,13 +121,36 @@ function countryOf(req: import("http").IncomingMessage): string {
  * ה-<html lang dir> נכון כבר בבייט הראשון (אין הבהוב של עברית/כיווניות), ו-window.__LARIK נותן ללקוח
  * את המדינה לחפיסות תוכן עתידיות. ?l= בקישור לחדר ובחירה ידנית (🌐) גוברים — זה קורה בלקוח.
  */
-function localizeHtml(html: string, country: string): string {
+function localizeHtml(html: string, country: string, forced: Lang | null = null): string {
   // מדינה לא ידועה (IP פרטי/פיתוח מקומי) ≠ מדינה לא נתמכת: משאירים את ברירת המחדל של ה-HTML (עברית)
-  const lang = country ? langForCountry(country) : "he";
-  const boot = `<script>window.__LARIK=${JSON.stringify({ country, lang })}</script>`;
+  const lang: Lang = forced ?? (country ? langForCountry(country) : "he");
+  const boot = `<script>window.__LARIK=${JSON.stringify({ country, lang, forced: !!forced })}</script>`;
   return html
     .replace(/<html\s+lang="[^"]*"\s+dir="[^"]*">/, `<html lang="${lang}" dir="${dirOf(lang)}">`)
     .replace("</head>", `${boot}</head>`);
+}
+
+/**
+ * SEO של דף הבית בשפה: /es/ /ko/ … (ועברית בשורש). גוגל סורק מארה"ב, אז בלי כתובת לכל שפה
+ * הוא רואה גרסה אחת בלבד; כאן כל כתובת מקבלת <title>/description/og/JSON-LD בשפתה, canonical
+ * ו-hreflang לכל הגרסאות (הדדי — אותו בלוק בכולן). ה-SPA עצמו מתורגם ב-locales/<lang>/common.json.
+ */
+function seoHtml(html: string, lang: Lang): string {
+  const s = SEO[lang];
+  const esc = (x: string) => x.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
+  const url = homeUrl(lang);
+  return html
+    .replace(/<title>[^<]*<\/title>/, `<title>${esc(s.title)}</title>`)
+    .replace(/(<meta name="description" content=")[^"]*(")/, `$1${esc(s.description)}$2`)
+    .replace(/(<meta property="og:title" content=")[^"]*(")/, `$1${esc(s.title)}$2`)
+    .replace(/(<meta property="og:description" content=")[^"]*(")/, `$1${esc(s.og)}$2`)
+    .replace(/(<meta property="og:url" content=")[^"]*(")/, `$1${url}$2`)
+    .replace(/(<meta property="og:locale" content=")[^"]*(")/, `$1${s.locale}$2`)
+    .replace(/<link rel="canonical" href="[^"]*" \/>/, `<link rel="canonical" href="${url}" />\n    ${hreflangLinks()}`)
+    // JSON-LD: השפה, הכתובת והתיאור של האפליקציה בשפת הדף
+    .replace(/("inLanguage":\s*")[^"]*(")/, `$1${lang}$2`)
+    .replace(/("url":\s*")https:\/\/larik\.ai\/(")/, `$1${url}$2`)
+    .replace(/("description":\s*")[^"]*(")/, `$1${s.description.replace(/"/g, "'")}$2`);
 }
 
 const http = createServer((req, res) => {
@@ -353,7 +377,18 @@ const http = createServer((req, res) => {
     const isAppShell = file === join(CLIENT_DIST, "index.html") || file === join(CLIENT_DIST, "show.html");
     if (isAppShell) {
       res.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" });
-      res.end(localizeHtml(readFileSync(file, "utf-8"), countryOf(req)));
+      let html = readFileSync(file, "utf-8");
+      if (!isShowApp) {
+        // דף הבית בשפה (/es/ …) → השפה נכפית מהכתובת, לא מה-IP; השורש (/) = הגרסה העברית לגוגל
+        let forced = langFromPath(url.pathname);
+        // השורש = הגרסה העברית בעיני גוגל (canonical + hreflang). זחלנים סורקים מארה"ב ואחרת היו מקבלים
+        // אנגלית ב-/ וגם ב-/en/ — כפילות שמוחקת את העברית מהאינדקס. משתמשים אמיתיים ממשיכים לפי מדינה.
+        if (!forced && url.pathname === "/" && /bot|crawl|spider|slurp|preview|facebookexternalhit|whatsapp/i.test(String(req.headers["user-agent"] || ""))) forced = "he";
+        if (forced || url.pathname === "/") html = seoHtml(html, forced ?? "he");
+        res.end(localizeHtml(html, countryOf(req), forced));
+        return;
+      }
+      res.end(localizeHtml(html, countryOf(req)));
       return;
     }
     res.writeHead(200, { "Content-Type": MIME[extname(file)] || "application/octet-stream" });

@@ -6,7 +6,7 @@ import GamesShelf from "./components/GamesShelf";
 import Daily from "./components/Daily";
 import { pageView } from "./lib/analytics";
 
-/** ראוטר משחקים: / (בית) · /r/CODE (חדר) · /daily (סולו). המופע באפליקציה נפרדת (/s) */
+/** ראוטר משחקים: / או /xx/ (בית, xx = שפה) · /r/CODE (חדר) · /daily (סולו). המופע באפליקציה נפרדת (/s) */
 export default function App() {
   const [path, setPath] = useState(location.pathname);
 
@@ -30,6 +30,7 @@ export default function App() {
   // ‎/games שמור לעמוד ה-SEO הסטטי — מדף המשחקים באפליקציה חי ב-/play
   if (path === "/play") return <GamesShelf />;
   if (path === "/daily") return <Daily />;
+  // ‎/es/ ‎/ko/ … — דף הבית בשפה (כתובות ה-SEO; השפה עצמה נקבעת ב-locale.ts לפי הנתיב)
   return <Home />;
 }
 
