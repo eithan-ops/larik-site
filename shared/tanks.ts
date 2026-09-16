@@ -10,6 +10,7 @@
  *
  * ⚠️ מתקמפל גם תחת ה-TS הקפדני של הלקוח: בלי enum, בלי namespaces, import type בלבד.
  */
+import type { LText } from "./protocol";
 
 /* ---------- קבועים ---------- */
 export const TK = {
@@ -34,8 +35,7 @@ export const TK = {
   MAX_SALVOS: 8, SUDDEN_FROM: 6,
   GOLD_START: 120, GOLD_KILL: 80, GOLD_SURVIVE: 15, GOLD_BATTLE: 150, GOLD_BOUNTY: 40,
   /** 8 הדמויות = טנק אחד ב-8 צבעים (client/src/games/tanksSprites.ts). האימוג'י — לטקסט בלבד. */
-  CHARS: ["🟣", "🟠", "🔵", "🔴", "🟡", "🌸", "🟢", "💎"],
-  CHAR_NAMES: ["הסגול", "הכתום", "הכחול", "האדום", "הצהוב", "הוורוד", "הירוק", "הטורקיז"],
+  CHARS: ["🟣", "🟠", "🔵", "🔴", "🟡", "🌸", "🟢", "💎"], // שמות: tanks.char.0…7 ב-locales
   CHAR_COLORS: ["#9B4DFF", "#FF8A2B", "#2F7BFF", "#FF3B3B", "#FFD21F", "#FF5FB0", "#5FD44A", "#2EDCE6"],
   THEMES: ["day", "sunset", "night", "space"],
 } as const;
@@ -201,7 +201,7 @@ export type TkRarity = "c" | "u" | "r" | "e";               // רגיל · נד�
 export type TkKind = "ammo" | "passive" | "instant" | "sky";
 export type TkTargetKind = "none" | "player" | "x";
 export interface TkCard {
-  id: string; ic: string; t: string; d: string;
+  id: string; ic: string;         // שם והסבר: tanks.card.<id> / tanks.card.<id>.d ב-locales (הלקוח מתרגם לפי id)
   cat: TkCat; r: TkRarity; price: number; kind: TkKind;
   n?: number;                 // תחמושת: שימושים · פסיבי: מקסימום ערימה
   w?: Partial<TkWeapon>;      // הגדרת הנשק (תחמושת)
@@ -210,157 +210,156 @@ export interface TkCard {
   tg?: TkTargetKind;          // מיידי: צריך מטרה?
   req?: string[];             // אבולוציה: דורש בעלות על
 }
-const W = (id: string, ic: string, t: string, d: string, r: TkRarity, price: number, n: number, w: Partial<TkWeapon>, req?: string[]): TkCard => ({ id, ic, t, d, cat: "W", r, price, kind: "ammo", n, w, req });
-const P = (id: string, ic: string, t: string, d: string, cat: TkCat, r: TkRarity, price: number, n: number, m: (m: TkMods) => void, req?: string[]): TkCard => ({ id, ic, t, d, cat, r, price, kind: "passive", n, m, req });
-const I = (id: string, ic: string, t: string, d: string, cat: TkCat, r: TkRarity, price: number, fx: string, tg: TkTargetKind = "none", req?: string[]): TkCard => ({ id, ic, t, d, cat, r, price, kind: "instant", fx, tg, req });
-const K = (id: string, ic: string, t: string, d: string, fx: string, tg: TkTargetKind = "none"): TkCard => ({ id, ic, t, d, cat: "K", r: "c", price: 0, kind: "sky", fx, tg });
+const W = (id: string, ic: string, r: TkRarity, price: number, n: number, w: Partial<TkWeapon>, req?: string[]): TkCard => ({ id, ic, cat: "W", r, price, kind: "ammo", n, w, req });
+const P = (id: string, ic: string, cat: TkCat, r: TkRarity, price: number, n: number, m: (m: TkMods) => void, req?: string[]): TkCard => ({ id, ic, cat, r, price, kind: "passive", n, m, req });
+const I = (id: string, ic: string, cat: TkCat, r: TkRarity, price: number, fx: string, tg: TkTargetKind = "none", req?: string[]): TkCard => ({ id, ic, cat, r, price, kind: "instant", fx, tg, req });
+const K = (id: string, ic: string, fx: string, tg: TkTargetKind = "none"): TkCard => ({ id, ic, cat: "K", r: "c", price: 0, kind: "sky", fx, tg });
 
 export const TK_CARDS: TkCard[] = [
   /* 🚀 תחמושת */
-  W("heavy", "💣", "פגז כבד", "נזק 50, מכתש גדול", "c", 60, 3, { dmg: 50, r: 40 }),
-  W("triple", "🔱", "שלשה", "3 פגזים במניפה", "c", 70, 3, { n: 3, spread: 0.12, dmg: 28 }),
-  W("quint", "🖐️", "חמישייה", "5 פגזים במניפה", "u", 130, 3, { n: 5, spread: 0.1, dmg: 24 }, ["triple"]),
-  W("mirv", "🎆", "MIRV", "מתפצל ל-5 בשיא", "u", 120, 2, { mirv: 5, dmg: 26, r: 28 }),
-  W("mirv2", "🎇", "MIRV ענק", "מתפצל ל-9 בשיא", "r", 220, 2, { mirv: 9, dmg: 24, r: 28 }, ["mirv"]),
-  W("napalm", "🔥", "נפאלם", "אש שנשארת על ההר 2 סיבובים", "u", 90, 3, { fire: 2, dmg: 25, r: 30 }),
-  W("firestorm", "🌪️", "סופת אש", "MIRV של נפאלם", "r", 200, 2, { fire: 3, mirv: 4, dmg: 20, r: 26 }, ["napalm"]),
-  W("digger", "⛏️", "מקדחה", "חופרת דרך ההר ומתפוצצת בפנים", "c", 80, 3, { dig: 160, dmg: 40, r: 38 }),
-  W("sandhog", "🐹", "חפרפרת", "חופרת עמוק, פיצוץ ענק", "u", 170, 2, { dig: 320, dmg: 55, r: 46 }, ["digger"]),
-  W("bouncer", "🏀", "קפצן", "3 קפיצות לפני הפיצוץ", "c", 60, 3, { bounce: 3 }),
-  W("superball", "🪩", "סופר-קפצן", "7 קפיצות", "u", 120, 3, { bounce: 7, dmg: 30 }, ["bouncer"]),
-  W("roller", "🎳", "מתגלגל", "מתגלגל על ההר עד שפוגע", "c", 80, 3, { roll: true, dmg: 40 }),
-  W("homing", "🛰️", "מתביית", "מתעקל לטנק הקרוב", "u", 130, 2, { homing: 0.28 }),
-  W("laser", "🔦", "לייזר", "קו ישר, בלי רוח וכבידה", "u", 110, 3, { laser: true, spd: 6, gravK: 0, windK: 0, dmg: 30, r: 18 }),
-  W("dirtball", "🟤", "כדור אדמה", "בונה גבעה במקום להרוס", "c", 50, 3, { dirt: true, r: 50, dmg: 0 }),
-  W("dirtwall", "🧱", "חומת אדמה", "בונה הר קטן", "c", 90, 2, { dirt: true, r: 90, dmg: 0 }, ["dirtball"]),
-  W("shock", "💨", "הדף", "זורק טנקים 90px", "c", 70, 3, { shock: 90, dmg: 15, r: 40 }),
-  W("shockwave", "🌊", "גל הדף", "זורק את כל הסביבה", "u", 140, 2, { shock: 160, r: 80, dmg: 10 }, ["shock"]),
-  W("freeze", "🧊", "הקפאה", "המטרה מדלגת על הירייה הבאה", "u", 90, 2, { freeze: true, dmg: 15 }),
-  W("emp", "⚡", "EMP", "מוחק מגנים ברדיוס", "c", 80, 2, { emp: true, dmg: 10, r: 60 }),
-  W("icebomb", "❄️", "פצצת קרח", "הקפאה + EMP", "e", 220, 2, { freeze: true, emp: true, dmg: 20, r: 50 }, ["freeze", "emp"]),
-  W("blackhole", "🕳️", "חור שחור", "מושך טנקים לנקודה", "r", 150, 2, { hole: 80, dmg: 20, r: 40 }),
-  W("gravity", "🧲", "מגנט-על", "מושך מרחוק, פיצוץ", "e", 240, 2, { hole: 140, dmg: 30, r: 50 }, ["blackhole"]),
-  W("chain", "⛓️", "שרשרת", "מתפוצץ שוב ב-3 מקומות", "u", 110, 2, { chain: 3, dmg: 25 }),
-  W("chain2", "🔗", "שרשרת ארוכה", "6 פיצוצים נוספים", "r", 200, 2, { chain: 6, dmg: 25 }, ["chain"]),
-  W("babynuke", "☢️", "אטום קטן", "נזק 60, מכתש 60", "u", 150, 2, { dmg: 60, r: 60 }),
-  W("nuke", "🍄", "פצצת אטום", "נזק 90, מכתש ענק", "r", 260, 1, { dmg: 90, r: 90 }),
-  W("apoc", "💀", "אפוקליפסה", "5 פצצות אטום בשיא", "e", 300, 1, { mirv: 5, dmg: 60, r: 60 }, ["nuke", "mirv"]),
-  W("drillnuke", "🌋", "אטום תת-קרקעי", "חופר ואז אטום", "e", 320, 1, { dig: 300, dmg: 90, r: 90 }, ["nuke", "digger"]),
-  W("homingnuke", "🚀", "אטום מתביית", "אטום קטן שמתביית", "e", 300, 1, { homing: 0.25, dmg: 70, r: 70 }, ["homing", "babynuke"]),
-  W("confetti", "🎊", "קונפטי", "0 נזק. כולם צוחקים", "c", 30, 3, { confetti: true, dmg: 0, r: 60 }),
-  W("cluster", "🍇", "מצרר", "מתפצל ל-6 בפגיעה", "u", 100, 2, { burst: 6, dmg: 20, r: 26 }),
-  W("spikes", "🦔", "קיפוד", "מתפצל ל-10 בפגיעה", "r", 180, 2, { burst: 10, dmg: 12, r: 20 }, ["cluster"]),
-  W("volcano", "🗻", "הר געש", "נפאלם שמתפצל", "e", 260, 1, { fire: 2, burst: 5, dmg: 25, r: 30 }, ["napalm", "cluster"]),
-  W("ghost", "👻", "פגז רפאים", "עובר דרך ההר פעם אחת", "u", 90, 3, { ghost: true, dmg: 40 }),
-  W("teleshot", "🌀", "פגז טלפורט", "אתה עובר לנקודת הפגיעה", "u", 100, 2, { tele: true, dmg: 20, r: 30 }),
-  W("medic", "💊", "פגז רפואה", "מרפא 40 למי שברדיוס", "c", 60, 2, { heal: 40, dmg: 0, r: 50 }),
-  W("quakeshot", "🌍", "רעידת אדמה", "ההר קורס סביב הפגיעה", "u", 120, 1, { quake: true, dmg: 20, r: 30 }),
-  W("lift", "🪜", "מעלית", "מרים את הנפגע לשמיים", "c", 60, 2, { lift: true, dmg: 10, r: 30 }),
-  W("heavyx", "🧨", "פגז ענק", "נזק 70", "u", 150, 2, { dmg: 70, r: 55 }, ["heavy"]),
-  W("sniper", "🎯", "צלף", "מהיר, כמעט בלי רוח, נזק 45", "u", 100, 3, { spd: 1.5, windK: 0.3, dmg: 45, r: 20 }),
-  W("mortar", "🪖", "מרגמה", "נופל בתלילות, נזק 45", "c", 60, 3, { gravK: 1.8, dmg: 45, r: 45 }),
-  W("bouncemirv", "🪀", "MIRV קופץ", "מתפצל, וכל חלק קופץ", "r", 200, 2, { mirv: 4, bounce: 2, dmg: 24, r: 26 }, ["mirv", "bouncer"]),
-  W("fireroller", "🎡", "גלגל אש", "מתגלגל ומצית", "r", 180, 2, { roll: true, fire: 2, dmg: 35 }, ["roller", "napalm"]),
-  W("lasermirv", "🌟", "כוכב לייזר", "5 לייזרים במניפה", "e", 240, 2, { laser: true, spd: 6, gravK: 0, windK: 0, n: 5, spread: 0.14, dmg: 24, r: 18 }, ["laser", "mirv"]),
-  W("rain", "🌧️", "גשם פגזים", "מתפצל ל-12", "e", 300, 1, { mirv: 12, dmg: 15, r: 22 }, ["mirv2"]),
-  W("frog", "🐸", "צפרדע", "קופץ פעמיים ומתפצל", "c", 80, 2, { bounce: 2, burst: 3, dmg: 18, r: 24 }),
-  W("minigun", "🔫", "מיניגאן", "8 פגזים קטנים", "u", 120, 2, { n: 8, spread: 0.06, dmg: 9, r: 14 }),
-  W("meteorcall", "☄️", "קריאה למטאור", "מטאור נופל על נקודת הפגיעה", "r", 180, 1, { meteor: true, dmg: 10, r: 20 }),
+  W("heavy", "💣", "c", 60, 3, { dmg: 50, r: 40 }),
+  W("triple", "🔱", "c", 70, 3, { n: 3, spread: 0.12, dmg: 28 }),
+  W("quint", "🖐️", "u", 130, 3, { n: 5, spread: 0.1, dmg: 24 }, ["triple"]),
+  W("mirv", "🎆", "u", 120, 2, { mirv: 5, dmg: 26, r: 28 }),
+  W("mirv2", "🎇", "r", 220, 2, { mirv: 9, dmg: 24, r: 28 }, ["mirv"]),
+  W("napalm", "🔥", "u", 90, 3, { fire: 2, dmg: 25, r: 30 }),
+  W("firestorm", "🌪️", "r", 200, 2, { fire: 3, mirv: 4, dmg: 20, r: 26 }, ["napalm"]),
+  W("digger", "⛏️", "c", 80, 3, { dig: 160, dmg: 40, r: 38 }),
+  W("sandhog", "🐹", "u", 170, 2, { dig: 320, dmg: 55, r: 46 }, ["digger"]),
+  W("bouncer", "🏀", "c", 60, 3, { bounce: 3 }),
+  W("superball", "🪩", "u", 120, 3, { bounce: 7, dmg: 30 }, ["bouncer"]),
+  W("roller", "🎳", "c", 80, 3, { roll: true, dmg: 40 }),
+  W("homing", "🛰️", "u", 130, 2, { homing: 0.28 }),
+  W("laser", "🔦", "u", 110, 3, { laser: true, spd: 6, gravK: 0, windK: 0, dmg: 30, r: 18 }),
+  W("dirtball", "🟤", "c", 50, 3, { dirt: true, r: 50, dmg: 0 }),
+  W("dirtwall", "🧱", "c", 90, 2, { dirt: true, r: 90, dmg: 0 }, ["dirtball"]),
+  W("shock", "💨", "c", 70, 3, { shock: 90, dmg: 15, r: 40 }),
+  W("shockwave", "🌊", "u", 140, 2, { shock: 160, r: 80, dmg: 10 }, ["shock"]),
+  W("freeze", "🧊", "u", 90, 2, { freeze: true, dmg: 15 }),
+  W("emp", "⚡", "c", 80, 2, { emp: true, dmg: 10, r: 60 }),
+  W("icebomb", "❄️", "e", 220, 2, { freeze: true, emp: true, dmg: 20, r: 50 }, ["freeze", "emp"]),
+  W("blackhole", "🕳️", "r", 150, 2, { hole: 80, dmg: 20, r: 40 }),
+  W("gravity", "🧲", "e", 240, 2, { hole: 140, dmg: 30, r: 50 }, ["blackhole"]),
+  W("chain", "⛓️", "u", 110, 2, { chain: 3, dmg: 25 }),
+  W("chain2", "🔗", "r", 200, 2, { chain: 6, dmg: 25 }, ["chain"]),
+  W("babynuke", "☢️", "u", 150, 2, { dmg: 60, r: 60 }),
+  W("nuke", "🍄", "r", 260, 1, { dmg: 90, r: 90 }),
+  W("apoc", "💀", "e", 300, 1, { mirv: 5, dmg: 60, r: 60 }, ["nuke", "mirv"]),
+  W("drillnuke", "🌋", "e", 320, 1, { dig: 300, dmg: 90, r: 90 }, ["nuke", "digger"]),
+  W("homingnuke", "🚀", "e", 300, 1, { homing: 0.25, dmg: 70, r: 70 }, ["homing", "babynuke"]),
+  W("confetti", "🎊", "c", 30, 3, { confetti: true, dmg: 0, r: 60 }),
+  W("cluster", "🍇", "u", 100, 2, { burst: 6, dmg: 20, r: 26 }),
+  W("spikes", "🦔", "r", 180, 2, { burst: 10, dmg: 12, r: 20 }, ["cluster"]),
+  W("volcano", "🗻", "e", 260, 1, { fire: 2, burst: 5, dmg: 25, r: 30 }, ["napalm", "cluster"]),
+  W("ghost", "👻", "u", 90, 3, { ghost: true, dmg: 40 }),
+  W("teleshot", "🌀", "u", 100, 2, { tele: true, dmg: 20, r: 30 }),
+  W("medic", "💊", "c", 60, 2, { heal: 40, dmg: 0, r: 50 }),
+  W("quakeshot", "🌍", "u", 120, 1, { quake: true, dmg: 20, r: 30 }),
+  W("lift", "🪜", "c", 60, 2, { lift: true, dmg: 10, r: 30 }),
+  W("heavyx", "🧨", "u", 150, 2, { dmg: 70, r: 55 }, ["heavy"]),
+  W("sniper", "🎯", "u", 100, 3, { spd: 1.5, windK: 0.3, dmg: 45, r: 20 }),
+  W("mortar", "🪖", "c", 60, 3, { gravK: 1.8, dmg: 45, r: 45 }),
+  W("bouncemirv", "🪀", "r", 200, 2, { mirv: 4, bounce: 2, dmg: 24, r: 26 }, ["mirv", "bouncer"]),
+  W("fireroller", "🎡", "r", 180, 2, { roll: true, fire: 2, dmg: 35 }, ["roller", "napalm"]),
+  W("lasermirv", "🌟", "e", 240, 2, { laser: true, spd: 6, gravK: 0, windK: 0, n: 5, spread: 0.14, dmg: 24, r: 18 }, ["laser", "mirv"]),
+  W("rain", "🌧️", "e", 300, 1, { mirv: 12, dmg: 15, r: 22 }, ["mirv2"]),
+  W("frog", "🐸", "c", 80, 2, { bounce: 2, burst: 3, dmg: 18, r: 24 }),
+  W("minigun", "🔫", "u", 120, 2, { n: 8, spread: 0.06, dmg: 9, r: 14 }),
+  W("meteorcall", "☄️", "r", 180, 1, { meteor: true, dmg: 10, r: 20 }),
 
   /* 🛡️ הגנה */
-  P("armor", "🛡️", "שריון", "−20% נזק (נערם עד 3)", "D", "c", 70, 3, (m) => { m.armor = Math.round(Math.min(0.6, m.armor + 0.2) * 100) / 100; }),
-  P("hp", "❤️", "שלדה מחוזקת", "+30 חיים מקסימום (ומרפא 30)", "D", "c", 60, 4, (m) => { m.hpMax += 30; }),
-  P("megahp", "💗", "שלדת טיטניום", "+60 חיים מקסימום", "D", "r", 160, 1, (m) => { m.hpMax += 60; }, ["hp"]),
-  P("shield", "🔵", "מגן", "30 מגן שמתחדש כל סלבו", "D", "u", 90, 3, (m) => { m.shield += 30; }),
-  P("reflect", "🪞", "מגן מחזיר", "פגיעה ישירה במגן חוזרת ליורה", "D", "r", 180, 1, (m) => { m.reflect = true; }, ["shield"]),
-  P("fortress", "🏰", "מבצר", "+60 מגן ו-−10% נזק", "D", "e", 240, 1, (m) => { m.shield += 60; m.armor = Math.round(Math.min(0.6, m.armor + 0.1) * 100) / 100; }, ["shield", "armor"]),
-  P("autorepair", "🔧", "תיקון אוטומטי", "+12 חיים כל סלבו", "D", "c", 80, 3, (m) => { m.repair += 12; }),
-  P("chute", "🪂", "מצנח", "בלי נזק נפילה", "D", "c", 40, 1, (m) => { m.chute = true; }),
-  P("hover", "🛸", "ריחוף", "חסין לנפילה ולמבול", "D", "u", 120, 1, (m) => { m.hover = true; m.chute = true; }, ["chute"]),
-  P("dodge", "💫", "התחמקות", "20% מהפגזים מפספסים", "D", "u", 100, 2, (m) => { m.dodge = Math.min(0.5, m.dodge + 0.2); }),
-  P("laststand", "🕯️", "עמידה אחרונה", "פגיעה קטלנית משאירה 1 חיים (פעם בקרב)", "D", "u", 130, 1, (m) => { m.lastStand = true; }),
-  P("heavytank", "🪨", "משקל כבד", "חסין להדף ולחור שחור", "D", "c", 60, 1, (m) => { m.heavy = true; }),
-  P("fireproof", "🧯", "חסין אש", "נפאלם לא פוגע בך", "D", "c", 60, 1, (m) => { m.fireproof = true; }),
-  P("faraday", "🔌", "כלוב פאראדיי", "חסין להקפאה ול-EMP", "D", "c", 70, 1, (m) => { m.faraday = true; }),
-  I("repairkit", "🩹", "ערכת תיקון", "+40 חיים עכשיו", "D", "c", 50, "heal40"),
-  I("fullrepair", "🏥", "תיקון מלא", "חיים מלאים עכשיו", "D", "u", 120, "healfull"),
-  I("bunker", "🏗️", "בונקר", "אדמה משני הצדדים שלך", "D", "c", 60, "bunker"),
-  I("digin", "🕳️", "התחפרות", "יורד 30px לתוך ההר", "D", "c", 50, "digin"),
+  P("armor", "🛡️", "D", "c", 70, 3, (m) => { m.armor = Math.round(Math.min(0.6, m.armor + 0.2) * 100) / 100; }),
+  P("hp", "❤️", "D", "c", 60, 4, (m) => { m.hpMax += 30; }),
+  P("megahp", "💗", "D", "r", 160, 1, (m) => { m.hpMax += 60; }, ["hp"]),
+  P("shield", "🔵", "D", "u", 90, 3, (m) => { m.shield += 30; }),
+  P("reflect", "🪞", "D", "r", 180, 1, (m) => { m.reflect = true; }, ["shield"]),
+  P("fortress", "🏰", "D", "e", 240, 1, (m) => { m.shield += 60; m.armor = Math.round(Math.min(0.6, m.armor + 0.1) * 100) / 100; }, ["shield", "armor"]),
+  P("autorepair", "🔧", "D", "c", 80, 3, (m) => { m.repair += 12; }),
+  P("chute", "🪂", "D", "c", 40, 1, (m) => { m.chute = true; }),
+  P("hover", "🛸", "D", "u", 120, 1, (m) => { m.hover = true; m.chute = true; }, ["chute"]),
+  P("dodge", "💫", "D", "u", 100, 2, (m) => { m.dodge = Math.min(0.5, m.dodge + 0.2); }),
+  P("laststand", "🕯️", "D", "u", 130, 1, (m) => { m.lastStand = true; }),
+  P("heavytank", "🪨", "D", "c", 60, 1, (m) => { m.heavy = true; }),
+  P("fireproof", "🧯", "D", "c", 60, 1, (m) => { m.fireproof = true; }),
+  P("faraday", "🔌", "D", "c", 70, 1, (m) => { m.faraday = true; }),
+  I("repairkit", "🩹", "D", "c", 50, "heal40"),
+  I("fullrepair", "🏥", "D", "u", 120, "healfull"),
+  I("bunker", "🏗️", "D", "c", 60, "bunker"),
+  I("digin", "🕳️", "D", "c", 50, "digin"),
 
   /* ⚙️ טנק */
-  P("fuel", "⛽", "דלק", "◀ ▶ 2 צעדים בכל סיבוב", "T", "c", 60, 3, (m) => { m.fuel += 2; }),
-  P("turbo", "🏎️", "טורבו", "צעד כפול", "T", "c", 80, 1, (m) => { m.moveStep = 60; }, ["fuel"]),
-  P("ballistic", "🧮", "מחשב בליסטי", "רואה את כל המסלול", "T", "u", 120, 1, (m) => { m.preview = 999; }),
-  P("windsensor", "🌬️", "חיישן רוח", "התחזית כוללת את הרוח", "T", "u", 90, 1, (m) => { m.windPreview = true; }),
-  P("sight", "🔭", "כוונת", "מסמן את נקודת הנחיתה", "T", "c", 60, 1, (m) => { m.sight = true; }),
-  P("biggun", "🔩", "תותח גדול", "+30% עוצמה מקסימלית", "T", "c", 70, 2, (m) => { m.power += 0.3; }),
-  P("dbl", "🎯🎯", "קנה כפול", "כל ירייה יורה פעמיים", "T", "r", 200, 1, (m) => { m.dbl = true; }),
-  P("coat", "🧥", "מעיל רוח", "הרוח משפיעה חצי", "T", "c", 80, 1, (m) => { m.windK = 0.5; }),
-  P("stabilizer", "📐", "מייצב", "מניפות צפופות פי 2", "T", "c", 60, 1, (m) => { m.stabilizer = true; }),
-  I("tele", "✨", "טלפורט", "קופץ למקום אקראי", "T", "u", 90, "tele"),
-  I("jumpjet", "🚁", "מנוע סילון", "קפיצה קצרה לצד", "T", "c", 60, "jump"),
-  I("ammobox", "📦", "ארגז תחמושת", "+1 שימוש לכל התחמושת שלך", "T", "u", 90, "ammobox"),
+  P("fuel", "⛽", "T", "c", 60, 3, (m) => { m.fuel += 2; }),
+  P("turbo", "🏎️", "T", "c", 80, 1, (m) => { m.moveStep = 60; }, ["fuel"]),
+  P("ballistic", "🧮", "T", "u", 120, 1, (m) => { m.preview = 999; }),
+  P("windsensor", "🌬️", "T", "u", 90, 1, (m) => { m.windPreview = true; }),
+  P("sight", "🔭", "T", "c", 60, 1, (m) => { m.sight = true; }),
+  P("biggun", "🔩", "T", "c", 70, 2, (m) => { m.power += 0.3; }),
+  P("dbl", "🎯🎯", "T", "r", 200, 1, (m) => { m.dbl = true; }),
+  P("coat", "🧥", "T", "c", 80, 1, (m) => { m.windK = 0.5; }),
+  P("stabilizer", "📐", "T", "c", 60, 1, (m) => { m.stabilizer = true; }),
+  I("tele", "✨", "T", "u", 90, "tele"),
+  I("jumpjet", "🚁", "T", "c", 60, "jump"),
+  I("ammobox", "📦", "T", "u", 90, "ammobox"),
 
   /* 🪙 כלכלה */
-  P("magnet", "🧲", "מגנט זהב", "+35% זהב", "E", "c", 80, 2, (m) => { m.gold += 0.35; }),
-  P("loot", "💰", "שלל", "+50% זהב מנזק", "E", "r", 150, 1, (m) => { m.gold += 0.5; }, ["magnet"]),
-  P("lucky", "🍀", "מזל", "יותר קלפים נדירים", "E", "u", 100, 2, (m) => { m.luck += 1; }),
-  P("discount", "🏷️", "מחירון", "20% הנחה בכל המוסך", "E", "u", 90, 1, (m) => { m.discount = 0.2; }),
-  P("interest", "🏦", "ריבית", "+10% זהב כל סלבו", "E", "u", 110, 1, (m) => { m.interest = 0.1; }),
-  P("scavenger", "🦅", "אספן", "+60 זהב על כל הריגה", "E", "c", 80, 1, (m) => { m.killBonus += 60; }),
-  P("survivor", "🌵", "שורד", "בונוס שרידות ×3", "E", "c", 70, 1, (m) => { m.surviveMul = 3; }),
-  P("blueprint", "📜", "שרטוט", "8 קלפים במוסך במקום 6", "E", "c", 60, 1, (m) => { m.offerN = 8; }),
-  I("briefcase", "💼", "מזוודה", "+80 זהב", "E", "c", 50, "gold80"),
+  P("magnet", "🧲", "E", "c", 80, 2, (m) => { m.gold += 0.35; }),
+  P("loot", "💰", "E", "r", 150, 1, (m) => { m.gold += 0.5; }, ["magnet"]),
+  P("lucky", "🍀", "E", "u", 100, 2, (m) => { m.luck += 1; }),
+  P("discount", "🏷️", "E", "u", 90, 1, (m) => { m.discount = 0.2; }),
+  P("interest", "🏦", "E", "u", 110, 1, (m) => { m.interest = 0.1; }),
+  P("scavenger", "🦅", "E", "c", 80, 1, (m) => { m.killBonus += 60; }),
+  P("survivor", "🌵", "E", "c", 70, 1, (m) => { m.surviveMul = 3; }),
+  P("blueprint", "📜", "E", "c", 60, 1, (m) => { m.offerN = 8; }),
+  I("briefcase", "💼", "E", "c", 50, "gold80"),
 
   /* 🎭 חברתי */
-  P("revenge", "😤", "נקמה", "נזק כפול למי שפגע בך אחרון", "S", "c", 80, 1, (m) => { m.revenge = true; }),
-  P("hunter", "🏹", "צייד ראשים", "בונוס ראש-בפרס כפול", "S", "u", 90, 1, (m) => { m.hunter = true; }),
-  P("betray", "🗡️", "בגידה", "מותר לפגוע בבן הברית — נזק כפול", "S", "u", 120, 1, (m) => { m.betray = true; }, ["ally"]),
-  I("bounty", "🎯", "ראש בפרס", "בחר שחקן: כולם מקבלים בונוס עליו", "S", "c", 60, "bounty", "player"),
-  I("steal", "🦝", "גניבה", "גונב 40 זהב משחקן", "S", "c", 70, "steal", "player"),
-  I("robin", "🏹", "רובין הוד", "גונב 60 זהב מהמוביל", "S", "u", 90, "robin"),
-  I("cursewind", "🌪️", "קללת רוח", "הירייה הבאה שלו — רוח אקראית", "S", "u", 80, "curse:wind", "player"),
-  I("curseweak", "🐌", "קללת חולשה", "הירייה הבאה שלו — חצי עוצמה", "S", "u", 80, "curse:weak", "player"),
-  I("curseblind", "🙈", "עיוורון", "הוא לא רואה תחזית בסיבוב הבא", "S", "c", 60, "curse:blind", "player"),
-  I("curseconf", "🤡", "קללת קונפטי", "הירייה הבאה שלו — קונפטי", "S", "c", 70, "curse:confetti", "player"),
-  I("swap", "🔀", "החלפה", "מתחלף במקום עם שחקן", "S", "u", 100, "swap", "player"),
-  I("ally", "🤝", "ברית", "2 סיבובים בלי נזק הדדי, +25 זהב לסיבוב", "S", "c", 70, "ally", "player"),
-  I("spy", "🕵️", "ריגול", "רואה לאן הוא מכוון בסיבוב הבא", "S", "c", 50, "spy", "player"),
-  I("taunt", "😜", "התגרות", "אם תשרוד את הסלבו הבא — +100 זהב", "S", "c", 60, "taunt"),
-  I("sabotage", "🔧", "חבלה", "מוריד לו את המגן ותחמושת אחת", "S", "u", 100, "sabotage", "player"),
-  I("gift", "🎁", "מתנה", "נותן 60 זהב לשחקן", "S", "c", 50, "gift", "player"),
+  P("revenge", "😤", "S", "c", 80, 1, (m) => { m.revenge = true; }),
+  P("hunter", "🏹", "S", "u", 90, 1, (m) => { m.hunter = true; }),
+  P("betray", "🗡️", "S", "u", 120, 1, (m) => { m.betray = true; }, ["ally"]),
+  I("bounty", "🎯", "S", "c", 60, "bounty", "player"),
+  I("steal", "🦝", "S", "c", 70, "steal", "player"),
+  I("robin", "🏹", "S", "u", 90, "robin"),
+  I("cursewind", "🌪️", "S", "u", 80, "curse:wind", "player"),
+  I("curseweak", "🐌", "S", "u", 80, "curse:weak", "player"),
+  I("curseblind", "🙈", "S", "c", 60, "curse:blind", "player"),
+  I("curseconf", "🤡", "S", "c", 70, "curse:confetti", "player"),
+  I("swap", "🔀", "S", "u", 100, "swap", "player"),
+  I("ally", "🤝", "S", "c", 70, "ally", "player"),
+  I("spy", "🕵️", "S", "c", 50, "spy", "player"),
+  I("taunt", "😜", "S", "c", 60, "taunt"),
+  I("sabotage", "🔧", "S", "u", 100, "sabotage", "player"),
+  I("gift", "🎁", "S", "c", 50, "gift", "player"),
 
   /* 🌍 עולם */
-  I("quake", "🌍", "רעידת אדמה", "כל ההר קורס קצת — כולם נופלים", "X", "u", 100, "world:quake"),
-  I("flood", "🌊", "מבול", "המים עולים. מי שבמים — נפגע", "X", "u", 120, "world:flood"),
-  I("lowgrav", "🌙", "כבידה נמוכה", "2 סיבובים — הפגזים עפים רחוק", "X", "u", 90, "world:lowgrav"),
-  I("highgrav", "🪐", "כבידה כבדה", "2 סיבובים — הפגזים נופלים מהר", "X", "c", 70, "world:highgrav"),
-  I("storm", "🌀", "סופה", "רוח ×2.5 ל-2 סיבובים", "X", "c", 80, "world:storm"),
-  I("calm", "🍃", "שקט", "בלי רוח 2 סיבובים", "X", "c", 50, "world:calm"),
-  I("night", "🌚", "לילה", "בסיבוב הבא — אין תחזית לאף אחד", "X", "u", 90, "world:night"),
-  I("meteors", "☄️", "גשם מטאורים", "4 מטאורים בסלבו הבא", "X", "r", 130, "world:meteors"),
-  I("newmap", "🗺️", "הר חדש", "ההר מתחלף — כולם נופלים עליו", "X", "r", 200, "world:newmap"),
-  I("oil", "🛢️", "שמן", "כולם מחליקים במורד", "X", "c", 70, "world:oil"),
-  I("walls", "🧱", "קירות", "פגזים חוזרים מהקצוות 2 סיבובים", "X", "c", 60, "world:walls"),
-  I("doomsday", "🔔", "יום הדין", "בסלבו הבא כל הנזק כפול", "X", "r", 150, "world:doom"),
-  I("healrain", "🌦️", "גשם מרפא", "כולם +25 חיים", "X", "c", 80, "world:healall"),
-  I("shuffle", "🎲", "ערבוב", "כל הטנקים מתפזרים מחדש", "X", "r", 130, "world:shuffle"),
+  I("quake", "🌍", "X", "u", 100, "world:quake"),
+  I("flood", "🌊", "X", "u", 120, "world:flood"),
+  I("lowgrav", "🌙", "X", "u", 90, "world:lowgrav"),
+  I("highgrav", "🪐", "X", "c", 70, "world:highgrav"),
+  I("storm", "🌀", "X", "c", 80, "world:storm"),
+  I("calm", "🍃", "X", "c", 50, "world:calm"),
+  I("night", "🌚", "X", "u", 90, "world:night"),
+  I("meteors", "☄️", "X", "r", 130, "world:meteors"),
+  I("newmap", "🗺️", "X", "r", 200, "world:newmap"),
+  I("oil", "🛢️", "X", "c", 70, "world:oil"),
+  I("walls", "🧱", "X", "c", 60, "world:walls"),
+  I("doomsday", "🔔", "X", "r", 150, "world:doom"),
+  I("healrain", "🌦️", "X", "c", 80, "world:healall"),
+  I("shuffle", "🎲", "X", "r", 130, "world:shuffle"),
 
   /* ☁️ שמיים — למתים, חינם, אחד לסיבוב */
-  K("skymeteor", "☄️", "מטאור", "בחר נקודה — מטאור נופל שם", "sky:meteor", "x"),
-  K("skydirt", "🌫️", "ענן אדמה", "בחר נקודה — גבעה נוחתת שם", "sky:dirt", "x"),
-  K("skybless", "😇", "ברכה", "+40 מגן לשחקן", "sky:bless", "player"),
-  K("skyheal", "💚", "ריפוי", "+30 חיים לשחקן", "sky:heal", "player"),
-  K("skywind", "🌬️", "רוח", "הרוח משתנה לכיוון אקראי חזק", "sky:wind"),
-  K("skycurse", "😈", "קללה", "הירייה הבאה שלו — רוח אקראית", "sky:curse", "player"),
-  K("skyweak", "🐌", "בוץ", "הירייה הבאה שלו — חצי עוצמה", "sky:weak", "player"),
-  K("skygift", "🎁", "מענק", "+60 זהב לאחרון בטבלה", "sky:gift"),
+  K("skymeteor", "☄️", "sky:meteor", "x"),
+  K("skydirt", "🌫️", "sky:dirt", "x"),
+  K("skybless", "😇", "sky:bless", "player"),
+  K("skyheal", "💚", "sky:heal", "player"),
+  K("skywind", "🌬️", "sky:wind"),
+  K("skycurse", "😈", "sky:curse", "player"),
+  K("skyweak", "🐌", "sky:weak", "player"),
+  K("skygift", "🎁", "sky:gift"),
 ];
 const CARD_MAP = new Map(TK_CARDS.map((c) => [c.id, c]));
 export const tkCard = (id: string) => CARD_MAP.get(id);
 export const TK_RARITY_W: Record<TkRarity, number> = { c: 10, u: 5, r: 2, e: 6 };
-export const TK_RAR_NAME: Record<TkRarity, string> = { c: "רגיל", u: "נדיר", r: "אגדי", e: "אבולוציה" };
-export const TK_CAT_NAME: Record<TkCat, string> = { W: "תחמושת", D: "הגנה", T: "טנק", S: "חברתי", X: "עולם", E: "כלכלה", K: "שמיים" };
+// שמות נדירות/קטגוריה: tanks.rar.<r> / tanks.cat.<C> ב-locales
 export const TK_BASIC = "basic";
 /** הנשק הבסיסי — אינסופי */
 export const tkWeaponOf = (id: string): TkWeapon => { const b = tkBaseWeapon(); if (id === TK_BASIC) return b; const c = tkCard(id); return c?.w ? { ...b, ...c.w } : b; };
@@ -723,7 +722,7 @@ export function tkConfig(raw: Partial<Record<string, unknown>>): TkConfig {
 
 /* ---------- הודעות ---------- */
 export interface TkTankWire { pid: string; c: number; x: number; y: number; hp: number; hpMax: number; sh: number; alive: boolean; bounty?: boolean; frozen?: boolean; own?: string[] /* הבילד: מזהי הפסיביים (כולם רואים) */ }
-export interface TkCardWire { id: string; ic: string; t: string; d: string; r: TkRarity; cat: TkCat; kind: TkKind; price: number; tg?: TkTargetKind; n?: number }
+export interface TkCardWire { id: string; ic: string; r: TkRarity; cat: TkCat; kind: TkKind; price: number; tg?: TkTargetKind; n?: number }
 export interface TkWorldWire { water: number; gravK: number; windK: number; walls: boolean; night: boolean; fires: { x: number; r: number; until: number }[]; theme: TkTheme }
 export type TkRow = { pid: string; c: number; score: number; kills: number; dmg: number; gold: number; wins: number; cards: string[] };
 
@@ -737,14 +736,14 @@ export type TanksServerMsg =
   | { a: "tk_terrain"; h: number[]; world?: TkWorldWire }
   | { a: "tk_move"; pid: string; x: number; y: number; fuel: number }
   | { a: "tk_spy"; pid: string; vx: number; vy: number }
-  | { a: "tk_salvo"; k: number; at: number; input: TkSalvoIn; ticks: number; tanks: TkTankWire[]; pre: string[] }
-  | { a: "tk_result"; k: number; h: number[]; world: TkWorldWire; tanks: TkTankWire[]; gold: Record<string, number>; earned: Record<string, number>; feed: string[] }
+  | { a: "tk_salvo"; k: number; at: number; input: TkSalvoIn; ticks: number; tanks: TkTankWire[]; pre: LText[] }
+  | { a: "tk_result"; k: number; h: number[]; world: TkWorldWire; tanks: TkTankWire[]; gold: Record<string, number>; earned: Record<string, number>; feed: LText[] }
   | { a: "tk_garage"; k: number; until: number; gold: number; cards: TkCardWire[]; sudden: boolean }
   | { a: "tk_sky"; k: number; cards: TkCardWire[] }
-  | { a: "tk_bought"; pid: string; card: TkCardWire; target?: string; tx: string }
+  | { a: "tk_bought"; pid: string; card: TkCardWire; target?: string; tx: LText }
   | { a: "tk_battleover"; b: number; winner: string | null; rows: TkRow[]; last: boolean }
-  | { a: "tk_over"; rows: TkRow[]; titles: { pid: string; ic: string; t: string }[] }
-  | { a: "tk_feed"; tx: string }
+  | { a: "tk_over"; rows: TkRow[]; titles: { pid: string; ic: string; t: string }[] } // t = מפתח tanks.title.*
+  | { a: "tk_feed"; tx: LText }
   | { a: "tk_sync"; phase: string; b: number; k: number; chars: Record<string, number>; seed: string; h: number[]; world: TkWorldWire; tanks: TkTankWire[]; wind: number; until: number; you: { gold: number; ammo: Record<string, number>; owned: Record<string, number>; fuel: number; alive: boolean }; cfg: { aimMs: number; garageMs: number }; battles: number };
 
 export type TanksClientMsg =

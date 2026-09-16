@@ -1,6 +1,6 @@
 /* ===== התותחים 💥 — מסך מלא משלו, בשפת המדבקות ===== */
 .tk-wrap{position:fixed; inset:0; width:100vw; height:100vh; height:100dvh; z-index:60; background:#14110E; overflow:hidden;
-  touch-action:none; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; overscroll-behavior:none; direction:rtl;
+  touch-action:none; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; overscroll-behavior:none;
   font-family:var(--font-body,"Assistant Variable",Assistant,sans-serif); color:#FFF3DC;}
 /* styles.css נותן לכל ילד ישיר של #root position:relative — כאן חייבים fixed (אחרת לרוחב המסך זז עם ה-body של 480px) */
 #root>.tk-wrap{position:fixed; z-index:60;}
@@ -41,7 +41,7 @@
 .tk-timer.hot{background:conic-gradient(#FF4438 var(--p,360deg), rgba(255,255,255,.12) 0); animation:tkpulse .5s ease-in-out infinite alternate;}
 .tk-timer.off{background:rgba(255,255,255,.12);}
 @keyframes tkpulse{from{transform:scale(1);} to{transform:scale(1.12);}}
-.tk-feed{position:absolute; left:10px; top:calc(max(10px, env(safe-area-inset-top,0px)) + 46px); display:flex; flex-direction:column; align-items:flex-start; gap:4px; pointer-events:none; max-width:min(60vw, 260px); direction:rtl; z-index:3;}
+.tk-feed{position:absolute; inset-inline-end:10px; top:calc(max(10px, env(safe-area-inset-top,0px)) + 46px); display:flex; flex-direction:column; align-items:flex-start; gap:4px; pointer-events:none; max-width:min(60vw, 260px); z-index:3;}
 .tk-feed div{font-size:12px; font-weight:800; background:rgba(0,0,0,.55); padding:2px 9px; border-radius:99px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; animation:tkin .2s ease-out both;}
 @keyframes tkin{from{opacity:0; transform:translateY(-6px);} to{opacity:1; transform:none;}}
 
@@ -50,7 +50,7 @@
 .tk-bar{position:absolute; left:0; right:0; bottom:0; padding:6px 8px calc(env(safe-area-inset-bottom,0px) + 8px); display:flex; flex-direction:column; gap:6px; background:linear-gradient(180deg, rgba(20,17,14,0), rgba(20,17,14,.85) 30%); z-index:4; pointer-events:none;}
 .tk-bar button,.tk-ammo{pointer-events:auto;}
 .tk-ammohint{align-self:center; font-size:12px; font-weight:800; background:rgba(0,0,0,.6); border:2px solid #0C0906; padding:3px 10px; border-radius:99px; max-width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; animation:tkin .2s ease-out both;}
-.tk-ammo{display:flex; gap:6px; overflow-x:auto; padding:4px 2px; scrollbar-width:none; direction:rtl;}
+.tk-ammo{display:flex; gap:6px; overflow-x:auto; padding:4px 2px; scrollbar-width:none;}
 .tk-ammo::-webkit-scrollbar{display:none;}
 .tk-am{flex:0 0 auto; display:flex; flex-direction:column; align-items:center; gap:0; min-width:58px; padding:4px 8px; border-radius:12px; background:#231F1A; color:#FFF3DC; border:2.5px solid #0C0906; box-shadow:-3px 3px 0 #0C0906; line-height:1.15;}
 .tk-am .ic{font-size:20px;} .tk-am b{font-size:11px;} .tk-am small{font-size:10px; color:#C8B78E;}
@@ -108,7 +108,7 @@
 
 /* ---- המוסך ---- */
 .tk-garage{position:absolute; inset:0; z-index:8; display:flex; flex-direction:column; align-items:center; gap:8px; padding:calc(max(10px, env(safe-area-inset-top,0px)) + 4px) 10px calc(env(safe-area-inset-bottom,0px) + 10px); background:rgba(20,17,14,.93); overflow:hidden;}
-.tk-garage .head{display:flex; align-items:center; gap:10px; width:100%; max-width:400px; justify-content:space-between; padding-left:118px; box-sizing:border-box;} /* מקום ל"סיום משחק" */
+.tk-garage .head{display:flex; align-items:center; gap:10px; width:100%; max-width:400px; justify-content:space-between; padding-inline-end:118px; box-sizing:border-box;} /* מקום ל"סיום משחק" */
 .tk-buytoast{position:absolute; top:calc(max(10px, env(safe-area-inset-top,0px)) + 58px); left:50%; transform:translateX(-50%); z-index:9; display:flex; align-items:center; gap:10px; padding:8px 14px; border-radius:16px; max-width:92vw;
   background:#FFF3DC; color:#0C0906; border:3px solid #0C0906; box-shadow:-4px 5px 0 var(--tc,#C8B78E); pointer-events:none; animation:tktoast .35s cubic-bezier(.2,1.6,.4,1) both; rotate:-1deg;}
 .tk-buytoast.r-u{--tc:#4D86FF;} .tk-buytoast.r-r{--tc:#A855F7; background:#F3E8FF;} .tk-buytoast.r-e{--tc:#FFC531; background:#FFF1BF;}
@@ -116,7 +116,7 @@
 .tk-buytoast .tx{display:flex; flex-direction:column; gap:1px; min-width:0;}
 .tk-buytoast b{font-size:16px;} .tk-buytoast small{font-size:12px; font-weight:800; color:#4A3F35; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
 @keyframes tktoast{from{transform:translateX(-50%) scale(.5); opacity:0;} to{transform:translateX(-50%) scale(1); opacity:1;}}
-.tk-garage h2{font-family:var(--font-display,"Suez One",serif); font-weight:400; font-size:26px; margin:0; text-shadow:-3px 4px 0 var(--gc,#E8433F);}
+.tk-garage h2{font-family:var(--font-display,"Suez One",serif); font-weight:400; font-size:26px; margin:0; white-space:nowrap; text-shadow:-3px 4px 0 var(--gc,#E8433F);}
 .tk-garage .ring,.tk-garage .ring::before{border-radius:50%;}
 .tk-garage .ring{width:46px; height:46px; display:grid; place-items:center; position:relative; background:conic-gradient(#FFC531 var(--p,360deg), rgba(255,255,255,.12) 0); box-shadow:0 0 0 3px #0C0906; flex:0 0 auto;}
 .tk-garage .ring::before{content:""; position:absolute; inset:5px; background:#231F1A; border:2px solid #0C0906;}

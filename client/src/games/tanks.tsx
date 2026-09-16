@@ -9,11 +9,23 @@
  */
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import type { GameViewProps } from "./registry";
-import { TK, TK_RAR_NAME, TK_CAT_NAME, TK_BASIC, tkCard, tkMods, tkNewWorld, tkGround, tkNewSalvo, tkPreview, tkWeaponOf, tkBotAim } from "../../../shared/tanks";
+import { TK, TK_BASIC, tkCard, tkMods, tkNewWorld, tkGround, tkNewSalvo, tkPreview, tkWeaponOf, tkBotAim } from "../../../shared/tanks";
 import type { TkWorld, TkTank, TkTankWire, TkWorldWire, TkCardWire, TkSalvoSim, TkEvent, TkMods, TanksServerMsg, TkRow } from "../../../shared/tanks";
 import { tkAudioInit, tkSfx } from "./tanksAudio";
 import { drawTankBody, drawBarrel, tankIcon, loadTankSprite, onTankSpriteReady, tankSpriteReady, barrelPivot, TANKS, TANK_W } from "./tanksSprites";
 import { vibrate } from "../lib/audio";
+import { t as tr, lt } from "../lib/locale";
+import type { LText } from "../../../shared/protocol";
+
+/** שם/תיאור קלף לפי מזהה — הטקסט יושב ב-locales/<lang>/tanks.json */
+const cn = (id: string) => tr(`tanks.card.${id}`);
+const cd = (id: string) => tr(`tanks.card.${id}.d`);
+/** טקסט מהשרת: {k,p} — אם p.card הוא מזהה קלף, מתרגמים אותו קודם */
+function ft(x: LText): string {
+  if (typeof x === "string") return x;
+  const p = x.p && typeof x.p.card === "string" ? { ...x.p, card: cn(x.p.card) } : x.p;
+  return lt({ k: x.k, p });
+}
 
 type Phase = "wait" | "pick" | "intro" | "aim" | "salvo" | "garage" | "battleover" | "over";
 type OverMsg = Extract<TanksServerMsg, { a: "tk_over" }>;
@@ -63,43 +75,43 @@ function leaveLandscape() {
 function modDelta(a: TkMods, b: TkMods): string[] {
   const out: string[] = [];
   const pct = (v: number) => `${Math.round(v * 100)}%`;
-  if (b.hpMax !== a.hpMax) out.push(`❤️ חיים ${a.hpMax} → ${b.hpMax}`);
-  if (b.armor !== a.armor) out.push(`🛡️ שריון ${pct(a.armor)} → ${pct(b.armor)} פחות נזק`);
-  if (b.shield !== a.shield) out.push(`🔵 מגן ${a.shield} → ${b.shield} כל סלבו`);
-  if (b.repair !== a.repair) out.push(`🔧 +${b.repair} חיים כל סלבו`);
-  if (b.dodge !== a.dodge) out.push(`💫 ${pct(b.dodge)} מהפגזים מפספסים`);
-  if (b.fuel !== a.fuel) out.push(`⛽ ${b.fuel} צעדים בסיבוב`);
-  if (b.moveStep !== a.moveStep) out.push(`🏎️ צעד ${a.moveStep} → ${b.moveStep}`);
-  if (b.power !== a.power) out.push(`🔩 עוצמה ${pct(a.power)} → ${pct(b.power)}`);
-  if (b.gold !== a.gold) out.push(`🪙 זהב ×${a.gold} → ×${b.gold}`);
-  if (b.windK !== a.windK) out.push(`🧥 הרוח משפיעה ×${b.windK}`);
-  if (b.preview !== a.preview) out.push("🧮 רואה את כל המסלול");
-  if (b.luck !== a.luck) out.push(`🍀 מזל ${b.luck} — יותר קלפים נדירים`);
-  if (b.discount !== a.discount) out.push(`🏷️ ${pct(b.discount)} הנחה במוסך`);
-  if (b.interest !== a.interest) out.push(`🏦 +${pct(b.interest)} זהב כל סלבו`);
-  if (b.killBonus !== a.killBonus) out.push(`🦅 +${b.killBonus} זהב להריגה`);
-  if (b.surviveMul !== a.surviveMul) out.push(`🌵 שרידות ×${b.surviveMul}`);
-  if (b.offerN !== a.offerN) out.push(`📜 ${b.offerN} קלפים במוסך`);
-  const flags: [keyof TkMods, string][] = [["chute", "🪂 בלי נזק נפילה"], ["hover", "🛸 חסין לנפילה ולמבול"], ["heavy", "🪨 חסין להדף"], ["fireproof", "🧯 חסין לאש"], ["faraday", "🔌 חסין להקפאה ו-EMP"], ["lastStand", "🕯️ פגיעה קטלנית משאירה 1"], ["reflect", "🪞 פגיעה במגן חוזרת ליורה"], ["windPreview", "🌬️ התחזית כוללת רוח"], ["dbl", "🎯🎯 כל ירייה — פעמיים"], ["stabilizer", "📐 מניפות צפופות"], ["sight", "🔭 רואה את נקודת הנחיתה"], ["revenge", "😤 נזק כפול למי שפגע בך"], ["hunter", "🏹 בונוס ראש-בפרס כפול"], ["betray", "🗡️ מותר לפגוע בבן הברית"]];
-  for (const [k, tx] of flags) if (b[k] && !a[k]) out.push(tx);
+  if (b.hpMax !== a.hpMax) out.push(tr("tanks.mod.hp", { a: a.hpMax, b: b.hpMax }));
+  if (b.armor !== a.armor) out.push(tr("tanks.mod.armor", { a: pct(a.armor), b: pct(b.armor) }));
+  if (b.shield !== a.shield) out.push(tr("tanks.mod.shield", { a: a.shield, b: b.shield }));
+  if (b.repair !== a.repair) out.push(tr("tanks.mod.repair", { n: b.repair }));
+  if (b.dodge !== a.dodge) out.push(tr("tanks.mod.dodge", { p: pct(b.dodge) }));
+  if (b.fuel !== a.fuel) out.push(tr("tanks.mod.fuel", { n: b.fuel }));
+  if (b.moveStep !== a.moveStep) out.push(tr("tanks.mod.step", { a: a.moveStep, b: b.moveStep }));
+  if (b.power !== a.power) out.push(tr("tanks.mod.power", { a: pct(a.power), b: pct(b.power) }));
+  if (b.gold !== a.gold) out.push(tr("tanks.mod.gold", { a: a.gold, b: b.gold }));
+  if (b.windK !== a.windK) out.push(tr("tanks.mod.wind", { n: b.windK }));
+  if (b.preview !== a.preview) out.push(tr("tanks.mod.preview"));
+  if (b.luck !== a.luck) out.push(tr("tanks.mod.luck", { n: b.luck }));
+  if (b.discount !== a.discount) out.push(tr("tanks.mod.discount", { p: pct(b.discount) }));
+  if (b.interest !== a.interest) out.push(tr("tanks.mod.interest", { p: pct(b.interest) }));
+  if (b.killBonus !== a.killBonus) out.push(tr("tanks.mod.kill", { n: b.killBonus }));
+  if (b.surviveMul !== a.surviveMul) out.push(tr("tanks.mod.survive", { n: b.surviveMul }));
+  if (b.offerN !== a.offerN) out.push(tr("tanks.mod.offer", { n: b.offerN }));
+  const flags: (keyof TkMods)[] = ["chute", "hover", "heavy", "fireproof", "faraday", "lastStand", "reflect", "windPreview", "dbl", "stabilizer", "sight", "revenge", "hunter", "betray"];
+  for (const k of flags) if (b[k] && !a[k]) out.push(tr(`tanks.mod.${k}`));
   return out;
 }
 /** תיאור תחמושת בשורה: נזק · רדיוס · מיוחד */
 function ammoLine(id: string): string {
   const w = tkWeaponOf(id); const bits: string[] = [];
-  if (w.dmg > 0) bits.push(`💥 נזק ${w.dmg}${w.n > 1 ? ` ×${w.n}` : ""}`);
-  if (w.r > 0) bits.push(`מכתש ${w.r}`);
-  if (w.mirv > 0) bits.push(`מתפצל ל-${w.mirv} בשיא`);
-  if (w.burst > 0) bits.push(`מתפצל ל-${w.burst} בפגיעה`);
-  if (w.bounce > 0) bits.push(`${w.bounce} קפיצות`);
-  if (w.fire > 0) bits.push("🔥 מצית");
-  if (w.dig > 0) bits.push("⛏️ חופר");
-  if (w.laser) bits.push("קו ישר");
-  if (w.homing > 0) bits.push("🛰️ מתביית");
-  if (w.chain > 0) bits.push(`⛓️ ${w.chain} פיצוצים נוספים`);
-  if (w.shock > 0) bits.push("💨 הדף");
-  if (w.freeze) bits.push("🧊 מקפיא"); if (w.emp) bits.push("⚡ EMP"); if (w.heal > 0) bits.push(`💊 מרפא ${w.heal}`);
-  if (w.dirt) bits.push("בונה אדמה"); if (w.confetti) bits.push("🎊 0 נזק");
+  if (w.dmg > 0) bits.push(tr("tanks.am.dmg", { n: w.dmg }) + (w.n > 1 ? ` ×${w.n}` : ""));
+  if (w.r > 0) bits.push(tr("tanks.am.crater", { n: w.r }));
+  if (w.mirv > 0) bits.push(tr("tanks.am.mirv", { n: w.mirv }));
+  if (w.burst > 0) bits.push(tr("tanks.am.burst", { n: w.burst }));
+  if (w.bounce > 0) bits.push(tr("tanks.am.bounce", { n: w.bounce }));
+  if (w.fire > 0) bits.push(tr("tanks.am.fire"));
+  if (w.dig > 0) bits.push(tr("tanks.am.dig"));
+  if (w.laser) bits.push(tr("tanks.am.laser"));
+  if (w.homing > 0) bits.push(tr("tanks.am.homing"));
+  if (w.chain > 0) bits.push(tr("tanks.am.chain", { n: w.chain }));
+  if (w.shock > 0) bits.push(tr("tanks.am.shock"));
+  if (w.freeze) bits.push(tr("tanks.am.freeze")); if (w.emp) bits.push(tr("tanks.am.emp")); if (w.heal > 0) bits.push(tr("tanks.am.heal", { n: w.heal }));
+  if (w.dirt) bits.push(tr("tanks.am.dirt")); if (w.confetti) bits.push(tr("tanks.am.confetti"));
   return bits.join(" · ");
 }
 
@@ -122,7 +134,7 @@ export default function TanksView({ room, me, conn, hub }: GameViewProps) {
   const [weapon, setWeapon] = useState(TK_BASIC);
   const [garage, setGarage] = useState<{ cards: TkCardWire[]; until: number; gold: number; bought: string[]; done: boolean; pick?: TkCardWire } | null>(null);
   const [sky, setSky] = useState<{ cards: TkCardWire[]; pick?: TkCardWire; sent?: string; needX?: boolean } | null>(null);
-  const [buys, setBuys] = useState<{ id: number; pid: string; card: TkCardWire; tx: string }[]>([]);
+  const [buys, setBuys] = useState<{ id: number; pid: string; card: TkCardWire }[]>([]);
   const [battleOver, setBattleOver] = useState<BattleOverMsg | null>(null);
   const [over, setOver] = useState<OverMsg | null>(null);
   const [spr, setSpr] = useState(tankSpriteReady());
@@ -149,13 +161,14 @@ export default function TanksView({ room, me, conn, hub }: GameViewProps) {
   });
 
   const pl = (pid: string) => G.current.players.find((p) => p.id === pid);
-  const pname = (pid: string) => pl(pid)?.name ?? "מישהו";
+  const pname = (pid: string) => pl(pid)?.name ?? tr("tanks.someone");
+  const YOU = () => tr("tanks.you");
   const charOf = (pid: string) => G.current.chars[pid] ?? G.current.tanks.get(pid)?.c ?? 0;
   const chColor = (pid: string) => TK.CHAR_COLORS[charOf(pid)] ?? "#fff";
   const anim = (pid: string) => { const g = G.current; let a = g.anim.get(pid); if (!a) { a = { fireAt: 0, hurtAt: 0, angle: 0.8 }; g.anim.set(pid, a); } return a; };
   const Face = ({ c, size = 28, pose = "idle" as "idle" | "dead" | "win" }: { c: number; size?: number; pose?: "idle" | "dead" | "win" }) => <img className="tk-face" src={tankIcon(c, 96, pose)} width={size} height={size} alt="" style={{ opacity: spr ? 1 : 1 }} />;
   function setPhaseBoth(p: Phase) { G.current.phase = p; G.current.phaseAt = conn.serverNow(); setPhase(p); }
-  function addFeed(tx: string) { setFeed((f) => [...f.slice(-3), { id: feedId.current++, tx }]); }
+  function addFeed(x: LText) { const tx = ft(x); setFeed((f) => [...f.slice(-3), { id: feedId.current++, tx }]); }
   function pop(x: number, y: number, t: string, col = PAPER, sz = 18) { G.current.fx.pops.push({ x, y, t, col, l: 1, sz, vy: 1.1 }); }
   function burst(x: number, y: number, col: string, n = 10, sp = 5, g = 0.25, sq = false) { const gg = G.current; if (gg.reduced) n = Math.ceil(n / 3); for (let i = 0; i < n; i++) { const a = Math.random() * Math.PI - Math.PI * 0.05, s = Math.random() * sp + 1; gg.fx.parts.push({ x, y, vx: Math.cos(a) * s * (Math.random() < 0.5 ? -1 : 1), vy: Math.abs(Math.sin(a)) * s + 2, l: 1, col, r: 2 + Math.random() * 3, g, sq }); } }
   function ring(x: number, y: number, r: number, col: string, kind = "boom") { G.current.fx.rings.push({ x, y, r, l: 1, col, kind }); }
@@ -191,7 +204,7 @@ export default function TanksView({ room, me, conn, hub }: GameViewProps) {
   }
   function ready() {
     const g = G.current; if (g.phase !== "aim" || g.locked) return;
-    if (!g.aim) { tkSfx.nope(); setBanner({ ic: "🎯", t: "קודם מכוונים", s: "משכו את האגודל אחורה כמו רוגטקה", cls: "short" }); return; }
+    if (!g.aim) { tkSfx.nope(); setBanner({ ic: "🎯", t: tr("tanks.aim_first"), s: tr("tanks.aim_first_s"), cls: "short" }); return; }
     g.locked = true; sendAim(); conn.sendGame({ a: "tk_ready" }); tkSfx.ready(); vibrate(20);
     setHud((h) => ({ ...h, locked: true }));
   }
@@ -217,8 +230,8 @@ export default function TanksView({ room, me, conn, hub }: GameViewProps) {
             g.tanks.clear(); applyTanks(d.tanks); g.wind = d.wind; g.anim.clear(); g.salvo = null; g.fx.parts = []; g.fx.rings = []; g.fx.pops = [];
             g.cam.target = g.cam.base;
             setBattleOver(null); setGarage(null); setSky(null); setPhaseBoth("intro");
-            setBanner({ ic: "⚔️", t: `קרב ${d.b + 1}${g.battles > 1 ? ` מתוך ${g.battles}` : ""}`, s: d.b === 0 ? "משכו את האגודל אחורה כמו רוגטקה. שימו לב לרוח!" : "הבילד שלכם עובר איתכם", cls: "long" });
-            const steps = ["3", "2", "1", "אש!"];
+            setBanner({ ic: "⚔️", t: g.battles > 1 ? tr("tanks.battle_n_of", { n: d.b + 1, of: g.battles }) : tr("tanks.battle_n", { n: d.b + 1 }), s: d.b === 0 ? tr("tanks.intro_first") : tr("tanks.intro_next"), cls: "long" });
+            const steps = ["3", "2", "1", tr("tanks.fire_bang")];
             steps.forEach((s, i) => setTimeout(() => { setCount(s); if (i < 3) tkSfx.count(); else { tkSfx.go(); vibrate(40); } }, Math.max(0, conn.untilServer(d.startAt - (3 - i) * 700))));
             setTimeout(() => setCount(null), Math.max(0, conn.untilServer(d.startAt + 600)));
             break;
@@ -227,10 +240,10 @@ export default function TanksView({ room, me, conn, hub }: GameViewProps) {
             g.k = d.k; g.until = d.until; g.wind = d.wind; g.bounty = d.bounty; g.sudden = d.sudden; g.doom = d.doom; g.world.night = d.night;
             if (g.phase !== "aim") { g.aim = null; g.locked = false; g.spyAims.clear(); setPhaseBoth("aim"); setGarage(null); setSky(null); g.lastTickSec = -1;
               if (d.k > 1 || g.b > 0) tkSfx.garage();
-              if (d.sudden) setBanner({ ic: "☄️", t: "מוות פתאומי!", s: "מטאורים נופלים מהשמיים", cls: "long" });
-              else if (d.doom) setBanner({ ic: "🔔", t: "יום הדין", s: "כל הנזק כפול בסלבו הזה", cls: "long" });
-              else if (d.night) setBanner({ ic: "🌚", t: "לילה", s: "אין תחזית לאף אחד", cls: "long" });
-              else if (d.k === 1) setBanner({ ic: "🎯", t: "כוונו!", s: "מותחים אחורה — ומשחררים", cls: "short" });
+              if (d.sudden) setBanner({ ic: "☄️", t: tr("tanks.sudden"), s: tr("tanks.sudden_s"), cls: "long" });
+              else if (d.doom) setBanner({ ic: "🔔", t: tr("tanks.doom"), s: tr("tanks.doom_s"), cls: "long" });
+              else if (d.night) setBanner({ ic: "🌚", t: tr("tanks.night"), s: tr("tanks.night_s"), cls: "long" });
+              else if (d.k === 1) setBanner({ ic: "🎯", t: tr("tanks.aim_bang"), s: tr("tanks.aim_bang_s"), cls: "short" });
             }
             setHud((h) => ({ ...h, k: d.k, bounty: d.bounty, sudden: d.sudden, doom: d.doom, night: d.night, wind: d.wind, total: g.cfg.aimMs / 1000 }));
             break;
@@ -247,7 +260,7 @@ export default function TanksView({ room, me, conn, hub }: GameViewProps) {
             for (const sh of d.input.shots) { const t = g.tanks.get(sh.pid); if (t) t.aim = { vx: sh.vx, vy: sh.vy }; anim(sh.pid).angle = Math.atan2(sh.vy, sh.vx); }
             g.salvo = tkNewSalvo(g.world, g.tanks, d.input);
             setPhaseBoth("salvo"); setGarage(null); setSky(null);
-            setBanner({ ic: "💥", t: "סלבו!", cls: "short" }); tkSfx.salvo(); vibrate([50, 40, 80]); setFlash("#fff");
+            setBanner({ ic: "💥", t: tr("tanks.salvo_bang"), cls: "short" }); tkSfx.salvo(); vibrate([50, 40, 80]); setFlash("#fff");
             for (const tx of d.pre) addFeed(tx);
             if (d.input.meteors.length) setTimeout(() => tkSfx.meteor(), 300);
             void at;
@@ -267,19 +280,19 @@ export default function TanksView({ room, me, conn, hub }: GameViewProps) {
           }
           case "tk_sky": { setSky({ cards: d.cards }); break; }
           case "tk_bought": {
-            setBuys((b) => [...b.slice(-5), { id: feedId.current++, pid: d.pid, card: d.card, tx: d.tx }]);
+            setBuys((b) => [...b.slice(-5), { id: feedId.current++, pid: d.pid, card: d.card }]);
             if (d.pid === me) {
               tkSfx.buy(); setGarage((gr) => gr ? { ...gr, bought: [...gr.bought, d.card.id], pick: undefined } : gr);
               // להרגיש את השדרוג: מה בדיוק השתנה
               const c = d.card; let lines: string[] = [];
-              if (c.kind === "passive") { const before = tkMods(g.owned); const after = tkMods({ ...g.owned, [c.id]: (g.owned[c.id] ?? 0) + 1 }); lines = modDelta(before, after); if (!lines.length) lines = [c.d]; }
-              else if (c.kind === "ammo") lines = [`×${c.n ?? 1} שימושים`, ammoLine(c.id)];
-              else lines = [c.d];
-              setBuyToast({ id: feedId.current++, ic: c.ic, t: c.t, lines, r: c.r });
+              if (c.kind === "passive") { const before = tkMods(g.owned); const after = tkMods({ ...g.owned, [c.id]: (g.owned[c.id] ?? 0) + 1 }); lines = modDelta(before, after); if (!lines.length) lines = [cd(c.id)]; }
+              else if (c.kind === "ammo") lines = [tr("tanks.uses_n", { n: c.n ?? 1 }), ammoLine(c.id)];
+              else lines = [cd(c.id)];
+              setBuyToast({ id: feedId.current++, ic: c.ic, t: cn(c.id), lines, r: c.r });
               if (c.r === "r" || c.r === "e") { tkSfx.epic(); vibrate([30, 30, 30, 30, 80]); } else vibrate(25);
             }
             else if (d.card.cat === "S" || d.card.cat === "X" || d.card.r === "r" || d.card.r === "e") addFeed(d.tx);
-            if (d.target === me && d.card.cat === "S") { setBanner({ ic: d.card.ic, t: `${pname(d.pid)}: ${d.card.t}`, s: "עליך!", cls: "long" }); vibrate(60); }
+            if (d.target === me && d.card.cat === "S") { setBanner({ ic: d.card.ic, t: `${pname(d.pid)}: ${cn(d.card.id)}`, s: tr("tanks.on_you"), cls: "long" }); vibrate(60); }
             break;
           }
           case "tk_battleover": {
@@ -327,7 +340,7 @@ export default function TanksView({ room, me, conn, hub }: GameViewProps) {
           const a = anim(e.pid); a.fireAt = performance.now(); a.angle = Math.atan2(e.vy, e.vx); const p = Math.hypot(e.vx, e.vy) / TK.VMAX; tkSfx.fire(p, e.pid === me); burst(e.x + Math.cos(a.angle) * 24, e.y + Math.sin(a.angle) * 24, "#FFF3DC", 5, 3, 0.1); if (e.pid === me) g.fx.shake = Math.max(g.fx.shake, 2 + p * 3);
           // נשק מיוחד = רגע: באנר אצלי, שורה בפיד אצל כולם, והאייקון עף על הפגז
           const c = e.w !== TK_BASIC ? tkCard(e.w) : null;
-          if (c) { if (e.pid === me) setBanner({ ic: c.ic, t: `${c.t}!`, s: ammoLine(c.id), cls: "short" }); else addFeed(`${c.ic} ${pname(e.pid)} ירה ${c.t}`); const t = g.tanks.get(e.pid); if (t) pop(t.x, t.y + 74, c.ic, PAPER, 26); }
+          if (c) { if (e.pid === me) setBanner({ ic: c.ic, t: `${cn(c.id)}!`, s: ammoLine(c.id), cls: "short" }); else addFeed(tr("tanks.fired", { ic: c.ic, name: pname(e.pid), card: cn(c.id) })); const t = g.tanks.get(e.pid); if (t) pop(t.x, t.y + 74, c.ic, PAPER, 26); }
           break;
         }
         case "boom": {
@@ -362,21 +375,21 @@ export default function TanksView({ room, me, conn, hub }: GameViewProps) {
         case "die": {
           const t = g.tanks.get(e.pid);
           if (t) { burst(t.x, t.y + 8, "#2E2620", 18, 6, 0.25); burst(t.x, t.y + 8, "#FF7A29", 10, 6, 0.1); ring(t.x, t.y + 10, 40, "#FF4438", "boom"); }
-          if (e.pid === me) { tkSfx.die(); vibrate([100, 50, 200]); g.fx.shake = 14; setBanner({ ic: "💀", t: "הטנק שלך התפוצץ", s: "אבל אתה בשמיים — כל סיבוב תפיל משהו", cls: "long" }); }
-          else { tkSfx.kill(e.by === me); if (e.by === me) { setBanner({ ic: "💀", t: `פוצצת את ${pname(e.pid)}!`, s: `+${TK.GOLD_KILL} 🪙`, cls: "long" }); vibrate([30, 30, 60]); } else addFeed(`💀 ${e.by ? pname(e.by) : "השמיים"} ${e.by === e.pid ? "פוצץ את עצמו" : `פוצץ את ${pname(e.pid)}`}`); }
+          if (e.pid === me) { tkSfx.die(); vibrate([100, 50, 200]); g.fx.shake = 14; setBanner({ ic: "💀", t: tr("tanks.you_died"), s: tr("tanks.you_died_s"), cls: "long" }); }
+          else { tkSfx.kill(e.by === me); if (e.by === me) { setBanner({ ic: "💀", t: tr("tanks.you_killed", { name: pname(e.pid) }), s: `+${TK.GOLD_KILL} 🪙`, cls: "long" }); vibrate([30, 30, 60]); } else addFeed(e.by === e.pid ? tr("tanks.killed_self", { name: pname(e.pid) }) : tr("tanks.killed_by", { by: e.by ? pname(e.by) : tr("tanks.the_sky"), name: pname(e.pid) })); }
           break;
         }
-        case "dodge": { const t = g.tanks.get(e.pid); if (t) pop(t.x, t.y + 52, "💨 פספוס!", "#8FE9F5", 16); tkSfx.dodge(); break; }
-        case "reflect": { const t = g.tanks.get(e.pid); if (t) { pop(t.x, t.y + 52, "🪞 חזר!", "#8FE9F5", 16); ring(t.x, t.y + 12, 30, "#8FE9F5", "shield"); } tkSfx.shield(); break; }
+        case "dodge": { const t = g.tanks.get(e.pid); if (t) pop(t.x, t.y + 52, tr("tanks.pop.dodge"), "#8FE9F5", 16); tkSfx.dodge(); break; }
+        case "reflect": { const t = g.tanks.get(e.pid); if (t) { pop(t.x, t.y + 52, tr("tanks.pop.reflect"), "#8FE9F5", 16); ring(t.x, t.y + 12, 30, "#8FE9F5", "shield"); } tkSfx.shield(); break; }
         case "split": { tkSfx.split(); burst(e.x, e.y, "#FFF3DC", 8, 3, 0.05); pop(e.x, e.y + 10, `×${e.n}`, "#FFC531", 16); break; }
         case "tele": { const t = g.tanks.get(e.pid); if (t) { burst(e.x, e.y + 6, "#A78BFA", 12, 5, 0.1); } tkSfx.tele(); break; }
-        case "fall": { const t = g.tanks.get(e.pid); if (t && e.dmg > 0) { pop(t.x, t.y + 52, `נפילה -${e.dmg}`, "#FF8A2B", 15); tkSfx.fall(); } break; }
+        case "fall": { const t = g.tanks.get(e.pid); if (t && e.dmg > 0) { pop(t.x, t.y + 52, tr("tanks.pop.fall", { n: e.dmg }), "#FF8A2B", 15); tkSfx.fall(); } break; }
         case "water": { const t = g.tanks.get(e.pid); if (t) pop(t.x, t.y + 52, `🌊 -${e.dmg}`, "#38C8E8", 15); tkSfx.water(); break; }
         case "burn": { const t = g.tanks.get(e.pid); if (t) pop(t.x, t.y + 52, `🔥 -${e.dmg}`, "#FF7A29", 15); break; }
         case "shock": { const t = g.tanks.get(e.pid); if (t) burst(t.x, t.y + 6, "#FFF", 6, 4, 0.2); break; }
-        case "freeze": { const t = g.tanks.get(e.pid); if (t) pop(t.x, t.y + 52, "🧊 קפוא!", "#8FE9F5", 17); tkSfx.freeze(); break; }
+        case "freeze": { const t = g.tanks.get(e.pid); if (t) pop(t.x, t.y + 52, tr("tanks.pop.freeze"), "#8FE9F5", 17); tkSfx.freeze(); break; }
         case "emp": { const t = g.tanks.get(e.pid); if (t) pop(t.x, t.y + 52, "⚡ EMP", "#FFC531", 16); tkSfx.emp(); break; }
-        case "laststand": { const t = g.tanks.get(e.pid); if (t) pop(t.x, t.y + 60, "🕯️ עמידה אחרונה!", "#FFC531", 16); break; }
+        case "laststand": { const t = g.tanks.get(e.pid); if (t) pop(t.x, t.y + 60, tr("tanks.pop.laststand"), "#FFC531", 16); break; }
       }
     }
   }
@@ -455,7 +468,7 @@ export default function TanksView({ room, me, conn, hub }: GameViewProps) {
     tkAudioInit();
     const g = G.current;
     if (!garage || garage.bought.includes(c.id)) return;
-    if (c.price > g.gold) { tkSfx.nope(); vibrate(30); setBanner({ ic: "🪙", t: "אין מספיק זהב", s: `צריך ${c.price}, יש ${fmt(g.gold)}`, cls: "short" }); return; }
+    if (c.price > g.gold) { tkSfx.nope(); vibrate(30); setBanner({ ic: "🪙", t: tr("tanks.no_gold"), s: tr("tanks.no_gold_s", { need: c.price, have: fmt(g.gold) }), cls: "short" }); return; }
     if (c.tg === "player") { setGarage((gr) => gr ? { ...gr, pick: c } : gr); tkSfx.select(); return; }
     conn.sendGame({ a: "tk_buy", id: c.id });
   }
@@ -674,7 +687,7 @@ export default function TanksView({ room, me, conn, hub }: GameViewProps) {
       if (tank.alive && tank.shield > 0) { ctx.strokeStyle = "rgba(143,233,245,.9)"; ctx.lineWidth = 3; ctx.setLineDash([6, 4]); ctx.beginPath(); ctx.arc(x, y - 14 * kU, 32 * kU, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]); }
       // שם + חיים
       const mine = tank.pid === me;
-      const label = mine ? "אתה" : pname(tank.pid).slice(0, 9);
+      const label = mine ? YOU() : pname(tank.pid).slice(0, 9);
       ctx.font = `800 ${Math.round(13 * Math.max(0.85, Math.min(1.25, S * 1.7)))}px Assistant, sans-serif`; ctx.textAlign = "center"; ctx.lineJoin = "round";
       const ly = y - TANK_W * 0.95 * kU - 8;
       ctx.strokeStyle = INK; ctx.lineWidth = 3.5; ctx.fillStyle = mine ? "#FFC531" : tank.alive ? PAPER : "#C8B78E";
@@ -744,7 +757,7 @@ export default function TanksView({ room, me, conn, hub }: GameViewProps) {
     // הבזק
     if (g.fx.flash > 0.02) { ctx.globalAlpha = Math.min(0.8, g.fx.flash); ctx.fillStyle = g.fx.flashCol; ctx.fillRect(-20, -20, W + 40, H + 40); ctx.globalAlpha = 1; }
     // מטאורים מגיעים — אזהרה
-    if (g.phase === "aim" && g.sudden) { ctx.font = "800 13px Assistant, sans-serif"; ctx.textAlign = "center"; ctx.fillStyle = "#FF7A29"; ctx.strokeStyle = INK; ctx.lineWidth = 3; const tx = "☄️ מטאורים בדרך ☄️"; ctx.strokeText(tx, W / 2, 34 + (H - cam.bottom) * 0.28); ctx.fillText(tx, W / 2, 34 + (H - cam.bottom) * 0.28); }
+    if (g.phase === "aim" && g.sudden) { ctx.font = "800 13px Assistant, sans-serif"; ctx.textAlign = "center"; ctx.fillStyle = "#FF7A29"; ctx.strokeStyle = INK; ctx.lineWidth = 3; const tx = tr("tanks.meteors_coming"); ctx.strokeText(tx, W / 2, 34 + (H - cam.bottom) * 0.28); ctx.fillText(tx, W / 2, 34 + (H - cam.bottom) * 0.28); }
     void t;
   }
   function cloud(ctx: CanvasRenderingContext2D, x: number, y: number, r: number) { ctx.beginPath(); ctx.arc(x, y, r * 0.6, 0, Math.PI * 2); ctx.arc(x + r * 0.6, y - r * 0.2, r * 0.7, 0, Math.PI * 2); ctx.arc(x + r * 1.3, y, r * 0.55, 0, Math.PI * 2); ctx.fill(); }
@@ -752,8 +765,8 @@ export default function TanksView({ room, me, conn, hub }: GameViewProps) {
   /* ---------- בחירת צבע ---------- */
   function pickChar(c: number) { tkAudioInit(); tkSfx.select(); conn.sendGame({ a: "tk_char", c }); if (!land) tryLandscape(); }
 
-  const ammoList = () => [{ id: TK_BASIC, ic: "💣", t: "רגיל", n: -1 }, ...Object.entries(you.ammo).map(([id, n]) => { const c = tkCard(id); return { id, ic: c?.ic ?? "?", t: c?.t ?? id, n }; })];
-  const ownedList = () => Object.entries(you.owned).map(([id, n]) => { const c = tkCard(id); return c ? { id, ic: c.ic, t: c.t, n } : null; }).filter(Boolean) as { id: string; ic: string; t: string; n: number }[];
+  const ammoList = () => [{ id: TK_BASIC, ic: "💣", t: tr("tanks.basic"), n: -1 }, ...Object.entries(you.ammo).map(([id, n]) => { const c = tkCard(id); return { id, ic: c?.ic ?? "?", t: c ? cn(id) : id, n }; })];
+  const ownedList = () => Object.entries(you.owned).map(([id, n]) => { const c = tkCard(id); return c ? { id, ic: c.ic, t: cn(id), n } : null; }).filter(Boolean) as { id: string; ic: string; t: string; n: number }[];
   const others = () => [...G.current.tanks.values()].filter((t) => t.pid !== me);
   const windArrow = (w: number) => { const n = Math.min(3, Math.ceil(Math.abs(w) / 3.4)); return w === 0 ? "•" : (w > 0 ? "→" : "←").repeat(n); };
   const inGame = phase === "aim" || phase === "salvo" || phase === "garage" || phase === "intro" || phase === "battleover";
@@ -771,15 +784,15 @@ export default function TanksView({ room, me, conn, hub }: GameViewProps) {
                 <div className="tk-chip tk-gold big">🪙 <b>{fmt(hud.gold)}</b></div>
                 <div className={"tk-timer" + (hud.secs <= 3 && hud.secs > 0 ? " hot" : hud.secs <= 6 ? " warm" : "") + (phase === "aim" || phase === "garage" ? "" : " off")} style={{ "--p": `${hud.secs > 0 ? (hud.secs / hud.total) * 360 : 0}deg` } as CSSProperties}><span>{phase === "aim" || phase === "garage" ? hud.secs : "💥"}</span></div>
               </div>
-              {hud.alive ? <div className="tk-hp"><i style={{ width: `${Math.round((hud.hp / hud.hpMax) * 100)}%` }} /><span>❤️ {Math.round(hud.hp)}/{hud.hpMax}{hud.sh > 0 ? ` 🛡️${Math.round(hud.sh)}` : ""}</span></div> : <div className="tk-hp dead"><span>☁️ בשמיים</span></div>}
+              {hud.alive ? <div className="tk-hp"><i style={{ width: `${Math.round((hud.hp / hud.hpMax) * 100)}%` }} /><span>❤️ {Math.round(hud.hp)}/{hud.hpMax}{hud.sh > 0 ? ` 🛡️${Math.round(hud.sh)}` : ""}</span></div> : <div className="tk-hp dead"><span>{tr("tanks.in_sky")}</span></div>}
               {ownedList().length > 0 && <div className="tk-build">{ownedList().slice(0, 7).map((o) => <span key={o.id} title={o.t}>{o.ic}{o.n > 1 ? <small>×{o.n}</small> : null}</span>)}{ownedList().length > 7 && <span>+{ownedList().length - 7}</span>}</div>}
             </div>
             <div className="tk-mid">
-              <div className="tk-round">קרב {hud.b + 1}{hud.battles > 1 ? `/${hud.battles}` : ""} · סלבו <b>{hud.k}</b></div>
+              <div className="tk-round">{tr("tanks.hud_battle", { b: hud.battles > 1 ? `${hud.b + 1}/${hud.battles}` : String(hud.b + 1) })} · {tr("tanks.hud_salvo")} <b>{hud.k}</b></div>
               <div className={"tk-wind" + (Math.abs(hud.wind) >= 7 ? " strong" : "")}>🌬️ <span className="arr">{windArrow(hud.wind)}</span> {Math.abs(hud.wind)}</div>
-              {hud.bounty && <span className="tk-tag bounty">🎯 ראש בפרס: {hud.bounty === me ? "אתה!" : pname(hud.bounty)}</span>}
-              {hud.doom && <span className="tk-tag doom">🔔 יום הדין ×2</span>}
-              {you.curse && <span className="tk-tag doom">😈 מקולל</span>}
+              {hud.bounty && <span className="tk-tag bounty">{tr("tanks.bounty_on", { name: hud.bounty === me ? tr("tanks.you_bang") : pname(hud.bounty) })}</span>}
+              {hud.doom && <span className="tk-tag doom">{tr("tanks.doom_x2")}</span>}
+              {you.curse && <span className="tk-tag doom">{tr("tanks.cursed")}</span>}
             </div>
             <div className="tk-fabspace" />
           </div>
@@ -800,7 +813,7 @@ export default function TanksView({ room, me, conn, hub }: GameViewProps) {
           {ammoHint && <div className="tk-ammohint">{ammoHint}</div>}
           <div className="tk-actions">
             {you.fuel > 0 && <div className="tk-move"><button onClick={() => moveTank(-1)}>◀</button><small>⛽{you.fuel}</small><button onClick={() => moveTank(1)}>▶</button></div>}
-            <button className={"tk-ready" + (hud.locked ? " on" : hud.aimed ? " go" : "")} onClick={ready}>{hud.locked ? "✓ מוכן — מחכים לכולם" : hud.aimed ? `🔥 אש! (${hud.power}%)` : "🎯 משכו אחורה לכוון"}</button>
+            <button className={"tk-ready" + (hud.locked ? " on" : hud.aimed ? " go" : "")} onClick={ready}>{hud.locked ? tr("tanks.ready_locked") : hud.aimed ? tr("tanks.ready_fire", { p: hud.power }) : tr("tanks.ready_aim")}</button>
           </div>
         </div>
       )}
@@ -808,10 +821,10 @@ export default function TanksView({ room, me, conn, hub }: GameViewProps) {
       {/* קלפי שמיים — למתים */}
       {phase === "aim" && !hud.alive && sky && (
         <div className={"tk-sky" + (sky.needX ? " needx" : "")}>
-          {sky.sent ? <p className="done">☁️ {sky.pick?.ic} {sky.pick?.t} — נשלח! רואים בסלבו</p>
-            : sky.needX ? <p className="hint">👆 טאפ על ההר — איפה להפיל את {sky.pick?.t}?</p>
-            : sky.pick?.tg === "player" ? <><p className="hint">{sky.pick.ic} {sky.pick.t} — על מי?</p><div className="targets">{others().filter((t) => t.alive).map((t) => <button key={t.pid} onClick={() => skyTarget(t.pid)} style={{ "--cc": chColor(t.pid) } as CSSProperties}><Face c={t.c} size={26} /> {pname(t.pid).slice(0, 8)}</button>)}</div></>
-            : <><p className="hint">☁️ אתה בשמיים — בחר מה להפיל הסיבוב</p><div className="cards">{sky.cards.map((c) => <button key={c.id} className="card" onClick={() => pickSky(c)}><span className="ic">{c.ic}</span><b>{c.t}</b><small>{c.d}</small></button>)}</div></>}
+          {sky.sent ? <p className="done">{tr("tanks.sky_sent", { ic: sky.pick?.ic ?? "", card: sky.pick ? cn(sky.pick.id) : "" })}</p>
+            : sky.needX ? <p className="hint">{tr("tanks.sky_where", { card: sky.pick ? cn(sky.pick.id) : "" })}</p>
+            : sky.pick?.tg === "player" ? <><p className="hint">{tr("tanks.on_whom", { ic: sky.pick.ic, card: cn(sky.pick.id) })}</p><div className="targets">{others().filter((t) => t.alive).map((t) => <button key={t.pid} onClick={() => skyTarget(t.pid)} style={{ "--cc": chColor(t.pid) } as CSSProperties}><Face c={t.c} size={26} /> {pname(t.pid).slice(0, 8)}</button>)}</div></>
+            : <><p className="hint">{tr("tanks.sky_pick")}</p><div className="cards">{sky.cards.map((c) => <button key={c.id} className="card" onClick={() => pickSky(c)}><span className="ic">{c.ic}</span><b>{cn(c.id)}</b><small>{cd(c.id)}</small></button>)}</div></>}
         </div>
       )}
 
@@ -822,17 +835,17 @@ export default function TanksView({ room, me, conn, hub }: GameViewProps) {
       {/* בחירת צבע */}
       {phase === "pick" && pick && (
         <div className="tk-pick">
-          <h2>איזה טנק אתה?</h2>
-          <p className="sub">כל צבע לשחקן אחד. "מי זה הסגול עם הכתר?"</p>
-          {!land && <p className="rotate">🔄 סובבו את הטלפון לרוחב — רואים את כל ההר</p>}
+          <h2>{tr("tanks.pick_title")}</h2>
+          <p className="sub">{tr("tanks.pick_sub")}</p>
+          {!land && <p className="rotate">{tr("tanks.rotate")}</p>}
           <div className="grid">
-            {TANKS.map((tk, i) => {
+            {TANKS.map((_tk, i) => {
               const owner = Object.entries(pick.taken).find(([, c]) => c === i)?.[0];
               const mineC = owner === me;
               return (
                 <button key={i} className={"tile" + (owner ? (mineC ? " mine" : " taken") : "")} style={{ "--cc": TK.CHAR_COLORS[i] } as CSSProperties} disabled={!!owner && !mineC} onClick={() => pickChar(i)}>
-                  <img src={tankIcon(i, 128, mineC ? "win" : "idle")} alt="" /><b>{tk.name}</b>
-                  {owner && <small>{mineC ? "אתה" : pname(owner)}</small>}
+                  <img src={tankIcon(i, 128, mineC ? "win" : "idle")} alt="" /><b>{tr(`tanks.char.${i}`)}</b>
+                  {owner && <small>{mineC ? YOU() : pname(owner)}</small>}
                 </button>
               );
             })}
@@ -845,21 +858,21 @@ export default function TanksView({ room, me, conn, hub }: GameViewProps) {
       {phase === "garage" && garage && (
         <div className="tk-garage">
           <div className="head">
-            <h2>🔧 המוסך</h2>
+            <h2>{tr("tanks.garage")}</h2>
             <div className="tk-chip tk-gold big">🪙 <b>{fmt(hud.gold)}</b></div>
             <Ring until={garage.until} conn={conn} total={G.current.cfg.garageMs / 1000} />
           </div>
           {buyToast && (
             <div className={"tk-buytoast r-" + buyToast.r} key={buyToast.id}>
               <span className="ic">{buyToast.ic}</span>
-              <div className="tx"><b>{buyToast.t}{buyToast.r === "e" ? " — אבולוציה!" : buyToast.r === "r" ? " — אגדי!" : ""}</b>{buyToast.lines.map((l, i) => <small key={i}>{l}</small>)}</div>
+              <div className="tx"><b>{buyToast.t}{buyToast.r === "e" ? tr("tanks.evo_bang") : buyToast.r === "r" ? tr("tanks.legendary_bang") : ""}</b>{buyToast.lines.map((l, i) => <small key={i}>{l}</small>)}</div>
             </div>
           )}
           {garage.pick ? (
             <div className="target">
-              <p>{garage.pick.ic} <b>{garage.pick.t}</b> — על מי?</p>
+              <p>{tr("tanks.on_whom", { ic: garage.pick.ic, card: cn(garage.pick.id) })}</p>
               <div className="targets">{others().map((t) => <button key={t.pid} onClick={() => buyTarget(t.pid)} style={{ "--cc": chColor(t.pid) } as CSSProperties}><Face c={t.c} size={30} pose={t.alive ? "idle" : "dead"} /> <span>{pname(t.pid).slice(0, 9)}</span></button>)}</div>
-              <button className="cancel" onClick={() => setGarage((gr) => gr ? { ...gr, pick: undefined } : gr)}>ביטול</button>
+              <button className="cancel" onClick={() => setGarage((gr) => gr ? { ...gr, pick: undefined } : gr)}>{tr("tanks.cancel")}</button>
             </div>
           ) : (
             <div className={"cards" + (garage.cards.length > 6 ? " eight" : "")}>
@@ -867,9 +880,9 @@ export default function TanksView({ room, me, conn, hub }: GameViewProps) {
                 const bought = garage.bought.includes(c.id); const poor = c.price > hud.gold;
                 return (
                   <button key={c.id} className={"card" + (bought ? " bought" : poor ? " poor" : "")} style={{ "--rc": RAR_COL[c.r], "--cc": CAT_COL[c.cat] } as CSSProperties} onClick={() => tapCard(c)} disabled={bought || garage.done}>
-                    <span className="cat">{TK_CAT_NAME[c.cat]}</span>
-                    <span className="ic">{c.ic}</span><b>{c.t}</b><small>{c.d}</small>
-                    <i>{bought ? "✓ נקנה" : `🪙 ${c.price}`}{c.kind === "ammo" && !bought ? ` · ×${c.n}` : ""}{c.r !== "c" && !bought ? ` · ${TK_RAR_NAME[c.r]}` : ""}</i>
+                    <span className="cat">{tr(`tanks.cat.${c.cat}`)}</span>
+                    <span className="ic">{c.ic}</span><b>{cn(c.id)}</b><small>{cd(c.id)}</small>
+                    <i>{bought ? tr("tanks.bought") : `🪙 ${c.price}`}{c.kind === "ammo" && !bought ? ` · ×${c.n}` : ""}{c.r !== "c" && !bought ? ` · ${tr(`tanks.rar.${c.r}`)}` : ""}</i>
                   </button>
                 );
               })}
@@ -878,37 +891,37 @@ export default function TanksView({ room, me, conn, hub }: GameViewProps) {
           <div className="mine">
             {ammoList().slice(1).map((a) => <span key={a.id}>{a.ic}×{a.n}</span>)}
             {ownedList().map((o) => <span key={o.id} className="own">{o.ic}{o.n > 1 ? `×${o.n}` : ""}</span>)}
-            {ammoList().length === 1 && ownedList().length === 0 && <span className="none">עוד אין לך שדרוגים — קנה משהו!</span>}
+            {ammoList().length === 1 && ownedList().length === 0 && <span className="none">{tr("tanks.no_upgrades")}</span>}
           </div>
-          {buys.length > 0 && <div className="buys">{buys.slice(-3).map((b) => <span key={b.id} style={{ "--cc": chColor(b.pid) } as CSSProperties}>{b.pid === me ? "אתה" : pname(b.pid).slice(0, 7)}: {b.card.ic} {b.card.t}</span>)}</div>}
-          <button className={"tk-ready" + (garage.done ? " on" : " go")} onClick={garageDone} disabled={garage.done}>{garage.done ? "✓ סיימתי — מחכים לכולם" : "✅ סיימתי לקנות"}</button>
+          {buys.length > 0 && <div className="buys">{buys.slice(-3).map((b) => <span key={b.id} style={{ "--cc": chColor(b.pid) } as CSSProperties}>{b.pid === me ? YOU() : pname(b.pid).slice(0, 7)}: {b.card.ic} {cn(b.card.id)}</span>)}</div>}
+          <button className={"tk-ready" + (garage.done ? " on" : " go")} onClick={garageDone} disabled={garage.done}>{garage.done ? tr("tanks.done_locked") : tr("tanks.done_buy")}</button>
         </div>
       )}
 
       {/* סיום קרב */}
       {phase === "battleover" && battleOver && (
         <div className="tk-bo">
-          <h2>{battleOver.winner ? `🏆 ${battleOver.winner === me ? "ניצחת" : pname(battleOver.winner) + " ניצח"} את קרב ${battleOver.b + 1}!` : `🏁 קרב ${battleOver.b + 1} נגמר בתיקו`}</h2>
-          <ol>{battleOver.rows.slice(0, 8).map((r, i) => <li key={r.pid} className={r.pid === me ? "me" : ""}><span>{i + 1}</span><span className="nm"><Face c={r.c} size={26} pose={i === 0 ? "win" : "idle"} /> {r.pid === me ? "אתה" : pname(r.pid)}</span><small>💀{r.kills} · 🎯{r.dmg}</small><b>{r.score}</b></li>)}</ol>
-          <p className="sub">{battleOver.last ? "מסכמים…" : "הבילד שלכם עובר לקרב הבא — הר חדש בעוד רגע"}</p>
+          <h2>{battleOver.winner ? (battleOver.winner === me ? tr("tanks.you_won_battle", { n: battleOver.b + 1 }) : tr("tanks.won_battle", { name: pname(battleOver.winner), n: battleOver.b + 1 })) : tr("tanks.battle_draw", { n: battleOver.b + 1 })}</h2>
+          <ol>{battleOver.rows.slice(0, 8).map((r, i) => <li key={r.pid} className={r.pid === me ? "me" : ""}><span>{i + 1}</span><span className="nm"><Face c={r.c} size={26} pose={i === 0 ? "win" : "idle"} /> {r.pid === me ? YOU() : pname(r.pid)}</span><small>💀{r.kills} · 🎯{r.dmg}</small><b>{r.score}</b></li>)}</ol>
+          <p className="sub">{battleOver.last ? tr("tanks.summing") : tr("tanks.next_battle")}</p>
         </div>
       )}
 
       {/* סיום */}
       {phase === "over" && over && (
         <div className="tk-over">
-          <h2>💥 סוף הקרבות</h2>
+          <h2>{tr("tanks.over_title")}</h2>
           <ol>{over.rows.map((r: TkRow, i: number) => <li key={r.pid} className={r.pid === me ? "me" : ""}>
             <span className="pos">{i + 1}</span><Face c={r.c} size={34} pose={i === 0 ? "win" : i === over.rows.length - 1 && over.rows.length > 1 ? "dead" : "idle"} />
-            <span className="nm">{r.pid === me ? "אתה" : pname(r.pid)}<small>💀 {r.kills} · נזק {r.dmg} · 🪙 {r.gold}{r.wins ? ` · 🏆${r.wins}` : ""}</small></span>
+            <span className="nm">{r.pid === me ? YOU() : pname(r.pid)}<small>{tr("tanks.over_row", { k: r.kills, d: r.dmg, g: r.gold })}{r.wins ? ` · 🏆${r.wins}` : ""}</small></span>
             <b>{r.score}</b>
           </li>)}</ol>
-          <div className="titles">{over.titles.map((t) => <span key={t.pid + t.ic}>{t.ic} {t.t}: <b>{t.pid === me ? "אתה" : pname(t.pid)}</b></span>)}</div>
+          <div className="titles">{over.titles.map((x) => <span key={x.pid + x.ic}>{x.ic} {tr(x.t)}: <b>{x.pid === me ? YOU() : pname(x.pid)}</b></span>)}</div>
           <div className="mycards">{ownedList().map((o) => <span key={o.id}>{o.ic} {o.t}{o.n > 1 ? ` ×${o.n}` : ""}</span>)}</div>
-          <p className="sub">המארח ממשיך לטקס</p>
+          <p className="sub">{tr("tanks.host_continues")}</p>
         </div>
       )}
-      {phase === "wait" && <div className="tk-waitmsg">💥 ההר נבנה…</div>}
+      {phase === "wait" && <div className="tk-waitmsg">{tr("tanks.building")}</div>}
     </div>
   );
 }
@@ -916,7 +929,7 @@ export default function TanksView({ room, me, conn, hub }: GameViewProps) {
 function PickTimer({ until, conn }: { until: number; conn: GameViewProps["conn"] }) {
   const [left, setLeft] = useState(0);
   useEffect(() => { const iv = setInterval(() => setLeft(Math.max(0, Math.ceil((until - conn.serverNow()) / 1000))), 200); return () => clearInterval(iv); }, [until]);
-  return <p className="timer">{until ? `${left} שניות` : "כולם בחרו — מתחילים!"}</p>;
+  return <p className="timer">{until ? tr("tanks.seconds_n", { n: left }) : tr("tanks.all_picked")}</p>;
 }
 function Ring({ until, conn, total }: { until: number; conn: GameViewProps["conn"]; total: number }) {
   const [left, setLeft] = useState(total);

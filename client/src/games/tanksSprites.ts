@@ -6,15 +6,16 @@
  */
 import { TK } from "../../../shared/tanks";
 
+/** שמות הצבעים: locales/<lang>/tanks.json → tanks.char.<i> */
 export const TANKS = [
-  { id: "purple", name: "הסגול", hue: 270, acc: "crown" },
-  { id: "orange", name: "הכתום", hue: 25, acc: "antenna" },
-  { id: "blue", name: "הכחול", hue: 220, acc: "tophat" },
-  { id: "red", name: "האדום", hue: 0, acc: "horns" },
-  { id: "yellow", name: "הצהוב", hue: 48, acc: "sprout" },
-  { id: "pink", name: "הוורוד", hue: 325, acc: "bow" },
-  { id: "green", name: "הירוק", hue: 110, acc: "halo" },
-  { id: "cyan", name: "הטורקיז", hue: 185, acc: "party" },
+  { id: "purple", hue: 270, acc: "crown" },
+  { id: "orange", hue: 25, acc: "antenna" },
+  { id: "blue", hue: 220, acc: "tophat" },
+  { id: "red", hue: 0, acc: "horns" },
+  { id: "yellow", hue: 48, acc: "sprout" },
+  { id: "pink", hue: 325, acc: "bow" },
+  { id: "green", hue: 110, acc: "halo" },
+  { id: "cyan", hue: 185, acc: "party" },
 ];
 const INK = "#0C0906";
 export const TANK_W = 62, TANK_H = 40;   // יחידות עולם: רוחב/גובה הגוף
