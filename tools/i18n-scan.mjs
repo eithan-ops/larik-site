@@ -48,6 +48,9 @@ const MIGRATED = [
   "client/src/games/thieves.tsx",
   "shared/thieves.ts",
   "server/src/games/thieves.ts",
+  // שלב F — החומה
+  "client/src/games/wall.tsx",
+  "server/src/games/wall.ts",
 ];
 
 function walk(dir, out = []) {

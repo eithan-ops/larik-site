@@ -11,26 +11,19 @@ import type { WallServerMsg, WallRole, WallCard, WallStats, WallEnemyType, WallA
 import type { GameViewProps } from "./registry";
 import { Sfx, vibrate } from "../lib/audio";
 import { wlImg, preloadWl, type WlImgKey } from "./wallAssets";
+import { t } from "../lib/locale";
+
+const ROMAN = ["", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"];
+/** שם קלף: wall.card.<id> (+ דרגה רומית), או wall.evo.<id> כשהוא סף אבולוציה */
+const cardName = (c: { id: string; tier?: number; evo?: boolean }) => c.evo ? t(`wall.evo.${c.id}`) : (c.tier ?? 1) > 1 ? `${t(`wall.card.${c.id}`)} ${ROMAN[Math.min(c.tier ?? 1, 10)]}` : t(`wall.card.${c.id}`);
+const cardDesc = (c: { id: string; evo?: boolean }) => c.evo ? t("wall.evo_desc") : t(`wall.card.${c.id}.d`);
 
 /* ---- קבועי עולם (זהים לשרת) ---- */
 const W = 1000, WORLD_H = 1600, WALL_Y = 1250, GATE_X = 500;
 const VIEW_W = 660; // רוחב החלון האישי ביחידות עולם
 
-const ROLE_NAME: Record<WallRole, string> = { heli: "הליקופטר", archer: "קשת", cannon: "תותחן", mg: "מקלען" };
 const ROLE_ICON: Record<WallRole, string> = { heli: "🚁", archer: "🏹", cannon: "💣", mg: "🔫" };
 const ROLE_COLOR: Record<WallRole, string> = { heli: "#ff5c5c", archer: "#34e89e", cannon: "#ffce3c", mg: "#5c8aff" };
-const ROLE_DESC: Record<WallRole, string> = {
-  heli: "גרור לטוס — מטיל פצצות לבד. הדלק נגמר באוויר: חוזרים לחומה לתדלק!",
-  archer: "גע והחזק על המטרה — הקשת יורה לבד. הזז את האצבע לכוון",
-  cannon: "כוון ושחרר — פגז שטח. כל פגז הוא החלטה",
-  mg: "החזק וגרור לרסס כדורים על כל השדה. היזהר מהתחממות!",
-};
-const ROLE_HINT: Record<WallRole, string> = {
-  heli: "🕹️ גרור לטוס — הפצצות נופלות לבד · ⛽ הדלק נשרף באוויר, רד לחומה לתדלק · 🎯 התחמק מאש נגד-מטוסים",
-  archer: "👆 גע והחזק על אויב — הקשת יורה לבד · הזז את האצבע כדי לכוון",
-  cannon: "🎯 גרור לכוון, שחרר — בום! כל פגז הוא החלטה",
-  mg: "👆 החזק וגרור ימינה-שמאלה — מרסס על כל השדה · שים עין על מד החום",
-};
 const ETYPE_IMG: Record<WallEnemyType, WlImgKey> = {
   swarm: "eSwarm", runner: "eRunner", armored: "eArmored", bomber: "eBomber", sniper: "eSniper", digger: "eDigger", boss: "eBoss",
 };
@@ -39,11 +32,6 @@ const ETYPE_SIZE: Record<WallEnemyType, number> = { swarm: 52, runner: 60, armor
 /* ---- 🏷️ תכונות עילית — טבעת צבע + אימוג'י, אפס נכסים. באנר בהופעה הראשונה. ---- */
 const AFFIX_EMOJI: Record<WallAffix, string> = { roof: "🏠", healer: "💚", shield: "🌀" };
 const AFFIX_COLOR: Record<WallAffix, string> = { roof: "#e0b64e", healer: "#8ee34a", shield: "#6ec6ff" };
-const AFFIX_BANNER: Record<WallAffix, string> = {
-  roof: "🏠 גג מבוצר — פצצות לא עובדות עליו! תפקידי הקרקע, זה עליכם",
-  healer: "💚 מרפא — מרפא את הנחיל! תורידו אותו קודם",
-  shield: "🌀 מגן קינטי — רק אש רציפה שוברת אותו!",
-};
 
 /* ---- שפת המראה של הנשק ----
  * המראה לא נבחר מרשימה — הוא *מורכב* מהתכונות שאספת: צבע ליבה, צבע שובל, אורך
@@ -136,7 +124,7 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
   const [banner, setBanner] = useState("");
   const [toast, setToast] = useState("");
   const [jamUntil, setJamUntil] = useState(0);
-  const [over, setOver] = useState<{ wave: number; bestWave: number; nearMiss?: string; mvp?: string; stats: Record<string, WallStats> } | null>(null);
+  const [over, setOver] = useState<{ wave: number; bestWave: number; nearMiss?: { s: number; wave: number }; mvp?: string; stats: Record<string, WallStats> } | null>(null);
   const [hint, setHint] = useState("");
   const [, setUi] = useState(0); // רענון קל ל-HUD
 
@@ -258,21 +246,21 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
         case "wl_wave":
           setPhase("wave"); setWave(m.wave); setWallHp(m.wallHp); setWallMax(m.wallMax);
           heat.current = 0; firing.current = false;
-          showBanner(`🌊 גל ${m.wave}`);
+          showBanner(t("wall.wave_n", { n: m.wave }));
           if (m.wave === 1) {
             // מדריך 6 שניות בתחילת כל ריצה — איך מפעילים את הנשק שלך
-            setHint(ROLE_HINT[rolesRef.current[me] ?? "heli"]);
+            setHint(t(`wall.hint.${rolesRef.current[me] ?? "heli"}`));
             window.setTimeout(() => setHint(""), 6500);
           }
           Sfx.goBeep(); vibrate([60, 40, 60]);
           return;
         case "wl_spawn":
           enemies.current.set(m.id, { id: m.id, type: m.type, hp: m.hp, maxHp: m.maxHp, x0: m.x0, y0: m.y0, speed: m.speed, wob: m.wob, at: m.at, state: "walk", affix: m.affix });
-          if (m.type === "boss") { showBanner("👹 הבוס מגיע!!!", 2600); Sfx.alarm(); vibrate([150, 80, 150]); }
+          if (m.type === "boss") { showBanner(t("wall.boss"), 2600); Sfx.alarm(); vibrate([150, 80, 150]); }
           // 🏷️ תכונה חדשה נכנסת למשחק — מכריזים פעם אחת, שכולם ידעו מה התשובה
           if (m.affix && !seenAffixes.current.has(m.affix)) {
             seenAffixes.current.add(m.affix);
-            showBanner(AFFIX_BANNER[m.affix], 3600);
+            showBanner(t(`wall.affix.${m.affix}`), 3600);
             Sfx.alarm(); vibrate([60, 40, 60]);
           }
           return;
@@ -376,7 +364,7 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
           return;
         }
         case "wl_jam":
-          if (m.by === me) { setJamUntil(Date.now() + m.ms); firing.current = false; Sfx.sadTrombone(); vibrate(300); showToast("🥵 התחממות יתר!"); }
+          if (m.by === me) { setJamUntil(Date.now() + m.ms); firing.current = false; Sfx.sadTrombone(); vibrate(300); showToast(t("wall.overheat")); }
           return;
         case "wl_ppos":
           for (const [pid, x, y] of m.ps) {
@@ -389,8 +377,8 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
           if (h) { h.hp = m.hp; h.max = m.max; h.down = !!m.down; }
           if (m.pid === me) {
             setMyHp(m.hp); setMyMax(m.max); setDown(!!m.down);
-            if (m.down) { Sfx.sadTrombone(); vibrate(400); showToast("💀 נפלת! חוזר עוד 3 שניות..."); }
-          } else if (m.down) showToast(`💀 ${nameOf(m.pid)} נפל!`);
+            if (m.down) { Sfx.sadTrombone(); vibrate(400); showToast(t("wall.you_down")); }
+          } else if (m.down) showToast(t("wall.x_down", { name: nameOf(m.pid) }));
           return;
         }
         case "wl_wall": {
@@ -411,7 +399,7 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
         }
         case "wl_sniper": {
           const e = enemies.current.get(m.id);
-          showToast(m.target === me ? "🎯 צלף נעל עליך!! (הקשתים — תצילו!)" : `🎯 צלף נעל על ${nameOf(m.target)}!`);
+          showToast(m.target === me ? t("wall.sniper_you") : t("wall.sniper_x", { name: nameOf(m.target) }));
           Sfx.alarm(); vibrate([80, 50, 80]);
           void e;
           return;
@@ -422,12 +410,12 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
           Sfx.fanfare(); vibrate([40, 30, 80]);
           return;
         case "wl_picked":
-          if (m.pid !== me) showToast(`${m.emoji} ${nameOf(m.pid)} לקח ${m.name}`);
+          if (m.pid !== me) showToast(t("wall.took", { emoji: m.emoji, name: nameOf(m.pid), card: cardName({ id: m.id, evo: m.evo }) }));
           return;
         case "wl_tier": {
           const h = heroes.current.get(m.pid);
           if (h) h.tier = m.tier;
-          showBanner(m.pid === me ? `⬆️ הנשק שלך שודרג לדרגה ${m.tier}!` : `⬆️ ${nameOf(m.pid)} שידרג נשק!`, 1800);
+          showBanner(m.pid === me ? t("wall.tier_you", { n: m.tier }) : t("wall.tier_x", { name: nameOf(m.pid) }), 1800);
           Sfx.fanfare();
           return;
         }
@@ -445,7 +433,7 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
           return;
         case "wl_evo": {
           // הרגע הגדול: המצלמה של *כולם* נפתחת לרוחב מלא, באנר, וריזר
-          setEvoBanner({ name: m.name, emoji: m.emoji, who: m.pid === me ? "" : nameOf(m.pid), trait: m.trait });
+          setEvoBanner({ name: t(`wall.evo.${m.trait}`), emoji: m.emoji, who: m.pid === me ? "" : nameOf(m.pid), trait: m.trait });
           window.setTimeout(() => setEvoBanner(null), 3000);
           wideUntil.current = performance.now() + 1800;
           surge.current = { t0: performance.now(), color: TRAIT_COLOR[m.trait] ?? "#ffd24a", big: true };
@@ -462,17 +450,17 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
         case "wl_fuel": {
           const prevF = fuelRef.current.fuel;
           fuelRef.current = { fuel: m.fuel, max: m.max };
-          if (m.fuel <= 1 && prevF > 1) { showToast("⛽ נגמר הדלק — רד לחומה לתדלק!"); vibrate([80, 50, 80]); }
+          if (m.fuel <= 1 && prevF > 1) { showToast(t("wall.fuel_out")); vibrate([80, 50, 80]); }
           else if (m.fuel <= 25 && prevF > 25 && performance.now() - lastFuelToast.current > 6000) {
             lastFuelToast.current = performance.now();
-            showToast("⛽ הדלק אוזל — תתחיל לחזור לחומה!"); vibrate(30);
+            showToast(t("wall.fuel_low")); vibrate(30);
           }
           return;
         }
         case "wl_clear":
           setPhase("breath"); setWallHp(m.wallHp);
           parade.current = performance.now(); // 🎖️ מצעד הנשקים — 2 שניות שרואים את כל הצוות
-          showBanner(`🌊 גל ${m.wave} הושלם! ✨`, 2200);
+          showBanner(t("wall.wave_done", { n: m.wave }), 2200);
           Sfx.fanfare(); vibrate([40, 30, 40, 30, 100]);
           return;
         case "wl_over":
@@ -1348,7 +1336,7 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
       ctx.setLineDash([]);
       ctx.font = `${12 * scale}px sans-serif`; ctx.textAlign = "center";
       ctx.fillStyle = `rgba(255,206,60,${fuelRef.current.fuel <= 1 ? 0.95 : 0.55})`;
-      ctx.fillText("⛽ אזור תדלוק ⛽", wx(500), wy(1080) - 6 * scale);
+      ctx.fillText(t("wall.refuel_zone"), wx(500), wy(1080) - 6 * scale);
     }
 
     // מיני-מפה: פס עליון של כל החזית
@@ -1468,8 +1456,8 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
     return (
       <main className="wl-arena">
         <div className="wl-setup">
-          <h2 style={{ margin: "6px 0" }}>🏰 החומה — בחרו תפקיד</h2>
-          <p className="sub" style={{ fontSize: 12.5 }}>הגלים מתחזקים — הצוות צריך את כל התפקידים. אפשר כפילויות!</p>
+          <h2 style={{ margin: "6px 0" }}>{t("wall.pick_role")}</h2>
+          <p className="sub" style={{ fontSize: 12.5 }}>{t("wall.pick_role_sub")}</p>
           <div className="wl-rolegrid">
             {(["heli", "archer", "cannon", "mg"] as WallRole[]).map((r) => (
               <button key={r}
@@ -1478,8 +1466,8 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
                 onClick={() => { conn.sendGame({ a: "wl_role", role: r }); Sfx.pop(); vibrate(25); }}>
                 <img src={`/wall/badge-${r === "heli" ? "infantry" : r === "archer" ? "archer" : r === "cannon" ? "cannon" : "mg"}.webp`} alt=""
                   onError={(ev) => { (ev.target as HTMLImageElement).style.display = "none"; }} />
-                <b>{ROLE_ICON[r]} {ROLE_NAME[r]}</b>
-                <span className="sub" style={{ fontSize: 11.5 }}>{ROLE_DESC[r]}</span>
+                <b>{ROLE_ICON[r]} {t(`wall.role.${r}`)}</b>
+                <span className="sub" style={{ fontSize: 11.5 }}>{t(`wall.role.${r}.d`)}</span>
                 <span className="wl-count">{roleCounts[r] > 0 ? `×${roleCounts[r]}` : " "}</span>
               </button>
             ))}
@@ -1493,10 +1481,10 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
           </div>
           {isHost ? (
             <button className="btn" style={{ marginTop: 14 }} onClick={() => conn.sendGame({ a: "wl_go" })}>
-              ⚔️ אל החומות!
+              {t("wall.to_the_walls")}
             </button>
           ) : (
-            <p className="sub pulse" style={{ marginTop: 14 }}>המארח פותח את הקרב...</p>
+            <p className="sub pulse" style={{ marginTop: 14 }}>{t("wall.host_starts")}</p>
           )}
         </div>
       </main>
@@ -1547,7 +1535,7 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
           <div className="wl-heatwrap">
             {fuelRef.current.fuel <= 1
               ? <b style={{ color: "#ffce3c" }}>⛽!</b>
-              : <span className="sub" style={{ fontSize: 10 }}>⛽ דלק</span>}
+              : <span className="sub" style={{ fontSize: 10 }}>{t("wall.fuel")}</span>}
             <div className="wl-heat">
               <div style={{
                 height: `${Math.min(100, (fuelRef.current.fuel / Math.max(1, fuelRef.current.max)) * 100)}%`,
@@ -1558,13 +1546,13 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
         )}
         {role === "mg" && (
           <div className="wl-heatwrap">
-            {jamLeft > 0 ? <b style={{ color: "#ff5c5c" }}>🥵 {Math.ceil(jamLeft / 1000)}</b> : <span className="sub" style={{ fontSize: 10 }}>חום</span>}
+            {jamLeft > 0 ? <b style={{ color: "#ff5c5c" }}>🥵 {Math.ceil(jamLeft / 1000)}</b> : <span className="sub" style={{ fontSize: 10 }}>{t("wall.heat")}</span>}
             <div className="wl-heat"><div style={{ height: `${Math.min(100, heat.current)}%` }} /></div>
           </div>
         )}
         {role === "cannon" && (
           <div className="wl-cd" style={{ opacity: cdLeft > 0 ? 1 : 0.4 }}>
-            {cdLeft > 0 ? `⏳ ${(cdLeft / 1000).toFixed(1)}` : "💣 מוכן!"}
+            {cdLeft > 0 ? `⏳ ${(cdLeft / 1000).toFixed(1)}` : t("wall.ready")}
           </div>
         )}
         <div className="wl-hp"><div style={{ width: `${(myHp / Math.max(1, myMax)) * 100}%` }} /></div>
@@ -1575,19 +1563,19 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
           <img className="wl-evoart" src={EVO_ART(evoBanner.trait)} alt=""
             style={{ "--ec": TRAIT_COLOR[evoBanner.trait] ?? "#ffce3c" } as React.CSSProperties}
             onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
-          <b>{evoBanner.who ? `${evoBanner.who} פיתח:` : "פיתחת:"}</b>
+          <b>{evoBanner.who ? t("wall.evolved_x", { name: evoBanner.who }) : t("wall.evolved_you")}</b>
           <span className="wl-evoname">{evoBanner.emoji} {evoBanner.name}</span>
         </div>
       )}
       {banner && <div className="wl-banner popin">{banner}</div>}
       {hint && <div className="wl-hint popin">{hint}</div>}
       {toast && <div className="toast" style={{ zIndex: 70 }}>{toast}</div>}
-      {down && <div className="wl-downveil"><b>💀 נפלת!</b><span className="sub">חוזר בעוד רגע...</span></div>}
+      {down && <div className="wl-downveil"><b>{t("wall.down")}</b><span className="sub">{t("wall.down_s")}</span></div>}
 
       {/* דראפט — צף, המשחק ממשיך ברקע! */}
       {draft && (
         <div className="wl-draft popin">
-          <b>⬆️ רמה {draft.level}! בחר שדרוג:</b>
+          <b>{t("wall.level_up", { n: draft.level })}</b>
           <div className="wl-draftrow">
             {draft.cards.map((c) => (
               <button key={c.id} className="wl-card" onClick={() => {
@@ -1597,7 +1585,7 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
                 // ערימה גבוהה = הבזק גדול יותר, כדי שהשדרוג ה-6 ירגיש חזק מהראשון.
                 const isTrait = TRAIT_ORDER.includes(c.id);
                 const col = TRAIT_COLOR[c.id] ?? AMP_COLOR[c.id] ?? "#ffd24a";
-                const big = (c.tier ?? 1) >= 4 || /אבולוציה/.test(c.desc ?? "");
+                const big = (c.tier ?? 1) >= 4 || !!c.evo;
                 surge.current = { t0: performance.now(), color: col, big };
                 shake.current = Math.max(shake.current, big ? 16 : 8 + (c.tier ?? 1));
                 Sfx.upgrade(isTrait ? TRAIT_ORDER.indexOf(c.id) + 1 : (Object.keys(AMP_COLOR).indexOf(c.id) % 8) + 1);
@@ -1607,13 +1595,13 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
                 if (hme) {
                   fxs.current.push({
                     kind: "dmg", x: hme.x, y: hme.y - 54, t0: performance.now(),
-                    txt: `${c.emoji} ${c.name}`, color: col, big: true,
+                    txt: `${c.emoji} ${cardName(c)}`, color: col, big: true,
                   });
                 }
               }}>
                 <span style={{ fontSize: 26 }}>{c.emoji}</span>
-                <b style={{ fontSize: 12 }}>{c.name}</b>
-                <span className="sub" style={{ fontSize: 10 }}>{c.desc}</span>
+                <b style={{ fontSize: 12 }}>{cardName(c)}</b>
+                <span className="sub" style={{ fontSize: 10 }}>{cardDesc(c)}</span>
               </button>
             ))}
           </div>
@@ -1623,10 +1611,10 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
       {/* סוף ריצה */}
       {phase === "over" && over && (
         <div className="wl-overlay">
-          <div style={{ fontSize: 15, opacity: 0.85 }}>🏰 החומה נפלה בגל</div>
+          <div style={{ fontSize: 15, opacity: 0.85 }}>{t("wall.fell_at_wave")}</div>
           <div className="wl-bigwave">{over.wave}</div>
-          {over.nearMiss && <div className="wl-nearmiss popin">{over.nearMiss}</div>}
-          {over.bestWave > over.wave && <p className="sub">🏆 שיא הערב: גל {over.bestWave}</p>}
+          {over.nearMiss && <div className="wl-nearmiss popin">{t("wall.near_miss", over.nearMiss)}</div>}
+          {over.bestWave > over.wave && <p className="sub">{t("wall.best_tonight", { n: over.bestWave })}</p>}
           <div className="wl-stats">
             {Object.entries(over.stats).map(([pid, s]) => {
               const st2 = styles.current.get(pid);
@@ -1655,14 +1643,14 @@ export default function WallView({ room, me, conn, hub }: GameViewProps) {
           {isHost ? (
             <>
               <button className="btn wl-again" onClick={() => { conn.sendGame({ a: "wl_again" }); Sfx.goBeep(); }}>
-                🔁 עוד פעם! (הפעם נחזיק)
+                {t("wall.again")}
               </button>
               <button className="btn ghost" style={{ marginTop: 8 }} onClick={() => conn.sendGame({ a: "wl_finish" })}>
-                🏁 סיימנו — לטקס
+                {t("wall.finish")}
               </button>
             </>
           ) : (
-            <p className="sub pulse" style={{ marginTop: 14 }}>המארח מחליט: עוד קרב או טקס... 👀</p>
+            <p className="sub pulse" style={{ marginTop: 14 }}>{t("wall.host_decides")}</p>
           )}
         </div>
       )}

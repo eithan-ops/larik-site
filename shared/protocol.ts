@@ -400,7 +400,8 @@ export type WallRole = "heli" | "archer" | "cannon" | "mg";
 export type WallEnemyType = "swarm" | "runner" | "armored" | "bomber" | "sniper" | "digger" | "boss";
 /** תכונת אויב (שכבת התוכן): 🏠 גג מבוצר — חסין לנזק מההליקופטר · 💚 מרפא — מרפא את הנחיל סביבו · 🌀 מגן קינטי — סופג פגיעות בודדות, נשבר רק מאש רציפה */
 export type WallAffix = "roof" | "healer" | "shield";
-export interface WallCard { id: string; name: string; emoji: string; desc: string; tier?: number }
+/** קלף דראפט של החומה — טקסט בלקוח: wall.card.<id> / wall.card.<id>.d; evo → wall.evo.<id> */
+export interface WallCard { id: string; emoji: string; tier?: number; evo?: boolean }
 export interface WallStats { kills: number; dmg: number; saves: number; deaths: number }
 
 export type WallClientMsg =
@@ -425,7 +426,7 @@ export type WallServerMsg =
   | { a: "wl_hit"; id: number; hp: number; by: string; crit?: boolean; k?: "hit" | "burn" | "poison" | "chain" | "blast" | "frost" | "pierce" | "vamp"; blocked?: boolean } // פגיעה באויב (hp<=0 = מוות); k = מקור הנזק; blocked = הפגיעה נחסמה (גג מבוצר/מגן קינטי)
   | { a: "wl_chain"; x1: number; y1: number; x2: number; y2: number; by: string }                // קשת ברק בין שני אויבים
   | { a: "wl_style"; pid: string; traits: Record<string, number>; tier: number; evos: string[]; amps?: Record<string, number> } // איך הנשק של השחקן נראה — כל החדר מקבל (amps = כמה פעמים נבחר כל מגבר)
-  | { a: "wl_evo"; pid: string; trait: string; name: string; emoji: string }                     // 🌟 אבולוציה — הרגע שכל החדר עוצר בשבילו
+  | { a: "wl_evo"; pid: string; trait: string; emoji: string }                                   // שם: wall.evo.<trait>                     // 🌟 אבולוציה — הרגע שכל החדר עוצר בשבילו
   | { a: "wl_arrow"; fx: number; fy: number; tx: number; ty: number; T: number; by: string; fire?: boolean } // cue — חץ באוויר
   | { a: "wl_shell"; fx: number; fy: number; tx: number; ty: number; T: number; by: string }      // cue — פגז באוויר
   | { a: "wl_boomfx"; x: number; y: number; r: number }                                          // פיצוץ (בזמן הפגיעה)
@@ -438,14 +439,14 @@ export type WallServerMsg =
   | { a: "wl_wall"; hp: number; max: number }                                                    // חיי החומה
   | { a: "wl_sniper"; id: number; target: string; fireAt: number }                               // צלף ננעל על גיבור — לקשת 3 שנ' להרוג
   | { a: "wl_levelup"; level: number; cards: WallCard[] }                                        // אישי — דראפט תוך-קרב
-  | { a: "wl_picked"; pid: string; name: string; emoji: string }
+  | { a: "wl_picked"; pid: string; id: string; emoji: string; evo?: boolean }
   | { a: "wl_tier"; pid: string; tier: number }                                                  // דרגת נשק עלתה (ויזואל חדש!)
   | { a: "wl_xp"; xp: number; level: number; next: number }                                      // אישי — מד XP
   | { a: "wl_mods"; rate: number; speed: number }                                                // אישי — מכפילי קצב/מהירות (הלקוח מכייל איתם את שערי הקלט)
   | { a: "wl_heat"; heat: number }                                                               // אישי (מקלען) — החום האמיתי מהשרת, 5Hz
   | { a: "wl_fuel"; fuel: number; max: number }                                                  // אישי (הליקופטר) — הדלק מהשרת, 5Hz; מתמלא רק ברצועת החומה
   | { a: "wl_clear"; wave: number; wallHp: number }                                              // הגל הוסתיים — נשימה
-  | { a: "wl_over"; wave: number; bestWave: number; nearMiss?: string; mvp?: string; stats: Record<string, WallStats> }
+  | { a: "wl_over"; wave: number; bestWave: number; nearMiss?: { s: number; wave: number }; mvp?: string; stats: Record<string, WallStats> }
   | { a: "wl_state"; wave: number; roles: Record<string, WallRole>; slots: Record<string, [number, number]>; wallHp: number; wallMax: number; phase: "setup" | "wave" | "breath" | "over"; tiers: Record<string, number> }; // rejoin
 
 /* ---------- החופרים ⛏️ ---------- */

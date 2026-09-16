@@ -198,7 +198,7 @@ async function testTraits() {
   const dots = (game("a2", "wl_hit") as any[]).filter((h) => h.k && h.k !== "hit");
   check("תכונות באמת פועלות בעולם (נזק מ-DoT/שרשרת/נפץ)", dots.length > 0);
   const evos = game("a2", "wl_evo") as any[];
-  if (evos.length) check("🌟 אבולוציה מוכרזת לכל החדר", !!evos[0].name);
+  if (evos.length) check("🌟 אבולוציה מוכרזת לכל החדר", !!evos[0].trait && !!evos[0].emoji);
   else console.log("  ~ לא הושגה אבולוציה בריצה הקצרה — לא נבחן");
   const xp = (game("a2", "wl_xp") as any[]).at(-1);
   console.log(`    (רמה שהושגה: ${xp?.level ?? "?"}, הצעות: ${offers}, אירועי DoT: ${dots.length})`);
