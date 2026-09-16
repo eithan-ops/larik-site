@@ -2,13 +2,14 @@
  * שכבת השפה של אפליקציית המשחקים — בלי ספריות, בלי משקל.
  *
  * • הטלפון מוריד רק את השפה שלו: locales/<lang>/common.json הוא chunk נפרד (import.meta.glob).
- * • אין מסך בחירה. סדר ההכרעה: ?l= בקישור לחדר → בחירה ידנית שמורה (🌐) → המדינה שהשרת זיהה
+ * • אין מסך בחירה. סדר ההכרעה: ?l= בקישור לחדר / דף בית בשפה (/es/) → בחירה ידנית שמורה (🌐) → המדינה שהשרת זיהה
  *   (window.__LARIK, מוזרק ל-index.html) → en.
  * • t("key", {name, n}) — {n, plural, one {…} other {…}} דרך Intl.PluralRules (ערבית: 6 צורות, קוריאנית/יפנית: 1).
  * • החלפת שפה = reload (כמו באפליקציית המופע) — פשוט, אמין, ואפס עבודה בזמן משחק.
  * • ⚠️ הסנכרון (שעון, cue-ים, טיק) לא נוגע בקובץ הזה: t() הוא חיפוש במילון סטטי בזמן רינדור בלבד.
  */
 import { asLang, dirOf, type Lang } from "../../../shared/i18n";
+import { langFromPath } from "../../../shared/seo";
 import type { LText } from "../../../shared/protocol";
 
 declare global {
@@ -21,9 +22,10 @@ let lang: Lang = "he";
 let dict: Dict = {};
 let rules: Intl.PluralRules | null = null;
 
-/** מה השפה של הקישור לחדר (מארח שיתף `?l=xx`) — חייבת לנצח, כדי שכל הטלפונים בחדר יהיו באותה שפה */
+/** מה השפה של הקישור: `?l=xx` (קישור לחדר — חייב לנצח, כל הטלפונים בחדר באותה שפה)
+ *  או דף הבית בשפה `/es/` (כתובת ה-SEO שגוגל מציג בכל מדינה — מי שהגיע ממנה רוצה את השפה הזאת) */
 function langFromUrl(): Lang | null {
-  return asLang(new URLSearchParams(location.search).get("l"));
+  return asLang(new URLSearchParams(location.search).get("l")) ?? asLang(langFromPath(location.pathname));
 }
 
 export function resolveInitialLang(): Lang {
