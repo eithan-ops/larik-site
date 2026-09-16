@@ -9,6 +9,8 @@
  * נגיעה נשלחת עם זמן-שרת, וזמן התגובה נמדד מול זמן ההדלקה — הרשת לא משפיעה על המדידה.
  */
 
+import type { LText } from "./protocol";
+
 export type SpGame = "colors" | "duel" | "star" | "beep" | "steal" | "survive" | "relay" | "stations" | "statue" | "pacer";
 export const SP_GAME_IDS: SpGame[] = ["colors", "duel", "star", "beep", "steal", "survive", "relay", "stations", "statue", "pacer"];
 /** מזהה הקטלוג = "sp_" + המשחק */
@@ -18,18 +20,19 @@ export const spGameOf = (gameId: string): SpGame | null => {
 };
 
 /* ---------- צבעי ספורטאים — רוויים, נראים מ-10 מטר ---------- */
-export interface SpColor { hex: string; name: string; ink: string }
+/** שם הצבע: locales/<lang>/spods.json → spods.color.<i> / spods.color.shared */
+export interface SpColor { hex: string; ink: string }
 export const SP_COLORS: SpColor[] = [
-  { hex: "#FF3B3B", name: "אדום", ink: "#FFFFFF" },
-  { hex: "#2F7BFF", name: "כחול", ink: "#FFFFFF" },
-  { hex: "#3DDC3D", name: "ירוק", ink: "#08150A" },
-  { hex: "#FFD21F", name: "צהוב", ink: "#1A1400" },
-  { hex: "#B04DFF", name: "סגול", ink: "#FFFFFF" },
-  { hex: "#FF8A2B", name: "כתום", ink: "#1A0E00" },
-  { hex: "#FF5FB0", name: "ורוד", ink: "#FFFFFF" },
-  { hex: "#2EDCE6", name: "טורקיז", ink: "#06191B" },
+  { hex: "#FF3B3B", ink: "#FFFFFF" },
+  { hex: "#2F7BFF", ink: "#FFFFFF" },
+  { hex: "#3DDC3D", ink: "#08150A" },
+  { hex: "#FFD21F", ink: "#1A1400" },
+  { hex: "#B04DFF", ink: "#FFFFFF" },
+  { hex: "#FF8A2B", ink: "#1A0E00" },
+  { hex: "#FF5FB0", ink: "#FFFFFF" },
+  { hex: "#2EDCE6", ink: "#06191B" },
 ];
-export const SP_SHARED = { hex: "#FFF3DC", name: "לבן", ink: "#0C0906" }; // אור משותף (גניבת הסבב)
+export const SP_SHARED = { hex: "#FFF3DC", ink: "#0C0906" }; // אור משותף (גניבת הסבב)
 export const spColor = (c: number): SpColor => (c >= 0 && c < SP_COLORS.length ? SP_COLORS[c] : SP_SHARED);
 
 /* ---------- הגדרות שהמאמן מכוונן ---------- */
@@ -37,42 +40,42 @@ export interface SpSetting { key: string; label: string; values: { v: number; la
 export type SpCfg = Record<string, number>;
 
 /* ---------- תרגילים ותנוחות ---------- */
-export interface SpMove { ic: string; t: string; sub?: string }
-export const SP_KITS: Record<string, { name: string; moves: SpMove[] }> = {
-  warm: { name: "חימום", moves: [
-    { ic: "🦘", t: "10 קפיצות" }, { ic: "🏃", t: "ריצה במקום", sub: "10 שניות" }, { ic: "🙆", t: "10 ג'אמפינג ג'ק" },
-    { ic: "🔄", t: "3 סיבובים" }, { ic: "🦵", t: "10 ברכיים למעלה" }, { ic: "🤸", t: "5 קפיצות כוכב" },
+/** תרגיל/תנוחה — הטקסט: spods.move.<id> (+ .sub) / spods.pose.<id> */
+export interface SpMove { ic: string; id: string; sub?: boolean }
+export const SP_KITS: Record<string, { moves: SpMove[] }> = {
+  warm: { moves: [
+    { ic: "🦘", id: "jumps10" }, { ic: "🏃", id: "run_place", sub: true }, { ic: "🙆", id: "jj10" },
+    { ic: "🔄", id: "spins3" }, { ic: "🦵", id: "knees10" }, { ic: "🤸", id: "star5" },
   ] },
-  power: { name: "כוח", moves: [
-    { ic: "🏋️", t: "8 סקוואטים" }, { ic: "🧘", t: "פלאנק", sub: "10 שניות" }, { ic: "💪", t: "5 שכיבות סמיכה" },
-    { ic: "🦵", t: "6 לאנג'ים" }, { ic: "🐸", t: "5 קפיצות צפרדע" }, { ic: "🪑", t: "כיסא על הקיר", sub: "10 שניות" },
+  power: { moves: [
+    { ic: "🏋️", id: "squats8" }, { ic: "🧘", id: "plank", sub: true }, { ic: "💪", id: "pushups5" },
+    { ic: "🦵", id: "lunges6" }, { ic: "🐸", id: "frog5" }, { ic: "🪑", id: "wallsit", sub: true },
   ] },
-  fun: { name: "כיף", moves: [
-    { ic: "🐻", t: "הליכת דוב", sub: "עד הפוד וחזרה" }, { ic: "🦀", t: "הליכת סרטן" }, { ic: "🐰", t: "5 קפיצות ארנב" },
-    { ic: "🕺", t: "ריקוד", sub: "5 שניות" }, { ic: "🦩", t: "רגל אחת", sub: "5 שניות" }, { ic: "🌪️", t: "סיבוב טורנדו" },
+  fun: { moves: [
+    { ic: "🐻", id: "bear", sub: true }, { ic: "🦀", id: "crab" }, { ic: "🐰", id: "bunny5" },
+    { ic: "🕺", id: "dance", sub: true }, { ic: "🦩", id: "oneleg", sub: true }, { ic: "🌪️", id: "tornado" },
   ] },
 };
 export const SP_KIT_IDS = ["warm", "power", "fun"];
 export const SP_POSES: SpMove[] = [
-  { ic: "🧘", t: "פלאנק" }, { ic: "🏋️", t: "סקוואט" }, { ic: "🦩", t: "רגל אחת" }, { ic: "🛌", t: "שכיבה על הגב" },
-  { ic: "🧎", t: "ברך אחת" }, { ic: "🙌", t: "ידיים למעלה" },
+  { ic: "🧘", id: "plank" }, { ic: "🏋️", id: "squat" }, { ic: "🦩", id: "oneleg" }, { ic: "🛌", id: "onback" },
+  { ic: "🧎", id: "oneknee" }, { ic: "🙌", id: "handsup" },
 ];
 
 /* ---------- הקטלוג הפנימי של הקטגוריה ---------- */
+/** scoreLabel: locales/<lang>/spods.json → spods.score.<id>; setup — נפילה לעברית לקטלוג, בשלט: spods.setup.<id> */
 export interface SpDef {
   id: SpGame;
   name: string;
   icon: string;
   tagline: string;
   howTo: string;
-  /** הנחיית סידור למאמן — מוצגת בשלט לפני ההתחלה */
+  /** הנחיית סידור למאמן (עברית — נפילה; הלקוח מציג spods.setup.<id>) */
   setup: string;
   minPods: number;
   minAth: number;
   maxAth: number;
   settings: SpSetting[];
-  /** מה מודדים — התווית של עמודת הניקוד בשלט */
-  scoreLabel: string;
   /** ניקוד נמוך = טוב (מרוץ הצבעים, בדיוק בזמן, מרוץ שליחים) */
   lowerIsBetter?: boolean;
   /** יחידת התצוגה של הניקוד */
@@ -91,7 +94,7 @@ export const SP_DEFS: Record<SpGame, SpDef> = {
       { key: "window", label: "זמן לנגיעה", values: [{ v: 10000, label: "10 שנ'" }, { v: 6000, label: "6 שנ' ⚡" }, { v: 15000, label: "15 שנ' 🧒" }] },
       { key: "delay", label: "השהיה לפני הגו", values: [{ v: 3000, label: "עד 3 שנ'" }, { v: 1500, label: "עד 1.5 שנ'" }, { v: 5000, label: "עד 5 שנ' 😈" }] },
     ],
-    scoreLabel: "סבבים שניצח", unit: "n",
+    unit: "n",
   },
   duel: {
     id: "duel", name: "דו-קרב", icon: "⚔️",
@@ -103,7 +106,7 @@ export const SP_DEFS: Record<SpGame, SpDef> = {
       { key: "secs", label: "זמן לדו-קרב", values: [{ v: 45, label: "45 שנ'" }, { v: 30, label: "30 שנ' ⚡" }, { v: 60, label: "60 שנ' 🔥" }] },
       { key: "window", label: "זמן לנגיעה", values: [{ v: 5000, label: "5 שנ'" }, { v: 3000, label: "3 שנ' ⚡" }, { v: 8000, label: "8 שנ' 🧒" }] },
     ],
-    scoreLabel: "נקודות טורניר", unit: "n",
+    unit: "n",
   },
   star: {
     id: "star", name: "כוכב הזריזות", icon: "⭐",
@@ -114,7 +117,7 @@ export const SP_DEFS: Record<SpGame, SpDef> = {
     settings: [
       { key: "secs", label: "זמן לתור", values: [{ v: 30, label: "30 שנ'" }, { v: 20, label: "20 שנ' ⚡" }, { v: 45, label: "45 שנ' 🔥" }] },
     ],
-    scoreLabel: "כוכבים", unit: "n",
+    unit: "n",
   },
   beep: {
     id: "beep", name: "מבחן הביפ", icon: "📶",
@@ -126,7 +129,7 @@ export const SP_DEFS: Record<SpGame, SpDef> = {
       { key: "window", label: "זמן התחלתי", values: [{ v: 8000, label: "8 שנ'" }, { v: 6000, label: "6 שנ' ⚡" }, { v: 12000, label: "12 שנ' 🧒" }] },
       { key: "elim", label: "הדחה", values: [{ v: 1, label: "2 פספוסים = בחוץ 💀" }, { v: 0, label: "בלי הדחה 🙂 (4 רמות)" }] },
     ],
-    scoreLabel: "רמה", unit: "lvl",
+    unit: "lvl",
   },
   steal: {
     id: "steal", name: "גניבת הסבב", icon: "🦝",
@@ -138,7 +141,7 @@ export const SP_DEFS: Record<SpGame, SpDef> = {
       { key: "toN", label: "גניבות לניצחון", values: [{ v: 10, label: "10" }, { v: 5, label: "5 ⚡" }, { v: 15, label: "15 🔥" }] },
       { key: "delay", label: "השהיה", values: [{ v: 4000, label: "עד 4 שנ'" }, { v: 2000, label: "עד 2 שנ' ⚡" }, { v: 7000, label: "עד 7 שנ' 😈" }] },
     ],
-    scoreLabel: "גניבות", unit: "n",
+    unit: "n",
   },
   survive: {
     id: "survive", name: "הישרדות", icon: "💀",
@@ -149,7 +152,7 @@ export const SP_DEFS: Record<SpGame, SpDef> = {
     settings: [
       { key: "window", label: "זמן התחלתי", values: [{ v: 6000, label: "6 שנ'" }, { v: 4000, label: "4 שנ' ⚡" }, { v: 9000, label: "9 שנ' 🧒" }] },
     ],
-    scoreLabel: "הדלקות ששרד", unit: "n",
+    unit: "n",
   },
   relay: {
     id: "relay", name: "מרוץ שליחים", icon: "🏁",
@@ -160,7 +163,7 @@ export const SP_DEFS: Record<SpGame, SpDef> = {
     settings: [
       { key: "laps", label: "קטעים לרץ", values: [{ v: 1, label: "1" }, { v: 2, label: "2" }, { v: 3, label: "3 🔥" }] },
     ],
-    scoreLabel: "זמן קטע", unit: "ms", lowerIsBetter: true,
+    unit: "ms", lowerIsBetter: true,
   },
   stations: {
     id: "stations", name: "תחנות אש", icon: "🔥",
@@ -172,7 +175,7 @@ export const SP_DEFS: Record<SpGame, SpDef> = {
       { key: "mins", label: "אורך", values: [{ v: 5, label: "5 דק'" }, { v: 3, label: "3 דק' ⚡" }, { v: 8, label: "8 דק' 🔥" }] },
       { key: "kit", label: "ערכה", values: [{ v: 0, label: "חימום 🦘" }, { v: 1, label: "כוח 💪" }, { v: 2, label: "כיף 🐻" }] },
     ],
-    scoreLabel: "תחנות", unit: "n",
+    unit: "n",
   },
   statue: {
     id: "statue", name: "הפסל", icon: "🗿",
@@ -184,7 +187,7 @@ export const SP_DEFS: Record<SpGame, SpDef> = {
       { key: "secs", label: "אורך", values: [{ v: 60, label: "60 שנ'" }, { v: 45, label: "45 שנ' ⚡" }, { v: 90, label: "90 שנ' 🔥" }] },
       { key: "hold", label: "החזקה", values: [{ v: 6000, label: "2–6 שנ'" }, { v: 4000, label: "2–4 שנ' ⚡" }, { v: 9000, label: "2–9 שנ' 💪" }] },
     ],
-    scoreLabel: "תנוחות", unit: "n",
+    unit: "n",
   },
   pacer: {
     id: "pacer", name: "בדיוק בזמן", icon: "⏱️",
@@ -197,7 +200,7 @@ export const SP_DEFS: Record<SpGame, SpDef> = {
       { key: "fade", label: "דעיכה", values: [{ v: 5000, label: "~5 שנ'" }, { v: 3000, label: "~3 שנ' ⚡" }, { v: 8000, label: "~8 שנ' 🐢" }] },
       { key: "fake", label: "פייקים", values: [{ v: 0, label: "בלי" }, { v: 1, label: "עם 😈" }] },
     ],
-    scoreLabel: "פער כולל", unit: "ms", lowerIsBetter: true,
+    unit: "ms", lowerIsBetter: true,
   },
 };
 
@@ -227,8 +230,8 @@ export interface SpAth {
   out: boolean;
   team: number;       // מרוץ שליחים: 0/1
   strikes: number;    // מבחן הביפ
-  hold?: string;      // הפסל: התנוחה שמחזיקים עכשיו
-  extra?: string;     // טקסט חופשי לשורה בשלט ("+0.3 חפוז", "רמה 4")
+  hold?: string;      // הפסל: מזהה התנוחה שמחזיקים עכשיו
+  extra?: LText;      // טקסט לשורה בשלט ("+0.3 חפוז", "רמה 4")
 }
 export interface SpState {
   game: SpGame;
@@ -239,8 +242,8 @@ export interface SpState {
   roles: Record<string, "ath" | "pod">;
   round: number; of: number;      // סבב נוכחי / כמה
   until: number;                  // סוף השלב הנוכחי (זמן-שרת), 0 = אין
-  banner: string;                 // מה קורה עכשיו — לשלט ולפודים
-  sub?: string;
+  banner: LText;                  // מה קורה עכשיו — לשלט ולפודים
+  sub?: LText;
   /** דו-קרב: הזוג הנוכחי · כוכב: מי בתור */
   focus?: string[];
   level?: number;                 // מבחן הביפ
@@ -265,9 +268,9 @@ export interface SpLight {
   pod: string;
   c: number;                 // צבע (אינדקס), -1 = משותף
   pid?: string;              // למי מיועד
-  txt?: string;              // טקסט גדול על הפוד (שם, תרגיל, תנוחה)
+  txt?: LText;               // טקסט גדול על הפוד (שם, תרגיל, תנוחה)
   ic?: string;               // אימוג'י גדול
-  sub?: string;
+  sub?: LText;
   at: number;                // זמן ההדלקה (cue)
   until: number;             // סוף החלון (0 = בלי)
   fade?: number;             // בדיוק בזמן: משך הדעיכה
@@ -279,10 +282,10 @@ export type SpodsServerMsg =
   | { a: "sp_state"; s: SpState }
   | { a: "sp_light"; l: SpLight }                                  // cue
   | { a: "sp_off"; id: number; why: "hit" | "miss" | "stop" }
-  | { a: "sp_hit"; id: number; pid: string; pod: string; ms: number; txt?: string; good?: boolean }
+  | { a: "sp_hit"; id: number; pid: string; pod: string; ms: number; txt?: LText; good?: boolean }
   | { a: "sp_miss"; id: number; pid: string; pod: string }
   | { a: "sp_go"; at: number }                                     // cue: צליל הזינוק
-  | { a: "sp_say"; t: string; k?: SpSayKind }
+  | { a: "sp_say"; t: LText; k?: SpSayKind }
   | { a: "sp_flash"; pod: string }
   | { a: "sp_over"; winner?: string; scores: Record<string, number> };
 
@@ -312,6 +315,6 @@ export const spFmtMs = (ms: number) => (ms / 1000).toFixed(2);
 export const spFmtScore = (g: SpGame, v: number) => {
   const u = SP_DEFS[g].unit;
   if (u === "ms") return v ? `${spFmtMs(v)}s` : "—";
-  if (u === "lvl") return `רמה ${v}`;
+  if (u === "lvl") return `${v}`;   // "רמה" נוספת בלקוח (spods.level_n)
   return String(v);
 };
