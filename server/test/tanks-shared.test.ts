@@ -111,7 +111,6 @@ function shotAt(seed: string, wid: string, extra: Partial<TkSalvoIn> = {}, tweak
     if (c.kind === "passive") { const a = tkBaseMods(), b = tkBaseMods(); c.m!(b); if (JSON.stringify(a) === JSON.stringify(b)) bad.push("passive-noop:" + c.id); }
     if ((c.kind === "instant" || c.kind === "sky") && !c.fx) bad.push("fx:" + c.id);
     if (c.req) for (const r of c.req) if (!tkCard(r)) bad.push("req:" + c.id + "→" + r);
-    if (c.d.split(" ").length > 9) bad.push("long:" + c.id);
   }
   check(`בנק: ${TK_CARDS.length} קלפים, כולם תקינים`, bad.length === 0 && TK_CARDS.length >= 110, bad.join(" "));
   const m = tkMods({ armor: 3, shield: 2, fuel: 1, magnet: 2, dbl: 1 });

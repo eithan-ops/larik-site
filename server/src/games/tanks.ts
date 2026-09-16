@@ -7,7 +7,7 @@
  * זהב: נזק ×1 · הריגה 80 · שרידות 15 · ראש-בפרס 40 · ניצחון קרב 150. ניקוד: הריגה 3 · שרידות 1 · ניצחון 6 · נזק/40.
  */
 import type { GameCtx, GameInstance } from "../engine";
-import type { GameClientMsg, GameServerMsg } from "../../../shared/protocol";
+import type { GameClientMsg, GameServerMsg, LText } from "../../../shared/protocol";
 import {
   TK, TK_CARDS, TK_RARITY_W, tkCard, tkConfig, tkMods, tkPrice, tkNewWorld, tkGenTerrain, tkPlaceTanks, tkNewTank, tkApplyMods, tkGround, tkCrater, tkMound, tkQuake, tkNewSalvo, tkRng, tkBotAim, TK_BASIC,
 } from "../../../shared/tanks";
@@ -53,7 +53,9 @@ export function createTanks(ctx: GameCtx): GameInstance {
   const connected = (pid: string) => ctx.players().find((p) => p.id === pid)?.connected ?? false;
   const alive = () => [...tanks.values()].filter((t) => t.alive);
   const ranked = () => [...ps.values()].sort((a, c) => c.score - a.score || c.kills - a.kills || c.dmg - a.dmg);
-  const feed = (tx: string) => bc({ a: "tk_feed", tx });
+  const feed = (tx: LText) => bc({ a: "tk_feed", tx });
+  /** שורת פיד כמפתח: הלקוח מתרגם (tanks.f.<k>) — name/target = שמות שחקנים, card = מזהה קלף שהלקוח מתרגם */
+  const F = (k: string, p?: Record<string, string | number>): LText => ({ k: `tanks.f.${k}`, p });
   const rng = tkRng("server:" + Math.random());
 
   /** הבילד שרואים על הטנק: פסיביים לפי נדירות (אבולוציה קודם), עד 6 */
@@ -66,7 +68,7 @@ export function createTanks(ctx: GameCtx): GameInstance {
   const wireTank = (t: TkTank): TkTankWire => ({ pid: t.pid, c: t.c, x: Math.round(t.x), y: Math.round(t.y), hp: Math.round(t.hp), hpMax: t.hpMax, sh: Math.round(t.shield), alive: t.alive, bounty: t.bounty >= k || t.pid === bountyPid, frozen: t.frozen, own: ownList(t.pid) });
   const wireTanks = () => [...tanks.values()].map(wireTank);
   const wireWorld = (): TkWorldWire => ({ water: world.water, gravK: world.gravK, windK: world.windK, walls: world.walls, night: world.night, fires: world.fires, theme: world.theme });
-  const wireCard = (c: TkCard, m?: TkMods): TkCardWire => ({ id: c.id, ic: c.ic, t: c.t, d: c.d, r: c.r, cat: c.cat, kind: c.kind, price: m ? tkPrice(c, m) : c.price, tg: c.tg, n: c.n });
+  const wireCard = (c: TkCard, m?: TkMods): TkCardWire => ({ id: c.id, ic: c.ic, r: c.r, cat: c.cat, kind: c.kind, price: m ? tkPrice(c, m) : c.price, tg: c.tg, n: c.n });
   const you = (p: P) => to(p.pid, { a: "tk_you", gold: Math.round(p.gold), ammo: p.ammo, owned: p.owned, fuel: p.fuelLeft, blind: p.curse === "blind" || world.night, spy: [...p.spy], curse: p.curse });
   const timing = () => ({ aimMs: cfg.aimMs, garageMs: cfg.garageMs });
 
@@ -157,7 +159,7 @@ export function createTanks(ctx: GameCtx): GameInstance {
   function runSalvo() {
     if (phase !== "aim") return;
     phase = "salvo"; token++;
-    const pre: string[] = [];
+    const pre: LText[] = [];
     const meteors: number[] = [], dirts: number[] = [];
     if (k >= TK.SUDDEN_FROM) for (let i = 0; i < 2; i++) meteors.push(Math.round(30 + rng() * (TK.W - 60)));
     if (eff.meteorsNext > 0) { for (let i = 0; i < eff.meteorsNext; i++) meteors.push(Math.round(30 + rng() * (TK.W - 60))); eff.meteorsNext = 0; }
@@ -167,21 +169,21 @@ export function createTanks(ctx: GameCtx): GameInstance {
       const tg = sp.target ? tanks.get(sp.target) : undefined; const tp = sp.target ? ps.get(sp.target) : undefined;
       const nm = nameOf(p.pid), tn = sp.target ? nameOf(sp.target) : "";
       switch (sp.id) {
-        case "skymeteor": meteors.push(Math.max(20, Math.min(TK.W - 20, Math.round(sp.x ?? TK.W / 2)))); pre.push(`☄️ ${nm} הזמין מטאור משמיים`); break;
-        case "skydirt": dirts.push(Math.max(20, Math.min(TK.W - 20, Math.round(sp.x ?? TK.W / 2)))); pre.push(`🌫️ ${nm} הפיל ענן אדמה`); break;
-        case "skybless": if (tg?.alive) { tg.shield += 40; pre.push(`😇 ${nm} בירך את ${tn} (+40 מגן)`); } break;
-        case "skyheal": if (tg?.alive) { tg.hp = Math.min(tg.hpMax, tg.hp + 30); pre.push(`💚 ${nm} ריפא את ${tn}`); } break;
-        case "skywind": wind = (rng() < 0.5 ? -1 : 1) * Math.round(6 + rng() * 4); pre.push(`🌬️ ${nm} שינה את הרוח!`); break;
-        case "skycurse": if (tp) { tp.curse = "wind"; pre.push(`😈 ${nm} קילל את ${tn}`); } break;
-        case "skyweak": if (tp) { tp.curse = "weak"; pre.push(`🐌 ${nm} הטביע את ${tn} בבוץ`); } break;
-        case "skygift": { const last = ranked().filter((q) => q.pid !== p.pid).at(-1); if (last) { last.gold += 60; last.earned += 60; pre.push(`🎁 ${nm} נתן 60 זהב ל${nameOf(last.pid)}`); } break; }
+        case "skymeteor": meteors.push(Math.max(20, Math.min(TK.W - 20, Math.round(sp.x ?? TK.W / 2)))); pre.push(F("skymeteor", { name: nm })); break;
+        case "skydirt": dirts.push(Math.max(20, Math.min(TK.W - 20, Math.round(sp.x ?? TK.W / 2)))); pre.push(F("skydirt", { name: nm })); break;
+        case "skybless": if (tg?.alive) { tg.shield += 40; pre.push(F("skybless", { name: nm, target: tn })); } break;
+        case "skyheal": if (tg?.alive) { tg.hp = Math.min(tg.hpMax, tg.hp + 30); pre.push(F("skyheal", { name: nm, target: tn })); } break;
+        case "skywind": wind = (rng() < 0.5 ? -1 : 1) * Math.round(6 + rng() * 4); pre.push(F("skywind", { name: nm })); break;
+        case "skycurse": if (tp) { tp.curse = "wind"; pre.push(F("skycurse", { name: nm, target: tn })); } break;
+        case "skyweak": if (tp) { tp.curse = "weak"; pre.push(F("skyweak", { name: nm, target: tn })); } break;
+        case "skygift": { const last = ranked().filter((q) => q.pid !== p.pid).at(-1); if (last) { last.gold += 60; last.earned += 60; pre.push(F("skygift", { name: nm, target: nameOf(last.pid) })); } break; }
       }
       p.skyPick = null;
     }
     const shots: TkShot[] = [];
     for (const p of ps.values()) {
       const t = tanks.get(p.pid); if (!t?.alive) continue;
-      if (t.frozen) { t.frozen = false; pre.push(`🧊 ${nameOf(p.pid)} קפוא — מדלג על הירייה`); continue; }
+      if (t.frozen) { t.frozen = false; pre.push(F("frozen", { name: nameOf(p.pid) })); continue; }
       let a = p.aim ?? p.lastAim;
       if (!a && process.env.TK_BOTS) { const tg = alive().filter((q) => q.pid !== p.pid)[0]; if (tg) a = { ...tkBotAim(world, t, tg, wind, p.mods.power, rng), w: TK_BASIC }; }
       if (!a) continue;
@@ -189,9 +191,9 @@ export function createTanks(ctx: GameCtx): GameInstance {
       let w = a.w;
       if (w !== TK_BASIC) { if ((p.ammo[w] ?? 0) > 0) { p.ammo[w]--; if (p.ammo[w] <= 0) delete p.ammo[w]; } else w = TK_BASIC; }
       const sh: TkShot = { pid: p.pid, vx: a.vx, vy: a.vy, w, dbl: p.mods.dbl || undefined, sk: p.mods.stabilizer || undefined };
-      if (p.curse === "wind") { sh.wind = Math.round((rng() * 2 - 1) * TK.WIND_MAX); pre.push(`🌪️ הקללה תפסה את ${nameOf(p.pid)}`); }
-      if (p.curse === "weak") { sh.vx *= 0.5; sh.vy *= 0.5; pre.push(`🐌 ${nameOf(p.pid)} ירה בחצי כוח`); }
-      if (p.curse === "confetti") { sh.w = "confetti"; pre.push(`🤡 הירייה של ${nameOf(p.pid)} הפכה לקונפטי`); }
+      if (p.curse === "wind") { sh.wind = Math.round((rng() * 2 - 1) * TK.WIND_MAX); pre.push(F("cursewind", { name: nameOf(p.pid) })); }
+      if (p.curse === "weak") { sh.vx *= 0.5; sh.vy *= 0.5; pre.push(F("curseweak", { name: nameOf(p.pid) })); }
+      if (p.curse === "confetti") { sh.w = "confetti"; pre.push(F("curseconf", { name: nameOf(p.pid) })); }
       p.curse = "";
       shots.push(sh);
     }
@@ -228,13 +230,13 @@ export function createTanks(ctx: GameCtx): GameInstance {
   }
   function afterSalvo() {
     if (phase !== "salvo") return;
-    const lines: string[] = [];
+    const lines: LText[] = [];
     for (const p of ps.values()) {
       const t = tanks.get(p.pid); if (!t) continue;
       if (t.alive) {
         p.survived++; p.score += 1;
         const s = Math.round(TK.GOLD_SURVIVE * p.mods.surviveMul); p.gold += s; p.earned += s;
-        if (p.taunt) { p.gold += 100; p.earned += 100; lines.push(`😜 ${nameOf(p.pid)} התגרה ושרד — +100`); p.taunt = false; }
+        if (p.taunt) { p.gold += 100; p.earned += 100; lines.push(F("taunt_survived", { name: nameOf(p.pid) })); p.taunt = false; }
         if (p.ally && p.ally.until >= k) { p.gold += 25; p.earned += 25; }
         if (p.mods.interest > 0) { const i = Math.round(p.gold * p.mods.interest); p.gold += i; p.earned += i; }
         if (p.mods.repair > 0 && t.hp < t.hpMax) t.hp = Math.min(t.hpMax, t.hp + p.mods.repair);
@@ -306,15 +308,15 @@ export function createTanks(ctx: GameCtx): GameInstance {
     p.offer = p.offer.filter((o) => o !== id);
     const t = tanks.get(p.pid);
     const nm = nameOf(p.pid), tn = target ? nameOf(target) : "";
-    let tx = `${nm} קנה ${c.ic} ${c.t}`;
+    let tx: LText = F("bought", { name: nm, ic: c.ic, card: c.id });
     if (c.kind === "ammo") p.ammo[id] = (p.ammo[id] ?? 0) + (c.n ?? 1);
     else if (c.kind === "passive") { p.owned[id] = (p.owned[id] ?? 0) + 1; p.mods = tkMods(p.owned); if (t) tkApplyMods(t, p.mods); }
     else if (c.kind === "instant") tx = instant(p, c, t, target, x) ?? tx;
-    bc({ a: "tk_bought", pid: p.pid, card: wireCard(c, p.mods), target, tx: c.cat === "S" && target ? `${tx} ← ${tn}` : tx });
+    bc({ a: "tk_bought", pid: p.pid, card: wireCard(c, p.mods), target, tx: c.cat === "S" && target && typeof tx !== "string" && tx.k === "tanks.f.bought" ? F("bought_on", { name: nm, ic: c.ic, card: c.id, target: tn }) : tx });
     you(p);
   }
   /** קלפים מיידיים — מחזיר טקסט לפיד (או undefined לברירת המחדל) */
-  function instant(p: P, c: TkCard, t: TkTank | undefined, target?: string, x?: number): string | undefined {
+  function instant(p: P, c: TkCard, t: TkTank | undefined, target?: string, x?: number): LText | undefined {
     const nm = nameOf(p.pid), tn = target ? nameOf(target) : "";
     const tg = target ? tanks.get(target) : undefined, tp = target ? ps.get(target) : undefined;
     const fx = c.fx ?? "";
@@ -325,34 +327,34 @@ export function createTanks(ctx: GameCtx): GameInstance {
       case "healfull": if (t?.alive) { t.hp = t.hpMax; settle(t); } return;
       case "bunker": if (t?.alive) { tkMound(world.h, t.x - 40, t.y + 30, 24); tkMound(world.h, t.x + 40, t.y + 30, 24); terrain(); settle(t); } return;
       case "digin": if (t?.alive) { tkCrater(world.h, t.x, t.y - 4, 22); terrain(); settle(t); } return;
-      case "tele": if (t?.alive) { t.x = freeX(); settle(t); } return `✨ ${nm} עשה טלפורט`;
+      case "tele": if (t?.alive) { t.x = freeX(); settle(t); } return F("tele", { name: nm });
       case "jump": if (t?.alive) { const d = (rng() < 0.5 ? -1 : 1) * (60 + rng() * 60); t.x = Math.max(12, Math.min(TK.W - 12, t.x + d)); settle(t); } return;
       case "ammobox": for (const id of Object.keys(p.ammo)) p.ammo[id]++; return;
       case "gold80": p.gold += 80; return;
-      case "bounty": if (tg) { tg.bounty = k + 2; bc({ a: "tk_tank", tank: wireTank(tg) }); } return `🎯 ${nm} שם ראש בפרס על ${tn}!`;
-      case "steal": if (tp) { const g = Math.min(40, Math.round(tp.gold)); tp.gold -= g; p.gold += g; you(tp); } return `🦝 ${nm} גנב 40 זהב מ${tn}`;
-      case "robin": { const lead = ranked().find((q) => q.pid !== p.pid); if (lead) { const g = Math.min(60, Math.round(lead.gold)); lead.gold -= g; p.gold += g; you(lead); return `🏹 ${nm} שדד 60 זהב מהמוביל ${nameOf(lead.pid)}`; } return; }
-      case "curse:wind": case "curse:weak": case "curse:blind": case "curse:confetti": if (tp) { tp.curse = fx.slice(6) as Curse; you(tp); } return `${c.ic} ${nm} הטיל ${c.t} על ${tn}`;
-      case "swap": if (t?.alive && tg?.alive) { const x0 = t.x; t.x = tg.x; tg.x = x0; settle(t); settle(tg); } return `🔀 ${nm} התחלף במקום עם ${tn}`;
-      case "ally": if (tp) { p.ally = { with: target!, until: k + 2 }; tp.ally = { with: p.pid, until: k + 2 }; } return `🤝 ${nm} ו-${tn} כרתו ברית ל-2 סיבובים`;
-      case "spy": if (target) p.spy.add(target); return `🕵️ ${nm} מרגל אחרי מישהו…`;
-      case "taunt": p.taunt = true; return `😜 ${nm} מתגרה בכולם: "תנסו לפגוע בי!"`;
-      case "sabotage": if (tg && tp) { tg.shield = 0; const ids = Object.keys(tp.ammo); if (ids.length) { const id = ids[Math.floor(rng() * ids.length)]; delete tp.ammo[id]; } bc({ a: "tk_tank", tank: wireTank(tg) }); you(tp); } return `🔧 ${nm} חיבל בטנק של ${tn}`;
-      case "gift": if (tp) { tp.gold += 60; you(tp); } return `🎁 ${nm} נתן 60 זהב ל${tn}`;
-      case "world:quake": { tkQuake(world.h, rng); terrain(); for (const tk of alive()) { const gy = tkGround(world.h, tk.x); const drop = tk.y - gy; if (drop > TK.FALL_FREE && !tk.chute) tk.hp = Math.max(1, tk.hp - Math.round((drop - TK.FALL_FREE) / TK.FALL_DIV)); settle(tk); } return `🌍 ${nm} הרעיד את כל ההר!`; }
-      case "world:flood": world.water = Math.min(420, Math.max(world.water, 60) + 70); terrain(); return `🌊 ${nm} הציף את העולם — המים עולים!`;
-      case "world:lowgrav": eff.gravK = 0.5; eff.gravUntil = k + 2; return `🌙 ${nm} הוריד את הכבידה ל-2 סיבובים`;
-      case "world:highgrav": eff.gravK = 1.6; eff.gravUntil = k + 2; return `🪐 ${nm} הכביד את הכבידה ל-2 סיבובים`;
-      case "world:storm": eff.windK = 2.5; eff.windUntil = k + 2; return `🌀 ${nm} הזמין סופה!`;
-      case "world:calm": eff.windK = 0; eff.windUntil = k + 2; return `🍃 ${nm} השתיק את הרוח`;
-      case "world:night": eff.night = k + 1; return `🌚 ${nm} כיבה את האור — בסיבוב הבא בלי תחזית`;
-      case "world:meteors": eff.meteorsNext = 4; return `☄️ ${nm} הזמין גשם מטאורים!`;
-      case "world:newmap": { world.h = tkGenTerrain(bseed + ":map" + k + rng()); terrain(); for (const tk of alive()) settle(tk); return `🗺️ ${nm} החליף את ההר!`; }
-      case "world:oil": eff.oil = k + 1; return `🛢️ ${nm} שפך שמן — כולם יחליקו`;
-      case "world:walls": eff.wallsUntil = k + 2; return `🧱 ${nm} הקים קירות — הפגזים חוזרים מהקצוות`;
-      case "world:doom": eff.doom = k + 1; return `🔔 ${nm} הכריז על יום הדין — נזק כפול בסלבו הבא!`;
-      case "world:healall": for (const tk of alive()) { tk.hp = Math.min(tk.hpMax, tk.hp + 25); bc({ a: "tk_tank", tank: wireTank(tk) }); } return `🌦️ ${nm} הוריד גשם מרפא לכולם`;
-      case "world:shuffle": { const xs = tkPlaceTanks(bseed + ":sh" + k + rng(), world.h, tanks.size); [...tanks.values()].forEach((tk, i) => { tk.x = xs[i]; settle(tk); }); terrain(); return `🎲 ${nm} ערבב את כולם!`; }
+      case "bounty": if (tg) { tg.bounty = k + 2; bc({ a: "tk_tank", tank: wireTank(tg) }); } return F("bounty", { name: nm, target: tn });
+      case "steal": if (tp) { const g = Math.min(40, Math.round(tp.gold)); tp.gold -= g; p.gold += g; you(tp); } return F("steal", { name: nm, target: tn });
+      case "robin": { const lead = ranked().find((q) => q.pid !== p.pid); if (lead) { const g = Math.min(60, Math.round(lead.gold)); lead.gold -= g; p.gold += g; you(lead); return F("robin", { name: nm, target: nameOf(lead.pid) }); } return; }
+      case "curse:wind": case "curse:weak": case "curse:blind": case "curse:confetti": if (tp) { tp.curse = fx.slice(6) as Curse; you(tp); } return F("curse", { name: nm, ic: c.ic, card: c.id, target: tn });
+      case "swap": if (t?.alive && tg?.alive) { const x0 = t.x; t.x = tg.x; tg.x = x0; settle(t); settle(tg); } return F("swap", { name: nm, target: tn });
+      case "ally": if (tp) { p.ally = { with: target!, until: k + 2 }; tp.ally = { with: p.pid, until: k + 2 }; } return F("ally", { name: nm, target: tn });
+      case "spy": if (target) p.spy.add(target); return F("spy", { name: nm });
+      case "taunt": p.taunt = true; return F("taunt", { name: nm });
+      case "sabotage": if (tg && tp) { tg.shield = 0; const ids = Object.keys(tp.ammo); if (ids.length) { const id = ids[Math.floor(rng() * ids.length)]; delete tp.ammo[id]; } bc({ a: "tk_tank", tank: wireTank(tg) }); you(tp); } return F("sabotage", { name: nm, target: tn });
+      case "gift": if (tp) { tp.gold += 60; you(tp); } return F("gift", { name: nm, target: tn });
+      case "world:quake": { tkQuake(world.h, rng); terrain(); for (const tk of alive()) { const gy = tkGround(world.h, tk.x); const drop = tk.y - gy; if (drop > TK.FALL_FREE && !tk.chute) tk.hp = Math.max(1, tk.hp - Math.round((drop - TK.FALL_FREE) / TK.FALL_DIV)); settle(tk); } return F("quake", { name: nm }); }
+      case "world:flood": world.water = Math.min(420, Math.max(world.water, 60) + 70); terrain(); return F("flood", { name: nm });
+      case "world:lowgrav": eff.gravK = 0.5; eff.gravUntil = k + 2; return F("lowgrav", { name: nm });
+      case "world:highgrav": eff.gravK = 1.6; eff.gravUntil = k + 2; return F("highgrav", { name: nm });
+      case "world:storm": eff.windK = 2.5; eff.windUntil = k + 2; return F("storm", { name: nm });
+      case "world:calm": eff.windK = 0; eff.windUntil = k + 2; return F("calm", { name: nm });
+      case "world:night": eff.night = k + 1; return F("night", { name: nm });
+      case "world:meteors": eff.meteorsNext = 4; return F("meteors", { name: nm });
+      case "world:newmap": { world.h = tkGenTerrain(bseed + ":map" + k + rng()); terrain(); for (const tk of alive()) settle(tk); return F("newmap", { name: nm }); }
+      case "world:oil": eff.oil = k + 1; return F("oil", { name: nm });
+      case "world:walls": eff.wallsUntil = k + 2; return F("walls", { name: nm });
+      case "world:doom": eff.doom = k + 1; return F("doom", { name: nm });
+      case "world:healall": for (const tk of alive()) { tk.hp = Math.min(tk.hpMax, tk.hp + 25); bc({ a: "tk_tank", tank: wireTank(tk) }); } return F("healall", { name: nm });
+      case "world:shuffle": { const xs = tkPlaceTanks(bseed + ":sh" + k + rng(), world.h, tanks.size); [...tanks.values()].forEach((tk, i) => { tk.x = xs[i]; settle(tk); }); terrain(); return F("shuffle", { name: nm }); }
     }
     return;
   }
@@ -382,18 +384,18 @@ export function createTanks(ctx: GameCtx): GameInstance {
     const rs = rows();
     const titles: { pid: string; ic: string; t: string }[] = [];
     const by = (f: (p: P) => number, ic: string, t: string, min = 1) => { const best = [...ps.values()].sort((a, c) => f(c) - f(a))[0]; if (best && f(best) >= min && !titles.some((x) => x.pid === best.pid)) titles.push({ pid: best.pid, ic, t }); };
-    by((p) => p.dmg, "🎯", "הצלף", 30);
-    by((p) => p.kills, "💀", "הקטלן", 1);
-    by((p) => p.survived, "🌵", "השורד", 3);
-    by((p) => p.goldTotal, "💰", "המיליונר", 100);
-    by((p) => p.selfDmg, "🤡", "הקמיקזה", 20);
+    by((p) => p.dmg, "🎯", "tanks.title.sniper", 30);
+    by((p) => p.kills, "💀", "tanks.title.killer", 1);
+    by((p) => p.survived, "🌵", "tanks.title.survivor", 3);
+    by((p) => p.goldTotal, "💰", "tanks.title.millionaire", 100);
+    by((p) => p.selfDmg, "🤡", "tanks.title.kamikaze", 20);
     bc({ a: "tk_over", rows: rs, titles });
     later(cfg.endMs < 2000 ? 1200 : 7000, () => {
       const facts: Record<string, Record<string, number>> = {};
       for (const p of ps.values()) facts[p.pid] = { tkKills: p.kills, tkDmg: Math.round(p.dmg), tkWins: p.wins, tkSelf: p.selfDmg };
       const w = rs[0]; const clown = titles.find((t) => t.ic === "🤡");
       ctx.end({
-        title: w ? `💥 התותחים — ${nameOf(w.pid)} עם ${w.kills} הריגות` : "💥 התותחים",
+        title: w ? { k: "tanks.end.winner", p: { name: nameOf(w.pid), n: w.kills } } : { k: "tanks.end.plain" },
         winnerId: w?.pid, loserId: clown?.pid,
         scores: Object.fromEntries(rs.map((r) => [r.pid, r.score])),
         facts: facts as any,
@@ -469,7 +471,7 @@ export function createTanks(ctx: GameCtx): GameInstance {
     },
     onLeave(pid, permanent) {
       const p = ps.get(pid); if (!p || !permanent) return;
-      const t = tanks.get(pid); if (t?.alive) { t.alive = false; t.hp = 0; bc({ a: "tk_tank", tank: wireTank(t) }); feed(`👋 ${nameOf(pid)} עזב את הקרב`); }
+      const t = tanks.get(pid); if (t?.alive) { t.alive = false; t.hp = 0; bc({ a: "tk_tank", tank: wireTank(t) }); feed(F("left", { name: nameOf(pid) })); }
     },
     onRejoin(pid) { sync(pid); },
     dispose() { token++; for (const t of pend) clearTimeout(t); pend.clear(); },
