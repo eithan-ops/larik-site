@@ -37,16 +37,16 @@ export const FL = {
   HAMMER_R: 34, HAMMER_FLING: 7, HAMMER_DROP: 6,
   SHOT_V: 9, SHOT_LIFE: 60, SHOT_R: 14, SHOT_SLOW_MS: 2000,
   BANANA_MS: 8000,
-  /** 8 הדמויות = יצור ג'לי אחד ב-8 צבעים (client/src/games/floorsSprites.ts). האימוג'י — לטקסט בלבד (פיד/רשימות). */
+  /** 8 הדמויות = יצור ג'לי אחד ב-8 צבעים (client/src/games/floorsSprites.ts). האימוג'י — לטקסט בלבד (פיד/רשימות). שמות: floors.char.<i> */
   CHARS: ["🟣", "🟠", "🔵", "🔴", "🟡", "🌸", "🟢", "💎"],
-  CHAR_NAMES: ["הסגול", "הכתום", "הכחול", "האדום", "הצהוב", "הוורוד", "הירוק", "הטורקיז"],
   CHAR_COLORS: ["#9B4DFF", "#FF8A2B", "#2F7BFF", "#FF3B3B", "#FFD21F", "#FF5FB0", "#5FD44A", "#2EDCE6"],
 } as const;
 
-/** סולם הקריאות — לפי סך הקומות בקומבו (הספים המקוריים) */
+/** סולם הקריאות — לפי סך הקומות בקומבו (הספים המקוריים). מחזיר מזהה קריאה. */
+/** הטקסט: locales/<lang>/floors.json → floors.shout.<id> */
 export const FL_SHOUTS: [number, string][] = [
-  [200, "אין מצב!"], [140, "אגדי!"], [100, "פנטסטי!"], [70, "קיצוני!"], [50, "מדהים!"],
-  [35, "וואו!"], [25, "סופר!"], [15, "ענק!"], [7, "מתוק!"], [4, "יפה!"],
+  [200, "noway"], [140, "legendary"], [100, "fantastic"], [70, "extreme"], [50, "amazing"],
+  [35, "wow"], [25, "super"], [15, "huge"], [7, "sweet"], [4, "nice"],
 ];
 export const flShout = (floors: number): string | null => { for (const [n, s] of FL_SHOUTS) if (floors >= n) return s; return null; };
 
@@ -118,7 +118,7 @@ export const flBaseMods = (): FlMods => ({
 export type FlRarity = "c" | "u" | "r" | "chaos" | "cursed" | "fun" | "evo";
 export type FlKind = "passive" | "button" | "instant";
 export interface FlCard {
-  id: string; ic: string; t: string; d: string;
+  id: string; ic: string;               // שם/תיאור: floors.card.<id> / floors.card.<id>.d
   cat: string; rarity: FlRarity; kind: FlKind;
   stack?: boolean;                 // אפשר לקחת שוב
   pos?: "low" | "high";            // שיעור לפי מיקום
@@ -126,26 +126,26 @@ export interface FlCard {
   apply: (m: FlMods, n: number) => void;  // n = כמה עותקים
 }
 export const FL_CARDS: FlCard[] = [
-  { id: "sprint", ic: "🏃", t: "ספרינטר", d: "רץ 10% מהר יותר. נערם.", cat: "A", rarity: "c", kind: "passive", stack: true, apply: (m, n) => { m.speed *= 1 + 0.1 * n; } },
-  { id: "hijump", ic: "⬆️", t: "קפיצה גבוהה", d: "קופץ 12% גבוה יותר. נערם.", cat: "B", rarity: "c", kind: "passive", stack: true, apply: (m, n) => { m.jump *= 1 + 0.12 * n; } },
-  { id: "dbljump", ic: "🐇", t: "קפיצה כפולה", d: "טאפ באוויר = קפיצה נוספת", cat: "B", rarity: "u", kind: "passive", stack: true, apply: (m, n) => { m.extraJumps += n; } },
-  { id: "turn", ic: "↩️", t: "פנייה חדה", d: "היפוך כיוון בלי לאבד מהירות", cat: "A", rarity: "c", kind: "passive", apply: (m) => { m.turn = 1; } },
-  { id: "wallmag", ic: "🧲", t: "מגנט קיר", d: "הקיר מחזיר 100% ועוד קצת", cat: "A", rarity: "u", kind: "passive", apply: (m) => { m.wallKeep = 1.05; } },
-  { id: "feather", ic: "🪶", t: "משקל נוצה", d: "כבידה נמוכה: קפיצות ארוכות יותר", cat: "A", rarity: "u", kind: "passive", apply: (m) => { m.grav *= 0.85; } },
-  { id: "slip", ic: "🌬️", t: "סליפסטרים", d: "20% מהר יותר כשמישהו מעליך", cat: "A", rarity: "c", kind: "passive", apply: (m) => { m.slipstream = 0.2; } },
-  { id: "fuse", ic: "🕯️", t: "פתיל ארוך", d: "טיימר הקומבו 3 שנ' במקום 2", cat: "G", rarity: "c", kind: "passive", apply: (m) => { m.comboTicks = 150; } },
-  { id: "lowbar", ic: "🪜", t: "רף נמוך", d: "קפיצת קומה אחת לא שוברת קומבו", cat: "G", rarity: "c", kind: "passive", apply: (m) => { m.lowBar = true; } },
-  { id: "greed", ic: "💰", t: "חמדנות", d: "קומבו שווה ×1.5, טיימר 1.5 שנ'", cat: "G", rarity: "r", kind: "passive", apply: (m) => { m.comboMul = 1.5; m.comboTicks = 75; } },
-  { id: "wide", ic: "🦶", t: "רגליים רחבות", d: "נוחת גם קצת מעבר לקצה", cat: "A", rarity: "c", kind: "passive", apply: (m) => { m.edge = 14; } },
-  { id: "glide", ic: "🪂", t: "גלישה", d: "החזק טאפ בשיא = נפילה איטית", cat: "B", rarity: "c", kind: "passive", apply: (m) => { m.glide = 0.4; } },
-  { id: "hammer", ic: "🔨", t: "פטיש", d: "נגיעה מהצד מפילה שחקן קומה", cat: "C", rarity: "u", kind: "passive", apply: (m) => { m.hammer = true; } },
-  { id: "snow", ic: "❄️", t: "כדור שלג", d: "כפתור: קליע לכיוון הריצה, מאט", cat: "D", rarity: "c", kind: "button", cd: 4000, apply: (m) => { m.snowball = true; } },
-  { id: "banana", ic: "🍌", t: "בננה", d: "הקומה שעזבת חלקלקה 8 שנ'", cat: "E", rarity: "c", kind: "passive", apply: (m) => { m.banana = true; } },
-  { id: "shield", ic: "🛡️", t: "בועת מגן", d: "סופג פגיעה אחת. נטען כל 20 שנ'", cat: "F", rarity: "c", kind: "passive", apply: (m) => { m.shield = true; } },
-  { id: "life", ic: "❤️", t: "לב נוסף", d: "+1 חיים (עד 7)", cat: "F", rarity: "u", kind: "instant", stack: true, pos: "low", apply: () => {} },
-  { id: "prop", ic: "🚁", t: "כובע מדחף", d: "נפלת? פעם אחת טסים 6 קומות למעלה", cat: "B", rarity: "u", kind: "instant", pos: "low", apply: (m) => { m.propeller = true; } },
-  { id: "hunter", ic: "🎯", t: "צייד ראשים", d: "+50 להפלה. ×3 על המוביל", cat: "G", rarity: "u", kind: "passive", apply: (m) => { m.hunter = true; } },
-  { id: "underdog", ic: "🐕", t: "אנדרדוג", d: "בשליש התחתון ניקוד ×1.5", cat: "G", rarity: "c", kind: "passive", pos: "low", apply: (m) => { m.underdog = true; } },
+  { id: "sprint", ic: "🏃", cat: "A", rarity: "c", kind: "passive", stack: true, apply: (m, n) => { m.speed *= 1 + 0.1 * n; } },
+  { id: "hijump", ic: "⬆️", cat: "B", rarity: "c", kind: "passive", stack: true, apply: (m, n) => { m.jump *= 1 + 0.12 * n; } },
+  { id: "dbljump", ic: "🐇", cat: "B", rarity: "u", kind: "passive", stack: true, apply: (m, n) => { m.extraJumps += n; } },
+  { id: "turn", ic: "↩️", cat: "A", rarity: "c", kind: "passive", apply: (m) => { m.turn = 1; } },
+  { id: "wallmag", ic: "🧲", cat: "A", rarity: "u", kind: "passive", apply: (m) => { m.wallKeep = 1.05; } },
+  { id: "feather", ic: "🪶", cat: "A", rarity: "u", kind: "passive", apply: (m) => { m.grav *= 0.85; } },
+  { id: "slip", ic: "🌬️", cat: "A", rarity: "c", kind: "passive", apply: (m) => { m.slipstream = 0.2; } },
+  { id: "fuse", ic: "🕯️", cat: "G", rarity: "c", kind: "passive", apply: (m) => { m.comboTicks = 150; } },
+  { id: "lowbar", ic: "🪜", cat: "G", rarity: "c", kind: "passive", apply: (m) => { m.lowBar = true; } },
+  { id: "greed", ic: "💰", cat: "G", rarity: "r", kind: "passive", apply: (m) => { m.comboMul = 1.5; m.comboTicks = 75; } },
+  { id: "wide", ic: "🦶", cat: "A", rarity: "c", kind: "passive", apply: (m) => { m.edge = 14; } },
+  { id: "glide", ic: "🪂", cat: "B", rarity: "c", kind: "passive", apply: (m) => { m.glide = 0.4; } },
+  { id: "hammer", ic: "🔨", cat: "C", rarity: "u", kind: "passive", apply: (m) => { m.hammer = true; } },
+  { id: "snow", ic: "❄️", cat: "D", rarity: "c", kind: "button", cd: 4000, apply: (m) => { m.snowball = true; } },
+  { id: "banana", ic: "🍌", cat: "E", rarity: "c", kind: "passive", apply: (m) => { m.banana = true; } },
+  { id: "shield", ic: "🛡️", cat: "F", rarity: "c", kind: "passive", apply: (m) => { m.shield = true; } },
+  { id: "life", ic: "❤️", cat: "F", rarity: "u", kind: "instant", stack: true, pos: "low", apply: () => {} },
+  { id: "prop", ic: "🚁", cat: "B", rarity: "u", kind: "instant", pos: "low", apply: (m) => { m.propeller = true; } },
+  { id: "hunter", ic: "🎯", cat: "G", rarity: "u", kind: "passive", apply: (m) => { m.hunter = true; } },
+  { id: "underdog", ic: "🐕", cat: "G", rarity: "c", kind: "passive", pos: "low", apply: (m) => { m.underdog = true; } },
 ];
 export const flCard = (id: string) => FL_CARDS.find((c) => c.id === id);
 export function flMods(ids: string[]): FlMods {
@@ -387,7 +387,7 @@ export function flBotInput(s: FlSim, m: FlMods, seed: string, b: FlBot, killY: n
 }
 
 /* ---------- הודעות הרשת (חיות כאן ולא ב-protocol.ts — כדי ששני צ'אטים לא יתנגשו על אותו קובץ; protocol.ts מחזיק רק את הקטלוג) ---------- */
-export interface FlCardWire { id: string; ic: string; t: string; d: string; r: string; k: string }
+export interface FlCardWire { id: string; ic: string; r: string; k: string }
 /** [pid, x, y, dx, st, floor, combo] */
 export type FlPosWire = [string, number, number, number, number, number, number];
 export type FlTimingWire = { cycles: number; runMs: number; freezeMs: number; draftMs: number; revealMs: number; sprintMs: number; introMs: number; pickMs: number };
@@ -418,7 +418,7 @@ export type FloorsServerMsg =
   | { a: "fl_shot"; id: number; by: string; x: number; y: number; dx: number; at: number }
   | { a: "fl_shothit"; id: number; pid: string; by: string; shielded: boolean }
   | { a: "fl_trap"; id: number; by: string; floor: number; until: number }
-  | { a: "fl_shout"; pid: string; n: number; bonus: number; text: string }
+  | { a: "fl_shout"; pid: string; n: number; bonus: number; shout: string }   // shout = מזהה (floors.shout.<id>)
   | { a: "fl_bonus"; pid: string; kind: "hunter" | "underdog"; amount: number }
-  | { a: "fl_over"; rows: { pid: string; score: number; maxFloor: number; bestCombo: number; kills: number; falls: number; c: number; cards: string[] }[]; titles: { pid: string; ic: string; t: string }[] }
+  | { a: "fl_over"; rows: { pid: string; score: number; maxFloor: number; bestCombo: number; kills: number; falls: number; c: number; cards: string[] }[]; titles: { pid: string; ic: string; t: string }[] }   // t = מפתח floors.title.<x>
   | { a: "fl_sync"; phase: string; seed: string; startAt: number; cfg: FlTimingWire; chars: Record<string, number>; lives: Record<string, number>; cards: Record<string, string[]>; k: number; you: { floor: number; out: boolean } };

@@ -59,7 +59,7 @@ export function createFloors(ctx: GameCtx): GameInstance {
   const alive = () => [...ps.values()].filter((p) => !p.out);
   const score = (p: P) => p.maxFloor * 10 + p.comboBonus + p.extra;
   const timing = () => ({ cycles: cfg.cycles, runMs: cfg.runMs, freezeMs: cfg.freezeMs, draftMs: cfg.draftMs, revealMs: cfg.revealMs, sprintMs: cfg.sprintMs, introMs: cfg.introMs, pickMs: cfg.pickMs });
-  const wire = (id: string): FlCardWire => { const c = flCard(id)!; return { id: c.id, ic: c.ic, t: c.t, d: c.d, r: c.rarity, k: c.kind }; };
+  const wire = (id: string): FlCardWire => { const c = flCard(id)!; return { id: c.id, ic: c.ic, r: c.rarity, k: c.kind }; };
   const ranked = () => [...ps.values()].sort((a, b) => score(b) - score(a) || b.maxFloor - a.maxFloor);
   const rankOf = (pid: string) => ranked().findIndex((p) => p.pid === pid);
   const third = () => Math.max(1, Math.ceil(ps.size / 3));
@@ -290,10 +290,10 @@ export function createFloors(ctx: GameCtx): GameInstance {
     const rows = ranked().map((p) => ({ pid: p.pid, score: score(p), maxFloor: p.maxFloor, bestCombo: p.bestCombo, kills: p.kills, falls: p.falls, c: p.c, cards: [...p.cards] }));
     const titles: { pid: string; ic: string; t: string }[] = [];
     const by = <T>(f: (p: P) => number, ic: string, t: string, min = 1) => { const b = [...ps.values()].sort((a, c) => f(c) - f(a))[0]; if (b && f(b) >= min && !titles.some((x) => x.pid === b.pid)) titles.push({ pid: b.pid, ic, t }); };
-    by((p) => p.maxFloor, "🏔️", "הכי גבוה");
-    by((p) => p.bestCombo, "🔗", "הקומבו הארוך", 4);
-    by((p) => p.kills, "🎯", "הצייד", 1);
-    by((p) => p.falls, "🤡", "הליצן", 2);
+    by((p) => p.maxFloor, "🏔️", "floors.title.highest");
+    by((p) => p.bestCombo, "🔗", "floors.title.combo", 4);
+    by((p) => p.kills, "🎯", "floors.title.hunter", 1);
+    by((p) => p.falls, "🤡", "floors.title.clown", 2);
     bc({ a: "fl_over", rows, titles });
     // מסך התוצאות של המשחק נשאר 7 שניות (לצלם/לצעוק) ורק אז הטקס של החדר
     later(cfg.runMs < 20000 ? 1500 : 7000, () => endRoom(rows, titles));
@@ -304,7 +304,7 @@ export function createFloors(ctx: GameCtx): GameInstance {
     const w = rows[0];
     const clown = titles.find((t) => t.ic === "🤡");
     ctx.end({
-      title: w ? `🏢 הקומות — ${nameOf(w.pid)} הגיע לקומה ${w.maxFloor}` : "🏢 הקומות",
+      title: w ? { k: "floors.end.winner", p: { name: nameOf(w.pid), n: w.maxFloor } } : { k: "floors.end.plain" },
       winnerId: w?.pid, loserId: clown?.pid,
       scores: Object.fromEntries(rows.map((r) => [r.pid, r.score])),
       facts: facts as any,
@@ -360,7 +360,7 @@ export function createFloors(ctx: GameCtx): GameInstance {
           p.comboBonus += bonus;
           if (n > p.bestCombo) p.bestCombo = n;
           const text = flShout(n);
-          if (text) bc({ a: "fl_shout", pid, n, bonus, text });
+          if (text) bc({ a: "fl_shout", pid, n, bonus, shout: text });
           return;
         }
         case "fl_fell": fell(p); return;

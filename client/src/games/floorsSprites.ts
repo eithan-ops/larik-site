@@ -17,16 +17,17 @@ export const JTOP = [25, 33, 16, 35, 23, 48, 27, 26, 17 + 24, 63, 26, 22];
 export const JWORLD = 44 / 99;
 const BASE_HUE = 85;
 
-export interface JellyColor { id: string; name: string; hue: number; css: string; sat: number; val: number; acc: string }
+export interface JellyColor { id: string; hue: number; css: string; sat: number; val: number; acc: string }
+/** שמות הצבעים: locales/<lang>/floors.json → floors.char.<i> */
 export const JELLY: JellyColor[] = [
-  { id: "purple", name: "הסגול", hue: 275, css: "#9B4DFF", sat: 1.0, val: 1.0, acc: "crown" },
-  { id: "orange", name: "הכתום", hue: 28, css: "#FF8A2B", sat: 1.15, val: 1.05, acc: "antenna" },
-  { id: "blue", name: "הכחול", hue: 215, css: "#2F7BFF", sat: 1.0, val: 1.0, acc: "hat" },
-  { id: "red", name: "האדום", hue: 358, css: "#FF3B3B", sat: 1.05, val: 1.0, acc: "horns" },
-  { id: "yellow", name: "הצהוב", hue: 52, css: "#FFD21F", sat: 0.95, val: 1.14, acc: "sprout" },
-  { id: "pink", name: "הוורוד", hue: 325, css: "#FF5FB0", sat: 1.0, val: 1.05, acc: "bow" },
-  { id: "green", name: "הירוק", hue: 110, css: "#5FD44A", sat: 1.0, val: 1.0, acc: "halo" },
-  { id: "cyan", name: "הטורקיז", hue: 185, css: "#2EDCE6", sat: 1.0, val: 1.06, acc: "party" },
+  { id: "purple", hue: 275, css: "#9B4DFF", sat: 1.0, val: 1.0, acc: "crown" },
+  { id: "orange", hue: 28, css: "#FF8A2B", sat: 1.15, val: 1.05, acc: "antenna" },
+  { id: "blue", hue: 215, css: "#2F7BFF", sat: 1.0, val: 1.0, acc: "hat" },
+  { id: "red", hue: 358, css: "#FF3B3B", sat: 1.05, val: 1.0, acc: "horns" },
+  { id: "yellow", hue: 52, css: "#FFD21F", sat: 0.95, val: 1.14, acc: "sprout" },
+  { id: "pink", hue: 325, css: "#FF5FB0", sat: 1.0, val: 1.05, acc: "bow" },
+  { id: "green", hue: 110, css: "#5FD44A", sat: 1.0, val: 1.0, acc: "halo" },
+  { id: "cyan", hue: 185, css: "#2EDCE6", sat: 1.0, val: 1.06, acc: "party" },
 ];
 
 type Sheet = HTMLCanvasElement | OffscreenCanvas;
