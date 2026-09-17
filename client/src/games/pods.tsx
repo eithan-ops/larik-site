@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import type { PodsServerMsg } from "../../../shared/protocol";
 import type { GameViewProps } from "./registry";
 import { Sfx, vibrate } from "../lib/audio";
+import { t } from "../lib/locale";
 
 interface Light { id: number; color: string; at: number }
 
@@ -89,7 +90,7 @@ export default function PodsView({ room, me, conn, hub }: GameViewProps) {
     return (
       <main className="fullscreen" style={{ background: light.color }} onPointerDown={tap}>
         <div className="huge" style={{ color: "#0c0817" }}>👆</div>
-        <div className="big" style={{ color: "#0c0817" }}>גע!</div>
+        <div className="big" style={{ color: "#0c0817" }}>{t("spods.touch_bang")}</div>
       </main>
     );
   }
@@ -107,7 +108,7 @@ export default function PodsView({ room, me, conn, hub }: GameViewProps) {
       {mode === "king" && (
         <>
           <div className="big" style={{ marginTop: 8 }}>
-            {iAmRunner ? "רוץ! הפודים שלך!" : runner ? `${nameOf(runner)} רץ!` : "פודים"}
+            {iAmRunner ? t("pods.run_yours") : runner ? t("spods.s.x_runs", { name: nameOf(runner) }) : t("pods.title")}
           </div>
           {runner && turnSecs > 0 && (
             <span className="chip" style={{ marginTop: 10, fontSize: 16, color: turnSecs <= 8 ? "#ff8a8a" : undefined }}>
@@ -116,11 +117,11 @@ export default function PodsView({ room, me, conn, hub }: GameViewProps) {
           )}
           {lastHit && (
             <p className="sub popin" style={{ fontSize: 22, marginTop: 10, color: "var(--money)", fontWeight: 900 }}>
-              {(lastHit.ms / 1000).toFixed(2)} שנ' ⚡
+              {t("pods.secs", { s: (lastHit.ms / 1000).toFixed(2) })}
             </p>
           )}
           <p className="sub" style={{ marginTop: 14 }}>
-            {iAmRunner ? "כשפוד נדלק — גע בו הכי מהר שאתה יכול" : "החזק את הטלפון גלוי — אתה פוד במשחק שלו"}
+            {iAmRunner ? t("pods.runner_hint") : t("pods.pod_hint")}
           </p>
         </>
       )}
@@ -128,13 +129,13 @@ export default function PodsView({ room, me, conn, hub }: GameViewProps) {
       {mode === "survival" && (
         <>
           <div className="big" style={{ marginTop: 8, color: iAmDead ? "#ff8a8a" : myColor }}>
-            {iAmDead ? "נפסלת 💀 (אבל אתה עדיין פוד!)" : "הישרדות"}
+            {iAmDead ? t("pods.you_out") : t("spods.s.survive")}
           </div>
           {!iAmDead && <p className="sub" style={{ marginTop: 10 }}>
-            כשהצבע <b style={{ color: myColor }}>שלך</b> נדלק על פוד כלשהו — רוץ וגע בו!
+            {t("pods.survive_hint")}
           </p>}
           {dead.length > 0 && <p className="sub" style={{ marginTop: 8 }}>
-            נפלו: {dead.map(nameOf).join(", ")}
+            {t("pods.fell", { names: dead.map(nameOf).join(", ") })}
           </p>}
         </>
       )}

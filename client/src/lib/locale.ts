@@ -117,7 +117,12 @@ export const has = (key: string): boolean => dict[key] !== undefined;
 /** טקסט מהשרת: מחרוזת (ישן) כמו שהיא, {k,p} מתורגם כאן */
 export function lt(x: LText | undefined | null): string {
   if (x === undefined || x === null) return "";
-  return typeof x === "string" ? x : t(x.k, x.p);
+  if (typeof x === "string") return x;
+  if (!x.p) return t(x.k);
+  // פרמטר מקונן ({k,p}) — נפתר קודם, כדי ששם קלף/תנוחה/ערכה יגיע מתורגם
+  const p: Params = {};
+  for (const [k, v] of Object.entries(x.p)) p[k] = v !== null && typeof v === "object" ? lt(v) : v;
+  return t(x.k, p);
 }
 
 /** מספרים לתצוגה בשפה הנוכחית (ערבית — ספרות מערביות, כמו במשחקים במפרץ) */

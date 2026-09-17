@@ -51,6 +51,11 @@ const MIGRATED = [
   // שלב F — החומה
   "client/src/games/wall.tsx",
   "server/src/games/wall.ts",
+  // שלב G — ספורט פודים + פודים (shared/spods.ts נשאר עם name/tagline/howTo/labels כנפילה לקטלוג, כמו protocol.ts)
+  "client/src/games/spods.tsx",
+  "client/src/games/pods.tsx",
+  "server/src/games/spods.ts",
+  "server/src/games/pods.ts",
 ];
 
 function walk(dir, out = []) {

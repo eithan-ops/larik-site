@@ -8,7 +8,7 @@
  * SP_FAST=1 מקצר זמנים לבדיקות (לא משפיע על פרודקשן).
  */
 import type { GameCtx, GameInstance } from "../engine";
-import type { GameClientMsg, GameServerMsg } from "../../../shared/protocol";
+import type { GameClientMsg, GameServerMsg, LText } from "../../../shared/protocol";
 import {
   SP_DEFS, SP_COLORS, SP_KITS, SP_KIT_IDS, SP_POSES, SP_HAND_STEPS, spConfig, spMedian, spRoundRobin,
 } from "../../../shared/spods";
@@ -42,7 +42,8 @@ export function createSpods(ctx: GameCtx, game: SpGame): GameInstance {
   for (const p of parts) if (p.id !== host) { roles[p.id] = "ath"; podOrder.push(p.id); }
   const aths = new Map<string, Ath>();
   let phase: SpPhase = "setup";
-  let round = 0, of = 0, until = 0, banner = "", sub = "", level = 0;
+  let round = 0, of = 0, until = 0, level = 0;
+  let banner: LText = "", sub: LText = "";
   let focus: string[] | undefined;
   let lightSeq = 0;
   const lights = new Map<number, LightRec>();
@@ -99,8 +100,10 @@ export function createSpods(ctx: GameCtx, game: SpGame): GameInstance {
     };
   }
   const push = () => bc({ a: "sp_state", s: state() });
-  function setBanner(b: string, s = "") { banner = b; sub = s; }
-  const say = (t: string, k?: SpSayKind) => bc({ a: "sp_say", t, k });
+  function setBanner(b: LText, s: LText = "") { banner = b; sub = s; }
+  const say = (t: LText, k?: SpSayKind) => bc({ a: "sp_say", t, k });
+  /** מפתח מ-locales/<lang>/spods.json — הלקוח מתרגם */
+  const S = (k: string, p?: Record<string, string | number | { k: string }>): LText => ({ k: `spods.s.${k}`, p });
 
   /** הדלקת פוד — cue מתוזמן; החלון נמדד מזמן ה-cue */
   function light(o: Omit<SpLight, "id" | "at" | "until"> & { window?: number; delay?: number }, onHit: LightRec["onHit"], onMiss: LightRec["onMiss"]): SpLight {
@@ -149,7 +152,7 @@ export function createSpods(ctx: GameCtx, game: SpGame): GameInstance {
   }
 
   /* ---------- שלבים משותפים ---------- */
-  function countdown(b: string, then: () => void, s = "") {
+  function countdown(b: LText, then: () => void, s: LText = "") {
     phase = "count";
     setBanner(b, s);
     until = now() + T.count;
@@ -157,7 +160,7 @@ export function createSpods(ctx: GameCtx, game: SpGame): GameInstance {
     push();
     later(T.count, () => { phase = "run"; until = 0; runStart = now(); then(); });
   }
-  function between(b: string, ms: number, then: () => void, s = "") {
+  function between(b: LText, ms: number, then: () => void, s: LText = "") {
     phase = "between";
     setBanner(b, s);
     until = now() + ms;
@@ -165,7 +168,7 @@ export function createSpods(ctx: GameCtx, game: SpGame): GameInstance {
     resumeFn = () => between(b, Math.min(ms, T.between), then, s);
     later(ms, then);
   }
-  function finish(o: { winnerIds?: string[]; title?: string }) {
+  function finish(o: { winnerIds?: string[]; title?: LText }) {
     if (ended) return;
     ended = true;
     clearTimers();
@@ -176,11 +179,11 @@ export function createSpods(ctx: GameCtx, game: SpGame): GameInstance {
     const winners = o.winnerIds ?? (ranked[0] ? [ranked[0].pid] : []);
     const scores: Record<string, number> = Object.fromEntries(list.map((a) => [a.pid, def.lowerIsBetter ? Math.max(1, list.length - ranked.indexOf(a)) : a.score]));
     const w = winners[0];
-    setBanner(w ? `🏆 ${winners.map(nameOf).join(" + ")}` : "סיום", o.title ?? def.name);
+    setBanner(w ? `🏆 ${winners.map(nameOf).join(" + ")}` : S("end"), o.title ?? { k: `games.sp_${game}.name` });
     focus = winners;
     push();
     bc({ a: "sp_over", winner: w, scores });
-    if (w) say(`${winners.map(nameOf).join(" ו")} — ${winners.length > 1 ? "ניצחתם" : "ניצחת"}!`, "win");
+    if (w) say(winners.length > 1 ? S("won_many", { names: winners.map(nameOf).join(" + ") }) : S("won_one", { names: nameOf(w) }), "win");
     const facts: Record<string, Record<string, number>> = {};
     for (const a of list) {
       const f: Record<string, number> = {};
@@ -189,7 +192,7 @@ export function createSpods(ctx: GameCtx, game: SpGame): GameInstance {
       if (Object.keys(f).length) facts[a.pid] = f;
     }
     ctx.timer(T.end, () => ctx.end({
-      title: `${def.icon} ${def.name}`, winnerId: w, winnerIds: winners.length > 1 ? winners : undefined,
+      title: { k: "spods.s.end_title", p: { ic: def.icon, name: { k: `games.sp_${game}.name` } } }, winnerId: w, winnerIds: winners.length > 1 ? winners : undefined,
       scores, facts,
     }));
   }
@@ -212,8 +215,8 @@ export function createSpods(ctx: GameCtx, game: SpGame): GameInstance {
     of = cfg.rounds;
     function nextRound() {
       if (round >= of) return finish({});
-      const b = `סבב ${round + 1} מתוך ${of}`;
-      between(b, T.between, () => { say("לקו!", "line"); fire(); }, "חזרו לקו הזינוק");
+      const b = S("round_of", { n: round + 1, of });
+      between(b, T.between, () => { say(S("to_line"), "line"); fire(); }, S("back_to_line"));
     }
     function fire() {
       phase = "run"; until = 0;
@@ -224,7 +227,7 @@ export function createSpods(ctx: GameCtx, game: SpGame): GameInstance {
       if (list.length > ps.length) { const k = (round * ps.length) % list.length; list = [...list.slice(k), ...list.slice(0, k)].slice(0, ps.length); }
       const podsShuf = shuffle(ps).slice(0, list.length);
       const delay = T.lead + 600 + Math.random() * (cfg.delay ?? 3000) * WF;
-      setBanner(`סבב ${round + 1} מתוך ${of}`, "רגע… חכו לצליל");
+      setBanner(S("round_of", { n: round + 1, of }), S("wait_sound"));
       focus = list.map((a) => a.pid);
       push();
       pending = list.length;
@@ -239,7 +242,7 @@ export function createSpods(ctx: GameCtx, game: SpGame): GameInstance {
       if (pending > 0) return;
       if (roundBest) { const a = aths.get(roundBest.pid); if (a) { a.wins++; a.score = a.wins; } }
       round++;
-      setBanner(`סבב ${round} הסתיים`, roundBest ? `🥇 ${nameOf(roundBest.pid)} — ${(roundBest.rt / 1000).toFixed(2)} שנ'` : "");
+      setBanner(S("round_over", { n: round }), roundBest ? S("round_best", { name: nameOf(roundBest.pid), sec: (roundBest.rt / 1000).toFixed(2) }) : "");
       push();
       later(FAST ? 300 : 1500, nextRound);
     }
@@ -251,7 +254,7 @@ export function createSpods(ctx: GameCtx, game: SpGame): GameInstance {
       push();
       done();
     }
-    function onMiss(a: Ath | undefined) { if (a) { a.extra = "פספוס"; push(); } done(); }
+    function onMiss(a: Ath | undefined) { if (a) { a.extra = S("miss"); push(); } done(); }
     return { start: () => { round = 0; nextRound(); }, resume: () => resumeFn?.(), skip: () => { offAll("stop"); pending = 0; round++; nextRound(); } };
   }
 
@@ -270,7 +273,7 @@ export function createSpods(ctx: GameCtx, game: SpGame): GameInstance {
       round = m + 1;
       focus = [A, B];
       hitsIn = { [A]: 0, [B]: 0 };
-      between(`דו-קרב ${round}/${of}`, T.between + (FAST ? 200 : 2000), () => countdown(`${nameOf(A)} נגד ${nameOf(B)}`, runMatch, "גב אל גב במרכז!"), `${nameOf(A)} 🆚 ${nameOf(B)} — למרכז!`);
+      between(S("duel_of", { n: round, of }), T.between + (FAST ? 200 : 2000), () => countdown(S("vs", { a: nameOf(A), b: nameOf(B) }), runMatch, S("back_to_back")), S("to_center", { a: nameOf(A), b: nameOf(B) }));
     }
     function runMatch() {
       matchEnd = now() + cfg.secs * 1000 * (FAST ? 0.15 : 1);
@@ -293,7 +296,7 @@ export function createSpods(ctx: GameCtx, game: SpGame): GameInstance {
       targets.forEach((pid, i) => {
         const a = aths.get(pid)!;
         light({ pod: ps[i], c: a.c, pid, txt: nameOf(pid), window: win(a), delay },
-          (x, rt) => { record(x, rt); hitsIn[x.pid]++; x.score = x.tourn; x.extra = `${hitsIn[x.pid]} נגיעות`; bc({ a: "sp_hit", id: 0, pid: x.pid, pod: "", ms: rt, good: true }); push(); if (--left === 0) later(200, fireNext); },
+          (x, rt) => { record(x, rt); hitsIn[x.pid]++; x.score = x.tourn; x.extra = S("touches_n", { n: hitsIn[x.pid] }); bc({ a: "sp_hit", id: 0, pid: x.pid, pod: "", ms: rt, good: true }); push(); if (--left === 0) later(200, fireNext); },
           () => { if (--left === 0) later(200, fireNext); });
       });
       later(delay + win() + 300, () => { /* הביטחון: אם משהו נתקע, ממשיכים */ if (phase === "run" && lights.size === 0 && left > 0) { left = 0; fireNext(); } });
@@ -305,7 +308,7 @@ export function createSpods(ctx: GameCtx, game: SpGame): GameInstance {
       const a = aths.get(A)!, b = aths.get(B)!;
       if (ha > hb) { a.tourn += 3; b.tourn += 1; } else if (hb > ha) { b.tourn += 3; a.tourn += 1; } else { a.tourn += 2; b.tourn += 2; }
       a.score = a.tourn; b.score = b.tourn;
-      const w = ha === hb ? "תיקו!" : `🥇 ${nameOf(ha > hb ? A : B)}`;
+      const w: LText = ha === hb ? S("draw") : `🥇 ${nameOf(ha > hb ? A : B)}`;
       setBanner(w, `${nameOf(A)} ${ha} : ${hb} ${nameOf(B)}`);
       phase = "between"; until = now() + T.between; push();
       say(w, "next");
@@ -325,12 +328,12 @@ export function createSpods(ctx: GameCtx, game: SpGame): GameInstance {
       if (k >= order.length) return finish({});
       cur = aths.get(order[k])!;
       round = k + 1; of = order.length; focus = [cur.pid];
-      between(`תור ${round}/${of}: ${nameOf(cur.pid)}`, T.between, () => countdown(`${nameOf(cur!.pid)} — לבית!`, runTurn, "יד על פוד 1"), "עמדו על פוד הבית (פוד 1)");
+      between(S("turn_of", { n: round, of, name: nameOf(cur.pid) }), T.between, () => countdown(S("to_home", { name: nameOf(cur!.pid) }), runTurn, S("hand_on_pod1")), S("stand_home"));
     }
     function runTurn() {
       turnEnd = now() + cfg.secs * 1000 * (FAST ? 0.2 : 1);
       until = turnEnd;
-      setBanner(`${nameOf(cur!.pid)} רץ!`, "");
+      setBanner(S("x_runs", { name: nameOf(cur!.pid) }), "");
       push();
       resumeFn = () => { turnEnd = now() + 10000; until = turnEnd; phase = "run"; push(); fireOut(); };
       fireOut();
@@ -348,7 +351,7 @@ export function createSpods(ctx: GameCtx, game: SpGame): GameInstance {
     }
     function fireHome(home: string) {
       if (now() >= turnEnd) return endTurn();
-      light({ pod: home, c: cur!.c, pid: cur!.pid, txt: "🏠 הביתה", home: true, window: 12000 + cur!.hand },
+      light({ pod: home, c: cur!.c, pid: cur!.pid, txt: S("home"), home: true, window: 12000 + cur!.hand },
         () => fireOut(), () => fireOut());
     }
     function endTurn() {
@@ -374,8 +377,8 @@ export function createSpods(ctx: GameCtx, game: SpGame): GameInstance {
       level = Math.floor(shuttle / PER_LEVEL) + 1;
       w = Math.round(cfg.window * Math.pow(0.9, level - 1));
       round = shuttle + 1; of = MAX_LEVEL * PER_LEVEL;
-      const b = `רמה ${level} · מעבורת ${(shuttle % PER_LEVEL) + 1}/${PER_LEVEL}`;
-      between(b, shuttle === 0 ? T.between : (FAST ? 250 : 2500), fire, `${(w / 1000).toFixed(1)} שניות לנגיעה`);
+      const b = S("level_shuttle", { lvl: level, n: (shuttle % PER_LEVEL) + 1, of: PER_LEVEL });
+      between(b, shuttle === 0 ? T.between : (FAST ? 250 : 2500), fire, S("secs_to_touch", { sec: (w / 1000).toFixed(1) }));
     }
     function fire() {
       phase = "run";
@@ -387,12 +390,12 @@ export function createSpods(ctx: GameCtx, game: SpGame): GameInstance {
       const podsShuf = shuffle(ps);
       pending = list.length;
       const delay = T.lead + 400 + Math.random() * 1500;
-      setBanner(`רמה ${level}`, "רגע…");
+      setBanner(S("level_n", { n: level }), S("moment"));
       push();
       ctx.cue(delay, { a: "sp_go", at: 0 } as unknown as GameServerMsg);
       list.forEach((a, i) => light({ pod: podsShuf[i], c: a.c, pid: a.pid, txt: nameOf(a.pid), window: w + a.hand, delay },
-        (x, rt) => { record(x, rt); x.score = level; x.extra = `רמה ${level}`; bc({ a: "sp_hit", id: 0, pid: x.pid, pod: "", ms: rt, good: true }); push(); done(); },
-        (x) => { if (x) { x.strikes++; x.extra = `❌ ${x.strikes}`; if (cfg.elim && x.strikes >= 2) { x.out = true; say(`${nameOf(x.pid)} בחוץ`, "out"); } push(); } done(); }));
+        (x, rt) => { record(x, rt); x.score = level; x.extra = S("level_n", { n: level }); bc({ a: "sp_hit", id: 0, pid: x.pid, pod: "", ms: rt, good: true }); push(); done(); },
+        (x) => { if (x) { x.strikes++; x.extra = `❌ ${x.strikes}`; if (cfg.elim && x.strikes >= 2) { x.out = true; say(S("x_out", { name: nameOf(x.pid) }), "out"); } push(); } done(); }));
       until = now() + delay + w + 500;
       resumeFn = () => { pending = 0; nextShuttle(); };
     }
@@ -410,21 +413,21 @@ export function createSpods(ctx: GameCtx, game: SpGame): GameInstance {
       if (h >= heats.length) return finish({});
       heat = heats[h];
       round = h + 1; of = heats.length; focus = heat.map((a) => a.pid);
-      between(`${of > 1 ? `מקצה ${round}/${of}: ` : ""}יד על הקונוס!`, T.between, () => countdown("ראשון ל-" + cfg.toN, fire, heat.map((a) => nameOf(a.pid)).join(" · ")), heat.map((a) => `${nameOf(a.pid)}`).join(" · "));
+      between(of > 1 ? S("heat_hand_on_cone", { n: round, of }) : S("hand_on_cone"), T.between, () => countdown(S("first_to", { n: cfg.toN }), fire, heat.map((a) => nameOf(a.pid)).join(" · ")), heat.map((a) => `${nameOf(a.pid)}`).join(" · "));
     }
     function fire() {
       phase = "run"; until = 0;
-      setBanner(`ראשון ל-${cfg.toN}`, heat.map((a) => `${nameOf(a.pid)} ${a.score}`).join(" · "));
+      setBanner(S("first_to", { n: cfg.toN }), heat.map((a) => `${nameOf(a.pid)} ${a.score}`).join(" · "));
       push();
       const ps = pods();
       if (!ps.length) return finish({});
       const delay = T.lead + 500 + Math.random() * (cfg.delay ?? 4000) * WF;
-      light({ pod: rnd(ps), c: -1, zones: heat.map((a) => a.c), txt: "גנוב!", window: 15000, delay },
+      light({ pod: rnd(ps), c: -1, zones: heat.map((a) => a.c), txt: S("steal_bang"), window: 15000, delay },
         (a, rt) => {
           record(a, rt); a.score++; a.extra = `${a.score} 🦝`;
           bc({ a: "sp_hit", id: 0, pid: a.pid, pod: "", ms: rt, txt: nameOf(a.pid), good: true });
           push();
-          if (a.score >= cfg.toN) { offAll("stop"); setBanner(`🏆 ${nameOf(a.pid)}`, ""); phase = "between"; until = now() + T.between; push(); say(`${nameOf(a.pid)} ניצח את המקצה!`, "next"); return later(T.between, nextHeat); }
+          if (a.score >= cfg.toN) { offAll("stop"); setBanner(`🏆 ${nameOf(a.pid)}`, ""); phase = "between"; until = now() + T.between; push(); say(S("x_won_heat", { name: nameOf(a.pid) }), "next"); return later(T.between, nextHeat); }
           later(FAST ? 200 : 800, fire);
         },
         () => later(300, fire));
@@ -451,11 +454,11 @@ export function createSpods(ctx: GameCtx, game: SpGame): GameInstance {
       if (!ps.length) return finish({});
       const delay = T.lead + 500 + Math.random() * 2500 * WF;
       round = n + 1; of = 0;
-      setBanner("הישרדות", `${list.length} שורדים · ${(w / 1000).toFixed(1)} שנ'`);
+      setBanner(S("survive"), S("survivors", { n: list.length, sec: (w / 1000).toFixed(1) }));
       push();
       light({ pod: rnd(ps), c: a.c, pid: a.pid, txt: nameOf(a.pid), window: w + a.hand, delay },
         (x, rt) => { record(x, rt); x.score++; x.extra = `${x.score}`; bc({ a: "sp_hit", id: 0, pid: x.pid, pod: "", ms: rt, good: true }); n++; w = Math.max(1500, Math.round(w * 0.93)); push(); later(FAST ? 150 : 700, fire); },
-        (x) => { if (x) { x.out = true; outOrder.push(x.pid); x.extra = "💀"; say(`${nameOf(x.pid)} נפל!`, "out"); } n++; push(); later(FAST ? 300 : 1500, fire); });
+        (x) => { if (x) { x.out = true; outOrder.push(x.pid); x.extra = "💀"; say(S("x_fell", { name: nameOf(x.pid) }), "out"); } n++; push(); later(FAST ? 300 : 1500, fire); });
       resumeFn = fire;
     }
     return { start: fire, resume: () => resumeFn?.(), skip: () => { clearTimers(); offAll("stop"); finish({}); } };
@@ -477,10 +480,10 @@ export function createSpods(ctx: GameCtx, game: SpGame): GameInstance {
     }
     function start() {
       build();
-      between("מרוץ שליחים", T.between, () => countdown("על המקומות…", go, "הרץ הראשון על פוד הזינוק"), teams.length === 2 ? `🔵 ${teams[0].runners.map(nameOf).join(", ")} · 🔴 ${teams[1].runners.map(nameOf).join(", ")}` : "כולם בקבוצה אחת — מרוץ נגד השעון");
+      between(S("relay"), T.between, () => countdown(S("on_marks"), go, S("first_runner")), teams.length === 2 ? `🔵 ${teams[0].runners.map(nameOf).join(", ")} · 🔴 ${teams[1].runners.map(nameOf).join(", ")}` : S("all_one_team"));
     }
     function go() {
-      setBanner("רוצו!", ""); push();
+      setBanner(S("run_bang"), ""); push();
       for (const t of teams) fireFar(t);
       resumeFn = () => { phase = "run"; push(); for (const t of teams) if (!t.done) fireFar(t); };
     }
@@ -490,17 +493,17 @@ export function createSpods(ctx: GameCtx, game: SpGame): GameInstance {
       if (t.leg >= total) return teamDone(t);
       const pid = t.runners[t.leg % t.runners.length];
       t.legStart = now() + T.lead;
-      light({ pod: t.farPod, c: teamColor(t) >= 0 ? teamColor(t) : aths.get(pid)!.c, pid, txt: nameOf(pid), sub: "לקצה!", window: 0 },
+      light({ pod: t.farPod, c: teamColor(t) >= 0 ? teamColor(t) : aths.get(pid)!.c, pid, txt: nameOf(pid), sub: S("to_far"), window: 0 },
         (a, rt) => { record(a, rt); bc({ a: "sp_hit", id: 0, pid: a.pid, pod: t.farPod, ms: rt, good: true }); fireStart(t, pid); },
         () => {});
     }
     function fireStart(t: Team, pid: string) {
-      light({ pod: t.startPod, c: teamColor(t) >= 0 ? teamColor(t) : aths.get(pid)!.c, pid, txt: nameOf(pid), sub: "חזרה!", window: 0 },
+      light({ pod: t.startPod, c: teamColor(t) >= 0 ? teamColor(t) : aths.get(pid)!.c, pid, txt: nameOf(pid), sub: S("back_bang"), window: 0 },
         (a) => {
           const legMs = now() - t.legStart;
           a.legs.push(legMs); a.score = Math.round(a.legs.reduce((s, x) => s + x, 0) / a.legs.length); a.extra = `${(legMs / 1000).toFixed(1)}s`;
           t.leg++;
-          setBanner(teams.length === 2 ? `🔵 ${teams[0].leg} · 🔴 ${teams[1].leg}` : `קטע ${t.leg}/${t.runners.length * cfg.laps}`, "");
+          setBanner(teams.length === 2 ? `🔵 ${teams[0].leg} · 🔴 ${teams[1].leg}` : S("leg_of", { n: t.leg, of: t.runners.length * cfg.laps }), "");
           push();
           fireFar(t);
         }, () => {});
@@ -508,10 +511,10 @@ export function createSpods(ctx: GameCtx, game: SpGame): GameInstance {
     function teamDone(t: Team) {
       t.done = true; t.finishAt = now();
       const place = teams.filter((x) => x.done).length;
-      say(place === 1 ? (teams.length === 2 ? `קבוצה ${t.idx === 0 ? "כחולה" : "אדומה"} סיימה ראשונה!` : `סיימתם! ${((now() - runStart) / 1000).toFixed(1)} שניות`) : "סיימה!", "win");
+      say(place === 1 ? (teams.length === 2 ? S(t.idx === 0 ? "team_blue_first" : "team_red_first") : S("finished_secs", { sec: ((now() - runStart) / 1000).toFixed(1) })) : S("finished"), "win");
       if (teams.every((x) => x.done)) {
         const first = [...teams].sort((a, b) => a.finishAt - b.finishAt)[0];
-        finish({ winnerIds: first.runners, title: teams.length === 2 ? `הקבוצה ה${first.idx === 0 ? "כחולה" : "אדומה"} ניצחה` : `${((first.finishAt - runStart) / 1000).toFixed(1)} שניות` });
+        finish({ winnerIds: first.runners, title: teams.length === 2 ? S(first.idx === 0 ? "blue_won" : "red_won") : S("secs", { sec: ((first.finishAt - runStart) / 1000).toFixed(1) }) });
       } else push();
     }
     return { start, resume: () => resumeFn?.(), skip: () => { clearTimers(); offAll("stop"); finish({}); } };
@@ -523,12 +526,12 @@ export function createSpods(ctx: GameCtx, game: SpGame): GameInstance {
     const kit = SP_KITS[SP_KIT_IDS[cfg.kit] ?? "warm"].moves;
     const seq = new Map<string, SpMove[]>();
     function start() {
-      between("תחנות אש", T.between, () => countdown(`${kit.length} תרגילים · ${cfg.mins} דקות`, go, "כל אחד ליד פוד"), `ערכת ${SP_KITS[SP_KIT_IDS[cfg.kit] ?? "warm"].name}`);
+      between(S("stations"), T.between, () => countdown(S("moves_mins", { n: kit.length, m: cfg.mins }), go, S("each_by_pod")), S("kit_x", { kit: { k: `spods.kit.${SP_KIT_IDS[cfg.kit] ?? "warm"}` } }));
     }
     function go() {
       endAt = now() + cfg.mins * 60000 * (FAST ? 0.03 : 1);
       until = endAt;
-      setBanner("תחנות אש", ""); push();
+      setBanner(S("stations"), ""); push();
       for (const a of alive()) fireFor(a);
       later(endAt - now(), () => finish({}));
       resumeFn = () => { phase = "run"; endAt = now() + 20000; until = endAt; push(); for (const a of alive()) fireFor(a); later(endAt - now(), () => finish({})); };
@@ -542,7 +545,7 @@ export function createSpods(ctx: GameCtx, game: SpGame): GameInstance {
       a.stationIdx++;
       const pod = rnd(free);
       a.lastPod = pod;
-      light({ pod, c: a.c, pid: a.pid, txt: mv.t, ic: mv.ic, sub: mv.sub ?? nameOf(a.pid), window: 60000 + a.hand },
+      light({ pod, c: a.c, pid: a.pid, txt: { k: `spods.move.${mv.id}` }, ic: mv.ic, sub: mv.sub ? { k: `spods.move.${mv.id}.sub` } : nameOf(a.pid), window: 60000 + a.hand },
         (x, rt) => { record(x, rt); x.score++; x.extra = `${x.score} 🔥`; bc({ a: "sp_hit", id: 0, pid: x.pid, pod, ms: rt, good: true }); push(); later(800, () => fireFor(x)); },
         (x) => { if (x) later(300, () => fireFor(x)); });
     }
@@ -553,12 +556,12 @@ export function createSpods(ctx: GameCtx, game: SpGame): GameInstance {
   function progStatue(): Program {
     let endAt = 0;
     function start() {
-      between("הפסל", T.between, () => countdown("החזיקו את התנוחה עד האור הבא", go, "כולם במרכז"), "");
+      between(S("statue"), T.between, () => countdown(S("hold_until_next"), go, S("all_center")), "");
     }
     function go() {
       endAt = now() + cfg.secs * 1000 * (FAST ? 0.25 : 1);
       until = endAt;
-      setBanner("הפסל", ""); push();
+      setBanner(S("statue"), ""); push();
       for (const a of alive()) fireFor(a, 800);
       later(endAt - now(), () => finish({}));
       resumeFn = () => { phase = "run"; endAt = now() + 15000; until = endAt; push(); for (const a of alive()) fireFor(a, 800); later(endAt - now(), () => finish({})); };
@@ -567,12 +570,12 @@ export function createSpods(ctx: GameCtx, game: SpGame): GameInstance {
       if (now() >= endAt || ended) return;
       const free = podsFree().filter((p) => p !== a.lastPod);
       if (!free.length) return later(400, () => fireFor(a, 300));
-      const pose = rnd(SP_POSES.filter((p) => p.t !== a.hold));
+      const pose = rnd(SP_POSES.filter((p) => p.id !== a.hold));
       const pod = rnd(free);
       a.lastPod = pod;
       const delay = T.lead + delayBase + Math.random() * (cfg.hold ?? 6000);
-      light({ pod, c: a.c, pid: a.pid, txt: pose.t, ic: pose.ic, sub: nameOf(a.pid), window: 12000 + a.hand, delay },
-        (x, rt) => { record(x, rt); x.score++; x.hold = pose.t; x.extra = `${pose.ic} ${pose.t}`; bc({ a: "sp_hit", id: 0, pid: x.pid, pod, ms: rt, txt: `החזק: ${pose.t}`, good: true }); push(); fireFor(x, 1500); },
+      light({ pod, c: a.c, pid: a.pid, txt: { k: `spods.pose.${pose.id}` }, ic: pose.ic, sub: nameOf(a.pid), window: 12000 + a.hand, delay },
+        (x, rt) => { record(x, rt); x.score++; x.hold = pose.id; x.extra = S("pose_extra", { ic: pose.ic, pose: { k: `spods.pose.${pose.id}` } }); bc({ a: "sp_hit", id: 0, pid: x.pid, pod, ms: rt, txt: S("hold_x", { pose: { k: `spods.pose.${pose.id}` } }), good: true }); push(); fireFor(x, 1500); },
         (x) => { if (x) fireFor(x, 500); });
     }
     return { start, resume: () => resumeFn?.(), skip: () => { clearTimers(); offAll("stop"); finish({}); } };
@@ -582,10 +585,10 @@ export function createSpods(ctx: GameCtx, game: SpGame): GameInstance {
   function progPacer(): Program {
     function start() {
       of = cfg.lights;
-      between("בדיוק בזמן", T.between, () => countdown("גע בדיוק כשהאור כבה", go, "כולם על הקו"), "");
+      between(S("pacer"), T.between, () => countdown(S("touch_when_off"), go, S("all_on_line")), "");
     }
     function go() {
-      setBanner("בדיוק בזמן", ""); push();
+      setBanner(S("pacer"), ""); push();
       for (const a of alive()) fireFor(a, 500);
       resumeFn = () => { phase = "run"; push(); for (const a of alive()) if (a.lightsDone < of) fireFor(a, 500); };
     }
@@ -604,14 +607,14 @@ export function createSpods(ctx: GameCtx, game: SpGame): GameInstance {
           const err = rt - total; // חיובי = נרדם, שלילי = חפוז
           x.err += Math.abs(err); x.score = x.err; x.lightsDone++; x.hits++;
           const sgn = err > 0 ? "+" : "−";
-          const txt = `${sgn}${(Math.abs(err) / 1000).toFixed(2)} ${Math.abs(err) < 250 ? "🎯" : err > 0 ? "נרדם" : "חפוז"}`;
+          const txt: LText = Math.abs(err) < 250 ? `${sgn}${(Math.abs(err) / 1000).toFixed(2)} 🎯` : S(err > 0 ? "late" : "early", { d: `${sgn}${(Math.abs(err) / 1000).toFixed(2)}` });
           x.extra = txt;
           x.rts.push(Math.abs(err)); x.med = spMedian(x.rts);
           bc({ a: "sp_hit", id: l.id, pid: x.pid, pod, ms: err, txt, good: Math.abs(err) < 250 });
           round = Math.min(...alive().map((y) => y.lightsDone)); push();
           later(FAST ? 300 : 2000, () => fireFor(x, 800));
         },
-        (x) => { if (x) { x.err += 2500; x.score = x.err; x.lightsDone++; x.extra = "פספוס"; push(); later(800, () => fireFor(x, 500)); } });
+        (x) => { if (x) { x.err += 2500; x.score = x.err; x.lightsDone++; x.extra = S("miss"); push(); later(800, () => fireFor(x, 500)); } });
     }
     return { start, resume: () => resumeFn?.(), skip: () => { clearTimers(); offAll("stop"); finish({}); } };
   }
@@ -626,33 +629,33 @@ export function createSpods(ctx: GameCtx, game: SpGame): GameInstance {
     if (op === "start") {
       if (phase !== "setup") return;
       syncAths();
-      if (!pods().length || athList().length < def.minAth) { to(host, { a: "sp_say", t: `צריך לפחות ${def.minAth} ספורטאים ופוד אחד`, k: "info" }); return; }
+      if (!pods().length || athList().length < def.minAth) { to(host, { a: "sp_say", t: S("need_min", { n: def.minAth }), k: "info" }); return; }
       prog = PROGS[game]();
-      say("מתחילים!", "go");
+      say(S("go"), "go");
       prog.start();
       return;
     }
     if (op === "pause") {
       if (phase !== "run" && phase !== "between" && phase !== "count") return;
       clearTimers(); offAll("stop");
-      phase = "pause"; until = 0; setBanner("⏸️ הפסקה", "המאמן עצר לרגע"); push();
-      say("הפסקה", "info");
+      phase = "pause"; until = 0; setBanner(S("pause"), S("pause_s")); push();
+      say(S("pause_say"), "info");
       return;
     }
     if (op === "resume") {
       if (phase !== "pause") return;
-      phase = "between"; setBanner("ממשיכים…", ""); until = now() + 1500; push();
+      phase = "between"; setBanner(S("resume"), ""); until = now() + 1500; push();
       later(1500, () => { phase = "run"; prog.resume(); });
       return;
     }
     if (op === "skip") { if (phase === "run" || phase === "between" || phase === "pause") { clearTimers(); prog.skip?.(); } return; }
-    if (op === "stop") { if (phase !== "setup") finish({ title: "עצר המאמן" }); }
+    if (op === "stop") { if (phase !== "setup") finish({ title: S("coach_stopped") }); }
   }
 
   return {
     onStart() {
       syncAths();
-      setBanner(def.name, def.setup);
+      setBanner({ k: `games.sp_${game}.name` }, { k: `spods.setup.${game}` });
       push();
     },
     onMessage(pid: string, d: GameClientMsg) {

@@ -66,7 +66,8 @@ export interface PlayerFacts {
  * והטלפון מרנדר בשפה שלו דרך lt() (client/lib/locale). כך חדר עם 4 שפות מקבל 4 טקסים נכונים
  * מאותה הודעה. שמות שחקנים תמיד כפרמטר — לעולם לא משורשרים בשרת.
  */
-export type LText = string | { k: string; p?: Record<string, string | number> };
+/** פרמטר יכול להיות בעצמו LText מקונן ({k}) — הלקוח פותר רקורסיבית */
+export type LText = string | { k: string; p?: Record<string, string | number | { k: string; p?: Record<string, string | number> }> };
 
 /** התואר האישי שמופיע על כרטיס הסיום של השחקן */
 export interface Award {

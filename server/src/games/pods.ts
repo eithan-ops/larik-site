@@ -61,7 +61,7 @@ export function createPods(ctx: GameCtx): GameInstance {
       .sort((a, b) => scores[b] - scores[a] || (avg[a] ?? 9e9) - (avg[b] ?? 9e9));
     const winner = ranked[0];
     const loser = [...players].sort((a, b) => scores[a] - scores[b])[0];
-    ctx.end({ title: "פודים ⚡ מלך המהירות", winnerId: winner, loserId: loser, scores, facts: podFacts() });
+    ctx.end({ title: { k: "pods.end.king" }, winnerId: winner, loserId: loser, scores, facts: podFacts() });
   }
 
   /* ---------- הישרדות ---------- */
@@ -79,7 +79,7 @@ export function createPods(ctx: GameCtx): GameInstance {
       if (eliminated[0]) extra[eliminated[0]] = { outFirst: 1 };
       if (winner) extra[winner] = { ...(extra[winner] ?? {}), survivedLast: 1 };
       return ctx.end({
-        title: "פודים 💀 הישרדות", winnerId: winner, loserId: loser ?? undefined, scores,
+        title: { k: "pods.end.survival" }, winnerId: winner, loserId: loser ?? undefined, scores,
         facts: podFacts(extra),
       });
     }
