@@ -41,7 +41,7 @@ export function createSimon(ctx: GameCtx): GameInstance {
     over = true;
     const scores: Record<string, number> = {};
     for (const p of players) scores[p] = seq.length - 1;
-    ctx.end({ title: won ? `סימון מבוזר 🟩 הגעתם ל-${seq.length}!` : `סימון מבוזר 🟩 שרשרת של ${seq.length - 1}`, scores });
+    ctx.end({ title: won ? { k: "simon.end.won", p: { n: seq.length } } : { k: "simon.end.chain", p: { n: seq.length - 1 } }, scores });
   }
 
   return {

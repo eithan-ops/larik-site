@@ -2,18 +2,19 @@
  * "חוקי הצבע" — רפלקס מסונכרן.
  */
 import type { GameCtx, GameInstance } from "../engine";
-import type { ColorRulesClientMsg, GameClientMsg } from "../../../shared/protocol";
+import type { ColorRulesClientMsg, GameClientMsg, LText } from "../../../shared/protocol";
 
 interface Config { speed?: "normal" | "fast" }
 
-const RULES: { color: string; label: string; mustTap: boolean }[] = [
-  { color: "#34e89e", label: "💚 גע! וצעק \"בננה\"", mustTap: true },
-  { color: "#5c8aff", label: "💙 גע! וקום", mustTap: true },
-  { color: "#ffce3c", label: "💛 גע! ומחא כף", mustTap: true },
-  { color: "#ff4d9d", label: "💗 גע! והחלף מקום", mustTap: true },
-  { color: "#b26bff", label: "💜 גע! ותצביע למעלה", mustTap: true },
-  { color: "#f4f6ff", label: "🤍 קפא! אל תיגע!", mustTap: false },
-  { color: "#f4f6ff", label: "🤍 שתוק! ידיים למעלה!", mustTap: false },
+/** הטקסט בלקוח: colorrules.rule.<id> */
+const RULES: { color: string; label: LText; mustTap: boolean }[] = [
+  { color: "#34e89e", label: { k: "colorrules.rule.green" }, mustTap: true },
+  { color: "#5c8aff", label: { k: "colorrules.rule.blue" }, mustTap: true },
+  { color: "#ffce3c", label: { k: "colorrules.rule.yellow" }, mustTap: true },
+  { color: "#ff4d9d", label: { k: "colorrules.rule.pink" }, mustTap: true },
+  { color: "#b26bff", label: { k: "colorrules.rule.purple" }, mustTap: true },
+  { color: "#f4f6ff", label: { k: "colorrules.rule.white_freeze" }, mustTap: false },
+  { color: "#f4f6ff", label: { k: "colorrules.rule.white_quiet" }, mustTap: false },
 ];
 
 export function createColorRules(ctx: GameCtx): GameInstance {
@@ -70,7 +71,7 @@ export function createColorRules(ctx: GameCtx): GameInstance {
     const scores: Record<string, number> = {};
     for (const p of ctx.connectedPlayers()) scores[p.id] = Math.max(0, lives[p.id] ?? 0);
     const loser = ctx.connectedPlayers().map((p) => p.id).sort((a, b) => (lives[a] ?? 0) - (lives[b] ?? 0))[0];
-    ctx.end({ title: "חוקי הצבע 🎨", winnerId: winner, loserId: loser !== winner ? loser : undefined, scores });
+    ctx.end({ title: { k: "colorrules.end.title" }, winnerId: winner, loserId: loser !== winner ? loser : undefined, scores });
   }
 
   return {

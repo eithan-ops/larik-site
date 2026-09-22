@@ -1,0 +1,19 @@
+{
+  "impostor.exposed_you": "Você foi descoberto!",
+  "impostor.the_impostor": "O impostor: {name}",
+  "impostor.word_was": "A palavra era:",
+  "impostor.new_round": "🔄 Nova rodada",
+  "impostor.round_n": "Rodada {n}",
+  "impostor.dealing": "Distribuindo papéis...",
+  "impostor.you_impostor": "Você é o impostor!",
+  "impostor.no_word1": "Você não tem palavra. Escute as pistas dos outros —",
+  "impostor.no_word2": "e invente uma pista que pareça encaixar. Boa sorte 😏",
+  "impostor.secret_word": "A palavra secreta:",
+  "impostor.hold_to_see": "Segure pra ver a carta",
+  "impostor.secret_hint": "Em segredo! Ninguém pode espiar",
+  "impostor.how1": "Na sua vez, diga em voz alta uma palavra ligada à palavra secreta.",
+  "impostor.how2": "Desconfiou de alguém? Discutam e votem em voz alta! 🗣️",
+  "impostor.how3": "Quando decidirem — o anfitrião revela.",
+  "impostor.expose": "🎭 Revelar o impostor",
+  "impostor.new": "🔄 Novo"
+}

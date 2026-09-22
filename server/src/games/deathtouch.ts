@@ -2,7 +2,7 @@
  * "נגיעת המוות" — דדוקציה חברתית / פרנויה.
  */
 import type { GameCtx, GameInstance } from "../engine";
-import type { DeathTouchClientMsg, GameClientMsg } from "../../../shared/protocol";
+import type { DeathTouchClientMsg, GameClientMsg, LText } from "../../../shared/protocol";
 
 const HUNT_MS = 9000;
 const ACCUSE_MS = 25000;
@@ -23,12 +23,12 @@ export function createDeathTouch(ctx: GameCtx): GameInstance {
   const aliveCivilians = () => alive.filter((p) => !killers.has(p));
 
   function checkEnd(): boolean {
-    if (aliveKillers().length === 0) { end(true, "האזרחים תפסו את כל הרוצחים! 🎉"); return true; }
-    if (aliveCivilians().length <= aliveKillers().length) { end(false, "הרוצחים השתלטו על החדר... 🔪"); return true; }
+    if (aliveKillers().length === 0) { end(true, { k: "deathtouch.civilians_won" }); return true; }
+    if (aliveCivilians().length <= aliveKillers().length) { end(false, { k: "deathtouch.killers_won" }); return true; }
     return false;
   }
 
-  function end(civiliansWin: boolean, msg: string) {
+  function end(civiliansWin: boolean, msg: LText) {
     if (over) return;
     over = true;
     ctx.broadcast({ a: "dt_result", msg });
@@ -36,7 +36,7 @@ export function createDeathTouch(ctx: GameCtx): GameInstance {
     for (const p of all) { const isKiller = killers.has(p); scores[p] = (civiliansWin ? !isKiller : isKiller) ? 3 : 0; }
     const winner = civiliansWin ? aliveCivilians()[0] : [...killers][0];
     const loser = civiliansWin ? [...killers][0] : undefined;
-    ctx.timer(200, () => ctx.end({ title: "נגיעת המוות 🔪", winnerId: winner, loserId: loser, scores }));
+    ctx.timer(200, () => ctx.end({ title: { k: "deathtouch.end.title" }, winnerId: winner, loserId: loser, scores }));
   }
 
   function startHunt() {
@@ -70,10 +70,10 @@ export function createDeathTouch(ctx: GameCtx): GameInstance {
     if (top && topN > alive.length / 2) {
       alive = alive.filter((p) => p !== top);
       const wasKiller = killers.has(top);
-      ctx.broadcast({ a: "dt_result", suspect: top, wasKiller, msg: wasKiller ? "היה רוצח! 🎯" : "היה אזרח תמים... 😬" });
+      ctx.broadcast({ a: "dt_result", suspect: top, wasKiller, msg: { k: wasKiller ? "deathtouch.was_killer" : "deathtouch.was_civilian" } });
       ctx.broadcast({ a: "dt_alive", alive: [...alive] });
     } else {
-      ctx.broadcast({ a: "dt_result", msg: "לא הושג רוב — אף אחד לא הודח." });
+      ctx.broadcast({ a: "dt_result", msg: { k: "deathtouch.no_majority" } });
     }
     if (checkEnd()) return;
     ctx.timer(3500, startHunt);

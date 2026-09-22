@@ -78,7 +78,7 @@ export function createTrivia(ctx: GameCtx): GameInstance {
       if (misses[pid]) f.wrong = misses[pid];
       if (f.correct || f.wrong) facts[pid] = f;
     }
-    ctx.end({ title: "טריוויה 🧠", winnerId: winnerIds[0], winnerIds, loserId: loser, scores: { ...scores }, facts });
+    ctx.end({ title: { k: "trivia.end.title" }, winnerId: winnerIds[0], winnerIds, loserId: loser, scores: { ...scores }, facts });
   }
 
   return {

@@ -1,0 +1,10 @@
+{
+  "trivia.end.title": "טריוויה 🧠",
+  "trivia.preparing": "מתכוננים... כולם עונים בו-זמנית!",
+  "trivia.answered_n": "ענו {n}",
+  "trivia.no_answer": "לא ענית",
+  "trivia.wrong": "טעות",
+  "trivia.me": "(אני)",
+  "trivia.locked": "ננעל! מחכים לכולם... ({n})",
+  "trivia.tap_hint": "גע בתשובה — מהר יותר = יותר נקודות!"
+}

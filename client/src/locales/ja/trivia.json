@@ -1,0 +1,10 @@
+{
+  "trivia.end.title": "クイズ 🧠",
+  "trivia.preparing": "準備中... 全員いっせいに答える！",
+  "trivia.answered_n": "回答 {n}",
+  "trivia.no_answer": "未回答",
+  "trivia.wrong": "ハズレ",
+  "trivia.me": "(自分)",
+  "trivia.locked": "確定！みんなを待ってる... ({n})",
+  "trivia.tap_hint": "答えをタップ — 速いほどポイント多め！"
+}

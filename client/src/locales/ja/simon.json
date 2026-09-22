@@ -1,0 +1,12 @@
+{
+  "simon.end.won": "バラバラ・サイモン 🟩 {n}まで到達！",
+  "simon.end.chain": "バラバラ・サイモン 🟩 {n}連鎖",
+  "simon.preparing": "準備中...",
+  "simon.watch": "順番を見て... 👀",
+  "simon.repeat": "さあ再現！自分の番でタップ 👆",
+  "simon.oops": "おっと！{name} の番だった。もう一回...",
+  "simon.watch_short": "見て",
+  "simon.repeat_short": "再現！",
+  "simon.title": "サイモン",
+  "simon.progress": "順番の長さ：{len} · 再現ずみ：{done}"
+}

@@ -27,7 +27,7 @@ export function createDemons(ctx: GameCtx): GameInstance {
     const lowIds = ranked.filter((p) => (scores[p] ?? 0) === low);
     const loser = lowIds.length === 1 && low < top ? lowIds[0] : undefined;
     ctx.broadcast({ a: "dm_end", scores: { ...scores } });
-    ctx.timer(200, () => ctx.end({ title: "השדים הקטנים 👹", winnerId: winnerIds[0], winnerIds, loserId: loser, scores: { ...scores } }));
+    ctx.timer(200, () => ctx.end({ title: { k: "demons.end.title" }, winnerId: winnerIds[0], winnerIds, loserId: loser, scores: { ...scores } }));
   }
 
   return {

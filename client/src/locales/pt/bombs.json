@@ -1,0 +1,20 @@
+{
+  "bombs.end.title": "Chuva de Bombas 💣 Vocês sobreviveram {s} segundos",
+  "bombs.hint.classic": "Joga pra alguém! 👇",
+  "bombs.hint.sticky": "Grudenta! Esfregue com força pra soltar 🧽",
+  "bombs.hint.chain": "Cuidado — se divide ao passar! ⛓️",
+  "bombs.hint.duo": "Dupla! Os dois seguram ao mesmo tempo 🤝",
+  "bombs.x_threw": "💣 {name} jogou pra você!",
+  "bombs.defused_duo": "✨ {names} desarmaram uma dupla!",
+  "bombs.exploded_at": "💥 Explodiu com {name}!",
+  "bombs.in_air": "💣 {n} no ar",
+  "bombs.starting": "💣 A Chuva de Bombas está começando...",
+  "bombs.clear": "Você está limpo... por enquanto.",
+  "bombs.clear_hint": "Veja quem está cheio e grite pra ele jogar pra você!",
+  "bombs.defusing": "Desarmando... 🤝",
+  "bombs.wait_for": "Espere {name}...",
+  "bombs.hold_defuse": "Segure pra desarmar! 🤝",
+  "bombs.pick_target": "Agora escolha pra quem jogar! 👇",
+  "bombs.pick_friend": "Escolha um amigo pra jogar 🎯",
+  "bombs.how": "Toque na sua bomba e depois num amigo — e o mais importante: conversem!"
+}

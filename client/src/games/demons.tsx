@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import type { DemonsServerMsg } from "../../../shared/protocol";
 import type { GameViewProps } from "./registry";
 import { Sfx, vibrate } from "../lib/audio";
+import { t } from "../lib/locale";
 
 interface Dot { id: number; x: number; y: number }
 interface Demon { id: number; kind: number; from: string; born: number; dur: number; x: number; y: number }
@@ -84,7 +85,7 @@ export default function DemonsView({ room, me, conn, hub }: GameViewProps) {
     return (
       <main className="fullscreen">
         <div style={{ fontSize: 54 }}>👹</div>
-        <div className="big">נגמר!</div>
+        <div className="big">{t("demons.over")}</div>
         <div className="card" style={{ marginTop: 16, width: "100%", maxWidth: 300 }}>
           {ranked.map(([pid, s], i) => (
             <div key={pid} style={{ display: "flex", justifyContent: "space-between", padding: "4px 6px" }}>
@@ -102,7 +103,7 @@ export default function DemonsView({ room, me, conn, hub }: GameViewProps) {
       {/* padding שמאלי משאיר מקום לכפתור היציאה הצף */}
       <div style={{ display: "flex", justifyContent: "space-between", width: "100%", alignItems: "center", paddingLeft: 96, paddingRight: 16 }}>
         <span className="chip">⏱️ {secs}s</span>
-        <span className="chip" style={{ color: "var(--money)" }}>נקודות: {myScore}</span>
+        <span className="chip" style={{ color: "var(--money)" }}>{t("demons.points", { n: myScore })}</span>
       </div>
       <div style={{ width: "88%", marginTop: 10 }}>
         <div className="rub-bar" style={{ height: 12 }}>
@@ -110,12 +111,12 @@ export default function DemonsView({ room, me, conn, hub }: GameViewProps) {
         </div>
         <button className="btn social" style={{ marginTop: 8, padding: 12, opacity: meter >= METER_MAX ? 1 : 0.4 }}
           disabled={meter < METER_MAX} onPointerDown={() => setPicking(true)}>
-          👹 שגר שד ליריב!
+          {t("demons.launch")}
         </button>
       </div>
       <div style={{ position: "relative", flex: 1, width: "100%", marginTop: 8, overflow: "hidden" }}>
         {phase === "play" && secs > 57 && (
-          <div className="big pulse" style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>מוכנים? 👹</div>
+          <div className="big pulse" style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>{t("demons.ready")}</div>
         )}
         {dots.map((dot) => (
           <button key={dot.id}
@@ -134,7 +135,7 @@ export default function DemonsView({ room, me, conn, hub }: GameViewProps) {
       </div>
       {picking && (
         <div className="scan-overlay" style={{ background: "#000c", justifyContent: "center" }} onPointerDown={() => setPicking(false)}>
-          <h2 style={{ marginBottom: 12 }}>למי לשלוח שד? 👹</h2>
+          <h2 style={{ marginBottom: 12 }}>{t("demons.send_to")}</h2>
           <div className="players-grid" style={{ padding: "0 20px" }}>
             {room.players.filter((p) => p.id !== me && p.connected && (room.gamePids?.includes(p.id) ?? true)).map((p) => (
               <button key={p.id} className="pbadge" onPointerDown={(e) => { e.stopPropagation(); sendDemon(p.id); }}>

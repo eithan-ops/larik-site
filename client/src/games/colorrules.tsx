@@ -2,17 +2,18 @@
  * "חוקי הצבע" — צד לקוח. המסך מתמלא בצבע + פקודה; נוגעים (או לא) בזמן.
  */
 import { useEffect, useRef, useState } from "react";
-import type { ColorRulesServerMsg } from "../../../shared/protocol";
+import type { ColorRulesServerMsg, LText } from "../../../shared/protocol";
 import type { GameViewProps } from "./registry";
 import { Sfx, vibrate } from "../lib/audio";
+import { t, lt } from "../lib/locale";
 
-interface Flash { roundId: number; color: string; label: string; mustTap: boolean; until: number }
+interface Flash { roundId: number; color: string; label: LText; mustTap: boolean; until: number }
 
 export default function ColorRulesView({ room, me, conn, hub }: GameViewProps) {
   const [flash, setFlash] = useState<Flash | null>(null);
   const [lives, setLives] = useState(3);
   const [out, setOut] = useState(false);
-  const [msg, setMsg] = useState("מתכוננים...");
+  const [msg, setMsg] = useState(() => t("colorrules.preparing"));
   const [tappedRound, setTappedRound] = useState(0);
   const [, setTick] = useState(0);
   const flashRef = useRef<Flash | null>(null);
@@ -23,7 +24,7 @@ export default function ColorRulesView({ room, me, conn, hub }: GameViewProps) {
   useEffect(() => hub.subscribe((d) => {
     const m = d as ColorRulesServerMsg;
     switch (m.a) {
-      case "cr_begin": setLives(m.lives); setMsg("שימו לב למסך!"); return;
+      case "cr_begin": setLives(m.lives); setMsg(t("colorrules.watch")); return;
       case "cr_flash":
         setFlash({ roundId: m.roundId, color: m.color, label: m.label, mustTap: m.mustTap, until: m.until });
         if (m.mustTap) { Sfx.goBeep(); vibrate(40); } else { Sfx.countBeep(); }
@@ -34,7 +35,7 @@ export default function ColorRulesView({ room, me, conn, hub }: GameViewProps) {
       case "cr_resolve":
         setFlash(null);
         if (m.out.includes(me)) { setOut(true); Sfx.sadTrombone(); vibrate(300); }
-        setMsg(m.out.length ? `יצאו: ${m.out.map(nameOf).join(", ")}` : "יפה! ממשיכים...");
+        setMsg(m.out.length ? t("colorrules.out_list", { names: m.out.map(nameOf).join(", ") }) : t("colorrules.nice"));
         return;
     }
   }), [hub, me]);
@@ -59,8 +60,8 @@ export default function ColorRulesView({ room, me, conn, hub }: GameViewProps) {
     return (
       <main className="fullscreen" style={{ background: "#1a0f14" }}>
         <div style={{ fontSize: 70 }}>💀</div>
-        <div className="big" style={{ color: "#ff8a8a" }}>יצאת!</div>
-        <p className="sub" style={{ marginTop: 8 }}>תשאר לצפות — מי ישרוד אחרון?</p>
+        <div className="big" style={{ color: "#ff8a8a" }}>{t("colorrules.you_out")}</div>
+        <p className="sub" style={{ marginTop: 8 }}>{t("colorrules.stay_watch")}</p>
       </main>
     );
   }
@@ -70,7 +71,7 @@ export default function ColorRulesView({ room, me, conn, hub }: GameViewProps) {
     return (
       <main className="fullscreen" style={{ background: flash.color, transition: "none" }} onPointerDown={tap}>
         <div className="huge" style={{ color: "#0c0817", fontSize: "min(16vw,74px)", textAlign: "center", padding: "0 16px" }}>
-          {flash.label}
+          {lt(flash.label)}
         </div>
         <div style={{ position: "absolute", bottom: 40, fontSize: 20, fontWeight: 900, color: "#0c0817cc" }}>
           {(remain / 1000).toFixed(1)}
@@ -85,11 +86,11 @@ export default function ColorRulesView({ room, me, conn, hub }: GameViewProps) {
   return (
     <main className="fullscreen" style={{ background: "var(--bg)" }}>
       <div style={{ fontSize: 50 }} className="pulse">🎨</div>
-      <div className="big" style={{ marginTop: 10 }}>חוקי הצבע</div>
+      <div className="big" style={{ marginTop: 10 }}>{t("games.colorrules.name")}</div>
       <p className="sub" style={{ marginTop: 8 }}>{msg}</p>
       <div style={{ marginTop: 16, fontSize: 22 }}>{Array.from({ length: 3 }, (_, i) => (i < lives ? "❤️" : "🖤")).join("")}</div>
       <p className="sub" style={{ marginTop: 20, fontSize: 12, maxWidth: 280, textAlign: "center" }}>
-        צבע = גע במסך ובצע את הפקודה. לבן 🤍 = אל תיגע! טעות מורידה לב.
+        {t("colorrules.how")}
       </p>
     </main>
   );

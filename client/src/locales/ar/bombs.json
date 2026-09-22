@@ -1,0 +1,20 @@
+{
+  "bombs.end.title": "مطر القنابل 💣 صمدتم {s} ثانية",
+  "bombs.hint.classic": "ارمها على أحدهم! 👇",
+  "bombs.hint.sticky": "لاصقة! افركها بقوة لتتخلص منها 🧽",
+  "bombs.hint.chain": "انتبه — تنقسم عند التمرير! ⛓️",
+  "bombs.hint.duo": "مزدوجة! أمسكاها معاً في الوقت نفسه 🤝",
+  "bombs.x_threw": "💣 {name} رماها عليك!",
+  "bombs.defused_duo": "✨ {names} عطّلوا مزدوجة!",
+  "bombs.exploded_at": "💥 انفجرت عند {name}!",
+  "bombs.in_air": "💣 {n} في الهواء",
+  "bombs.starting": "💣 مطر القنابل يبدأ...",
+  "bombs.clear": "شاشتك نظيفة... حالياً.",
+  "bombs.clear_hint": "انظر مَن المُحمَّل واصرخ عليه ليرمي عليك!",
+  "bombs.defusing": "نعطّل... 🤝",
+  "bombs.wait_for": "انتظر {name}...",
+  "bombs.hold_defuse": "أمسك للتعطيل! 🤝",
+  "bombs.pick_target": "الآن اختر على مَن ترميها! 👇",
+  "bombs.pick_friend": "اختر صديقاً لترميها عليه 🎯",
+  "bombs.how": "المس قنبلتك ثم صديقاً — والأهم: تكلّموا!"
+}

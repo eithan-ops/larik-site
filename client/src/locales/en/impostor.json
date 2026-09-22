@@ -1,0 +1,19 @@
+{
+  "impostor.exposed_you": "You've been exposed!",
+  "impostor.the_impostor": "The impostor: {name}",
+  "impostor.word_was": "The word was:",
+  "impostor.new_round": "🔄 New round",
+  "impostor.round_n": "Round {n}",
+  "impostor.dealing": "Dealing roles...",
+  "impostor.you_impostor": "You're the impostor!",
+  "impostor.no_word1": "You have no word. Listen to the others' clues —",
+  "impostor.no_word2": "and make up a clue that sounds like it belongs. Good luck 😏",
+  "impostor.secret_word": "The secret word:",
+  "impostor.hold_to_see": "Hold to see the card",
+  "impostor.secret_hint": "Secretly! Don't let anyone peek",
+  "impostor.how1": "On your turn, say a word out loud that relates to the secret word.",
+  "impostor.how2": "Suspect someone? Argue and vote out loud! 🗣️",
+  "impostor.how3": "Once you've decided — the host reveals.",
+  "impostor.expose": "🎭 Expose the impostor",
+  "impostor.new": "🔄 New"
+}

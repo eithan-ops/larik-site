@@ -1,0 +1,17 @@
+{
+  "colorrules.rule.green": "💚 ¡Toca! y grita \"banana\"",
+  "colorrules.rule.blue": "💙 ¡Toca! y párate",
+  "colorrules.rule.yellow": "💛 ¡Toca! y aplaude",
+  "colorrules.rule.pink": "💗 ¡Toca! y cambia de sitio",
+  "colorrules.rule.purple": "💜 ¡Toca! y señala arriba",
+  "colorrules.rule.white_freeze": "🤍 ¡Quieto! ¡No toques!",
+  "colorrules.rule.white_quiet": "🤍 ¡Silencio! ¡Manos arriba!",
+  "colorrules.end.title": "Reglas del Color 🎨",
+  "colorrules.preparing": "Preparándose...",
+  "colorrules.watch": "¡Ojo a la pantalla!",
+  "colorrules.out_list": "Fuera: {names}",
+  "colorrules.nice": "¡Bien! Seguimos...",
+  "colorrules.you_out": "¡Estás fuera!",
+  "colorrules.stay_watch": "Quédate a mirar — ¿quién sobrevive al final?",
+  "colorrules.how": "Color = toca la pantalla y cumple la orden. Blanco 🤍 = ¡no toques! Un error cuesta un corazón."
+}

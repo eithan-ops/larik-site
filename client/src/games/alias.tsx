@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import type { AliasServerMsg } from "../../../shared/protocol";
 import type { GameViewProps } from "./registry";
 import { Sfx, vibrate } from "../lib/audio";
+import { t, lt } from "../lib/locale";
 
 export default function AliasView({ room, me, conn, hub }: GameViewProps) {
   const [describer, setDescriber] = useState("");
@@ -22,7 +23,7 @@ export default function AliasView({ room, me, conn, hub }: GameViewProps) {
     const m = d as AliasServerMsg;
     switch (m.a) {
       case "al_turn":
-        setDescriber(m.pid); setUntil(m.until); setDeckName(m.deckName); setWord("");
+        setDescriber(m.pid); setUntil(m.until); setDeckName(lt(m.deckName)); setWord("");
         if (m.pid === me) { Sfx.goBeep(); vibrate([80, 50, 80]); } else Sfx.ding();
         return;
       case "al_word": setWord(m.word); return;
@@ -52,16 +53,16 @@ export default function AliasView({ room, me, conn, hub }: GameViewProps) {
       <main className="fullscreen" style={{ background: flash === "ok" ? "#0a2a16" : "var(--bg)", justifyContent: "space-between", padding: "20px 16px" }}>
         <div style={{ textAlign: "center", marginTop: 6 }}>
           <span className="chip" style={{ color: danger ? "#ff8a8a" : undefined }}>⏱️ {secs}s</span>
-          <span className="chip" style={{ marginRight: 8 }}>{deckName}</span>
+          <span className="chip" style={{ marginInlineStart: 8 }}>{deckName}</span>
         </div>
         <div style={{ textAlign: "center" }}>
-          <p className="sub">תאר בלי להגיד את המילה:</p>
+          <p className="sub">{t("alias.describe")}</p>
           <div className="huge" style={{ fontSize: "min(13vw,58px)", margin: "14px 0", lineHeight: 1.15 }}>{word || "..."}</div>
-          <p className="sub" style={{ fontSize: 12 }}>ניחשו? לחץ ✓. תקוע? דלג.</p>
+          <p className="sub" style={{ fontSize: 12 }}>{t("alias.hint")}</p>
         </div>
         <div style={{ display: "flex", gap: 10 }}>
-          <button className="btn ghost" style={{ flex: 1 }} onPointerDown={() => conn.sendGame({ a: "al_skip" })}>דלג ⏭️</button>
-          <button className="btn" style={{ flex: 2 }} onPointerDown={() => conn.sendGame({ a: "al_correct" })}>ניחשו! ✓</button>
+          <button className="btn ghost" style={{ flex: 1 }} onPointerDown={() => conn.sendGame({ a: "al_skip" })}>{t("alias.skip")}</button>
+          <button className="btn" style={{ flex: 2 }} onPointerDown={() => conn.sendGame({ a: "al_correct" })}>{t("alias.got_it")}</button>
         </div>
       </main>
     );
@@ -70,15 +71,15 @@ export default function AliasView({ room, me, conn, hub }: GameViewProps) {
   return (
     <main className="fullscreen" style={{ background: "var(--bg)" }}>
       <div style={{ fontSize: 56 }} className="pulse">👅</div>
-      <div className="big" style={{ marginTop: 8 }}>{describer ? `${nameOf(describer)} מתאר!` : "מתכוננים..."}</div>
+      <div className="big" style={{ marginTop: 8 }}>{describer ? t("alias.x_describes", { name: nameOf(describer) }) : t("alias.preparing")}</div>
       <p className="sub" style={{ marginTop: 10, textAlign: "center", padding: "0 24px" }}>
-        צעקו את הניחושים שלכם בקול! {describer && `(${secs}s)`}
+        {t("alias.shout")} {describer && `(${secs}s)`}
       </p>
       {Object.keys(scores).length > 0 && (
         <div className="card" style={{ marginTop: 20, width: "100%", maxWidth: 280, padding: 10 }}>
           {Object.entries(scores).sort((a, b) => b[1] - a[1]).map(([pid, s]) => (
             <div key={pid} style={{ display: "flex", justifyContent: "space-between", fontSize: 14, padding: "3px 4px" }}>
-              <span>{nameOf(pid)}{pid === me ? " (אני)" : ""}</span><b style={{ color: "var(--money)" }}>{s}</b>
+              <span>{nameOf(pid)}{pid === me ? ` ${t("alias.me")}` : ""}</span><b style={{ color: "var(--money)" }}>{s}</b>
             </div>
           ))}
         </div>

@@ -1,0 +1,10 @@
+{
+  "trivia.end.title": "퀴즈 🧠",
+  "trivia.preparing": "준비 중... 다 같이 동시에 답해요!",
+  "trivia.answered_n": "답변 {n}",
+  "trivia.no_answer": "답 안 했어요",
+  "trivia.wrong": "오답",
+  "trivia.me": "(나)",
+  "trivia.locked": "확정! 모두 기다리는 중... ({n})",
+  "trivia.tap_hint": "답을 터치해요 — 빠를수록 = 점수 더 많이!"
+}

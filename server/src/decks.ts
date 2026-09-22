@@ -2,7 +2,10 @@
  * חפיסות התוכן — נוצרו בזמן בנייה (עקרון "AI בזמן בנייה, לא בזמן ריצה").
  * להוסיף חפיסה = להוסיף אובייקט. בעתיד: חפיסות אישיות שנוצרות ב-LLM חינמי.
  */
-export interface Deck { name: string; cards: string[] }
+/** id = מפתח החפיסה (animals/…); custom = חפיסה של החבורה, name = השם שהקלידו (או ריק → games.<g>.opt.deck.custom) */
+import type { LText } from "../../shared/protocol";
+
+export interface Deck { id: string; name: string; cards: string[] }
 
 /**
  * פענוח בחירת חפיסה מה-config של המארח — כולל חפיסה אישית ✨ (deck="custom"):
@@ -23,15 +26,15 @@ export function resolveDeck(cfg: DeckConfig): Deck {
       if (cards.length >= 60) break;
     }
     if (cards.length >= 8) {
-      const name = String(cfg.customName ?? "החפיסה שלנו").trim().slice(0, 30) || "החפיסה שלנו";
-      return { name: `✨ ${name}`, cards };
+      const name = String(cfg.customName ?? "").trim().slice(0, 30);
+      return { id: "custom", name: name ? `✨ ${name}` : "", cards };
     }
   }
   const key = cfg.deck && DECKS[cfg.deck] ? cfg.deck : "animals";
-  return DECKS[key];
+  return { id: key, ...DECKS[key] };
 }
 
-export const DECKS: Record<string, Deck> = {
+export const DECKS: Record<string, Omit<Deck, "id">> = {
   animals: {
     name: "חיות 🐨",
     cards: [
@@ -314,4 +317,9 @@ export function pickUndercoverPair(level: "normal" | "hard", used: Set<string>):
   used.add(key);
   // מי מהשניים הוא "מילת הרוב" מתחלף — אחרת אפשר ללמוד את החפיסה
   return { pair: Math.random() < 0.5 ? [p.a, p.b] : [p.b, p.a], key };
+}
+
+/** שם החפיסה לתצוגה — מפתח תרגום לחפיסה מובנית, או השם שהחבורה הקלידה */
+export function deckLabel(game: string, deck: Deck): LText {
+  return deck.id === "custom" && deck.name ? deck.name : { k: `games.${game}.opt.deck.${deck.id}` };
 }

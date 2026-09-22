@@ -1,0 +1,19 @@
+{
+  "impostor.exposed_you": "انكشفت!",
+  "impostor.the_impostor": "المُنتحِل: {name}",
+  "impostor.word_was": "الكلمة كانت:",
+  "impostor.new_round": "🔄 جولة جديدة",
+  "impostor.round_n": "الجولة {n}",
+  "impostor.dealing": "نوزّع الأدوار...",
+  "impostor.you_impostor": "أنت المُنتحِل!",
+  "impostor.no_word1": "ليس لديك كلمة. أصغِ إلى تلميحات الآخرين —",
+  "impostor.no_word2": "واختلق تلميحاً يبدو مناسباً. بالتوفيق 😏",
+  "impostor.secret_word": "الكلمة السرية:",
+  "impostor.hold_to_see": "اضغط مطوّلاً لرؤية البطاقة",
+  "impostor.secret_hint": "بالسر! لا تدع أحداً يتلصص",
+  "impostor.how1": "في دوركم قولوا بصوت عالٍ كلمة مرتبطة بالكلمة السرية.",
+  "impostor.how2": "شككتم في أحد؟ تجادلوا وصوّتوا بصوت عالٍ! 🗣️",
+  "impostor.how3": "وعندما تقررون — المضيف يكشف.",
+  "impostor.expose": "🎭 اكشف المُنتحِل",
+  "impostor.new": "🔄 جديد"
+}

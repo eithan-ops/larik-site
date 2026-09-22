@@ -1,0 +1,20 @@
+{
+  "bombs.end.title": "מטר הפצצות 💣 שרדתם {s} שניות",
+  "bombs.hint.classic": "העף אותה למישהו! 👇",
+  "bombs.hint.sticky": "דביקה! שפשף אותה חזק כדי לשחרר 🧽",
+  "bombs.hint.chain": "זהירות — מתפצלת בהעברה! ⛓️",
+  "bombs.hint.duo": "תאומה! שניכם מחזיקים בו-זמנית 🤝",
+  "bombs.x_threw": "💣 {name} העיף אליך!",
+  "bombs.defused_duo": "✨ {names} נטרלו תאומה!",
+  "bombs.exploded_at": "💥 התפוצצה אצל {name}!",
+  "bombs.in_air": "💣 {n} באוויר",
+  "bombs.starting": "💣 מטר הפצצות מתחיל...",
+  "bombs.clear": "אצלך נקי... בינתיים.",
+  "bombs.clear_hint": "תסתכל מי עמוס וצעק לו לזרוק אליך!",
+  "bombs.defusing": "מנטרלים... 🤝",
+  "bombs.wait_for": "חכה ל{name}...",
+  "bombs.hold_defuse": "החזק לנטרול! 🤝",
+  "bombs.pick_target": "עכשיו בחר למי להעיף! 👇",
+  "bombs.pick_friend": "בחר חבר להעיף אליו 🎯",
+  "bombs.how": "גע בפצצה שלך ואז בחבר — והכי חשוב: דברו!"
+}

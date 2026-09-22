@@ -1,0 +1,20 @@
+{
+  "bombs.end.title": "爆弾の雨 💣 {s}秒 生きのびた",
+  "bombs.hint.classic": "だれかに投げろ！ 👇",
+  "bombs.hint.sticky": "ベタベタ！強くこすってはがせ 🧽",
+  "bombs.hint.chain": "注意 — 渡すと分裂する！ ⛓️",
+  "bombs.hint.duo": "ダブル！ふたりで同時に押さえて 🤝",
+  "bombs.x_threw": "💣 {name} がきみに投げた！",
+  "bombs.defused_duo": "✨ {names} がダブルを解除！",
+  "bombs.exploded_at": "💥 {name} のところで爆発！",
+  "bombs.in_air": "💣 空中に {n}",
+  "bombs.starting": "💣 爆弾の雨がはじまる...",
+  "bombs.clear": "きみはクリア... いまのところは。",
+  "bombs.clear_hint": "爆弾だらけの人を見つけて「こっちに投げて！」って叫ぼう！",
+  "bombs.defusing": "解除中... 🤝",
+  "bombs.wait_for": "{name} を待って...",
+  "bombs.hold_defuse": "押さえて解除！ 🤝",
+  "bombs.pick_target": "さあ、だれに投げる？ 👇",
+  "bombs.pick_friend": "投げる相手を選んで 🎯",
+  "bombs.how": "自分の爆弾をタップ、それから友だちを — なにより大事なのは：しゃべること！"
+}

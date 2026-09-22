@@ -1,0 +1,12 @@
+{
+  "simon.end.won": "סימון מבוזר 🟩 הגעתם ל-{n}!",
+  "simon.end.chain": "סימון מבוזר 🟩 שרשרת של {n}",
+  "simon.preparing": "מתכוננים...",
+  "simon.watch": "צפו ברצף... 👀",
+  "simon.repeat": "עכשיו שחזרו! גע כשזה תורך 👆",
+  "simon.oops": "אופס! היה תור של {name}. מתחילים שוב...",
+  "simon.watch_short": "צפו",
+  "simon.repeat_short": "שחזרו!",
+  "simon.title": "סימון",
+  "simon.progress": "אורך רצף: {len} · שוחזרו: {done}"
+}

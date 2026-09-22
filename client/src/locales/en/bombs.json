@@ -1,0 +1,20 @@
+{
+  "bombs.end.title": "Bomb Shower 💣 You survived {s} seconds",
+  "bombs.hint.classic": "Toss it to someone! 👇",
+  "bombs.hint.sticky": "Sticky! Rub it hard to get it off 🧽",
+  "bombs.hint.chain": "Careful — it splits when passed! ⛓️",
+  "bombs.hint.duo": "Twin! Both of you hold at the same time 🤝",
+  "bombs.x_threw": "💣 {name} tossed one to you!",
+  "bombs.defused_duo": "✨ {names} defused a twin!",
+  "bombs.exploded_at": "💥 Exploded on {name}!",
+  "bombs.in_air": "💣 {n} in the air",
+  "bombs.starting": "💣 Bomb Shower is starting...",
+  "bombs.clear": "You're clear... for now.",
+  "bombs.clear_hint": "See who's loaded and yell at them to throw to you!",
+  "bombs.defusing": "Defusing... 🤝",
+  "bombs.wait_for": "Wait for {name}...",
+  "bombs.hold_defuse": "Hold to defuse! 🤝",
+  "bombs.pick_target": "Now pick who to toss it to! 👇",
+  "bombs.pick_friend": "Pick a friend to toss it to 🎯",
+  "bombs.how": "Tap your bomb, then a friend — and most of all: talk!"
+}
