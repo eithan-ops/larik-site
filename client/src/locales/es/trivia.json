@@ -1,10 +1,10 @@
 {
   "trivia.end.title": "Trivia 🧠",
-  "trivia.preparing": "Preparándose... ¡todos responden a la vez!",
+  "trivia.preparing": "Preparando... ¡todos responden a la vez!",
   "trivia.answered_n": "Respondieron {n}",
   "trivia.no_answer": "No respondiste",
-  "trivia.wrong": "Error",
+  "trivia.wrong": "Incorrecto",
   "trivia.me": "(yo)",
-  "trivia.locked": "¡Bloqueada! Esperando a todos... ({n})",
+  "trivia.locked": "¡Enviada! Esperando a todos... ({n})",
   "trivia.tap_hint": "Toca una respuesta — ¡más rápido = más puntos!"
 }

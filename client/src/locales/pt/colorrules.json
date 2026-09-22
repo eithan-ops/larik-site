@@ -1,7 +1,7 @@
 {
   "colorrules.rule.green": "💚 Toque! e grite \"banana\"",
   "colorrules.rule.blue": "💙 Toque! e levante",
-  "colorrules.rule.yellow": "💛 Toque! e bata palma",
+  "colorrules.rule.yellow": "💛 Toque! e bata palmas",
   "colorrules.rule.pink": "💗 Toque! e troque de lugar",
   "colorrules.rule.purple": "💜 Toque! e aponte pra cima",
   "colorrules.rule.white_freeze": "🤍 Congela! Não toque!",
@@ -12,6 +12,6 @@
   "colorrules.out_list": "Eliminados: {names}",
   "colorrules.nice": "Boa! Seguindo...",
   "colorrules.you_out": "Você está fora!",
-  "colorrules.stay_watch": "Fique assistindo — quem sobrevive por último?",
+  "colorrules.stay_watch": "Fique assistindo — quem sobrevive até o fim?",
   "colorrules.how": "Cor = toque na tela e faça o comando. Branco 🤍 = não toque! Errar custa um coração."
 }

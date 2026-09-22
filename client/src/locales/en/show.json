@@ -1,9 +1,9 @@
 {
   "show.landTagline": "The crowd is the screen",
-  "show.landSub": "Every phone in the crowd becomes one point of light — waves, hearts, beat-synced pulses and spotlights, in perfect sync. No app, no signup.",
+  "show.landSub": "Every phone in the crowd becomes one point of light — waves, hearts, beat-synced pulses and spotlights, in perfect sync. No app, no sign-up.",
   "show.landStart": "🎛️ I'm the DJ — start a show",
   "show.landOpening": "Starting...",
-  "show.landErr": "Server is waking up... try again in a few seconds 😴",
+  "show.landErr": "The server is waking up... try again in a few seconds 😴",
   "show.landHint": "You'll get a QR + a live lighting console — the crowd scans and joins",
   "show.landHaveCode": "In the crowd? Got a code?",
   "show.landCodePh": "Show code",
@@ -91,7 +91,7 @@
   "show.gate.crowd": "Crowd",
   "show.gate.titleHost": "Show console 🎛️",
   "show.gate.titleGuest": "Your phone is part of the show! 🕯️",
-  "show.gate.p1": "✅ Nothing to download, no signup.",
+  "show.gate.p1": "✅ Nothing to download, no sign-up.",
   "show.gate.p2": "📲 Keep this page open (you can come back to it from history or save it to your home screen).",
   "show.gate.p3seat": "🎫 We know you're in row {r}, seat {c} — your light is a pixel in a giant screen the whole crowd creates together.",
   "show.gate.p3": "🎫 Your light will be part of a giant screen the whole crowd creates together.",
@@ -113,7 +113,7 @@
   "show.gate.startsSoon": "The show starts in a moment —",
   "show.gate.startsSoon2": "brightness to max and hold it high 🔆",
   "show.meta.title": "LARIK SHOW — Phone Light Show for Live Events, No App Needed",
-  "show.meta.desc": "Turn every phone in the crowd into a synced light show — waves, hearts, beat-synced pulses. No app, no signup, no LED wristbands: the crowd scans a QR code and glows in sync with the DJ.",
+  "show.meta.desc": "Turn every phone in the crowd into a synced light show — waves, hearts, beat-synced pulses. No app, no sign-up, no LED wristbands: the crowd scans a QR code and glows in sync with the DJ.",
   "show.meta.room": "🕯️ Join show {code} — LARIK SHOW",
-  "show.meta.room_desc": "Your phone becomes a point of light in the show — scan and glow. No app, no signup."
+  "show.meta.room_desc": "Your phone becomes a point of light in the show — scan and glow. No app, no sign-up."
 }

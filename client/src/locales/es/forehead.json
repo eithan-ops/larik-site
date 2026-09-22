@@ -4,7 +4,7 @@
   "forehead.x_saved": "¡{name} se salvó! ({card})",
   "forehead.wrong": "Nop 😬",
   "forehead.x_wrong": "{name} falló 😅",
-  "forehead.you_peeked": "¡Pillado mirando! 🐀",
+  "forehead.you_peeked": "¡Te atraparon mirando! 🐀",
   "forehead.x_peeked": "¡Tramposo! ¡{name} miró! 🐀",
   "forehead.x_guesses": "¡{name} adivina! Su carta:",
   "forehead.was_right": "¿Acertó?",
@@ -14,7 +14,7 @@
   "forehead.judging": "Adivinando... los amigos juzgan",
   "forehead.put_me": "¡Ponme en tu frente!",
   "forehead.face_out": "Pantalla hacia tus amigos. ¡Sin mirar!",
-  "forehead.deck_ready": "Baraja: {deck} · {n}/{of} listos",
+  "forehead.deck_ready": "Mazo: {deck} · {n}/{of} listos",
   "forehead.manual": "Ya estoy en la frente (manual)",
   "forehead.you_saved": "¡Te salvaste!",
   "forehead.enjoy": "Ahora disfruta viendo sudar a los demás.",
@@ -24,6 +24,6 @@
   "forehead.know_who": "¿Sabes quién eres?",
   "forehead.i_guess": "🎤 ¡Adivino!",
   "forehead.back_to_forehead": "¡Después vuelve a poner el teléfono en la frente!",
-  "forehead.help_x": "Turno de {name} — ¡ayúdenle con las respuestas!",
+  "forehead.help_x": "Turno de {name} — ¡ayúdenlo con las respuestas!",
   "forehead.no_peek": "¿Teléfono en la frente? Bien. Sin mirar 🐀"
 }

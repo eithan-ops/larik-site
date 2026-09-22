@@ -38,7 +38,7 @@
   "whomost.its_you": "きみだ！",
   "whomost.n_chose_you": "{of}人中{n}人がきみを選んだ",
   "whomost.chosen": "選ばれた！",
-  "whomost.finish": "🏆 終了して表彰へ",
+  "whomost.finish": "🏆 終了してセレモニーへ",
   "whomost.next_q": "➡️ つぎの質問",
   "whomost.the_chosen": "{n, plural, one {選ばれたのは：} other {選ばれたのは：}}",
   "whomost.nobody_voted": "だれも投票しなかった 🤷",

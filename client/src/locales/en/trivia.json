@@ -1,7 +1,7 @@
 {
   "trivia.end.title": "Trivia 🧠",
   "trivia.preparing": "Getting ready... everyone answers at the same time!",
-  "trivia.answered_n": "Answered {n}",
+  "trivia.answered_n": "{n} answered",
   "trivia.no_answer": "No answer",
   "trivia.wrong": "Wrong",
   "trivia.me": "(me)",

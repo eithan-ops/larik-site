@@ -7,9 +7,9 @@
   "deathtouch.no_majority": "과반이 안 나왔어요 — 아무도 탈락 안 해요.",
   "deathtouch.you_killer": "나는 살인자 🔪 ({n}명 중 하나)",
   "deathtouch.you_civilian": "나는 무고한 시민 😇",
-  "deathtouch.x_killed": "💀 {name} 살해당했어요!",
+  "deathtouch.x_killed": "💀 {name}님 살해당했어요!",
   "deathtouch.voted_n": "투표 {n}/{of}",
-  "deathtouch.x_ejected": "{name} 탈락 — {what}",
+  "deathtouch.x_ejected": "{name}님 탈락 — {what}",
   "deathtouch.killer_bang": "살인자! 🎯",
   "deathtouch.innocent": "무고해요 😬",
   "deathtouch.dealing_roles": "역할 나누는 중...",
@@ -25,5 +25,5 @@
   "deathtouch.phone_down": "폰을 테이블에 내려놔요. 누군가 움직이고 있어요... ({s})",
   "deathtouch.who_killer": "살인자는 누구? 🔍",
   "deathtouch.vote_suspect": "용의자에게 투표해요 ({s}s)",
-  "deathtouch.you_voted": "{name}에게 투표했어요 ✓"
+  "deathtouch.you_voted": "{name}님에게 투표했어요 ✓"
 }

@@ -25,5 +25,5 @@
   "deathtouch.phone_down": "ضع الهاتف على الطاولة. أحدهم يتحرّك... ({s})",
   "deathtouch.who_killer": "مَن القاتل؟ 🔍",
   "deathtouch.vote_suspect": "صوّتوا على المشتبه به ({s} ث)",
-  "deathtouch.you_voted": "صوّتّ على {name} ✓"
+  "deathtouch.you_voted": "تصويتك: {name} ✓"
 }
