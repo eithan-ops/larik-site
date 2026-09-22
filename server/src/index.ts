@@ -441,6 +441,9 @@ const http = createServer((req, res) => {
     } else if ((!existsSync(file) || statSync(file).isDirectory()) && url.pathname !== "/" && existsSync(file + ".html")) {
       file = file + ".html";
     }
+    // נכס חתום-hash שלא קיים (למשל chunk של גרסה אחרת בזמן החלפה) = 404 אמיתי, לא ה-shell —
+    // אחרת ה-service worker שומר HTML בתור JS והאפליקציה נתקעת עד ניקוי המטמון
+    if (url.pathname.startsWith("/assets/") && !existsSync(file)) { res.writeHead(404); res.end("not found"); return; }
     if (!existsSync(file) || statSync(file).isDirectory()) {
       file = join(CLIENT_DIST, isShowApp ? "show.html" : "index.html");
     }
