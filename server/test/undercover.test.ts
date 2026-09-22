@@ -16,7 +16,8 @@
  */
 import { Room, Transport } from "../src/engine";
 import { createUndercover, sameWord, hitMajority } from "../src/games/undercover";
-import { UNDERCOVER_PAIRS } from "../src/decks";
+import { he } from "../src/content/he";
+const UNDERCOVER_PAIRS = he.undercoverPairs;
 import type { ServerMsg } from "../../shared/protocol";
 
 let failed = 0;

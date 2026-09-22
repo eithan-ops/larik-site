@@ -10,14 +10,19 @@
  */
 import { encodeSeen, decodeSeen } from "../../../shared/bitset";
 
-const KEY = "larik-seen-q";
+import { currentLang } from "./locale";
+
+/** מזהי שאלות הם מיקום במאגר, והמאגר הוא לפי שפה — לכן הזיכרון נפרד לכל שפה (עברית שומרת על המפתח הישן) */
+const keyFor = () => { const l = currentLang(); return l === "he" ? "larik-seen-q" : `larik-seen-q:${l}`; };
 
 let cache: Set<number> | null = null;
+let cacheLang = "";
 
 /** כל השאלות שהמכשיר הזה כבר ראה */
 export function seenSet(): Set<number> {
-  if (cache) return cache;
-  try { cache = decodeSeen(localStorage.getItem(KEY) ?? ""); }
+  if (cache && cacheLang === currentLang()) return cache;
+  cacheLang = currentLang();
+  try { cache = decodeSeen(localStorage.getItem(keyFor()) ?? ""); }
   catch { cache = new Set(); }
   return cache;
 }
@@ -31,7 +36,7 @@ export function markSeen(ids: number | number[]) {
     if (typeof id === "number" && Number.isInteger(id) && !set.has(id)) { set.add(id); changed = true; }
   }
   if (!changed) return;
-  try { localStorage.setItem(KEY, encodeSeen(set)); } catch { /* אין אחסון — הזיכרון חי עד רענון */ }
+  try { localStorage.setItem(keyFor(), encodeSeen(set)); } catch { /* אין אחסון — הזיכרון חי עד רענון */ }
 }
 
 /** הייצוג הדחוס שנשלח לשרת בהצטרפות לחדר */
@@ -43,5 +48,5 @@ export function seenBlob(): string {
 /** לכפתור "אפס לי את המאגר" בהגדרות, אם וכשיהיה */
 export function clearSeen() {
   cache = new Set();
-  try { localStorage.removeItem(KEY); } catch { /* לא נורא */ }
+  try { localStorage.removeItem(keyFor()); } catch { /* לא נורא */ }
 }

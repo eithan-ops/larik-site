@@ -9,6 +9,7 @@
  *    לאודיו — ממירים לזמן AudioContext לתזמון מושלם ברמת הדגימה.
  * 5. פינג מתחדש כל 15 שניות לתיקון סחיפה.
  */
+import { currentLang } from "./locale";
 import type { ClientMsg, ServerMsg, RoomSnapshot, GameServerMsg, LText } from "../../../shared/protocol";
 import { myGpid } from "./group";
 import { seenBlob } from "./seen";
@@ -91,7 +92,7 @@ export class Connection {
     this.ws.onopen = () => {
       this.events.onStatus("open");
       // gpid = הזהות היציבה של המכשיר, מה שמאפשר לעונה של החבורה לזכור אותו
-      this.send({ t: "join", name, emoji, gpid: myGpid(), seen: seenBlob() });
+      this.send({ t: "join", name, emoji, gpid: myGpid(), seen: seenBlob(), lang: currentLang() });
       this.syncClock();
       this.pingTimer = window.setInterval(() => this.syncClock(), PING_INTERVAL);
     };

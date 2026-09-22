@@ -145,7 +145,7 @@ export function createUndercover(ctx: GameCtx): GameInstance {
     ejected = null; tie = false; guessPid = null; guessUntil = 0;
     lastGuessDone = false; lastGuessOk = false; lastRows = []; saidTurn = -1;
 
-    const { pair } = pickUndercoverPair(level, usedPairs);
+    const { pair } = pickUndercoverPair(level, usedPairs, ctx.lang);
     [majorityWord, impostorWord] = pair;
 
     // 7+ שחקנים = שני מתחזים (מתחזה בודד בקבוצה גדולה נתפס מהר מדי),

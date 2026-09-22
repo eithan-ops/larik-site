@@ -16,7 +16,7 @@ export function createTrivia(ctx: GameCtx): GameInstance {
   const cat = ((ctx.config ?? {}) as Config).cat || "mix";
   // מסננים כל שאלה שמישהו מהנוכחים כבר ראה — בסולו או בערב קודם.
   // זה מה שמונע את "רגע, את השאלה הזאת כבר קיבלנו".
-  const qs: BankQ[] = getTriviaBank().pick(Q_COUNT, { cat, exclude: ctx.seenUnion() });
+  const qs: BankQ[] = getTriviaBank(ctx.lang).pick(Q_COUNT, { cat, exclude: ctx.seenUnion() });
   const players = ctx.connectedPlayers().map((p) => p.id);
   const scores: Record<string, number> = Object.fromEntries(players.map((p) => [p, 0]));
   let qIdx = -1;

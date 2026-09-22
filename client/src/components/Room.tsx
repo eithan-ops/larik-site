@@ -10,7 +10,7 @@ import { setGround } from "../lib/ground";
 import QRCodeView from "./QRCodeView";
 import Ceremony from "./Ceremony";
 import { GAME_VIEWS, GAME_COLORS, GameHub } from "../games/registry";
-import { t, lt, gameText, optText, roomUrl } from "../lib/locale";
+import { t, lt, has, gameText, optText, roomUrl, currentLang } from "../lib/locale";
 import { useNs } from "../lib/useNs";
 
 /** מזהה צבעוני שקט — במקום בחירת אווטר (הקהל מבוגר, לא צריך חיות) */
@@ -600,9 +600,9 @@ function AiDeckPanel({ current, onDeck }: {
     setBusy(true);
     setErr("");
     try {
-      const res = await fetch(`/api/ai-deck?topic=${encodeURIComponent(topicText)}`);
+      const res = await fetch(`/api/ai-deck?topic=${encodeURIComponent(topicText)}&l=${currentLang()}`);
       const data = await res.json();
-      if (!res.ok || !Array.isArray(data.cards)) { setErr(data.error || t("deck.err")); }
+      if (!res.ok || !Array.isArray(data.cards)) { setErr(typeof data.error === "string" && has(data.error) ? t(data.error) : t("deck.err")); }
       else { track("ai_deck_created"); onDeck(data.name, data.cards); }
     } catch {
       setErr(t("deck.err_net"));

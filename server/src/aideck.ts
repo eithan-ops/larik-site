@@ -9,6 +9,8 @@
  * בלי מפתחות — ה-endpoint מחזיר 503 והלקוח פשוט לא מציג את האופציה כזמינה.
  */
 
+import { LANG_NAMES, asLang, type Lang } from "../../shared/i18n";
+
 const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash-lite";
 const GROQ_MODEL = process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
 
@@ -37,7 +39,22 @@ function rateOk(ip: string): boolean {
 }
 
 /* ---------- הפרומפט ---------- */
-function buildPrompt(topic: string): string {
+function buildPrompt(topic: string, lang: string): string {
+  if (lang !== "he") {
+    const name = LANG_NAMES[(asLang(lang) ?? "en") as Lang];
+    return [
+      `You are the helper of a party game ("Heads Up" / "Taboo" style) played by friends who speak ${name}.`,
+      `The group asked for a deck of cards on the topic: "${topic}".`,
+      `Create a list of 24 cards in ${name} related to the topic: people, characters, places, objects or concepts.`,
+      `Important rules:`,
+      `- Each card is short: one to four words.`,
+      `- Well-known things most of the group will recognize, not niche concepts.`,
+      `- Suitable for guessing with yes/no questions and for describing in words.`,
+      `- No duplicates, no numbering, no explanations.`,
+      `- Keep a fun tone, suitable for all ages.`,
+      `Return ONLY a JSON array of strings, no other text. Example: ["card one","card two"]`,
+    ].join("\n");
+  }
   return [
     `אתה עוזר של משחק חברה ישראלי ("על המצח" / "על הלשון").`,
     `החבורה ביקשה חפיסת קלפים בנושא: "${topic}".`,
@@ -122,23 +139,24 @@ export async function askModel(prompt: string, maxTokens = 1200): Promise<string
 }
 
 /* ---------- ה-API ---------- */
+/** `error` הוא מפתח תרגום (deck.err.*) — הלקוח מציג אותו בשפה שלו */
 export interface AiDeckResult {
   status: number;
   body: { name: string; cards: string[] } | { error: string };
 }
 
-export async function generateAiDeck(rawTopic: string, ip: string): Promise<AiDeckResult> {
+export async function generateAiDeck(rawTopic: string, ip: string, lang = "he"): Promise<AiDeckResult> {
   const topic = rawTopic.trim().replace(/\s+/g, " ").slice(0, 60);
-  if (topic.length < 2) return { status: 400, body: { error: "ספרו לנו על מה החפיסה (לפחות 2 תווים)" } };
-  if (!aiDeckAvailable()) return { status: 503, body: { error: "החפיסות האישיות עוד לא הופעלו בשרת הזה" } };
+  if (topic.length < 2) return { status: 400, body: { error: "deck.err.short" } };
+  if (!aiDeckAvailable()) return { status: 503, body: { error: "deck.err.off" } };
 
-  const cacheKey = topic.toLowerCase();
+  const cacheKey = `${lang}:${topic.toLowerCase()}`;
   const cached = cache.get(cacheKey);
   if (cached) return { status: 200, body: { name: topic, cards: cached } };
 
-  if (!rateOk(ip)) return { status: 429, body: { error: "וואו, הרבה חפיסות 😅 נסו שוב בעוד כמה דקות" } };
+  if (!rateOk(ip)) return { status: 429, body: { error: "deck.err.rate" } };
 
-  const prompt = buildPrompt(topic);
+  const prompt = buildPrompt(topic, lang);
   let cards: string[] = [];
   for (const provider of [askGemini, askGroq]) {
     try {
@@ -146,7 +164,7 @@ export async function generateAiDeck(rawTopic: string, ip: string): Promise<AiDe
       if (cards.length >= 10) break;
     } catch { /* עוברים לספק הבא */ }
   }
-  if (cards.length < 10) return { status: 502, body: { error: "ה-AI התבלבל 🤖 נסו לנסח את הנושא קצת אחרת" } };
+  if (cards.length < 10) return { status: 502, body: { error: "deck.err.confused" } };
 
   cards = cards.slice(0, 30);
   if (cache.size >= CACHE_MAX) cache.delete(cache.keys().next().value!);

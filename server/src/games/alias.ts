@@ -9,7 +9,7 @@ const TURN_MS = 45_000;
 const ROUNDS_PER_PLAYER = 2;
 
 export function createAlias(ctx: GameCtx): GameInstance {
-  const chosen = resolveDeck((ctx.config ?? {}) as DeckConfig);
+  const chosen = resolveDeck((ctx.config ?? {}) as DeckConfig, ctx.lang);
   const deck = [...chosen.cards].sort(() => Math.random() - 0.5);
   let deckPos = 0;
   const players = ctx.connectedPlayers().map((p) => p.id);

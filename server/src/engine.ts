@@ -61,6 +61,8 @@ export interface GameCtx {
   reportDaily(d: { seed: string; wave: number; scores?: Record<string, number> }): void;
   /** איחוד השאלות שכל משתתפי המשחק כבר ראו — כדי שלא נשאל אותן שוב */
   seenUnion(): Set<number>;
+  /** שפת החדר — שפת המארח (ברירת מחדל he); קובעת חפיסות, זוגות מילים וטריוויה */
+  lang: string;
   config: unknown;
 }
 
@@ -115,6 +117,7 @@ export class Room {
   private gotIt = new Set<string>(); // מי אישר "הבנתי" על המשחק שנבחר
   private soloDaily = false;   // חדר אתגר יומי — מתחיל לבד עם השחקן הראשון
   private seen = new Map<string, Set<number>>(); // מה כל מכשיר כבר ראה (לא משודר — זה גדול ופרטי)
+  private langs = new Map<string, string>();      // שפת הטלפון של כל שחקן — שפת המארח היא שפת החדר
 
   private transport: Transport;
   private gameFactories: Record<string, GameFactory>;
@@ -162,8 +165,18 @@ export class Room {
 
   /* ---------- חיבור שחקנים ---------- */
 
-  join(pid: string, name: string, emoji: string, gpid?: string, seen?: string): void {
+  /** שפת החדר: שפת המארח; אם אין — השפה הנפוצה בין המחוברים; אחרת עברית */
+  roomLang(): string {
+    const host = this.langs.get(this.hostId);
+    if (host) return host;
+    const count = new Map<string, number>();
+    for (const [pid, l] of this.langs) if (this.players.get(pid)?.connected) count.set(l, (count.get(l) ?? 0) + 1);
+    return [...count.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? "he";
+  }
+
+  join(pid: string, name: string, emoji: string, gpid?: string, seen?: string, lang?: string): void {
     if (seen) this.seen.set(pid, decodeSeen(seen));
+    if (lang) this.langs.set(pid, lang);
     const existing = this.players.get(pid);
     if (existing) {
       existing.connected = true;
@@ -331,6 +344,7 @@ export class Room {
   /* ---------- הקשר שניתן למשחק ---------- */
 
   private makeCtx(): GameCtx {
+    const room = this;
     return {
       players: () => [...this.players.values()],
       connectedPlayers: () => [...this.players.values()].filter((p) => p.connected),
@@ -351,6 +365,7 @@ export class Room {
         return h;
       },
       end: (result) => this.endGame(result),
+      get lang() { return room.roomLang(); },
       seenUnion: () => {
         const out = new Set<number>();
         const ids = this.gamePids.length ? this.gamePids : [...this.players.keys()];
