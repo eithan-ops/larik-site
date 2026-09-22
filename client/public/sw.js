@@ -6,7 +6,7 @@
  * - ניווטים (דפי החדר): network-first עם נפילה ל-shell השמור.
  * - API/WS לא נוגעים — חיבור חי בלבד.
  */
-const CACHE = "larik-v1";
+const CACHE = "larik-v2"; // v2: מטהר מטמונים שנשמר בהם HTML במקום JS (ר' למטה)
 const SHELL = "/__shell";
 
 self.addEventListener("install", () => self.skipWaiting());
@@ -32,7 +32,10 @@ self.addEventListener("fetch", (e) => {
       const hit = await c.match(req);
       if (hit) return hit;
       const res = await fetch(req);
-      if (res.ok) c.put(req, res.clone());
+      // רק תשובה אמיתית נשמרת: בזמן החלפת גרסה ב-Render בקשה ל-chunk חדש יכולה לפגוע באינסטנס הישן,
+      // ולפני התיקון בשרת זה החזיר index.html (200) — ה-SW שמר HTML בתור JS והאפליקציה נתקעה לתמיד
+      const type = res.headers.get("content-type") || "";
+      if (res.ok && !type.includes("text/html")) c.put(req, res.clone());
       return res;
     })());
     return;
