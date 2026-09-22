@@ -111,5 +111,9 @@
   "show.gate.light": "🚀 쇼에 불을 켜요!",
   "show.gate.youreIn": "들어왔어요!",
   "show.gate.startsSoon": "쇼가 곧 시작돼요 —",
-  "show.gate.startsSoon2": "밝기는 최대로, 높이 들어요 🔆"
+  "show.gate.startsSoon2": "밝기는 최대로, 높이 들어요 🔆",
+  "show.meta.title": "LARIK SHOW — 관객의 폰으로 만드는 라이트 쇼, 앱 설치 없이",
+  "show.meta.desc": "관객의 폰 하나하나가 동기화된 빛이 됩니다 — 웨이브, 하트, 비트에 맞춘 펄스. 앱도 가입도 LED 팔찌도 없이, QR만 찍으면 DJ와 함께 빛납니다.",
+  "show.meta.room": "🕯️ {code} 쇼에 참여하기 — LARIK SHOW",
+  "show.meta.room_desc": "내 폰이 쇼의 빛 한 점이 됩니다 — 찍고 빛나세요. 앱도 가입도 없이."
 }

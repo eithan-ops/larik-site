@@ -517,5 +517,12 @@
   "group.rec.abLedge": "Deepest in the Abyss (ledge)",
   "group.rec.abBest": "Biggest bank in the Abyss",
   "err.group_missing": "No such crew",
-  "err.store_down": "Storage unavailable"
+  "err.store_down": "Storage unavailable",
+  "meta.title": "LARIK — Party games on your phone, no app needed",
+  "meta.app_name": "LARIK — Party games",
+  "meta.room": "🎉 Join room {code} — LARIK",
+  "meta.room_desc": "Tap to join the game — no app, no signup. Your phone is the controller.",
+  "meta.daily": "🧠 Daily trivia — LARIK",
+  "meta.daily_desc": "New questions every day, a streak to keep and a score to share. No app, no signup.",
+  "meta.daily_short": "Daily"
 }

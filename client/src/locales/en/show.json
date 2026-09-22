@@ -111,5 +111,9 @@
   "show.gate.light": "🚀 Light up the show!",
   "show.gate.youreIn": "You're in!",
   "show.gate.startsSoon": "The show starts in a moment —",
-  "show.gate.startsSoon2": "brightness to max and hold it high 🔆"
+  "show.gate.startsSoon2": "brightness to max and hold it high 🔆",
+  "show.meta.title": "LARIK SHOW — Phone Light Show for Live Events, No App Needed",
+  "show.meta.desc": "Turn every phone in the crowd into a synced light show — waves, hearts, beat-synced pulses. No app, no signup, no LED wristbands: the crowd scans a QR code and glows in sync with the DJ.",
+  "show.meta.room": "🕯️ Join show {code} — LARIK SHOW",
+  "show.meta.room_desc": "Your phone becomes a point of light in the show — scan and glow. No app, no signup."
 }

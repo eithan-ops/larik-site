@@ -517,5 +517,12 @@
   "group.rec.abLedge": "심연 최심부 (선반)",
   "group.rec.abBest": "심연 최대 저장",
   "err.group_missing": "그런 크루는 없어요",
-  "err.store_down": "저장소를 쓸 수 없어요"
+  "err.store_down": "저장소를 쓸 수 없어요",
+  "meta.title": "LARIK — 앱 설치 없이 폰으로 즐기는 파티 게임",
+  "meta.app_name": "LARIK — 파티 게임",
+  "meta.room": "🎉 {code} 방에 참여하기 — LARIK",
+  "meta.room_desc": "탭해서 바로 참여 — 앱 설치도 회원가입도 없이. 내 폰이 컨트롤러!",
+  "meta.daily": "🧠 오늘의 퀴즈 — LARIK",
+  "meta.daily_desc": "매일 새로운 문제, 이어가는 연속 기록, 공유할 수 있는 점수. 설치도 가입도 없이.",
+  "meta.daily_short": "오늘의 퀴즈"
 }

@@ -18,8 +18,8 @@ import { getTriviaBank } from "./triviaBank";
 import { WallDaily, dailyDate, dailySeed } from "./wallDaily";
 import { statRoomCreated, statPlayerJoined, statGameStarted, statConcurrent, statsPage, STATS_KEY, stats } from "./stats";
 import { CATALOG } from "../../shared/protocol";
-import { langForCountry, dirOf, type Lang } from "../../shared/i18n";
-import { SEO, homeUrl, langFromPath, hreflangLinks } from "../../shared/seo";
+import { langForCountry, dirOf, asLang, LANGS, type Lang } from "../../shared/i18n";
+import { SEO, SITE, homeUrl, langFromPath, hreflangLinks } from "../../shared/seo";
 import geoip from "geoip-country";
 import { createForehead } from "./games/forehead";
 import { createPods } from "./games/pods";
@@ -48,6 +48,26 @@ import type { GameCtx } from "./engine";
 
 const PORT = Number(process.env.PORT || 8787);
 const CLIENT_DIST = resolve(process.cwd(), "../client/dist");
+const LOCALES_DIR = resolve(process.cwd(), "../client/src/locales");
+
+/**
+ * מחרוזות ה-<title>/description/מניפסט לפי שפה — מקור אחד: המפתחות meta.* ב-locales/<lang>/{common,show}.json
+ * (הלקוח משתמש באותם מפתחות לכותרת הטאב). נטען פעם אחת בעלייה; אם הקובץ חסר — נופלים ל-SEO/אנגלית.
+ */
+const META: Partial<Record<Lang, Record<string, string>>> = {};
+for (const l of LANGS) {
+  for (const ns of ["common", "show"]) {
+    try {
+      const d = JSON.parse(readFileSync(join(LOCALES_DIR, l, `${ns}.json`), "utf-8")) as Record<string, unknown>;
+      for (const [k, v] of Object.entries(d)) if (/^(show\.)?meta\./.test(k)) (META[l] ??= {})[k] = String(v);
+    } catch { /* בלי meta לשפה — נופלים לאנגלית */ }
+  }
+}
+function meta(l: Lang, key: string, params?: Record<string, string>): string {
+  let s = META[l]?.[key] ?? META.en?.[key] ?? (key === "meta.title" ? SEO[l].title : "");
+  if (params) for (const [k, v] of Object.entries(params)) s = s.split(`{${k}}`).join(v);
+  return s;
+}
 
 /* ---------- טרנספורט ws ---------- */
 const sockets = new Map<string, WebSocket>(); // playerId -> socket
@@ -126,8 +146,59 @@ function localizeHtml(html: string, country: string, forced: Lang | null = null)
   const lang: Lang = forced ?? (country ? langForCountry(country) : "he");
   const boot = `<script>window.__LARIK=${JSON.stringify({ country, lang, forced: !!forced })}</script>`;
   return html
-    .replace(/<html\s+lang="[^"]*"\s+dir="[^"]*">/, `<html lang="${lang}" dir="${dirOf(lang)}">`)
+    .replace(/<html\s+lang="[^"]*"(\s+dir="[^"]*")?>/, `<html lang="${lang}" dir="${dirOf(lang)}">`)
+    // המניפסט (שם האפליקציה במסך הבית, קיצורי דרך) בשפת הדף — מוגש מהשרת לפי ?l=
+    .replace(/(<link rel="manifest" href="\/[a-z]+\.webmanifest)"/, `$1?l=${lang}"`)
     .replace("</head>", `${boot}</head>`);
+}
+
+/**
+ * <title>/description/og של עמודי האפליקציה שמשתפים בקישור — חדר (/r/CODE), היומית (/daily),
+ * לנדינג המופע (/s) וחדר מופע (/s/r/CODE, /s/t/CODE). הטקסטים מ-locales (meta.*), בשפת הקישור.
+ * חדרים לא נכנסים לאינדקס (noindex) — הם חיים שעה; הקנוניקל נשאר דף הבית בשפה.
+ */
+type Page = { kind: "room" | "daily" | "show" | "showroom"; code?: string };
+function pageHtml(html: string, lang: Lang, page: Page): string {
+  const esc = (x: string) => x.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
+  const p = page.code ? { code: page.code } : undefined;
+  const [title, desc, ogUrl, index] = page.kind === "room"
+    ? [meta(lang, "meta.room", p), meta(lang, "meta.room_desc"), `${SITE}/r/${page.code}`, false]
+    : page.kind === "daily"
+      ? [meta(lang, "meta.daily"), meta(lang, "meta.daily_desc"), `${SITE}/daily`, true]
+      : page.kind === "show"
+        ? [meta(lang, "show.meta.title"), meta(lang, "show.meta.desc"), `${SITE}/s`, true]
+        : [meta(lang, "show.meta.room", p), meta(lang, "show.meta.room_desc"), `${SITE}/s/r/${page.code}`, false];
+  let out = html
+    .replace(/<title>[^<]*<\/title>/, `<title>${esc(title)}</title>`)
+    .replace(/(<meta name="description" content=")[^"]*(")/, `$1${esc(desc)}$2`)
+    .replace(/(<meta property="og:title" content=")[^"]*(")/, `$1${esc(title)}$2`)
+    .replace(/(<meta property="og:description" content=")[^"]*(")/, `$1${esc(desc)}$2`)
+    .replace(/(<meta property="og:url" content=")[^"]*(")/, `$1${ogUrl}$2`)
+    .replace(/(<meta property="og:locale" content=")[^"]*(")/, `$1${SEO[lang].locale}$2`)
+    .replace(/("inLanguage":\s*")[^"]*(")/, `$1${lang}$2`);
+  if (page.kind === "daily") out = out.replace(/<link rel="canonical" href="[^"]*" \/>/, `<link rel="canonical" href="${ogUrl}" />`);
+  else if (page.kind !== "show") out = out.replace(/<link rel="canonical" href="[^"]*" \/>/, `<link rel="canonical" href="${page.kind === "room" ? homeUrl(lang) : `${SITE}/s`}" />`);
+  if (!index) out = out.replace("</head>", `<meta name="robots" content="noindex" />\n  </head>`);
+  return out;
+}
+
+/** המניפסט (PWA) בשפת הדף: שם, כיוון, קיצור הדרך ליומית — מהקובץ הסטטי + meta.* של השפה */
+function manifestJson(file: string, lang: Lang): string {
+  const m = JSON.parse(readFileSync(file, "utf-8")) as Record<string, unknown>;
+  const show = file.endsWith("show.webmanifest");
+  m.lang = lang; m.dir = dirOf(lang);
+  if (show) {
+    m.description = meta(lang, "show.meta.desc");
+  } else {
+    m.name = meta(lang, "meta.app_name");
+    m.description = SEO[lang].og;
+    if (Array.isArray(m.shortcuts) && m.shortcuts[0]) {
+      const s = m.shortcuts[0] as Record<string, unknown>;
+      s.name = meta(lang, "meta.daily").replace(/ — LARIK$/, "");
+      s.short_name = meta(lang, "meta.daily_short");
+    }
+  }
+  return JSON.stringify(m);
 }
 
 /**
@@ -373,22 +444,50 @@ const http = createServer((req, res) => {
     if (!existsSync(file) || statSync(file).isDirectory()) {
       file = join(CLIENT_DIST, isShowApp ? "show.html" : "index.html");
     }
+    // המניפסט בשפה (?l= מוזרק ל-<link rel="manifest"> לפי שפת הדף; הלקוח מעדכן אחרי בחירה ידנית)
+    if (/^\/(manifest|show)\.webmanifest$/.test(url.pathname) && existsSync(file)) {
+      const l = asLang(url.searchParams.get("l")) ?? langForCountry(countryOf(req));
+      res.writeHead(200, { "Content-Type": "application/manifest+json; charset=utf-8", "Cache-Control": "public, max-age=3600" });
+      res.end(manifestJson(file, l));
+      return;
+    }
     // שני ה-shell-ים של האפליקציות מקבלים שפה לפי מדינה; עמודי ה-SEO הסטטיים נשארים כמו שהם
     const isAppShell = file === join(CLIENT_DIST, "index.html") || file === join(CLIENT_DIST, "show.html");
     if (isAppShell) {
       res.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" });
       let html = readFileSync(file, "utf-8");
+      const country = countryOf(req);
+      // מדינה לא ידועה (פיתוח מקומי) = ברירת המחדל של ה-HTML (עברית), לא "לא נתמכת" (אנגלית)
+      const geoLang: Lang = country ? langForCountry(country) : "he";
+      // ‎?l= בקישור (חדר/מופע/יומית ששותפו) גובר על המדינה — כמו בלקוח, וכך גם התצוגה המקדימה בוואטסאפ בשפת המשתף
+      const linkLang = asLang(url.searchParams.get("l"));
       if (!isShowApp) {
+        const room = url.pathname.match(/^\/r\/([A-Za-z]{4})$/);
+        if (room) {
+          // שפת החדר: הקישור → שפת המארח (אם החדר חי) → המדינה
+          const code = room[1].toUpperCase();
+          const lang = linkLang ?? asLang(manager.get(code)?.roomLang()) ?? geoLang;
+          res.end(localizeHtml(pageHtml(html, lang, { kind: "room", code }), country, lang));
+          return;
+        }
+        if (url.pathname === "/daily") {
+          const lang = linkLang ?? geoLang;
+          res.end(localizeHtml(pageHtml(html, lang, { kind: "daily" }), country, lang));
+          return;
+        }
         // דף הבית בשפה (/es/ …) → השפה נכפית מהכתובת, לא מה-IP; השורש (/) = הגרסה העברית לגוגל
         let forced = langFromPath(url.pathname);
         // השורש = הגרסה העברית בעיני גוגל (canonical + hreflang). זחלנים סורקים מארה"ב ואחרת היו מקבלים
         // אנגלית ב-/ וגם ב-/en/ — כפילות שמוחקת את העברית מהאינדקס. משתמשים אמיתיים ממשיכים לפי מדינה.
         if (!forced && url.pathname === "/" && /bot|crawl|spider|slurp|preview|facebookexternalhit|whatsapp/i.test(String(req.headers["user-agent"] || ""))) forced = "he";
         if (forced || url.pathname === "/") html = seoHtml(html, forced ?? "he");
-        res.end(localizeHtml(html, countryOf(req), forced));
+        res.end(localizeHtml(html, country, forced ?? linkLang));
         return;
       }
-      res.end(localizeHtml(html, countryOf(req)));
+      // אפליקציית המופע: לנדינג / חדר מופע / שער כרטיס — בשפת הקישור, אחרת לפי המדינה
+      const showRoom = url.pathname.match(/^(?:\/s)?\/(?:r|t|show)\/([A-Za-z]{3,10})$/);
+      const lang = linkLang ?? (showRoom ? asLang(manager.get(showRoom[1].toUpperCase())?.roomLang()) : null) ?? geoLang;
+      res.end(localizeHtml(pageHtml(html, lang, showRoom ? { kind: "showroom", code: showRoom[1].toUpperCase() } : { kind: "show" }), country, lang));
       return;
     }
     res.writeHead(200, { "Content-Type": MIME[extname(file)] || "application/octet-stream" });

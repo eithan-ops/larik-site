@@ -5,6 +5,7 @@ import Mapper from "./components/Mapper";
 import GamesShelf from "./components/GamesShelf";
 import Daily from "./components/Daily";
 import { pageView } from "./lib/analytics";
+import { t } from "./lib/locale";
 
 /** ראוטר משחקים: / או /xx/ (בית, xx = שפה) · /r/CODE (חדר) · /daily (סולו). המופע באפליקציה נפרדת (/s) */
 export default function App() {
@@ -18,6 +19,11 @@ export default function App() {
 
   // page_view ידני לכל מעבר מסך (ה-config ב-analytics.ts לא שולח אוטומטית) — נתיב מנורמל
   useEffect(() => { pageView(path); }, [path]);
+  // כותרת הטאב בשפה שנבחרה (השרת מזריק לפי הקישור/המדינה; אחרי בחירה ידנית ב-🌐 רק זה מעדכן)
+  useEffect(() => {
+    const r = path.match(/^\/r\/([A-Za-z]{4})$/);
+    document.title = r ? t("meta.room", { code: r[1].toUpperCase() }) : path === "/daily" ? t("meta.daily") : t("meta.title");
+  }, [path]);
 
   // נתיבי מופע ישנים — מפנים לאפליקציית המופע (קישורים/כרטיסים שכבר הודפסו ממשיכים לעבוד)
   if (path === "/show") { location.replace("/s"); return null; }

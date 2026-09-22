@@ -517,5 +517,12 @@
   "group.rec.abLedge": "Lo más profundo del Abismo (repisa)",
   "group.rec.abBest": "La mayor banca del Abismo",
   "err.group_missing": "No existe esa pandilla",
-  "err.store_down": "Almacenamiento no disponible"
+  "err.store_down": "Almacenamiento no disponible",
+  "meta.title": "LARIK — Juegos para fiestas con el celular, sin app",
+  "meta.app_name": "LARIK — Juegos de fiesta",
+  "meta.room": "🎉 Únete a la sala {code} — LARIK",
+  "meta.room_desc": "Toca para unirte al juego: sin app y sin registro. Tu celular es el control.",
+  "meta.daily": "🧠 La trivia diaria — LARIK",
+  "meta.daily_desc": "Preguntas nuevas cada día, una racha que mantener y un resultado para compartir. Sin app, sin registro.",
+  "meta.daily_short": "Diaria"
 }

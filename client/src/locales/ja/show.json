@@ -111,5 +111,9 @@
   "show.gate.light": "🚀 ショーを点灯！",
   "show.gate.youreIn": "参加したよ！",
   "show.gate.startsSoon": "ショーはもうすぐ始まる —",
-  "show.gate.startsSoon2": "明るさ最大で、高くかかげて 🔆"
+  "show.gate.startsSoon2": "明るさ最大で、高くかかげて 🔆",
+  "show.meta.title": "LARIK SHOW — 観客のスマホで作るライトショー、アプリ不要",
+  "show.meta.desc": "観客のスマホ1台1台が同期した光の点に — ウェーブ、ハート、ビートに合わせたパルス。アプリなし、登録なし、LEDリストバンドなし。QRを読み取るだけでDJと一緒に光る。",
+  "show.meta.room": "🕯️ ショー {code} に参加 — LARIK SHOW",
+  "show.meta.room_desc": "あなたのスマホがショーの光の一点に — 読み取って光ろう。アプリなし、登録なし。"
 }
