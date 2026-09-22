@@ -174,5 +174,21 @@
   "pods.fell": "خرجوا: {names}",
   "pods.end.king": "بودز ⚡ ملك السرعة",
   "pods.end.survival": "بودز 💀 البقاء",
-  "spods.s.end_title": "{ic} {name}"
+  "spods.s.end_title": "{ic} {name}",
+  "spods.tourn.title": "🏆 بطولة السهرة",
+  "spods.tourn.hint": "النقاط تتراكم بين الألعاب: 🥇 3 · 🥈 2 · 🥉 1. وفي النهاية — بطل السهرة.",
+  "spods.tourn.empty": "يمتلئ الجدول بعد اللعبة الأولى",
+  "spods.tourn.played": "{n, plural, zero {لا ألعاب} one {لعبة واحدة} two {لعبتان} few {# ألعاب} many {# لعبة} other {# لعبة}}",
+  "spods.tourn.pts": "{n} نقطة",
+  "spods.tourn.champion_btn": "🏆 إعلان بطل السهرة",
+  "spods.tourn.reset": "🔄 بطولة جديدة",
+  "spods.tourn.reset_confirm": "نمسح الجدول؟ نعم، بطولة جديدة",
+  "spods.tourn.balance": "⚖️ توزيع الفرق حسب الجدول",
+  "spods.tourn.rank": "المركز {n} · {pts} نقطة",
+  "spods.best_new": "🌟 رقم شخصي جديد!",
+  "spods.best": "رقمك الشخصي: {v}",
+  "spods.s.champion_title": "🏆 بطل السهرة — بعد {n, plural, zero {لا ألعاب} one {لعبة واحدة} two {لعبتين} few {# ألعاب} many {# لعبة} other {# لعبة}}",
+  "spods.s.champion_sub": "بطل السهرة!",
+  "spods.s.champion_say": "بطل السهرة: {names}!",
+  "spods.s.tourn_reset": "بدأنا بطولة جديدة"
 }

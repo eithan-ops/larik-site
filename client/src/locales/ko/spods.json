@@ -174,5 +174,21 @@
   "pods.fell": "탈락: {names}",
   "pods.end.king": "포드 ⚡ 스피드의 왕",
   "pods.end.survival": "포드 💀 서바이벌",
-  "spods.s.end_title": "{ic} {name}"
+  "spods.s.end_title": "{ic} {name}",
+  "spods.tourn.title": "🏆 오늘 밤 토너먼트",
+  "spods.tourn.hint": "점수는 게임마다 쌓여요: 🥇 3 · 🥈 2 · 🥉 1. 마지막엔 오늘 밤의 챔피언!",
+  "spods.tourn.empty": "첫 게임이 끝나면 순위표가 채워져요",
+  "spods.tourn.played": "{n, plural, other {게임 #판}}",
+  "spods.tourn.pts": "{n}점",
+  "spods.tourn.champion_btn": "🏆 오늘 밤 챔피언 발표",
+  "spods.tourn.reset": "🔄 새 토너먼트",
+  "spods.tourn.reset_confirm": "순위표를 지울까요? 네, 새 토너먼트",
+  "spods.tourn.balance": "⚖️ 순위표로 팀 맞추기",
+  "spods.tourn.rank": "{n}위 · {pts}점",
+  "spods.best_new": "🌟 개인 최고 기록!",
+  "spods.best": "개인 최고: {v}",
+  "spods.s.champion_title": "🏆 오늘 밤의 챔피언 — {n, plural, other {게임 #판}} 끝에",
+  "spods.s.champion_sub": "오늘 밤의 챔피언!",
+  "spods.s.champion_say": "오늘 밤의 챔피언: {names}!",
+  "spods.s.tourn_reset": "새 토너먼트 시작!"
 }

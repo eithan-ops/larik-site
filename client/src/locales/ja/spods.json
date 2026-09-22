@@ -174,5 +174,21 @@
   "pods.fell": "脱落：{names}",
   "pods.end.king": "ポッド ⚡ スピードの王者",
   "pods.end.survival": "ポッド 💀 サバイバル",
-  "spods.s.end_title": "{ic} {name}"
+  "spods.s.end_title": "{ic} {name}",
+  "spods.tourn.title": "🏆 今夜のトーナメント",
+  "spods.tourn.hint": "ポイントはゲームをまたいで積み上がる：🥇 3 · 🥈 2 · 🥉 1。最後に今夜のチャンピオンが決まる。",
+  "spods.tourn.empty": "最初のゲームが終わると表がうまるよ",
+  "spods.tourn.played": "{n, plural, other {#ゲーム}}",
+  "spods.tourn.pts": "{n}pt",
+  "spods.tourn.champion_btn": "🏆 今夜のチャンピオンを発表",
+  "spods.tourn.reset": "🔄 新しいトーナメント",
+  "spods.tourn.reset_confirm": "表を消す？ うん、新しいトーナメント",
+  "spods.tourn.balance": "⚖️ 表をもとにチーム分け",
+  "spods.tourn.rank": "{n}位 · {pts}pt",
+  "spods.best_new": "🌟 自己ベスト更新！",
+  "spods.best": "自己ベスト: {v}",
+  "spods.s.champion_title": "🏆 今夜のチャンピオン — {n, plural, other {#ゲーム}}のすえに",
+  "spods.s.champion_sub": "今夜のチャンピオン！",
+  "spods.s.champion_say": "今夜のチャンピオンは {names}！",
+  "spods.s.tourn_reset": "新しいトーナメント、スタート"
 }

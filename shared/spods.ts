@@ -247,10 +247,53 @@ export interface SpState {
   /** דו-קרב: הזוג הנוכחי · כוכב: מי בתור */
   focus?: string[];
   level?: number;                 // מבחן הביפ
+  /** טורניר הערב — מצטבר בין המשחקים בחדר */
+  tourn?: SpTourn;
+}
+
+/* ---------- טורניר הערב 🏆 ---------- */
+/**
+ * הטורניר חי בחדר (לא במשחק): כל משחק ספורט-פודים שנגמר מוסיף שורה — 🥇3 · 🥈2 · 🥉1 (תיקו = אותן נקודות),
+ * הטבלה מצטברת בין המשחקים, ובסוף המאמן מכריז על אלוף הערב: כל הפודים נדלקים בצבע שלו והטקס של לאריק נפתח.
+ * הנקודות האלה הן גם "לוח הערב" של החדר (GameEndResult.points) — כך הכרטיס לשיתוף מראה את הטורניר.
+ */
+export const SP_TOURN_PTS = [3, 2, 1];
+export interface SpTournGame { game: SpGame; ranking: string[]; pts: Record<string, number>; at: number }
+export interface SpTournRow { pid: string; pts: number; played: number; wins: number; podium: number }
+export interface SpTourn { games: SpTournGame[]; rows: SpTournRow[]; champion?: string[] }
+/** נקודות למשחק: לפי הדירוג, שוויון בניקוד = אותו מקום (שניהם 🥇 = 3) */
+export function spTournPoints(ranked: { pid: string; score: number }[]): Record<string, number> {
+  const pts: Record<string, number> = {};
+  let place = 0;
+  ranked.forEach((r, i) => {
+    if (i === 0 || r.score !== ranked[i - 1].score) place = i;
+    pts[r.pid] = SP_TOURN_PTS[place] ?? 0;
+  });
+  return pts;
+}
+/** הטבלה מתוך רשימת המשחקים — ממוינת: נקודות, ניצחונות, פודיומים */
+export function spTournTable(games: SpTournGame[]): SpTournRow[] {
+  const m = new Map<string, SpTournRow>();
+  for (const g of games) {
+    for (const [pid, p] of Object.entries(g.pts)) {
+      const r = m.get(pid) ?? { pid, pts: 0, played: 0, wins: 0, podium: 0 };
+      r.pts += p; r.played++; if (p === SP_TOURN_PTS[0]) r.wins++; if (p > 0) r.podium++;
+      m.set(pid, r);
+    }
+  }
+  return [...m.values()].sort((a, b) => b.pts - a.pts || b.wins - a.wins || b.podium - a.podium || a.played - b.played);
+}
+/** קבוצות מאוזנות לפי הטבלה (נחש: 1→🔵 2→🔴 3→🔴 4→🔵 …); מי שלא בטבלה — בסוף */
+export function spBalanceTeams(pids: string[], rows: SpTournRow[]): Record<string, number> {
+  const rank = new Map(rows.map((r, i) => [r.pid, i]));
+  const order = [...pids].sort((a, b) => (rank.get(a) ?? 99) - (rank.get(b) ?? 99));
+  const out: Record<string, number> = {};
+  order.forEach((pid, i) => { out[pid] = (i % 4 === 0 || i % 4 === 3) ? 0 : 1; });
+  return out;
 }
 
 /* ---------- הודעות ---------- */
-export type SpCtlOp = "start" | "pause" | "resume" | "stop" | "skip";
+export type SpCtlOp = "start" | "pause" | "resume" | "stop" | "skip" | "champion" | "reset_tourn" | "team_auto";
 export type SpSayKind = "go" | "next" | "win" | "out" | "gentle" | "line" | "info";
 export type SpodsClientMsg =
   | { a: "sp_ctl"; op: SpCtlOp }
@@ -287,7 +330,8 @@ export type SpodsServerMsg =
   | { a: "sp_go"; at: number }                                     // cue: צליל הזינוק
   | { a: "sp_say"; t: LText; k?: SpSayKind }
   | { a: "sp_flash"; pod: string }
-  | { a: "sp_over"; winner?: string; scores: Record<string, number> };
+  | { a: "sp_over"; winner?: string; scores: Record<string, number>; tpts?: Record<string, number> }
+  | { a: "sp_champion"; pids: string[]; at: number };                // cue: כל הפודים בצבע האלוף
 
 /* ---------- עזרים משותפים ---------- */
 export function spMedian(a: number[]): number {

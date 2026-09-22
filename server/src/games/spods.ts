@@ -10,9 +10,12 @@
 import type { GameCtx, GameInstance } from "../engine";
 import type { GameClientMsg, GameServerMsg, LText } from "../../../shared/protocol";
 import {
-  SP_DEFS, SP_COLORS, SP_KITS, SP_KIT_IDS, SP_POSES, SP_HAND_STEPS, spConfig, spMedian, spRoundRobin,
+  SP_DEFS, SP_COLORS, SP_KITS, SP_KIT_IDS, SP_POSES, SP_HAND_STEPS, SP_TOURN_PTS, spConfig, spMedian, spRoundRobin, spTournPoints, spTournTable, spBalanceTeams,
 } from "../../../shared/spods";
-import type { SpGame, SpCfg, SpPhase, SpAth, SpState, SpLight, SpodsClientMsg, SpodsServerMsg, SpMove, SpSayKind, SpCtlOp } from "../../../shared/spods";
+import type { SpGame, SpCfg, SpPhase, SpAth, SpState, SpLight, SpodsClientMsg, SpodsServerMsg, SpMove, SpSayKind, SpCtlOp, SpTourn, SpTournGame } from "../../../shared/spods";
+
+/** מה שחי בחדר בין משחקי ספורט-פודים (GameCtx.memo): הטורניר, וצבע/הנדיקפ/קבוצה של כל ספורטאי */
+interface SpMemo { spTourn?: SpTournGame[]; spRoster?: Record<string, { c: number; hand: number; team: number }> }
 
 const FAST = !!process.env.SP_FAST;
 const T = {
@@ -34,6 +37,12 @@ export function createSpods(ctx: GameCtx, game: SpGame): GameInstance {
   const bc = (d: SpodsServerMsg) => ctx.broadcast(d as unknown as GameServerMsg);
   const to = (pid: string, d: SpodsServerMsg) => ctx.sendTo(pid, d as unknown as GameServerMsg);
   const nameOf = (pid: string) => ctx.players().find((p) => p.id === pid)?.name ?? "?";
+
+  const memo = ctx.memo as SpMemo;
+  const roster = (memo.spRoster ??= {});
+  const tournGames = (memo.spTourn ??= []);
+  let champion: string[] | undefined;
+  const tourn = (): SpTourn => ({ games: tournGames, rows: spTournTable(tournGames), champion });
 
   const parts = ctx.participants();
   const host = parts.find((p) => p.isHost)?.id ?? parts[0]?.id ?? "";
@@ -59,20 +68,27 @@ export function createSpods(ctx: GameCtx, game: SpGame): GameInstance {
     rts: [], wins: 0, tourn: 0, legs: [], nextAt: 0, stationIdx: 0, lastPod: "", lightsDone: 0, err: 0,
   });
   function syncAths() {
-    // ספורטאים = מי שבתפקיד ath; צבע לפי סדר הכניסה; צבעים לא משתנים למי שכבר קיבל
+    // ספורטאים = מי שבתפקיד ath; צבע לפי סדר הכניסה; צבעים לא משתנים למי שכבר קיבל —
+    // וגם לא בין משחקים באותו ערב (הרוסטר בזיכרון החדר): הצבע של דני נשאר הצבע של דני
     const used = new Set([...aths.values()].map((a) => a.c));
     for (const pid of podOrder) {
       if (roles[pid] !== "ath") { aths.delete(pid); continue; }
       if (aths.has(pid)) continue;
-      let c = 0; while (used.has(c) && c < SP_COLORS.length - 1) c++;
+      const r = roster[pid];
+      let c = r && !used.has(r.c) ? r.c : 0;
+      while (used.has(c) && c < SP_COLORS.length - 1) c++;
       used.add(c);
-      aths.set(pid, newAth(pid, c));
+      const a = newAth(pid, c);
+      if (r) { a.hand = r.hand; a.team = r.team; }
+      aths.set(pid, a);
     }
     for (const pid of [...aths.keys()]) if (roles[pid] !== "ath") aths.delete(pid);
-    // קבוצות (מרוץ שליחים): לסירוגין
-    let i = 0; for (const a of aths.values()) { if (a.team !== 0 && a.team !== 1) a.team = 0; if (!teamsTouched) a.team = i++ % 2; }
+    // קבוצות (מרוץ שליחים): לסירוגין, אלא אם המאמן (או הרוסטר) כבר קבע
+    let i = 0; for (const a of aths.values()) { if (a.team !== 0 && a.team !== 1) a.team = 0; if (!teamsTouched && !roster[a.pid]) a.team = i++ % 2; }
+    saveRoster();
   }
   let teamsTouched = false;
+  function saveRoster() { for (const a of aths.values()) roster[a.pid] = { c: a.c, hand: a.hand, team: a.team }; }
 
   /* ---------- כלים ---------- */
   const connected = (pid: string) => ctx.players().find((p) => p.id === pid)?.connected ?? false;
@@ -97,6 +113,7 @@ export function createSpods(ctx: GameCtx, game: SpGame): GameInstance {
     return {
       game, phase, cfg, aths: athList().map(pub),
       pods: pods(), roles, round, of, until, banner, sub, focus, level: level || undefined,
+      tourn: tourn(),
     };
   }
   const push = () => bc({ a: "sp_state", s: state() });
@@ -181,8 +198,18 @@ export function createSpods(ctx: GameCtx, game: SpGame): GameInstance {
     const w = winners[0];
     setBanner(w ? `🏆 ${winners.map(nameOf).join(" + ")}` : S("end"), o.title ?? { k: `games.sp_${game}.name` });
     focus = winners;
+    // טורניר הערב: משחק שבו מישהו בכלל השיג משהו נרשם — 🥇3 🥈2 🥉1 (תיקו = אותו מקום); במשחק קבוצתי: מנצחים 3, השאר 1
+    let tpts: Record<string, number> | undefined;
+    if (list.some((a) => a.score > 0 || a.hits > 0)) {
+      const isWin = (a: Ath) => !!o.winnerIds?.includes(a.pid);
+      const order = o.winnerIds ? [...ranked.filter(isWin), ...ranked.filter((a) => !isWin(a))] : ranked;
+      tpts = game === "relay" && o.winnerIds
+        ? Object.fromEntries(list.map((a) => [a.pid, isWin(a) ? SP_TOURN_PTS[0] : SP_TOURN_PTS[2]]))
+        : spTournPoints(order.map((a) => ({ pid: a.pid, score: isWin(a) ? 1e12 : def.lowerIsBetter ? (a.score ? -a.score : -9e9) : a.score })));
+      tournGames.push({ game, ranking: order.map((a) => a.pid), pts: tpts, at: now() });
+    }
     push();
-    bc({ a: "sp_over", winner: w, scores });
+    bc({ a: "sp_over", winner: w, scores, tpts });
     if (w) say(winners.length > 1 ? S("won_many", { names: winners.map(nameOf).join(" + ") }) : S("won_one", { names: nameOf(w) }), "win");
     const facts: Record<string, Record<string, number>> = {};
     for (const a of list) {
@@ -194,6 +221,33 @@ export function createSpods(ctx: GameCtx, game: SpGame): GameInstance {
     ctx.timer(T.end, () => ctx.end({
       title: { k: "spods.s.end_title", p: { ic: def.icon, name: { k: `games.sp_${game}.name` } } }, winnerId: w, winnerIds: winners.length > 1 ? winners : undefined,
       scores, facts,
+      // לוח הערב = טבלת הטורניר (המאמן והפודים-בלבד לא מתחרים ולא מופיעים בו)
+      points: tpts ?? Object.fromEntries(list.map((a) => [a.pid, 0])),
+    }));
+  }
+
+  /** 🏆 אלוף הערב — מהשלט, לפני שמתחילים משחק: כל הפודים נדלקים בצבע האלוף, והטקס של לאריק נפתח על הטורניר */
+  function declareChampion() {
+    if (ended || phase !== "setup") return;
+    const rows = spTournTable(tournGames);
+    if (!rows.length) return;
+    ended = true;
+    clearTimers();
+    champion = rows.filter((r) => r.pts === rows[0].pts).map((r) => r.pid);
+    phase = "over"; until = 0;
+    const names = champion.map(nameOf).join(" + ");
+    setBanner(`🏆 ${names}`, S("champion_sub"));
+    focus = champion;
+    push();
+    const at = ctx.cue(T.lead + 300, { a: "sp_champion", pids: champion, at: 0 } as unknown as GameServerMsg);
+    say(S("champion_say", { names }), "win");
+    const pts = Object.fromEntries(rows.map((r) => [r.pid, r.pts]));
+    const played = tournGames.length;
+    memo.spTourn = [];   // הטורניר הבא מתחיל נקי; הרוסטר (צבעים) נשאר
+    ctx.timer(Math.max(T.end * 2, at - now() + (FAST ? 800 : 5000)), () => ctx.end({
+      title: { k: "spods.s.champion_title", p: { n: played } },
+      winnerId: champion![0], winnerIds: champion!.length > 1 ? champion : undefined,
+      scores: pts, points: {}, countsAsGame: false,
     }));
   }
   /** דירוג: לפי הניקוד הראשי (או להפך), שובר שוויון: חציון תגובה נמוך */
@@ -649,7 +703,15 @@ export function createSpods(ctx: GameCtx, game: SpGame): GameInstance {
       return;
     }
     if (op === "skip") { if (phase === "run" || phase === "between" || phase === "pause") { clearTimers(); prog.skip?.(); } return; }
-    if (op === "stop") { if (phase !== "setup") finish({ title: S("coach_stopped") }); }
+    if (op === "stop") { if (phase !== "setup") finish({ title: S("coach_stopped") }); return; }
+    if (op === "champion") return declareChampion();
+    if (op === "reset_tourn") { if (phase === "setup" && tournGames.length) { tournGames.length = 0; push(); say(S("tourn_reset"), "info"); } return; }
+    if (op === "team_auto") {
+      if (phase !== "setup") return;
+      const teams = spBalanceTeams(athList().map((a) => a.pid), spTournTable(tournGames));
+      for (const a of aths.values()) a.team = teams[a.pid] ?? 0;
+      teamsTouched = true; saveRoster(); push();
+    }
   }
 
   return {
@@ -666,11 +728,11 @@ export function createSpods(ctx: GameCtx, game: SpGame): GameInstance {
         case "sp_ctl": return ctl(m.op);
         case "sp_cfg": if (phase === "setup" && def.settings.some((s) => s.key === m.key && s.values.some((v) => v.v === m.v))) { cfg[m.key] = m.v; push(); } return;
         case "sp_role": if (phase === "setup" && m.pid !== host && podOrder.includes(m.pid)) { roles[m.pid] = m.role; syncAths(); push(); } return;
-        case "sp_hand": { const a = aths.get(m.pid); if (a && SP_HAND_STEPS.includes(m.ms)) { a.hand = m.ms; push(); } return; }
+        case "sp_hand": { const a = aths.get(m.pid); if (a && SP_HAND_STEPS.includes(m.ms)) { a.hand = m.ms; saveRoster(); push(); } return; }
         case "sp_judge": { const a = aths.get(m.pid); if (a && phase !== "setup" && phase !== "over" && (m.d === 1 || m.d === -1)) { a.score = Math.max(0, a.score + m.d); if (game === "duel") a.tourn = a.score; if (game === "colors") a.wins = a.score; push(); } return; }
         case "sp_test": if (podOrder.includes(m.pod)) bc({ a: "sp_flash", pod: m.pod }); return;
         case "sp_order": if (phase === "setup" && m.pods.length === podOrder.length && m.pods.every((p) => podOrder.includes(p))) { podOrder = [...m.pods]; push(); } return;
-        case "sp_team": { const a = aths.get(m.pid); if (a && phase === "setup" && (m.team === 0 || m.team === 1)) { teamsTouched = true; a.team = m.team; push(); } return; }
+        case "sp_team": { const a = aths.get(m.pid); if (a && phase === "setup" && (m.team === 0 || m.team === 1)) { teamsTouched = true; a.team = m.team; saveRoster(); push(); } return; }
       }
     },
     onRejoin(pid: string) {
