@@ -8,6 +8,7 @@
  * קנבס 1080×1920 בשפת המדבקות, כמו endcard.ts.
  */
 import QRCode from "qrcode";
+import { t, fmtNum, isRtlLang } from "./locale";
 
 const W = 1080, H = 1920;
 const INK = "#0C0906", PAPER = "#FFF3DC", CREAM = "#F2E9D8";
@@ -47,7 +48,7 @@ function fitFont(c: CanvasRenderingContext2D, text: string, maxW: number, startP
   let px = startPx;
   for (;;) { c.font = `${weight} ${px}px ${family}`; if (c.measureText(text).width <= maxW || px <= 22) return px; px -= 4; }
 }
-const fmt = (n: number) => Math.round(n).toLocaleString("he-IL");
+const fmt = (n: number) => fmtNum(Math.round(n));
 
 /** הכותרת האוטומטית — המשפט שנשלח בוואטסאפ */
 export function shaftHeadline(d: ShaftCardData): string {
@@ -56,19 +57,19 @@ export function shaftHeadline(d: ShaftCardData): string {
   const taker = d.rows.find((r) => r.pot > 0);
   const deepest = Math.max(0, ...d.ledgeDepths);
   const parts: string[] = [];
-  if (stopped) parts.push(stopped === 1 ? "אחד עצר." : `${stopped} עצרו.`);
-  if (caught) parts.push(caught === 1 ? "אחד נתפס." : `${caught} נתפסו.`);
-  if (taker) parts.push(`הקרן אצל ${taker.name}.`);
-  else if (d.potLost > 0) parts.push(`התהום בלעה ${fmt(d.potLost)}.`);
-  if (deepest > 0) parts.push(`${fmt(deepest)} מטר.`);
+  if (stopped) parts.push(t("abyss.card.h.stopped", { n: stopped }));
+  if (caught) parts.push(t("abyss.card.h.caught", { n: caught }));
+  if (taker) parts.push(t("abyss.card.h.taker", { name: taker.name }));
+  else if (d.potLost > 0) parts.push(t("abyss.card.h.lost", { amt: fmt(d.potLost) }));
+  if (deepest > 0) parts.push(t("abyss.card.h.meters", { m: fmt(deepest) }));
   return parts.join(" ");
 }
 export function shaftPersonalLine(d: ShaftCardData): string {
   const r = d.rows.find((x) => x.pid === d.me);
-  if (!r) return "צפית מלמעלה";
-  if (r.pot > 0) return `לקחת את הכול — ${fmt(r.banked)}`;
-  if (r.caught) { const dep = d.ledgeDepths[Math.max(0, (r.caughtK ?? 0))] ?? 0; return `התהום תפסה אותך ב-${fmt(dep * 0.6)} מטר`; }
-  if (r.at >= 0) return `עצרת במדף ${r.at + 1} — ${fmt(r.banked)} בבטחה`;
+  if (!r) return t("abyss.card.me.spec");
+  if (r.pot > 0) return t("abyss.card.me.pot", { amt: fmt(r.banked) });
+  if (r.caught) { const dep = d.ledgeDepths[Math.max(0, (r.caughtK ?? 0))] ?? 0; return t("abyss.card.me.caught", { m: fmt(dep * 0.6) }); }
+  if (r.at >= 0) return t("abyss.card.me.stopped", { k: r.at + 1, amt: fmt(r.banked) });
   return "";
 }
 
@@ -76,7 +77,7 @@ export async function drawShaftCard(d: ShaftCardData): Promise<HTMLCanvasElement
   const canvas = document.createElement("canvas");
   canvas.width = W; canvas.height = H;
   const c = canvas.getContext("2d")!;
-  c.direction = "rtl"; c.textAlign = "center";
+  c.direction = isRtlLang() ? "rtl" : "ltr"; c.textAlign = "center";
   try { await (document as Document & { fonts?: FontFaceSet }).fonts?.ready; } catch { /* דפדפן ישן */ }
 
   // רקע התהום
@@ -87,7 +88,7 @@ export async function drawShaftCard(d: ShaftCardData): Promise<HTMLCanvasElement
   for (let y = 18; y < H; y += 26) for (let x = 18; x < W; x += 26) { c.beginPath(); c.arc(x, y, 2, 0, Math.PI * 2); c.fill(); }
 
   // כותרת
-  band(c, "🕳️ התהום", W / 2, 150, CYAN, INK, 74, -2);
+  band(c, `🕳️ ${t("games.abyss.name")}`, W / 2, 150, CYAN, INK, 74, -2);
   const head = shaftHeadline(d);
   const hp = fitFont(c, head, W - 140, 46, BODY, "800");
   c.font = `800 ${hp}px ${BODY}`; c.fillStyle = PAPER; c.fillText(head, W / 2, 262);
@@ -111,9 +112,9 @@ export async function drawShaftCard(d: ShaftCardData): Promise<HTMLCanvasElement
     c.fillStyle = INK; c.fillRect(sx0 - 10, y + 6, sx1 - sx0 + 20, 22);
     c.fillStyle = "#3A4380"; c.fillRect(sx0 - 10, y, sx1 - sx0 + 20, 22);
     c.font = `800 28px ${BODY}`; c.fillStyle = CREAM; c.textAlign = "left";
-    c.fillText(`מדף ${k + 1} · ×${d.mult[k] ?? "?"}`, sx1 + 74, y + 18);
+    c.fillText(t("abyss.ledge_mult", { k: k + 1, m: d.mult[k] ?? "?" }), sx1 + 74, y + 18);
     c.font = `700 24px ${BODY}`; c.fillStyle = "rgba(242,233,216,.6)"; c.textAlign = "right";
-    c.fillText(`${fmt(depths[k])} מ'`, sx0 - 74, y + 18);
+    c.fillText(t("abyss.card.m_short", { m: fmt(depths[k]) }), sx0 - 74, y + 18);
     c.textAlign = "center";
   }
   // שחקנים
@@ -155,7 +156,7 @@ export async function drawShaftCard(d: ShaftCardData): Promise<HTMLCanvasElement
   }
   if (d.potLost > 0) {
     c.font = `400 40px ${DISPLAY}`; c.fillStyle = "rgba(242,233,216,.75)";
-    c.fillText(`🕳️ התהום בלעה ${fmt(d.potLost)}`, (sx0 + sx1) / 2, bottom + 14);
+    c.fillText(`🕳️ ${t("abyss.swallowed_amt", { amt: fmt(d.potLost) })}`, (sx0 + sx1) / 2, bottom + 14);
   }
 
   // פוטר: QR + larik.ai
@@ -167,8 +168,8 @@ export async function drawShaftCard(d: ShaftCardData): Promise<HTMLCanvasElement
   c.textAlign = "right"; c.fillStyle = CREAM;
   c.font = `400 54px ${DISPLAY}`; c.fillText("larik.ai", W - 92, y + 62);
   c.font = `700 34px ${BODY}`; c.fillStyle = "rgba(242,233,216,.75)";
-  c.fillText("סרקו והצטרפו לצניחה הבאה", W - 92, y + 112);
-  c.fillText(d.groupName ? `${d.groupName} · ערב ${Math.max(1, d.groupEvening ?? 1)}` : `חדר ${d.roomCode} · צניחה ${d.descent + 1}/${d.of}`, W - 92, y + 160);
+  c.fillText(t("abyss.card.scan_join"), W - 92, y + 112);
+  c.fillText(d.groupName ? t("abyss.card.group_evening", { group: d.groupName, n: Math.max(1, d.groupEvening ?? 1) }) : t("abyss.card.room_descent", { code: d.roomCode, n: d.descent + 1, of: d.of }), W - 92, y + 160);
   c.textAlign = "center";
   return canvas;
 }
@@ -177,10 +178,10 @@ export async function shareShaftCard(d: ShaftCardData, blob?: Blob | null): Prom
   const b = blob ?? (await new Promise<Blob | null>((res) => drawShaftCard(d).then((cv) => cv.toBlob(res, "image/png"))));
   if (!b) return "failed";
   const file = new File([b], "larik-abyss.png", { type: "image/png" });
-  const text = `🕳️ התהום — ${shaftHeadline(d)} larik.ai`;
+  const text = `🕳️ ${t("games.abyss.name")} — ${shaftHeadline(d)} larik.ai`;
   const nav = navigator as Navigator & { canShare?: (x: { files: File[] }) => boolean };
   if (nav.share && nav.canShare?.({ files: [file] })) {
-    try { await nav.share({ files: [file], title: "LARIK — התהום", text }); return "shared"; } catch { return "failed"; }
+    try { await nav.share({ files: [file], title: `LARIK — ${t("games.abyss.name")}`, text }); return "shared"; } catch { return "failed"; }
   }
   const a = document.createElement("a");
   a.href = URL.createObjectURL(b); a.download = "larik-abyss.png"; a.click();

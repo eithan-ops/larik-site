@@ -8,29 +8,10 @@ import { useEffect, useState } from "react";
 import type { WhoMostServerMsg } from "../../../shared/protocol";
 import type { GameViewProps } from "./registry";
 import { Sfx, vibrate } from "../lib/audio";
+import { t } from "../lib/locale";
 
-const SUGGESTIONS = [
-  "מי הכי מאחר תמיד?",
-  "מי הכי יישרוד באי בודד?",
-  "מי הכי מצחיק בחבורה?",
-  "מי הכי יהפוך למיליונר?",
-  "מי הכי ביישן?",
-  "מי הכי יאכל את כל החטיפים לבד?",
-  "מי הכי מבולגן?",
-  "מי הכי ייתן לך עצה טובה?",
-  "מי הכי דרמטי?",
-  "מי הכי יירדם באמצע סרט?",
-  "מי הכי עקשן?",
-  "מי הכי יעשה משהו מטורף על התערבות?",
-  "מי הכי יבכה בחתונה?",
-  "מי הכי מכור לטלפון?",
-  "מי הכי יאחר לטיסה?",
-  "מי הכי טוב בבישול?",
-  "מי הכי יתחיל ויכוח מיותר?",
-  "מי הכי נדיב?",
-  "מי הכי יזכה בתחרות ריקוד?",
-  "מי הכי סומך על אחרים?",
-];
+/** 20 שאלות מוכנות — whomost.q.1 … whomost.q.20 (בשפת המארח) */
+const SUGGESTIONS = Array.from({ length: 20 }, (_, i) => `whomost.q.${i + 1}`);
 
 export default function WhoMostView({ room, me, conn, hub }: GameViewProps) {
   const isHost = me === room.hostId;
@@ -78,8 +59,8 @@ export default function WhoMostView({ room, me, conn, hub }: GameViewProps) {
       return (
         <main className="fullscreen">
           <div style={{ fontSize: 56 }} className="pulse">📝</div>
-          <div className="big" style={{ marginTop: 8 }}>המארח מכין שאלות...</div>
-          <p className="sub" style={{ marginTop: 10 }}>{questions.length} שאלות עד כה</p>
+          <div className="big" style={{ marginTop: 8 }}>{t("whomost.host_writing")}</div>
+          <p className="sub" style={{ marginTop: 10 }}>{t("whomost.n_so_far", { n: questions.length })}</p>
         </main>
       );
     }
@@ -91,18 +72,18 @@ export default function WhoMostView({ room, me, conn, hub }: GameViewProps) {
     }
     return (
       <main style={{ minHeight: "100dvh", padding: 18 }}>
-        <h1 className="brand" style={{ textAlign: "center" }}>מי הכי? 🫵</h1>
-        <p className="sub" style={{ textAlign: "center", marginBottom: 14 }}>כתוב שאלות "מי הכי..." — או שלוף מוכנות</p>
+        <h1 className="brand" style={{ textAlign: "center" }}>{t("whomost.title")}</h1>
+        <p className="sub" style={{ textAlign: "center", marginBottom: 14 }}>{t("whomost.write_hint")}</p>
         <div style={{ display: "flex", gap: 8 }}>
-          <input className="input" placeholder="מי הכי...?" value={draft} maxLength={120}
-            style={{ textAlign: "right" }}
+          <input className="input" placeholder={t("whomost.q_ph")} value={draft} maxLength={120}
+            style={{ textAlign: "start" }}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter") add(draft); }} />
           <button className="btn" style={{ width: "auto", padding: "0 18px" }} disabled={!draft.trim()} onPointerDown={() => add(draft)}>➕</button>
         </div>
         <button className="btn ghost" style={{ marginTop: 8 }}
-          onPointerDown={() => add(SUGGESTIONS[Math.floor(Math.random() * SUGGESTIONS.length)])}>
-          🎲 הוסף שאלה מוכנה
+          onPointerDown={() => add(t(SUGGESTIONS[Math.floor(Math.random() * SUGGESTIONS.length)]))}>
+          {t("whomost.add_preset")}
         </button>
 
         <div style={{ marginTop: 16 }}>
@@ -113,12 +94,12 @@ export default function WhoMostView({ room, me, conn, hub }: GameViewProps) {
                 onPointerDown={() => conn.sendGame({ a: "wm_remove", idx: i })}>✕</button>
             </div>
           ))}
-          {questions.length === 0 && <p className="sub" style={{ textAlign: "center", marginTop: 20 }}>עדיין אין שאלות — הוסף לפחות אחת 👆</p>}
+          {questions.length === 0 && <p className="sub" style={{ textAlign: "center", marginTop: 20 }}>{t("whomost.no_questions")}</p>}
         </div>
 
         <button className="btn" style={{ marginTop: 14 }} disabled={questions.length < 1}
           onPointerDown={() => conn.sendGame({ a: "wm_publish" })}>
-          🚀 פרסם לכולם ({questions.length})
+          {t("whomost.publish", { n: questions.length })}
         </button>
       </main>
     );
@@ -131,12 +112,12 @@ export default function WhoMostView({ room, me, conn, hub }: GameViewProps) {
       return (
         <main className="fullscreen">
           <div style={{ fontSize: 56 }}>✅</div>
-          <div className="big" style={{ marginTop: 8 }}>סיימת!</div>
-          <p className="sub" style={{ marginTop: 10 }}>מחכים לשאר... {progress.done}/{progress.total}</p>
+          <div className="big" style={{ marginTop: 8 }}>{t("whomost.you_done")}</div>
+          <p className="sub" style={{ marginTop: 10 }}>{t("whomost.wait_others", { n: progress.done, of: progress.total })}</p>
           {isHost && (
             <button className="btn gold" style={{ marginTop: 20, maxWidth: 300 }}
               onPointerDown={() => conn.sendGame({ a: "wm_start" })}>
-              🎬 התחל את הגילוי {progress.done >= progress.total ? "(כולם מוכנים!)" : `(${progress.done}/${progress.total})`}
+              {t("whomost.start_reveal")} {progress.done >= progress.total ? t("whomost.all_ready") : `(${progress.done}/${progress.total})`}
             </button>
           )}
         </main>
@@ -144,8 +125,8 @@ export default function WhoMostView({ room, me, conn, hub }: GameViewProps) {
     }
     return (
       <main style={{ minHeight: "100dvh", padding: 18 }}>
-        <h1 className="brand" style={{ textAlign: "center" }}>מי הכי? 🫵</h1>
-        <p className="sub" style={{ textAlign: "center", marginBottom: 14 }}>בסתר: בחר מי הכי מתאים לכל שאלה</p>
+        <h1 className="brand" style={{ textAlign: "center" }}>{t("whomost.title")}</h1>
+        <p className="sub" style={{ textAlign: "center", marginBottom: 14 }}>{t("whomost.answer_hint")}</p>
         {questions.map((q, i) => (
           <div key={i} className="card" style={{ marginBottom: 12 }}>
             <div style={{ fontWeight: 800, marginBottom: 10 }}>{i + 1}. {q}</div>
@@ -156,7 +137,7 @@ export default function WhoMostView({ room, me, conn, hub }: GameViewProps) {
                   style={{ borderColor: myVotes[i] === p.id ? "var(--gold)" : undefined }}
                   onPointerDown={() => { setMyVotes((v) => ({ ...v, [i]: p.id })); conn.sendGame({ a: "wm_vote", qIdx: i, target: p.id }); vibrate(20); }}>
                   <span style={{ fontSize: 22 }}>{p.emoji}</span>
-                  <span className="nm">{p.name}{p.id === me ? " (אני)" : ""}</span>
+                  <span className="nm">{p.name}{p.id === me ? ` ${t("whomost.me")}` : ""}</span>
                 </button>
               ))}
             </div>
@@ -164,7 +145,7 @@ export default function WhoMostView({ room, me, conn, hub }: GameViewProps) {
         ))}
         <button className="btn" style={{ marginTop: 8, marginBottom: 20 }} disabled={!allAnswered}
           onPointerDown={() => { conn.sendGame({ a: "wm_done" }); setIDone(true); Sfx.ding(); }}>
-          {allAnswered ? "✅ סיימתי!" : `ענה על כל השאלות (${Object.keys(myVotes).length}/${questions.length})`}
+          {allAnswered ? t("whomost.im_done") : t("whomost.answer_all", { n: Object.keys(myVotes).length, of: questions.length })}
         </button>
       </main>
     );
@@ -180,15 +161,15 @@ export default function WhoMostView({ room, me, conn, hub }: GameViewProps) {
           <span key={i} className="confetti" style={{ left: `${(i * 4.1) % 100}%`, background: ["#fff", "#ff4d9d", "#5c8aff", "#34e89e"][i % 4], animationDuration: `${1.2 + (i % 5) * 0.25}s` }} />
         ))}
         <div style={{ fontSize: 90 }} className="popin">👑</div>
-        <div className="big" style={{ color: "#3a2a00", fontSize: 34 }}>זה אתה!</div>
+        <div className="big" style={{ color: "#3a2a00", fontSize: 34 }}>{t("whomost.its_you")}</div>
         <p style={{ color: "#3a2a00", fontWeight: 800, marginTop: 10, fontSize: 18 }}>
-          {n > 0 ? `${n} מתוך ${result?.voters} בחרו בך` : "נבחרת!"}
+          {n > 0 ? t("whomost.n_chose_you", { n, of: result?.voters ?? 0 }) : t("whomost.chosen")}
         </p>
         {/* גם כשהמארח עצמו נבחר — הוא חייב כפתור להמשיך, אחרת המשחק נתקע */}
         {isHost && reveal && (
           <button className="btn" style={{ marginTop: 26, maxWidth: 320, background: "#2b1a4d", boxShadow: "0 8px 24px rgba(0,0,0,.3)" }}
             onPointerDown={() => conn.sendGame({ a: "wm_next" })}>
-            {reveal.idx + 1 >= reveal.total ? "🏆 סיום וטקס" : "➡️ השאלה הבאה"}
+            {reveal.idx + 1 >= reveal.total ? t("whomost.finish") : t("whomost.next_q")}
           </button>
         )}
       </main>
@@ -205,17 +186,17 @@ export default function WhoMostView({ room, me, conn, hub }: GameViewProps) {
 
           {result ? (
             <div className="popin" style={{ marginTop: 20 }}>
-              <div className="sub">הנבחר{result.winners.length > 1 ? "ים" : ""}:</div>
+              <div className="sub">{t("whomost.the_chosen", { n: result.winners.length })}</div>
               <div style={{ fontSize: 22, fontWeight: 900, color: "var(--gold)", marginTop: 6 }}>
-                {result.winners.length ? result.winners.map((p) => `${emojiOf(p)} ${nameOf(p)}`).join(" · ") : "אף אחד לא הצביע 🤷"}
+                {result.winners.length ? result.winners.map((p) => `${emojiOf(p)} ${nameOf(p)}`).join(" · ") : t("whomost.nobody_voted")}
               </div>
               {result.winners.length > 0 && (
-                <div className="sub" style={{ marginTop: 6 }}>{result.tally[result.winners[0]]} מתוך {result.voters} קולות</div>
+                <div className="sub" style={{ marginTop: 6 }}>{t("whomost.n_of_votes", { n: result.tally[result.winners[0]], of: result.voters })}</div>
               )}
             </div>
           ) : (
             <p className="sub" style={{ marginTop: 18 }}>
-              {isHost ? "קרא בקול, תנו לחדר לנחש — ואז גלה 👇" : "הניחו את הטלפון על השולחן 👀"}
+              {isHost ? t("whomost.host_read") : t("whomost.phone_down")}
             </p>
           )}
         </div>
@@ -223,10 +204,10 @@ export default function WhoMostView({ room, me, conn, hub }: GameViewProps) {
         {isHost ? (
           <div style={{ width: "100%" }}>
             {!result ? (
-              <button className="btn gold" onPointerDown={() => conn.sendGame({ a: "wm_reveal" })}>🔦 גלה!</button>
+              <button className="btn gold" onPointerDown={() => conn.sendGame({ a: "wm_reveal" })}>{t("whomost.reveal")}</button>
             ) : (
               <button className="btn" onPointerDown={() => conn.sendGame({ a: "wm_next" })}>
-                {reveal.idx + 1 >= reveal.total ? "🏆 סיום וטקס" : "➡️ השאלה הבאה"}
+                {reveal.idx + 1 >= reveal.total ? t("whomost.finish") : t("whomost.next_q")}
               </button>
             )}
           </div>
@@ -238,7 +219,7 @@ export default function WhoMostView({ room, me, conn, hub }: GameViewProps) {
   return (
     <main className="fullscreen">
       <div style={{ fontSize: 54 }} className="pulse">🫵</div>
-      <p className="sub" style={{ marginTop: 10 }}>מתכוננים...</p>
+      <p className="sub" style={{ marginTop: 10 }}>{t("whomost.preparing")}</p>
     </main>
   );
 }

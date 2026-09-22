@@ -34,41 +34,42 @@ const MK: Record<Kind, { hp: number; spd: number; armor: number; fly: boolean; g
 
 /* ---------- שדרוגים ---------- */
 type Branch = "drill" | "fire" | "boom" | "sense" | "loot";
-interface CardDef { id: string; b: Branch; ic: string; t: string; d: string; rank: number; wow?: boolean; apply(p: Miner): void }
+/** קלף שדרוג — שם/תיאור בלקוח: hofrim.card.<id> / hofrim.card.<id>.d */
+interface CardDef { id: string; b: Branch; ic: string; rank: number; wow?: boolean; apply(p: Miner): void }
 
 const CARDS: CardDef[] = [
-  { id: "carbide", b: "drill", ic: "⛏️", t: "ראש קרביד", d: "+2 כוח חפירה — סלע קשה נשבר בשליש מהזמן", rank: 0, apply: (p) => { p.pow += 2; } },
-  { id: "boots",   b: "drill", ic: "👟", t: "נעליים קלות", d: "+16% מהירות תנועה", rank: 0, apply: (p) => { p.spd *= 1.16; } },
-  { id: "helmet",  b: "drill", ic: "❤️", t: "קסדה", d: "+1 לב, ומתמלא", rank: 0, apply: (p) => { p.maxhp++; p.hp = p.maxhp; } },
-  { id: "sweep",   b: "drill", ic: "🌀", t: "מקדח סחרור", d: "חופר שלושה תאים ברוחב — מנהרה, לא חור", rank: 2, wow: true, apply: (p) => { p.sweep = 1; } },
-  { id: "blastdig",b: "drill", ic: "💥", t: "מקדח נפץ", d: "כל תא שאתה שובר מתפוצץ ופוגע במה שסביבו", rank: 2, wow: true, apply: (p) => { p.blastDig += 2; } },
-  { id: "vest",    b: "drill", ic: "🛡️", t: "אפוד", d: "סיכוי לספוג מכה בלי נזק", rank: 2, wow: true, apply: (p) => { p.armor += 1; } },
+  { id: "carbide",     b: "drill", ic: "⛏️", rank: 0, apply: (p) => { p.pow += 2; } },
+  { id: "boots",       b: "drill", ic: "👟", rank: 0, apply: (p) => { p.spd *= 1.16; } },
+  { id: "helmet",      b: "drill", ic: "❤️", rank: 0, apply: (p) => { p.maxhp++; p.hp = p.maxhp; } },
+  { id: "sweep",       b: "drill", ic: "🌀", rank: 2, wow: true, apply: (p) => { p.sweep = 1; } },
+  { id: "blastdig",    b: "drill", ic: "💥", rank: 2, wow: true, apply: (p) => { p.blastDig += 2; } },
+  { id: "vest",        b: "drill", ic: "🛡️", rank: 2, wow: true, apply: (p) => { p.armor += 1; } },
 
-  { id: "muzzle",  b: "fire", ic: "☄️", t: "לוע רחב", d: "+1 נזק לכל יריה", rank: 0, apply: (p) => { p.dmg += 1; } },
-  { id: "reload",  b: "fire", ic: "⚡", t: "טעינה מהירה", d: "−35% זמן טעינה — הירי הופך לזרם", rank: 0, apply: (p) => { p.cd *= 0.65; } },
-  { id: "salvo",   b: "fire", ic: "🎯", t: "מטח כפול", d: "יורה לשני כיוונים בו-זמנית", rank: 1, wow: true, apply: (p) => { p.dirs += 1; } },
-  { id: "pierce",  b: "fire", ic: "🗡️", t: "חודר", d: "הקליע עובר דרך מפלצות במקום להיעצר", rank: 1, wow: true, apply: (p) => { p.pierce += 2; } },
-  { id: "homing",  b: "fire", ic: "🏹", t: "קליע מכוון", d: "הקליע מתעקל אל המפלצת הקרובה", rank: 1, wow: true, apply: (p) => { p.homing += 1; } },
-  { id: "burn",    b: "fire", ic: "🔥", t: "תבערה", d: "מפלצת שנפגעה ממשיכה לבעור", rank: 2, wow: true, apply: (p) => { p.burn = 1; } },
-  { id: "frost",   b: "fire", ic: "❄️", t: "כפור", d: "פגיעה מקפיאה את המפלצת לחצי מהירות", rank: 2, wow: true, apply: (p) => { p.frost = 1; } },
-  { id: "heavy",   b: "fire", ic: "🔨", t: "פטיש שריון", d: "מתעלם משריון — המשוריין והגולם מפסיקים להיות חסינים", rank: 2, wow: true, apply: (p) => { p.heavy = 1; p.dmg += 1; } },
-  { id: "chain",   b: "fire", ic: "🌩️", t: "ברק שרשרת", d: "הפגיעה קופצת למפלצות נוספות", rank: 3, wow: true, apply: (p) => { p.chain += 2; } },
-  { id: "boomshot",b: "fire", ic: "💣", t: "קליע נפץ", d: "כל פגיעה מתפוצצת ופוגעת בכל מי שסביב", rank: 3, wow: true, apply: (p) => { p.sboom += 3; } },
+  { id: "muzzle",      b: "fire", ic: "☄️", rank: 0, apply: (p) => { p.dmg += 1; } },
+  { id: "reload",      b: "fire", ic: "⚡", rank: 0, apply: (p) => { p.cd *= 0.65; } },
+  { id: "salvo",       b: "fire", ic: "🎯", rank: 1, wow: true, apply: (p) => { p.dirs += 1; } },
+  { id: "pierce",      b: "fire", ic: "🗡️", rank: 1, wow: true, apply: (p) => { p.pierce += 2; } },
+  { id: "homing",      b: "fire", ic: "🏹", rank: 1, wow: true, apply: (p) => { p.homing += 1; } },
+  { id: "burn",        b: "fire", ic: "🔥", rank: 2, wow: true, apply: (p) => { p.burn = 1; } },
+  { id: "frost",       b: "fire", ic: "❄️", rank: 2, wow: true, apply: (p) => { p.frost = 1; } },
+  { id: "heavy",       b: "fire", ic: "🔨", rank: 2, wow: true, apply: (p) => { p.heavy = 1; p.dmg += 1; } },
+  { id: "chain",       b: "fire", ic: "🌩️", rank: 3, wow: true, apply: (p) => { p.chain += 2; } },
+  { id: "boomshot",    b: "fire", ic: "💣", rank: 3, wow: true, apply: (p) => { p.sboom += 3; } },
 
-  { id: "charge",  b: "boom", ic: "🧨", t: "מטען ראשון", d: "כפתור פצצה: פותחת חדר שלם בשנייה", rank: 0, wow: true, apply: (p) => { p.bomb = Math.max(1, p.bomb); } },
-  { id: "heavycharge", b: "boom", ic: "🎆", t: "מטען כבד", d: "רדיוס פיצוץ גדול יותר וקירור קצר", rank: 1, apply: (p) => { p.bombR += 1; p.bomb += 1; } },
-  { id: "drillex", b: "boom", ic: "⛏️", t: "חומר נפץ קידוח", d: "הפצצה שוברת גם בזלת", rank: 2, wow: true, apply: (p) => { p.bombPow = 10; } },
-  { id: "alchemy", b: "boom", ic: "⚗️", t: "כור היתוך", d: "סלע ששבר הנפץ הופך לזהב", rank: 3, wow: true, apply: (p) => { p.alchemy = 1; } },
+  { id: "charge",      b: "boom", ic: "🧨", rank: 0, wow: true, apply: (p) => { p.bomb = Math.max(1, p.bomb); } },
+  { id: "heavycharge", b: "boom", ic: "🎆", rank: 1, apply: (p) => { p.bombR += 1; p.bomb += 1; } },
+  { id: "drillex",     b: "boom", ic: "⛏️", rank: 2, wow: true, apply: (p) => { p.bombPow = 10; } },
+  { id: "alchemy",     b: "boom", ic: "⚗️", rank: 3, wow: true, apply: (p) => { p.alchemy = 1; } },
 
-  { id: "lamp",    b: "sense", ic: "🔦", t: "פנס חזק", d: "+45% רדיוס אור", rank: 0, apply: (p) => { p.light *= 1.45; } },
-  { id: "xray",    b: "sense", ic: "👁️", t: "ראיית רנטגן", d: "רואה גבישים ומפלצות דרך האדמה", rank: 1, wow: true, apply: (p) => { p.xray = 1; } },
-  { id: "glow",    b: "sense", ic: "🕯️", t: "שובל זוהר", d: "כל מנהרה שחפרת נשארת מוארת — כל הצוות רואה איפה היית", rank: 2, wow: true, apply: (p) => { p.glow = 1; } },
+  { id: "lamp",        b: "sense", ic: "🔦", rank: 0, apply: (p) => { p.light *= 1.45; } },
+  { id: "xray",        b: "sense", ic: "👁️", rank: 1, wow: true, apply: (p) => { p.xray = 1; } },
+  { id: "glow",        b: "sense", ic: "🕯️", rank: 2, wow: true, apply: (p) => { p.glow = 1; } },
 
-  { id: "sack",    b: "loot", ic: "🎒", t: "שק גדול", d: "+3 חריצים", rank: 0, apply: (p) => { p.slots += 3; } },
-  { id: "magnet",  b: "loot", ic: "🧲", t: "מגנט", d: "שלל עף אליך מרחוק", rank: 0, wow: true, apply: (p) => { p.magnet += 2.2; } },
-  { id: "greed",   b: "loot", ic: "💰", t: "חמדנות", d: "+40% ערך לכל הפקדה", rank: 1, apply: (p) => { p.depoMul *= 1.4; } },
-  { id: "double",  b: "loot", ic: "💎", t: "כורה כפול", d: "רבע מהתאים נותנים שלל פעמיים", rank: 2, wow: true, apply: (p) => { p.dbl += 0.25; } },
-  { id: "share",   b: "loot", ic: "🤝", t: "חלוקה", d: "10% מכל הפקדה שלך נספרים גם לחבר הקרוב", rank: 2, wow: true, apply: (p) => { p.share = 1; } },
+  { id: "sack",        b: "loot", ic: "🎒", rank: 0, apply: (p) => { p.slots += 3; } },
+  { id: "magnet",      b: "loot", ic: "🧲", rank: 0, wow: true, apply: (p) => { p.magnet += 2.2; } },
+  { id: "greed",       b: "loot", ic: "💰", rank: 1, apply: (p) => { p.depoMul *= 1.4; } },
+  { id: "double",      b: "loot", ic: "💎", rank: 2, wow: true, apply: (p) => { p.dbl += 0.25; } },
+  { id: "share",       b: "loot", ic: "🤝", rank: 2, wow: true, apply: (p) => { p.share = 1; } },
 ];
 
 /* ---------- ישויות ---------- */
@@ -151,7 +152,8 @@ export function createHofrim(ctx: GameCtx): GameInstance {
     const per = Math.max(1, alive().length);
     return Math.max(150, Math.round((spawnedValue * ratio * Math.min(1, per / 4)) / 10) * 10);
   }
-  const shiftMs = (n: number) => Math.min(240, 90 + 14 * (n - 1)) * 1000;
+  // HF_FAST=1 — פלייטסט מהיר לבדיקות (משמרות של 12 שנ'); לא משפיע על פרודקשן
+  const shiftMs = (n: number) => (process.env.HF_FAST ? 12 : Math.min(240, 90 + 14 * (n - 1))) * 1000;
 
   function openShift() {
     target = shiftTarget(shift);
@@ -196,7 +198,7 @@ export function createHofrim(ctx: GameCtx): GameInstance {
   }
   const cardMsg = (id: string): HofrimCard => {
     const c = CARDS.find((x) => x.id === id)!;
-    return { id: c.id, ic: c.ic, t: c.t, d: c.d, b: c.b, wow: !!c.wow };
+    return { id: c.id, ic: c.ic, b: c.b, wow: !!c.wow };
   };
   function choose(pid: string, id: string) {
     if (!drafts.has(pid) || picked.has(pid)) return;
@@ -447,7 +449,7 @@ export function createHofrim(ctx: GameCtx): GameInstance {
       } else {
         b.y += BAG_FALL * dt;
         const nr = Math.round(b.y);
-        for (const [pid, m] of miners.entries()) if (m.down <= 0 && conn.has(pid) && m.c === b.c && Math.abs(m.y - b.y) < 0.6) hitMiner(pid, m, "שק");
+        for (const [pid, m] of miners.entries()) if (m.down <= 0 && conn.has(pid) && m.c === b.c && Math.abs(m.y - b.y) < 0.6) hitMiner(pid, m, "bag");
         for (const mo of [...mons]) if (mo.c === b.c && Math.abs(mo.y - b.y) < 0.7) hurt(mo, 999, "", "crush");
         if (solid(b.c, nr + 1) || bagAt(b.c, nr + 1) || nr >= ROWS - 2) {
           b.y = nr; b.st = 0;
@@ -526,7 +528,7 @@ export function createHofrim(ctx: GameCtx): GameInstance {
     for (const [pid, m] of miners.entries()) scores[pid] = m.banked;
     const best = [...miners.entries()].sort((a, b) => b[1].banked - a[1].banked)[0];
     ctx.end({
-      title: won ? `⛏️ המכרה נכבש — ${banked.toLocaleString()} זהב` : "💥 המכרה קרס",
+      title: won ? { k: "hofrim.end.won", p: { n: banked } } : { k: "hofrim.end.lost" },
       winnerId: won ? best?.[0] : undefined,
       scores,
       facts: Object.fromEntries([...miners.entries()].map(([pid, m]) => [pid,

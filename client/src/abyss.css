@@ -1,6 +1,6 @@
 /* ===== התהום 🕳️ — מסך מלא משלו, בשפת המדבקות ===== */
 .ab-wrap{position:fixed; inset:0; width:100vw; height:100dvh; z-index:60; background:#12100E; overflow:hidden;
-  touch-action:none; user-select:none; -webkit-user-select:none; direction:rtl; font-family:var(--font-body,"Assistant Variable",Assistant,sans-serif); color:#FFF3DC;}
+  touch-action:none; user-select:none; -webkit-user-select:none; font-family:var(--font-body,"Assistant Variable",Assistant,sans-serif); color:#FFF3DC;}
 .ab-cv{position:absolute; inset:0; width:100%; height:100%; display:block;}
 .ab-wrap button{font-family:inherit; cursor:pointer; -webkit-tap-highlight-color:transparent;}
 
@@ -13,11 +13,11 @@
 .ab-barfill{height:100%; background:linear-gradient(90deg,#38C8E8,#FFC531); transition:width .12s linear;}
 .ab-top{position:absolute; top:calc(env(safe-area-inset-top,0px) + 12px); left:0; right:0; display:flex; justify-content:center; pointer-events:none;}
 .ab-pot{padding:5px 14px; border-radius:14px; font-weight:800; font-size:14px; white-space:nowrap; rotate:-.8deg; font-variant-numeric:tabular-nums;}
-.ab-mine{position:absolute; top:calc(env(safe-area-inset-top,0px) + 50px); right:10px; padding:6px 12px; border-radius:14px; text-align:right; pointer-events:none; rotate:1deg; min-width:86px;}
+.ab-mine{position:absolute; top:calc(env(safe-area-inset-top,0px) + 50px); inset-inline-end:10px; padding:6px 12px; border-radius:14px; text-align:end; pointer-events:none; rotate:1deg; min-width:86px;}
 .ab-mine b{display:block; font-family:var(--font-display,"Suez One",serif); font-weight:400; font-size:24px; line-height:1.05; color:#8FE9F5; font-variant-numeric:tabular-nums;}
 .ab-mine span{display:inline-block; font-size:14px; margin-top:2px;}
 .ab-mine small{display:block; font-size:11px; color:#C8B78E; margin-top:2px;}
-.ab-strip{position:absolute; top:calc(env(safe-area-inset-top,0px) + 50px); left:10px; display:flex; flex-direction:column; gap:4px; align-items:flex-start; pointer-events:none; max-width:36vw;}
+.ab-strip{position:absolute; top:calc(env(safe-area-inset-top,0px) + 50px); inset-inline-start:10px; display:flex; flex-direction:column; gap:4px; align-items:flex-start; pointer-events:none; max-width:36vw;}
 .ab-chip{padding:2px 8px; border-radius:10px; font-size:12px; font-weight:800; box-shadow:-2px 2px 0 var(--pc,#888); font-variant-numeric:tabular-nums; white-space:nowrap;}
 
 /* ---- ספירה ---- */
@@ -45,7 +45,7 @@
 .ab-slab small{font-size:14px; font-weight:800; opacity:.85;}
 .ab-slab:active{transform:translate(6px,8px) scale(.97); box-shadow:inset 0 -4px 0 rgba(0,0,0,.28), inset 0 3px 0 rgba(255,255,255,.2), 0 0 0 #0C0906; filter:brightness(.92);}
 .ab-slab.sel{outline:5px solid #FFF3DC; outline-offset:-3px; filter:saturate(1.15);}
-.ab-slab.sel::after{content:"✓"; position:absolute; top:8px; right:12px; font-size:26px; font-weight:900;}
+.ab-slab.sel::after{content:"✓"; position:absolute; top:8px; inset-inline-end:12px; font-size:26px; font-weight:900;}
 .ab-slab{position:relative;}
 .ab-vote.locked .ab-slab{opacity:.55; filter:grayscale(.3);}
 .ab-vote.locked .ab-slab.sel{opacity:1;}
@@ -64,7 +64,7 @@
 .ab-card .face .e{font-size:30px; line-height:1;}
 .ab-card .face .n{font-weight:800; font-size:15px; max-width:52%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
 .ab-card .back{transform:rotateY(180deg); color:#0C0906; flex-wrap:wrap; padding-top:16px;}
-.ab-card .back .who{position:absolute; top:5px; right:10px; font-size:12px; font-weight:800; opacity:.85; max-width:80%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.ab-card .back .who{position:absolute; top:5px; inset-inline-end:10px; font-size:12px; font-weight:800; opacity:.85; max-width:80%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
 .ab-card .back.stop{background:#2ED47A;} .ab-card .back.go{background:#FF5A4E;} .ab-card .back.caught{background:#6B6B6B; color:#FFF3DC;} .ab-card .back.pot{background:#FFC531;}
 .ab-card .back .n{font-family:var(--font-display,"Suez One",serif); font-weight:400; font-size:20px; max-width:60%;}
 .ab-card.flip .face{transition:none; animation:abflip .55s cubic-bezier(.4,1.4,.6,1) both; animation-delay:inherit;}
@@ -134,7 +134,7 @@
 /* ---- טוסט, פיד, באנר ---- */
 .ab-toast{position:absolute; left:50%; transform:translateX(-50%) rotate(-.8deg); bottom:calc(env(safe-area-inset-bottom,0px) + 128px); padding:8px 16px; border-radius:14px; font-weight:800; font-size:14.5px;
   max-width:88vw; text-align:center; z-index:7; pointer-events:none; animation:abin .2s ease-out both;}
-.ab-feed{position:absolute; top:calc(env(safe-area-inset-top,0px) + 118px); right:10px; display:flex; flex-direction:column; gap:4px; align-items:flex-end; pointer-events:none; z-index:3;}
+.ab-feed{position:absolute; top:calc(env(safe-area-inset-top,0px) + 118px); inset-inline-end:10px; display:flex; flex-direction:column; gap:4px; align-items:flex-end; pointer-events:none; z-index:3;}
 .ab-feed div{padding:3px 10px; border-radius:10px; font-size:12px; font-weight:700; box-shadow:-2px 2px 0 rgba(0,0,0,.6);}
 .ab-banner{position:absolute; inset:0; display:grid; place-items:center; pointer-events:none; z-index:8;}
 .ab-banner .in{background:#231F1A; border:4px solid #0C0906; border-radius:22px; padding:16px 28px; text-align:center; box-shadow:-6px 8px 0 #38C8E8; rotate:-1.3deg; animation:abpop2 .45s cubic-bezier(.2,1.6,.4,1) both; max-width:86vw;}

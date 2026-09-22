@@ -451,7 +451,7 @@ export type WallServerMsg =
   | { a: "wl_state"; wave: number; roles: Record<string, WallRole>; slots: Record<string, [number, number]>; wallHp: number; wallMax: number; phase: "setup" | "wave" | "breath" | "over"; tiers: Record<string, number> }; // rejoin
 
 /* ---------- החופרים ⛏️ ---------- */
-export interface HofrimCard { id: string; ic: string; t: string; d: string; b: string; wow: boolean }
+export interface HofrimCard { id: string; ic: string; b: string; wow: boolean }   // הטקסט בלקוח: hofrim.card.<id> / .d
 
 export type HofrimClientMsg =
   | { a: "hf_dir"; dx: number; dy: number }        // כיוון מוחזק — נשלח רק כשהוא משתנה
@@ -526,7 +526,7 @@ export type ThievesServerMsg =
   | { a: "th_left"; pid: string };
 
 /* ---------- התהום 🕳️ ---------- */
-export interface AbyssCard { id: string; ic: string; t: string; d: string }
+export interface AbyssCard { id: string; ic: string }   // הטקסט בלקוח: abyss.card.<id> / .d
 export interface AbTiming { segmentMs: number; voteMs: number; warnMs: number; revealOffsetMs: number; pauseMs: number; introMs: number; maxLedges: number }
 export interface AbThrowWire { id: number; by: string; target: string; kind: "trap" | "shield" | "burst"; d: number; x: number; at: number }
 export type AbPlayerState = "falling" | "stopped" | "caught" | "spectator" | "out";

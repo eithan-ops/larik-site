@@ -24,6 +24,9 @@ import { vibrate } from "../lib/audio";
 import { track } from "../lib/analytics";
 import { drawShaftCard, shareShaftCard } from "../lib/shaftcard";
 import type { ShaftCardData } from "../lib/shaftcard";
+import { t, t as tr, fmtNum, isRtlLang } from "../lib/locale";
+const cn = (id: string) => t(`abyss.card.${id}`);
+const cdesc = (id: string) => t(`abyss.card.${id}.d`);
 
 type Phase = "wait" | "intro" | "fall" | "ledge" | "reveal" | "results" | "draft" | "over";
 type MeState = "falling" | "stopped" | "caught" | "spectator";
@@ -78,10 +81,10 @@ export default function AbyssView({ room, me, conn, hub }: GameViewProps) {
   });
 
   const pl = (pid: string) => G.current.players.find((p) => p.id === pid);
-  const pname = (pid: string) => pl(pid)?.name ?? "מישהו";
+  const pname = (pid: string) => pl(pid)?.name ?? t("abyss.someone");
   const pemoji = (pid: string) => pl(pid)?.emoji ?? "🙂";
   const pcol = (pid: string) => PCOL[Math.max(0, G.current.players.findIndex((p) => p.id === pid)) % PCOL.length];
-  const fmt = (n: number) => Math.round(n).toLocaleString("he-IL");
+  const fmt = (n: number) => fmtNum(Math.round(n));
 
   useEffect(() => { G.current.players = room.players.map((p) => ({ id: p.id, name: p.name, emoji: p.emoji })); }, [room.players]);
   // המשתמש כבר לחץ "מתחילים" בעמוד הזה — ההפעלה הדביקה מאפשרת ליצור AudioContext גם בלי מחווה נוספת (ובאייפון ישן — במגע הראשון)
@@ -108,7 +111,7 @@ export default function AbyssView({ room, me, conn, hub }: GameViewProps) {
     const t = pickTarget();
     g.spec.target = t; if (t) { const o = g.others.get(t); g.spec.x = o?.x ?? 50; g.spec.tx = g.spec.x; }
     const ps = g.pstate.get(me);
-    const status = state === "stopped" ? `עצרת במדף ${(ps?.k ?? g.k) + 1} · בנקאי ${fmt(ps?.amt ?? 0)} · סה"כ ${fmt(g.totals[me] ?? 0)}` : state === "caught" ? `נתפסת — השלל הלך לקרן · סה"כ ${fmt(g.totals[me] ?? 0)}` : "מצטרפים בצניחה הבאה — בינתיים זורקים";
+    const status = state === "stopped" ? tr("abyss.st.stopped", { k: (ps?.k ?? g.k) + 1, amt: fmt(ps?.amt ?? 0), total: fmt(g.totals[me] ?? 0) }) : state === "caught" ? tr("abyss.st.caught", { total: fmt(g.totals[me] ?? 0) }) : tr("abyss.st.joining");
     setSpec({ target: t, fallers: [...g.others.entries()].filter(([p]) => p !== me).map(([pid, o]) => ({ pid, c: o.c, s: o.s })), status });
     if (t) conn.sendGame({ a: "ab_watch", target: t });
   }
@@ -120,11 +123,11 @@ export default function AbyssView({ room, me, conn, hub }: GameViewProps) {
   }
   function doThrow(kind: "trap" | "help") {
     const g = G.current;
-    const t = g.spec.target; if (!t) { setToast("אין את מי לצפות…"); return; }
+    const t = g.spec.target; if (!t) { setToast(tr("abyss.no_target")); return; }
     const now = conn.serverNow();
-    if (now < g.cdUntil) { setToast("עוד רגע… הקולדאון לא נגמר"); return; }
-    if (!g.cfg || g.phase !== "fall") { setToast("לא בזמן מדף"); return; }
-    if (now > abFreezeAt(g.cfg, g.startAt, g.k) - AB.THROW_BLOCK_BEFORE_LEDGE_MS) { setToast("המדף קרוב מדי"); return; }
+    if (now < g.cdUntil) { setToast(tr("abyss.fail.cooldown")); return; }
+    if (!g.cfg || g.phase !== "fall") { setToast(tr("abyss.not_on_ledge")); return; }
+    if (now > abFreezeAt(g.cfg, g.startAt, g.k) - AB.THROW_BLOCK_BEFORE_LEDGE_MS) { setToast(tr("abyss.fail.ledge")); return; }
     abAudioInit();
     const o = g.others.get(t);
     const k = kind === "trap" ? "trap" : (o?.s ?? 0) > 0 ? "burst" : "shield";
@@ -165,12 +168,12 @@ export default function AbyssView({ room, me, conn, hub }: GameViewProps) {
           for (const [pid, st] of d.players) g.pstate.set(pid, { state: st === "fall" ? "fall" : "stop", k: -1, amt: 0 });
           if (meFalls) setMe("falling"); else { setMe("spectator"); }
           setPhaseBoth("intro");
-          setBanner({ ic: "🕳️", t: d.of > 1 ? `צניחה ${d.d + 1} מתוך ${d.of}` : "צונחים!", s: meFalls ? "מזיזים את האגודל להתחמק · אוספים גבישים" : "צופים — ותורמים" });
+          setBanner({ ic: "🕳️", t: d.of > 1 ? t("abyss.descent_of", { n: d.d + 1, of: d.of }) : t("abyss.falling"), s: meFalls ? t("abyss.fall_hint") : t("abyss.spec_hint") });
           const sched = (ms: number, fn: () => void) => setTimeout(fn, Math.max(0, conn.untilServer(d.startAt - ms)));
           sched(3000, () => { setCount("3"); abSfx.count(); });
           sched(2000, () => { setCount("2"); abSfx.count(); });
           sched(1000, () => { setCount("1"); abSfx.count(); });
-          sched(0, () => { setCount("צונחים!"); abSfx.go(); vibrate(30); setTimeout(() => setCount(null), 700); if (!meFalls) enterSpectator("spectator"); });
+          sched(0, () => { setCount(t("abyss.falling")); abSfx.go(); vibrate(30); setTimeout(() => setCount(null), 700); if (!meFalls) enterSpectator("spectator"); });
           break;
         }
         case "ab_pos": {
@@ -200,7 +203,7 @@ export default function AbyssView({ room, me, conn, hub }: GameViewProps) {
           if (g.warned !== d.k) {
             g.warned = d.k;
             abSfx.ledgeRiser(Math.max(0.6, (d.freezeAt - conn.serverNow()) / 1000));
-            setBanner({ ic: "🪨", t: d.potSeg ? "מדף הקרן!" : `מדף ${d.k + 1} מתקרב`, s: d.potSeg ? `שורדים — ולוקחים ${fmt(d.pot)}` : `עוצרים ×${d.mult} · ממשיכים ל-×${abMult(d.k + 1)}`, cls: "short" });
+            setBanner({ ic: "🪨", t: d.potSeg ? t("abyss.pot_ledge") : t("abyss.ledge_coming", { k: d.k + 1 }), s: d.potSeg ? t("abyss.survive_take", { amt: fmt(d.pot) }) : t("abyss.stop_go_mult", { m: d.mult, next: abMult(d.k + 1) }), cls: "short" });
           }
           break;
         }
@@ -224,7 +227,7 @@ export default function AbyssView({ room, me, conn, hub }: GameViewProps) {
             g.sim.crystals = 0;
             const newTotal = (g.totals[me] ?? 0) + amt;
             g.totals[me] = newTotal;
-            setTimeout(() => { if (mine === "pot") { abSfx.potWin(); vibrate([80, 60, 80, 60, 250]); setBanner({ ic: "🏆", t: "לקחת את הקרן!", s: `+${fmt(amt)}`, cls: "long" }); } else { abSfx.bank(); setToast(`✅ בנקאי ${fmt(amt)} · סה"כ ${fmt(newTotal)}`); } }, 900);
+            setTimeout(() => { if (mine === "pot") { abSfx.potWin(); vibrate([80, 60, 80, 60, 250]); setBanner({ ic: "🏆", t: t("abyss.you_took_pot"), s: `+${fmt(amt)}`, cls: "long" }); } else { abSfx.bank(); setToast(t("abyss.banked_total", { amt: fmt(amt), total: fmt(newTotal) })); } }, 900);
             setHud((h) => ({ ...h, crystals: 0, total: g.totals[me] ?? 0, pot: d.pot }));
             if (d.next !== "end") setTimeout(() => enterSpectator("stopped"), revealDur);
             else setMe("stopped");
@@ -233,10 +236,10 @@ export default function AbyssView({ room, me, conn, hub }: GameViewProps) {
           }
           if (d.next === "end") {
             g.descentEnded = true;
-            if (d.swallowed) setTimeout(() => { abSfx.swallow(); setBanner({ ic: "🕳️", t: "התהום בלעה את הקרן", s: `${fmt(d.swallowed!)} נעלמו לתמיד`, cls: "long" }); }, 1400);
-            else if (d.potWon) setTimeout(() => setBanner({ ic: "🏆", t: `${pname(d.potWon!.pid)} לקח את הקרן!`, s: `+${fmt(d.potWon!.amount)}`, cls: "long" }), 1200);
+            if (d.swallowed) setTimeout(() => { abSfx.swallow(); setBanner({ ic: "🕳️", t: t("abyss.pot_swallowed"), s: t("abyss.gone_forever", { amt: fmt(d.swallowed!) }), cls: "long" }); }, 1400);
+            else if (d.potWon) setTimeout(() => setBanner({ ic: "🏆", t: t("abyss.x_took_pot", { name: pname(d.potWon!.pid) }), s: `+${fmt(d.potWon!.amount)}`, cls: "long" }), 1200);
           } else if (d.next === "pot") {
-            setTimeout(() => setBanner({ ic: "🕳️", t: `${pname(d.potRunner!)} לבד מול הקרן`, s: `${fmt(d.pot)} — אם ישרוד מדף אחד נוסף`, cls: "long" }), 1500);
+            setTimeout(() => setBanner({ ic: "🕳️", t: t("abyss.x_alone_pot", { name: pname(d.potRunner!) }), s: t("abyss.if_survives", { amt: fmt(d.pot) }), cls: "long" }), 1500);
           }
           break;
         }
@@ -245,33 +248,33 @@ export default function AbyssView({ room, me, conn, hub }: GameViewProps) {
           g.others.delete(d.pid);
           g.pot = d.pot; setHud((h) => ({ ...h, pot: d.pot }));
           if (d.pid !== me) {
-            addFeed(d.by ? `🪨 ${pname(d.by)} הפיל את ${pname(d.pid)} · ${fmt(d.lost)} לקרן` : d.why === "lost" ? `📵 ${pname(d.pid)} נעלם — ${fmt(d.lost)} לקרן` : `💀 ${pname(d.pid)} נתפס — ${fmt(d.lost)} לקרן`);
+            addFeed(d.by ? t("abyss.feed.trapped", { by: pname(d.by), name: pname(d.pid), amt: fmt(d.lost) }) : d.why === "lost" ? t("abyss.feed.vanished", { name: pname(d.pid), amt: fmt(d.lost) }) : t("abyss.feed.caught", { name: pname(d.pid), amt: fmt(d.lost) }));
             if (g.spec.target === d.pid) setTimeout(() => { const t = pickTarget(); if (t) switchTarget(t); }, 700);
           }
           break;
         }
-        case "ab_shielded": if (d.pid !== me) addFeed(`🛡️ המגן של ${pname(d.pid)} ספג`); break;
+        case "ab_shielded": if (d.pid !== me) addFeed(t("abyss.feed.shield", { name: pname(d.pid) })); break;
         case "ab_throw": {
           g.throws.set(d.id, { id: d.id, by: d.by, target: d.target, kind: d.kind, d: d.d, x: d.x, at: d.at });
-          const what = d.kind === "trap" ? "🪨 מלכודת" : d.kind === "shield" ? "🛡️ מגן" : "💎 גבישים";
-          if (d.target === me) { abSfx.incoming(); setToast(`${what} מ${pname(d.by)}!`); }
-          else addFeed(`${what} מ${pname(d.by)} ל${pname(d.target)}`);
+          const what = d.kind === "trap" ? t("abyss.obj.trap") : d.kind === "shield" ? t("abyss.obj.shield") : t("abyss.obj.crystals");
+          if (d.target === me) { abSfx.incoming(); setToast(t("abyss.incoming", { what, by: pname(d.by) })); }
+          else addFeed(t("abyss.feed.thrown", { what, by: pname(d.by), to: pname(d.target) }));
           break;
         }
         case "ab_throwok": g.cdUntil = d.readyAt; break;
         case "ab_throwfail": {
-          const why = { cooldown: "עוד רגע — הקולדאון לא נגמר", busy: "יותר מדי דברים עפים עליו — חכו", ledge: "המדף קרוב מדי", target: "הוא כבר לא נופל", falling: "נופלים לא זורקים" }[d.reason];
+          const why = t(`abyss.fail.${d.reason}`);
           setToast(why); break;
         }
         case "ab_bonus": {
-          if (d.pid === me) { g.totals[me] = (g.totals[me] ?? 0) + d.amount; setHud((h) => ({ ...h, total: g.totals[me] ?? 0 })); abSfx.bonus(); setToast(d.kind === "hunter" ? `🏹 בונוס צייד +${fmt(d.amount)} — הפלת את ${pname(d.from)}` : d.kind === "gift" ? `🫂 ${pname(d.from)} נתן לך מתנה +${fmt(d.amount)}!` : `🤝 בונוס עזרה +${fmt(d.amount)} — ${pname(d.from)} בנקאי`); }
-          else { g.totals[d.pid] = (g.totals[d.pid] ?? 0) + d.amount; addFeed(d.kind === "hunter" ? `🏹 ${pname(d.pid)} +${fmt(d.amount)} על ${pname(d.from)}` : d.kind === "gift" ? `🫂 ${pname(d.from)} העניק ל${pname(d.pid)} +${fmt(d.amount)}` : `🤝 ${pname(d.pid)} +${fmt(d.amount)} מ${pname(d.from)}`); }
+          if (d.pid === me) { g.totals[me] = (g.totals[me] ?? 0) + d.amount; setHud((h) => ({ ...h, total: g.totals[me] ?? 0 })); abSfx.bonus(); setToast(d.kind === "hunter" ? t("abyss.bonus.hunter", { amt: fmt(d.amount), name: pname(d.from) }) : d.kind === "gift" ? t("abyss.bonus.gift", { amt: fmt(d.amount), name: pname(d.from) }) : t("abyss.bonus.help", { amt: fmt(d.amount), name: pname(d.from) })); }
+          else { g.totals[d.pid] = (g.totals[d.pid] ?? 0) + d.amount; addFeed(d.kind === "hunter" ? t("abyss.feed.hunter", { name: pname(d.pid), amt: fmt(d.amount), from: pname(d.from) }) : d.kind === "gift" ? t("abyss.feed.gift", { from: pname(d.from), name: pname(d.pid), amt: fmt(d.amount) }) : t("abyss.feed.help", { name: pname(d.pid), amt: fmt(d.amount), from: pname(d.from) })); }
           break;
         }
         case "ab_swallow": {
           g.descentEnded = true; g.pot = 0;
           abSfx.swallow(); vibrate(200); g.fx.shake = 14;
-          setBanner({ ic: "🕳️", t: "התהום בלעה את הקרן", s: `${pname(d.pid)} נפל עם ${fmt(d.pot)}`, cls: "long" });
+          setBanner({ ic: "🕳️", t: t("abyss.pot_swallowed"), s: t("abyss.x_fell_with", { name: pname(d.pid), amt: fmt(d.pot) }), cls: "long" });
           break;
         }
         case "ab_results": {
@@ -296,7 +299,7 @@ export default function AbyssView({ room, me, conn, hub }: GameViewProps) {
         }
         case "ab_draft": setPhaseBoth("draft"); setBanner(null); setDraft({ cards: d.cards, until: performance.now() + d.ms }); break;
         case "ab_draftopen": break;
-        case "ab_took": if (d.pid !== me) addFeed(`${d.card.ic} ${pname(d.pid)} בחר ${d.card.t}`); break;
+        case "ab_took": if (d.pid !== me) addFeed(t("abyss.feed.picked", { ic: d.card.ic, name: pname(d.pid), card: cn(d.card.id) })); break;
         case "ab_perks": if (d.pid === me) g.mods = abPerkMods(d.perks); break;
         case "ab_sync": {
           applyDescent(d);
@@ -317,7 +320,7 @@ export default function AbyssView({ room, me, conn, hub }: GameViewProps) {
           setHud((h) => ({ ...h, crystals: g.sim.crystals, shield: g.sim.shield, pot: d.pot, k: d.k, mult: abMult(d.k) }));
           break;
         }
-        case "ab_left": g.others.delete(d.pid); addFeed(`🚪 ${pname(d.pid)} יצא`); break;
+        case "ab_left": g.others.delete(d.pid); addFeed(t("abyss.feed.left", { name: pname(d.pid) })); break;
       }
     });
   }, [hub, me, conn]);
@@ -407,7 +410,7 @@ export default function AbyssView({ room, me, conn, hub }: GameViewProps) {
       abSfx.caught(); vibrate(400); abWhoosh(false);
       g.pstate.set(me, { state: "caught", k: g.k, amt: 0 });
       track("ab_caught", { k: g.k });
-      setToast(`💀 נתפסת! ${fmt(s.crystals)} גבישים הלכו לקרן`);
+      setToast(t("abyss.you_caught", { amt: fmt(s.crystals) }));
       s.crystals = 0;
       setTimeout(() => enterSpectator("caught"), 1200);
     }
@@ -466,14 +469,14 @@ export default function AbyssView({ room, me, conn, hub }: GameViewProps) {
                 burst(g.fx.parts, sx(v, cr.x), v.py, gem ? GOLD : CYAN, gem ? 14 : 7, 160, 2.5);
                 g.fx.pops.push({ x: sx(v, cr.x), y: v.py - 14, t: `+${Math.round(cr.v * g.mods.valueMul * (gem ? g.mods.gemMul : 1))}`, col: gem ? GOLD : CYAN, l: 0.8, sz: gem ? 18 : 14 });
               }
-              if (out.shieldTaken) { conn.sendGame({ a: "ab_took", th: out.shieldTaken.id }); abSfx.shieldTaken(); g.fx.flash = 0.5; g.fx.flashCol = CYAN; setToast(`🛡️ מגן מ${pname(out.shieldTaken.by)}!`); }
-              if (out.burstTaken) { conn.sendGame({ a: "ab_took", th: out.burstTaken.id }); setToast(`💎 גבישים מ${pname(out.burstTaken.by)}!`); }
+              if (out.shieldTaken) { conn.sendGame({ a: "ab_took", th: out.shieldTaken.id }); abSfx.shieldTaken(); g.fx.flash = 0.5; g.fx.flashCol = CYAN; setToast(t("abyss.shield_from", { name: pname(out.shieldTaken.by) })); }
+              if (out.burstTaken) { conn.sendGame({ a: "ab_took", th: out.burstTaken.id }); setToast(t("abyss.crystals_from", { name: pname(out.burstTaken.by) })); }
               // 🧤 כפפת אבן — המלכודת נתפסה ביד והפכה לגבישים
               if (out.trapCaught) {
                 conn.sendGame({ a: "ab_took", th: out.trapCaught.id });
                 abSfx.shieldPop(); vibrate(50); g.fx.flash = 0.5; g.fx.flashCol = GOLD; g.fx.stop = 0.06;
                 burst(g.fx.parts, sx(v, s.x), v.py, GOLD, 14, 200, 3);
-                setToast(`🧤 תפסת את הסלע של ${pname(out.trapCaught.by)} — ‎+15!`);
+                setToast(t("abyss.trap_caught", { name: pname(out.trapCaught.by) }));
               }
               // 👁️ עין הנץ — כמעט-פגיעה שווה גבישים
               if (out.nearBonus) {
@@ -485,7 +488,7 @@ export default function AbyssView({ room, me, conn, hub }: GameViewProps) {
                   conn.sendGame({ a: "ab_shielded", o: out.hit.o?.id, th: out.hit.th?.id });
                   abSfx.shieldPop(); vibrate(60); g.fx.flash = 0.7; g.fx.flashCol = "#fff"; g.fx.shake = 10; g.fx.stop = 0.08;
                   burst(g.fx.parts, sx(v, s.x), v.py, CYAN, 16, 220, 3);
-                  setToast("🛡️ המגן ספג!");
+                  setToast(t("abyss.shield_absorbed"));
                 } else caughtMe(out.hit.o?.id, out.hit.th?.id);
               } else if (out.nearMiss && ts - g.fx.near > 350) {
                 g.fx.near = ts; abSfx.nearMiss(); g.fx.stop = Math.max(g.fx.stop, 0.05);
@@ -528,7 +531,7 @@ export default function AbyssView({ room, me, conn, hub }: GameViewProps) {
         // מדפים בטווח
         for (let kk = Math.max(0, T.k - 1); kk <= T.k + 1; kk++) {
           const ld = abLedgeDepth(cfg, kk);
-          if (ld > top - 30 && ld < bottom + 30) drawLedge(c, v, depth, ld, kf, kk + 1 >= cfg.maxLedges ? "הקרקעית" : `מדף ${kk + 1} · ×${abMult(kk)}`, kk + 1 >= cfg.maxLedges);
+          if (ld > top - 30 && ld < bottom + 30) drawLedge(c, v, depth, ld, kf, kk + 1 >= cfg.maxLedges ? t("abyss.bottom") : t("abyss.ledge_mult", { k: kk + 1, m: abMult(kk) }), kk + 1 >= cfg.maxLedges);
         }
         // מכשולים וגבישים
         const time = ts / 1000;
@@ -587,7 +590,7 @@ export default function AbyssView({ room, me, conn, hub }: GameViewProps) {
         // חסימת מבט לצופה בלי מטרה
         if (g.meState !== "falling" && !viewer && g.phase === "fall") {
           c.fillStyle = "rgba(0,0,0,.35)"; c.fillRect(0, 0, W, H);
-          c.font = "700 16px Assistant, sans-serif"; c.fillStyle = PAPER; c.textAlign = "center"; c.direction = "rtl"; c.fillText("אין כבר מי שנופל…", W / 2, H / 2);
+          c.font = "700 16px Assistant, sans-serif"; c.fillStyle = PAPER; c.textAlign = "center"; c.direction = isRtlLang() ? "rtl" : "ltr"; c.fillText(t("abyss.nobody_falling"), W / 2, H / 2);
         }
         if (frames % 6 === 0) {
           window.__abDbg = { phase: g.phase, me: g.meState, k: T.k, depth: Math.round(depth), x: Math.round(s.x * 10) / 10, crystals: s.crystals, shield: s.shield, alive: s.alive, fallers: [...g.others.keys()], pot: g.pot, target: g.spec.target, frames, W, H };
@@ -601,7 +604,7 @@ export default function AbyssView({ room, me, conn, hub }: GameViewProps) {
   }, [me, conn]);
 
   /* ---- DOM ---- */
-  const potChip = `🕳️ קרן ${fmt(hud.pot)} · מדף ${hud.k + 1} · ×${hud.mult}`;
+  const potChip = t("abyss.pot_chip", { amt: fmt(hud.pot), k: hud.k + 1, m: hud.mult });
   const isSpec = meState !== "falling";
   const showVote = phase === "ledge" && !isSpec && ledge;
   const cardBoard = results;
@@ -623,7 +626,7 @@ export default function AbyssView({ room, me, conn, hub }: GameViewProps) {
             <div className="ab-mine">
               <b>💠 {fmt(hud.crystals)}</b>
               {hud.shield > 0 && <span>🛡️{hud.shield > 1 ? "×2" : ""}</span>}
-              <small>סה"כ {fmt(hud.total)}</small>
+              <small>{t("abyss.total", { total: fmt(hud.total) })}</small>
             </div>
           )}
           {spec.fallers.length > 0 && !isSpec && (
@@ -642,27 +645,27 @@ export default function AbyssView({ room, me, conn, hub }: GameViewProps) {
         <div className={"ab-vote" + (ledge.locked ? " locked" : "")}>
           <div className="ab-votehead">
             <div className="ring"><VoteRing until={ledge.voteUntil} conn={conn} /></div>
-            <div className="txt">{ledge.potSeg ? "מדף הקרן — שרדת!" : ledge.locked ? "נחתם…" : "עוצרים או ממשיכים?"}</div>
-            <div className="sub">{ledge.n}/{ledge.of} הצביעו</div>
+            <div className="txt">{ledge.potSeg ? t("abyss.pot_ledge_survived") : ledge.locked ? t("abyss.sealed") : t("abyss.stop_or_go")}</div>
+            <div className="sub">{t("abyss.voted_n", { n: ledge.n, of: ledge.of })}</div>
           </div>
           <div className="ab-slabs">
             <button className={"ab-slab stop" + (ledge.myVote === "stop" ? " sel" : "")} onClick={() => vote("stop")} disabled={ledge.locked}>
-              <span className="ic">⬆️</span><b>עוצר</b><small>לוקח ×{ledge.mult} = {fmt(hud.crystals * ledge.mult)}</small>
+              <span className="ic">⬆️</span><b>{t("abyss.stop")}</b><small>{t("abyss.take_mult", { m: ledge.mult, amt: fmt(hud.crystals * ledge.mult) })}</small>
             </button>
             <button className={"ab-slab go" + (ledge.myVote === "go" ? " sel" : "")} onClick={() => vote("go")} disabled={ledge.locked}>
-              <span className="ic">⬇️</span><b>ממשיך</b><small>במדף הבא ×{ledge.nextMult}</small>
+              <span className="ic">⬇️</span><b>{t("abyss.go")}</b><small>{t("abyss.next_mult", { m: ledge.nextMult })}</small>
             </button>
           </div>
         </div>
       )}
       {phase === "ledge" && isSpec && ledge && (
-        <div className="ab-specledge">🪨 המדף! {ledge.n}/{ledge.of} הצביעו…</div>
+        <div className="ab-specledge">{t("abyss.spec_ledge", { n: ledge.n, of: ledge.of })}</div>
       )}
 
       {/* חשיפה */}
       {reveal && phase === "reveal" && (
         <div className="ab-reveal">
-          <div className="ab-revhead">{reveal.next === "pot" ? "🕳️ נשאר אחד" : reveal.next === "end" ? "הצניחה נגמרה" : `מדף ${reveal.k + 1}`}</div>
+          <div className="ab-revhead">{reveal.next === "pot" ? t("abyss.one_left") : reveal.next === "end" ? t("abyss.descent_over") : t("abyss.ledge_n", { k: reveal.k + 1 })}</div>
           <div className="ab-grid">
             {orderPlayers.map((p, i) => {
               const v = reveal.votes[p.id];
@@ -676,7 +679,7 @@ export default function AbyssView({ room, me, conn, hub }: GameViewProps) {
                   <div className={"face back " + kind}>
                     <span className="who">{p.emoji} {p.name}</span>
                     <span className="e">{kind === "stop" ? "⬆️" : kind === "go" ? "⬇️" : kind === "pot" ? "🏆" : "💀"}</span>
-                    <span className="n">{kind === "stop" ? (fresh ? `+${fmt(amt)}` : `עצר במדף ${(ps?.k ?? 0) + 1}`) : kind === "go" ? "ממשיך" : kind === "pot" ? `+${fmt(reveal.potWon?.amount ?? amt)}` : "נתפס"}</span>
+                    <span className="n">{kind === "stop" ? (fresh ? `+${fmt(amt)}` : t("abyss.stopped_at", { k: (ps?.k ?? 0) + 1 })) : kind === "go" ? t("abyss.go") : kind === "pot" ? `+${fmt(reveal.potWon?.amount ?? amt)}` : t("abyss.caught")}</span>
                   </div>
                 </div>
               );
@@ -689,21 +692,21 @@ export default function AbyssView({ room, me, conn, hub }: GameViewProps) {
       {/* צופה */}
       {isSpec && (phase === "fall" || phase === "ledge" || phase === "reveal") && (
         <div className="ab-targets">
-          <span className="lbl">🎥 צופה ב:</span>
+          <span className="lbl">{t("abyss.watching")}</span>
           {spec.fallers.map((f) => (
             <button key={f.pid} className={"tchip" + (spec.target === f.pid ? " on" : "")} style={{ "--pc": pcol(f.pid) } as CSSProperties} onClick={() => switchTarget(f.pid)}>
               {pemoji(f.pid)} {pname(f.pid)} <b>{fmt(f.c)}</b>{f.s > 0 && "🛡️"}
             </button>
           ))}
-          {spec.fallers.length === 0 && <span className="lbl">אף אחד לא נופל עכשיו</span>}
+          {spec.fallers.length === 0 && <span className="lbl">{t("abyss.nobody_now")}</span>}
         </div>
       )}
       {isSpec && (phase === "fall" || phase === "ledge" || phase === "reveal") && (
         <div className="ab-spec">
           <div className="status">{spec.status}</div>
           <div className="throws" ref={cdRef}>
-            <button className="ab-throw trap" onClick={() => doThrow("trap")} disabled={!spec.target || phase !== "fall"}><span>🪨</span>מלכודת</button>
-            <button className="ab-throw help" onClick={() => doThrow("help")} disabled={!spec.target || phase !== "fall"}><span>💎</span>עזרה</button>
+            <button className="ab-throw trap" onClick={() => doThrow("trap")} disabled={!spec.target || phase !== "fall"}><span>🪨</span>{t("abyss.trap")}</button>
+            <button className="ab-throw help" onClick={() => doThrow("help")} disabled={!spec.target || phase !== "fall"}><span>💎</span>{t("abyss.help")}</button>
           </div>
         </div>
       )}
@@ -711,23 +714,23 @@ export default function AbyssView({ room, me, conn, hub }: GameViewProps) {
       {/* תוצאות צניחה */}
       {phase === "results" && cardBoard && (
         <div className="ab-results">
-          <h2>🕳️ {cardBoard.of > 1 ? `סיכום צניחה ${cardBoard.d + 1}/${cardBoard.of}` : "סיכום הצניחה"}</h2>
-          {cardBoard.potLost > 0 && <div className="lost">התהום בלעה {fmt(cardBoard.potLost)}</div>}
+          <h2>🕳️ {cardBoard.of > 1 ? t("abyss.summary_n", { n: cardBoard.d + 1, of: cardBoard.of }) : t("abyss.summary")}</h2>
+          {cardBoard.potLost > 0 && <div className="lost">{t("abyss.swallowed_amt", { amt: fmt(cardBoard.potLost) })}</div>}
           <div className="rows">
             {[...cardBoard.rows].sort((a, b) => (cardBoard.totals[b.pid] ?? 0) - (cardBoard.totals[a.pid] ?? 0)).map((r) => (
               <div key={r.pid} className={"row" + (r.pid === me ? " me" : "")} style={{ "--pc": pcol(r.pid) } as CSSProperties}>
                 <span className="e">{pemoji(r.pid)}</span>
                 <span className="n">{pname(r.pid)}</span>
-                <span className="w">{r.pot > 0 ? "🏆" : r.caught ? "💀" : r.at >= 0 ? `⬆️ מדף ${r.at + 1}` : "—"}</span>
+                <span className="w">{r.pot > 0 ? "🏆" : r.caught ? "💀" : r.at >= 0 ? `⬆️ ${t("abyss.ledge_n", { k: r.at + 1 })}` : "—"}</span>
                 <span className="b">+{fmt(r.banked)}</span>
                 <b className="t">{fmt(cardBoard.totals[r.pid] ?? 0)}</b>
               </div>
             ))}
           </div>
-          <button className="ab-share" disabled={!cardReady} onClick={async () => { if (!card.current) return; abAudioInit(); const r = await shareShaftCard(card.current.data, card.current.blob); if (r !== "failed") track("ab_shaft_shared"); setToast(r === "shared" ? "📸 מפת הפיר נשלחה" : r === "downloaded" ? "📸 מפת הפיר נשמרה" : ""); }}>
-            📸 שתפו את מפת הפיר
+          <button className="ab-share" disabled={!cardReady} onClick={async () => { if (!card.current) return; abAudioInit(); const r = await shareShaftCard(card.current.data, card.current.blob); if (r !== "failed") track("ab_shaft_shared"); setToast(r === "shared" ? t("abyss.map_sent") : r === "downloaded" ? t("abyss.map_saved") : ""); }}>
+            {t("abyss.share_map")}
           </button>
-          {cardBoard.d + 1 < cardBoard.of && <div className="next">הדראפט עוד רגע…</div>}
+          {cardBoard.d + 1 < cardBoard.of && <div className="next">{t("abyss.draft_soon")}</div>}
         </div>
       )}
 
@@ -735,7 +738,7 @@ export default function AbyssView({ room, me, conn, hub }: GameViewProps) {
       {phase === "draft" && draft && (
         <div className="ab-draft">
           <div className="card">
-            <h2>🎁 בוחרים קלף לצניחה הבאה</h2>
+            <h2>{t("abyss.pick_card")}</h2>
             <DraftBar until={draft.until} />
             {draft.cards.map((cd) => (
               <button key={cd.id} className={"ab-pick" + (draft.picked === cd.id ? " sel" : "")} disabled={!!draft.picked} onClick={() => { abAudioInit(); abSfx.pick(); conn.sendGame({ a: "ab_pick", card: cd.id }); setDraft((d) => (d ? { ...d, picked: cd.id } : d)); }}>
@@ -745,10 +748,10 @@ export default function AbyssView({ room, me, conn, hub }: GameViewProps) {
                     onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; (e.target as HTMLImageElement).parentElement!.classList.add("noart"); }} />
                   <span className="emo">{cd.ic}</span>
                 </span>
-                <span className="tx"><b>{cd.t}</b><span>{cd.d}</span></span>
+                <span className="tx"><b>{cn(cd.id)}</b><span>{cdesc(cd.id)}</span></span>
               </button>
             ))}
-            {draft.picked && <div className="wait">מחכים לשאר…</div>}
+            {draft.picked && <div className="wait">{t("abyss.wait_others")}</div>}
           </div>
         </div>
       )}
@@ -803,8 +806,8 @@ function PotLine({ reveal, fmt }: { reveal: RevealMsg; fmt: (n: number) => strin
     const start = setTimeout(() => { raf = requestAnimationFrame(step); }, 900);
     return () => { clearTimeout(start); cancelAnimationFrame(raf); };
   }, [reveal]);
-  if (reveal.potWon) return <div className="ab-potline win">🏆 {fmt(reveal.potWon.amount)} — הקרן נלקחה</div>;
-  if (reveal.swallowed) return <div className="ab-potline lost">🕳️ התהום בלעה {fmt(val)}</div>;
-  return <div className="ab-potline">🕳️ הקרן: <b>{fmt(val)}</b>{reveal.next === "pot" && " — למי שישרוד מדף אחד נוסף"}</div>;
+  if (reveal.potWon) return <div className="ab-potline win">{t("abyss.pot_taken", { amt: fmt(reveal.potWon.amount) })}</div>;
+  if (reveal.swallowed) return <div className="ab-potline lost">🕳️ {t("abyss.swallowed_amt", { amt: fmt(val) })}</div>;
+  return <div className="ab-potline">{t("abyss.the_pot")} <b>{fmt(val)}</b>{reveal.next === "pot" && t("abyss.for_survivor")}</div>;
 }
 

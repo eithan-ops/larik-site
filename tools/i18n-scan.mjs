@@ -56,6 +56,17 @@ const MIGRATED = [
   "client/src/games/pods.tsx",
   "server/src/games/spods.ts",
   "server/src/games/pods.ts",
+  // שלב H — המתחזה למתקדמים, התהום (+מפת הפיר), מי הכי, החופרים
+  "client/src/games/undercover.tsx",
+  "server/src/games/undercover.ts",
+  "client/src/games/abyss.tsx",
+  "client/src/lib/shaftcard.ts",
+  "shared/abyss.ts",
+  "server/src/games/abyss.ts",
+  "client/src/games/whomost.tsx",
+  "server/src/games/whomost.ts",
+  "client/src/games/hofrim.tsx",
+  "server/src/games/hofrim.ts",
 ];
 
 function walk(dir, out = []) {
