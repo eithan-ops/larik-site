@@ -12,7 +12,8 @@ import { GameHub } from "../lib/gamehub";
 import { track } from "../lib/analytics";
 import QRCodeView from "../components/QRCodeView";
 import ShowView from "../games/show";
-import { t, getLang, setLang, showPrefix } from "../lib/i18n";
+import { t, showPrefix } from "../lib/i18n";
+import LangSwitch from "../components/LangSwitch";
 
 type Stage = "name" | "arm" | "in";
 
@@ -53,7 +54,7 @@ export default function ShowRoom({ code }: { code: string }) {
       onStatus: () => { /* צ'יפ סטטוס לא קריטי במופע */ },
     });
     connRef.current = conn;
-    conn.connect(name.trim() || (getLang() === "he" ? "אורח" : "guest"), emoji);
+    conn.connect(name.trim() || t("guest"), emoji);
     conn.send({ t: "arm" });
     track("room_joined");
     setStage("in");
@@ -89,10 +90,7 @@ export default function ShowRoom({ code }: { code: string }) {
   if (stage === "name") {
     return (
       <main style={{ justifyContent: "center" }}>
-        <button className="chip sc-chipbtn" style={{ position: "fixed", top: 14, insetInlineEnd: 14, zIndex: 5 }}
-          onClick={() => setLang(getLang() === "he" ? "en" : "he")}>
-          🌐 {getLang() === "he" ? "English" : "עברית"}
-        </button>
+        <LangSwitch />
         <div className="logo-big" style={{ fontSize: 30, marginBottom: 14 }}>LARIK SHOW</div>
         <form className="card popin" style={{ padding: 18 }}
           onSubmit={(e) => { e.preventDefault(); armAndJoin(); }}>

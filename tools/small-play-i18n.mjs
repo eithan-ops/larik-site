@@ -92,7 +92,14 @@ async function main() {
   const reached = /🌙|🏅/.test(cer);
   await snap(host, reached ? "ceremony" : "end");
   console.log(reached ? "  ✓ ceremony reached" : "  · time's up (no ceremony) — fine for host-driven games");
-  if (reached) { check("ceremony localized: title + award", !HEB.test(cer) && !/awards\.|\.end\./.test(cer), bad(cer)); console.log("--- ceremony ---\n" + cer.split("\n").filter(Boolean).slice(0, 8).join(" | ")); }
+  if (reached) {
+    check("ceremony localized: title + award", !HEB.test(cer) && !/awards\.|\.end\./.test(cer), bad(cer)); console.log("--- ceremony ---\n" + cer.split("\n").filter(Boolean).slice(0, 8).join(" | "));
+    // כרטיס השחקן (endcard) והלוח (sharecard) מצוירים ב-canvas עם t() — לוחצים 📸 ובודקים שאין שגיאות
+    const dl = host.waitForEvent("download", { timeout: 6000 }).catch(() => null);
+    await host.locator("button", { hasText: /📸/ }).first().click({ timeout: 2000 }).catch(() => {});
+    const d = await dl;
+    if (d) { await d.saveAs(`${OUT}/endcard.png`); console.log("  · share card saved: " + OUT + "/endcard.png"); } else console.log("  · no share-card download captured");
+  }
   check("no console errors", errors.length === 0, errors.slice(0, 3).join(" ; "));
   await browser.close();
   console.log(failed ? `\n${failed} FAILED` : "\nALL OK");

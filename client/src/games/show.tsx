@@ -185,14 +185,15 @@ function shapeNodes(s: ShowShape): ReactNode {
   }
 }
 
+/** label = מפתח תרגום (נפתר ברינדור — המילון נטען אחרי ה-import) */
 const SHAPES: { s: ShowShape; label: string }[] = [
-  { s: "full", label: t("shFull") },
-  { s: "heart", label: t("shHeart") },
-  { s: "circle", label: t("shCircle") },
-  { s: "stripes", label: t("shStripes") },
-  { s: "star", label: t("shStar") },
-  { s: "bolt", label: t("shBolt") },
-  { s: "dancers", label: t("shDancers") },
+  { s: "full", label: "shFull" },
+  { s: "heart", label: "shHeart" },
+  { s: "circle", label: "shCircle" },
+  { s: "stripes", label: "shStripes" },
+  { s: "star", label: "shStar" },
+  { s: "bolt", label: "shBolt" },
+  { s: "dancers", label: "shDancers" },
 ];
 
 /** אייקון צורה קטן לצ'יפ בקונסולה */
@@ -205,15 +206,15 @@ function ShapeIcon({ s }: { s: ShowShape }) {
    טקסט-על-הקהל ו"יציעים" הוסרו בכוונה: הם דורשים מיקום/מושב מסומן שעוד לא קיים.
    ספירה-לאחור היא רגע חד-פעמי → עברה לגיליון "עוד". ---------- */
 const PADS: { fx: ShowFx; ic: string; label: string }[] = [
-  { fx: "beat", ic: "🎵", label: t("fxBeat") },
-  { fx: "tribal", ic: "🥁", label: t("fxTribal") },
-  { fx: "pulse", ic: "💓", label: t("fxPulse") },
-  { fx: "candles", ic: "🕯️", label: t("fxCandles") },
-  { fx: "wave", ic: "🌊", label: t("fxWave") },
-  { fx: "sparkle", ic: "✨", label: t("fxSparkle") },
-  { fx: "paparazzi", ic: "📸", label: t("fxPaparazzi") },
-  { fx: "spot", ic: "🎯", label: t("fxSpot") },
-  { fx: "ember", ic: "🌅", label: t("fxEmber") },
+  { fx: "beat", ic: "🎵", label: "fxBeat" },
+  { fx: "tribal", ic: "🥁", label: "fxTribal" },
+  { fx: "pulse", ic: "💓", label: "fxPulse" },
+  { fx: "candles", ic: "🕯️", label: "fxCandles" },
+  { fx: "wave", ic: "🌊", label: "fxWave" },
+  { fx: "sparkle", ic: "✨", label: "fxSparkle" },
+  { fx: "paparazzi", ic: "📸", label: "fxPaparazzi" },
+  { fx: "spot", ic: "🎯", label: "fxSpot" },
+  { fx: "ember", ic: "🌅", label: "fxEmber" },
 ];
 const SWATCHES = ["#8b5cf6", "#ec4899", "#ffc93c", "#34e89e", "#5c8aff", "#ffffff", "#ff5c5c"];
 
@@ -567,7 +568,7 @@ export default function ShowView({ room, me, conn, hub }: GameViewProps) {
               {PADS.map((p) => (
                 <button key={p.fx} className={"sc-pad" + (activeFx === p.fx ? " on" : "") + (p.fx === "candles" ? " safe" : "")}
                   onPointerDown={() => (p.fx === "spot" ? fireSpot() : fire(p.fx))}>
-                  <span className="ic">{p.ic}</span>{p.label}
+                  <span className="ic">{p.ic}</span>{t(p.label)}
                 </button>
               ))}
             </div>
@@ -576,9 +577,9 @@ export default function ShowView({ room, me, conn, hub }: GameViewProps) {
             <div className="sc-shapes">
               {SHAPES.map((sh) => (
                 <button key={sh.s} className={"sc-shape" + (shape === sh.s ? " on" : "")}
-                  onPointerDown={() => pickShape(sh.s)} aria-label={sh.label}>
+                  onPointerDown={() => pickShape(sh.s)} aria-label={t(sh.label)}>
                   <ShapeIcon s={sh.s} />
-                  <span>{sh.label}</span>
+                  <span>{t(sh.label)}</span>
                 </button>
               ))}
             </div>
@@ -705,7 +706,7 @@ export default function ShowView({ room, me, conn, hub }: GameViewProps) {
       )}
       {!hint && (venueXY && ticketSeat ? (
         <span style={{ position: "fixed", bottom: 10, right: "50%", transform: "translateX(50%)", fontSize: 10, color: "#ffffff55", zIndex: 5 }}>
-          {venue!.sections[ticketSeat.g - 1]?.name ?? ""} · שורה {ticketSeat.r} · מושב {ticketSeat.c}
+          {t("seatLine", { section: venue!.sections[ticketSeat.g - 1]?.name ?? "", r: ticketSeat.r, c: ticketSeat.c })}
         </span>
       ) : pos ? (
         <span style={{ position: "fixed", bottom: 10, right: "50%", transform: "translateX(50%)", fontSize: 10, color: "#ffffff55", zIndex: 5 }}>

@@ -12,6 +12,8 @@ import { armPhone } from "../lib/sensors";
 import { GameHub } from "../lib/gamehub";
 import ShowView from "../games/show";
 import { VENUES } from "../venues";
+import { t } from "../lib/i18n";
+import { useNs } from "../lib/useNs";
 
 type Stage = "gate" | "connecting" | "waiting" | "in";
 
@@ -22,6 +24,7 @@ export default function ShowGate({ code }: { code: string }) {
   const seatG = Number(params.get("g") || "1"); // גוש (1-based) — לאולמות ממופים
   const hasSeat = Number.isFinite(seatR) && Number.isFinite(seatC) && params.has("r");
   const isHost = params.get("host") === "1";
+  const nsReady = useNs("show"); // המילון של המופע (show.json) — נטען לפי השפה
 
   const [stage, setStage] = useState<Stage>("gate");
   const [venueId, setVenueId] = useState("");
@@ -50,7 +53,7 @@ export default function ShowGate({ code }: { code: string }) {
 
   function connect() {
     connRef.current?.close();
-    const name = isHost ? "מפעיל" : hasSeat ? `מושב ${seatR}·${seatC}` : "קהל";
+    const name = isHost ? t("gate.host") : hasSeat ? t("gate.seatName", { r: seatR, c: seatC }) : t("gate.crowd");
     const conn = new Connection(defaultServerUrl(), code, {
       onWelcome: (pid, r) => { setMe(pid); setRoom(r); setStage("in"); },
       onRoom: (r) => setRoom(r),
@@ -73,27 +76,28 @@ export default function ShowGate({ code }: { code: string }) {
   useEffect(() => { if (phase !== "game") hub.reset(); }, [phase, hub]);
 
   /* ---------- שער ההוראות ---------- */
+  if (!nsReady) return null;
   if (stage === "gate") {
     return (
       <main style={{ justifyContent: "center" }}>
         <div className="hero">
           <div className="hero-emojis" aria-hidden><span>🕯️</span><span>🎤</span><span>✨</span></div>
           <div className="logo-big" style={{ fontSize: 40 }}>LARIK</div>
-          <h1 style={{ marginTop: 10, fontSize: 22 }}>{isHost ? "קונסולת המופע 🎛️" : "הטלפון שלך הוא חלק מהמופע! 🕯️"}</h1>
+          <h1 style={{ marginTop: 10, fontSize: 22 }}>{isHost ? t("gate.titleHost") : t("gate.titleGuest")}</h1>
         </div>
         {!isHost && (
           <div className="card" style={{ padding: 16 }}>
             <p style={{ fontSize: 15, lineHeight: 1.8 }}>
-              <b>✅ אין מה להוריד ואין הרשמה.</b><br />
-              📲 השאירו את הדף הזה פתוח (אפשר לחזור אליו מההיסטוריה או לשמור למסך הבית).<br />
-              🎫 {hasSeat ? <>המערכת יודעת שאתם ב<b>שורה {seatR}, מושב {seatC}</b> — האור שלכם הוא פיקסל במסך ענק שכל הקהל יוצר יחד.</> : "האור שלכם יהיה חלק ממסך ענק שכל הקהל יוצר יחד."}<br />
-              🔆 כשהמופע יתחיל: בהירות למקסימום, טלפון גבוה באוויר!
+              <b>{t("gate.p1")}</b><br />
+              {t("gate.p2")}<br />
+              {hasSeat ? t("gate.p3seat", { r: seatR, c: seatC }) : t("gate.p3")}<br />
+              {t("gate.p4")}
             </p>
           </div>
         )}
-        <button className="btn" onClick={begin}>{isHost ? "🎛️ פתח את המופע" : "✨ אני בפנים!"}</button>
+        <button className="btn" onClick={begin}>{isHost ? t("gate.openHost") : t("gate.imIn")}</button>
         <p className="sub" style={{ textAlign: "center", marginTop: 14, fontSize: 12 }}>
-          אירוע: <b style={{ color: "var(--gold)" }}>{code}</b>
+          <b style={{ color: "var(--gold)" }}>{t("gate.event", { code })}</b>
         </p>
       </main>
     );
@@ -105,11 +109,11 @@ export default function ShowGate({ code }: { code: string }) {
       <main style={{ justifyContent: "center", textAlign: "center" }}>
         <div className="pulse" style={{ fontSize: 64 }}>🕯️</div>
         <h1 style={{ margin: "14px 0 6px", fontSize: 20 }}>
-          {stage === "connecting" ? "מתחברים..." : "המופע עוד לא התחיל"}
+          {stage === "connecting" ? t("gate.connecting") : t("gate.notStarted")}
         </h1>
         <p className="sub">
-          הכול מוכן! השאירו את הדף פתוח —<br />ברגע שהמופע יעלה, הטלפון יידלק לבד. ✨
-          {tries > 0 && <><br /><span style={{ fontSize: 11 }}>(בודקים שוב כל כמה שניות)</span></>}
+          {t("gate.ready")}<br />{t("gate.ready2")}
+          {tries > 0 && <><br /><span style={{ fontSize: 11 }}>{t("gate.retrying")}</span></>}
         </p>
       </main>
     );
@@ -129,18 +133,18 @@ export default function ShowGate({ code }: { code: string }) {
     return (
       <main style={{ justifyContent: "center", textAlign: "center" }}>
         <div style={{ fontSize: 60 }}>🎛️</div>
-        <h1 style={{ margin: "12px 0 4px" }}>אירוע {code}</h1>
-        <p className="sub" style={{ marginBottom: 16 }}>{Math.max(0, connected - 1)} טלפונים ממתינים ✨</p>
-        <div className="card" style={{ padding: 12, textAlign: "right", maxWidth: 340, margin: "0 auto 12px" }}>
-          <div className="sub" style={{ marginBottom: 6 }}>🏟️ אולם (למיקום מושבים אמיתי):</div>
-          <select className="input" style={{ textAlign: "right" }} value={venueId} onChange={(e) => setVenueId(e.target.value)}>
-            <option value="">רשת אוטומטית (בלי אולם)</option>
+        <h1 style={{ margin: "12px 0 4px" }}>{t("gate.eventN", { code })}</h1>
+        <p className="sub" style={{ marginBottom: 16 }}>{t("gate.waitingPhones", { n: Math.max(0, connected - 1) })}</p>
+        <div className="card" style={{ padding: 12, textAlign: "start", maxWidth: 340, margin: "0 auto 12px" }}>
+          <div className="sub" style={{ marginBottom: 6 }}>{t("gate.venue")}</div>
+          <select className="input" style={{ textAlign: "start" }} value={venueId} onChange={(e) => setVenueId(e.target.value)}>
+            <option value="">{t("gate.autoGrid")}</option>
             {VENUES.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
           </select>
         </div>
         <button className="btn gold" style={{ maxWidth: 320, margin: "0 auto" }}
           onClick={() => { conn.send({ t: "select_game", gameId: "show", config: { venue: venueId || undefined } }); setTimeout(() => conn.send({ t: "start_game" }), 150); }}>
-          🚀 הדלק את המופע!
+          {t("gate.light")}
         </button>
       </main>
     );
@@ -150,8 +154,8 @@ export default function ShowGate({ code }: { code: string }) {
   return (
     <main style={{ justifyContent: "center", textAlign: "center" }}>
       <div className="pulse" style={{ fontSize: 64 }}>🕯️</div>
-      <h1 style={{ margin: "14px 0 6px", fontSize: 20 }}>אתם בפנים!</h1>
-      <p className="sub">המופע יתחיל עוד רגע —<br />בהירות למקסימום ותחזיקו גבוה 🔆</p>
+      <h1 style={{ margin: "14px 0 6px", fontSize: 20 }}>{t("gate.youreIn")}</h1>
+      <p className="sub">{t("gate.startsSoon")}<br />{t("gate.startsSoon2")}</p>
     </main>
   );
 }

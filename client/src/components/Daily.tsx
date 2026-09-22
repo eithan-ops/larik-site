@@ -15,7 +15,7 @@ import { useEffect, useState } from "react";
 import { navigate } from "../App";
 import { Sfx, vibrate } from "../lib/audio";
 import { markSeen } from "../lib/seen";
-import { currentLang } from "../lib/locale";
+import { currentLang, t } from "../lib/locale";
 import { track } from "../lib/analytics";
 import { loadStreak, saveStreak, todayISO, type Streak } from "../lib/daily";
 
@@ -43,7 +43,7 @@ export default function Daily() {
         setQs(b.questions);
         markSeen(b.questions.map((q) => q.id)); // נרשמות מיד — גם מי שנטש לא יקבל אותן שוב
       })
-      .catch(() => setErr("השרת מתעורר... נסו שוב עוד כמה שניות 😴"));
+      .catch(() => setErr(t("daily.err")));
   }, [today]);
 
   function answer(i: number) {
@@ -68,7 +68,7 @@ export default function Daily() {
   }
 
   async function share() {
-    const text = `🧠 הטריוויה היומית של לאריק — ${score}/${qs?.length ?? 10}\nרצף: ${streak.days} ימים\nlarik.ai/daily`;
+    const text = t("daily.share_text", { score, of: qs?.length ?? 10, days: streak.days });
     try {
       if (navigator.share) { await navigator.share({ title: "LARIK", text }); return; }
       await navigator.clipboard.writeText(text);
@@ -76,20 +76,20 @@ export default function Daily() {
   }
 
   if (err) return <main className="fullscreen"><p className="sub">{err}</p></main>;
-  if (!qs) return <main className="fullscreen"><div className="huge">🧠</div><p className="sub">טוען את השאלות של היום…</p></main>;
+  if (!qs) return <main className="fullscreen"><div className="huge">🧠</div><p className="sub">{t("daily.loading")}</p></main>;
 
   /* כבר שיחק היום — לא נותנים לשחק שוב, אחרת אין משמעות לרצף */
   if (alreadyPlayed) {
     return (
       <main className="fullscreen">
         <div className="huge popin">✅</div>
-        <div className="big">כבר שיחקת היום</div>
+        <div className="big">{t("daily.played")}</div>
         <p className="sub" style={{ marginTop: 8 }}>
-          {streak.lastScore}/10 · רצף של {streak.days} ימים 🔥
+          {streak.lastScore}/10 · {t("daily.streak", { days: streak.days })}
         </p>
-        <p className="sub" style={{ marginTop: 6, fontSize: 13 }}>השאלות הבאות מחכות מחר</p>
+        <p className="sub" style={{ marginTop: 6, fontSize: 13 }}>{t("daily.tomorrow")}</p>
         <button className="btn gold" style={{ marginTop: 16, maxWidth: 320 }} onClick={() => navigate("/")}>
-          🎉 לפתוח חדר עם החבורה
+          {t("daily.open_room")}
         </button>
       </main>
     );
@@ -100,12 +100,12 @@ export default function Daily() {
       <main className="fullscreen">
         <div className="huge popin">{score >= 8 ? "🏆" : score >= 5 ? "👏" : "🙈"}</div>
         <div className="big">{score}/{qs.length}</div>
-        <p className="sub" style={{ marginTop: 8 }}>רצף של {streak.days} ימים 🔥</p>
+        <p className="sub" style={{ marginTop: 8 }}>{t("daily.streak", { days: streak.days })}</p>
         <button className="btn social" style={{ marginTop: 14, maxWidth: 320 }} onClick={share}>
-          📤 שתפו את התוצאה
+          {t("daily.share")}
         </button>
         <button className="btn gold" style={{ marginTop: 10, maxWidth: 320 }} onClick={() => navigate("/")}>
-          🎉 עכשיו עם החבורה
+          {t("daily.now_with_crew")}
         </button>
       </main>
     );
@@ -115,7 +115,7 @@ export default function Daily() {
   return (
     <main className="fullscreen" style={{ padding: "0 16px" }}>
       <div className="sub" style={{ marginBottom: 4 }}>
-        🧠 היומית · {idx + 1}/{qs.length} · רצף {streak.days} 🔥
+        {t("daily.hud", { i: idx + 1, of: qs.length, days: streak.days })}
       </div>
       <div className="card" style={{ width: "100%", maxWidth: 380 }}>
         <div style={{ fontFamily: "var(--font-display)", fontSize: 21, lineHeight: 1.25, textAlign: "center", padding: "6px 4px 14px" }}>

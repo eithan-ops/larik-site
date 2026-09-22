@@ -11,7 +11,7 @@
  *  2. **מסד שנפל לא מפיל ערב.** כל פעולה כאן היא best-effort:
  *     אם האחסון מת, המשחק ממשיך בדיוק כמו היום, פשוט בלי עונה.
  */
-import type { PlayerFacts, GroupSummary, GroupRecord } from "../../shared/protocol";
+import type { PlayerFacts, GroupSummary, GroupRecord, LText } from "../../shared/protocol";
 import { getStore, type Store } from "./store";
 
 export type { GroupSummary, GroupRecord };
@@ -72,7 +72,7 @@ export class Groups {
     const t = this.now();
     const group: Group = {
       id,
-      name: (name || "החבורה").trim().slice(0, 24),
+      name: (name || "LARIK").trim().slice(0, 24),
       createdAt: t,
       seasonStartedAt: t,
       seasonNo: 1,
@@ -89,7 +89,7 @@ export class Groups {
   private blank(m: { pid: string; name: string; emoji: string }): GroupMember {
     return {
       pid: m.pid,
-      name: (m.name || "שחקן").slice(0, 16),
+      name: (m.name || "🙂").slice(0, 16),
       emoji: m.emoji || "🙂",
       points: 0, evenings: 0, wins: 0, clown: 0,
       lastSeen: this.now(),
@@ -143,19 +143,19 @@ export class Groups {
 
   /** שיאים שנשברים בפועל — כל אחד מהם הוא שורה שאפשר להתגאות בה */
   private updateRecords(group: Group, m: GroupMember, f: PlayerFacts, t: number) {
-    const beat = (k: string, label: string, value: number | undefined, lower = false) => {
+    const beat = (k: string, label: LText, value: number | undefined, lower = false) => {
       if (value === undefined || !Number.isFinite(value)) return;
       const cur = group.records[k];
       const better = !cur || (lower ? value < cur.value : value > cur.value);
       if (better) group.records[k] = { label, pid: m.pid, name: m.name, value, at: t };
     };
-    beat("fastest", "האצבע הכי מהירה", f.bestReactionMs, true);
-    beat("streak", "רצף הניצחונות הארוך", f.bestStreak);
-    beat("brain", "הכי הרבה תשובות נכונות בערב", f.correct);
-    beat("taps", "הכי הרבה פודים בערב", f.taps);
-    beat("peeks", "הכי הרבה הצצות בערב", f.peeks);
-    beat("abLedge", "הכי עמוק בתהום (מדף)", f.abLedge === undefined ? undefined : f.abLedge + 1);
-    beat("abBest", "הבנקאות הגדולה בתהום", f.abBest);
+    beat("fastest", { k: "group.rec.fastest" }, f.bestReactionMs, true);
+    beat("streak", { k: "group.rec.streak" }, f.bestStreak);
+    beat("brain", { k: "group.rec.brain" }, f.correct);
+    beat("taps", { k: "group.rec.taps" }, f.taps);
+    beat("peeks", { k: "group.rec.peeks" }, f.peeks);
+    beat("abLedge", { k: "group.rec.abLedge" }, f.abLedge === undefined ? undefined : f.abLedge + 1);
+    beat("abBest", { k: "group.rec.abBest" }, f.abBest);
   }
 
   /** מייצר את התקציר ללקוח — ממוין, חתוך, ובלי שדות פנימיים */
