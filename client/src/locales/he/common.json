@@ -517,5 +517,12 @@
   "group.rec.abLedge": "הכי עמוק בתהום (מדף)",
   "group.rec.abBest": "הבנקאות הגדולה בתהום",
   "err.group_missing": "לא נמצאה חבורה כזו",
-  "err.store_down": "האחסון לא זמין"
+  "err.store_down": "האחסון לא זמין",
+  "meta.title": "LARIK — משחקי חברה לטלפון, בלי אפליקציה",
+  "meta.app_name": "LARIK — משחקי חברה",
+  "meta.room": "🎉 הצטרפו לחדר {code} — LARIK",
+  "meta.room_desc": "לוחצים ומצטרפים למשחק — בלי אפליקציה, בלי הרשמה. הטלפון הוא השלט.",
+  "meta.daily": "🧠 הטריוויה היומית — LARIK",
+  "meta.daily_desc": "שאלות חדשות כל יום, רצף ימים ותוצאה לשיתוף. בלי אפליקציה, בלי הרשמה.",
+  "meta.daily_short": "היומית"
 }

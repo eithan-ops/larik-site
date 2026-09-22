@@ -84,6 +84,9 @@ export async function initLocale(): Promise<Lang> {
   try { rules = new Intl.PluralRules(lang); } catch { rules = null; }
   document.documentElement.lang = lang;
   document.documentElement.dir = dirOf(lang);
+  // המניפסט (שם האפליקציה בהוספה למסך הבית) בשפה שנבחרה — הדפדפן קורא אותו רק בהתקנה, אז אפשר לעדכן כאן
+  const mf = document.querySelector<HTMLLinkElement>('link[rel="manifest"]');
+  if (mf) mf.href = `${mf.href.split("?")[0]}?l=${lang}`;
   await loadFonts(lang);
   return lang;
 }

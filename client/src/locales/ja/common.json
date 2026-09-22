@@ -517,5 +517,12 @@
   "group.rec.abLedge": "深淵の最深記録（棚）",
   "group.rec.abBest": "深淵の最大バンク",
   "err.group_missing": "そんなクルーは見つからない",
-  "err.store_down": "ストレージが使えない"
+  "err.store_down": "ストレージが使えない",
+  "meta.title": "LARIK — アプリ不要、スマホで遊べるパーティーゲーム",
+  "meta.app_name": "LARIK — パーティーゲーム",
+  "meta.room": "🎉 ルーム {code} に参加 — LARIK",
+  "meta.room_desc": "タップして参加 — アプリなし、登録なし。スマホがコントローラーになる。",
+  "meta.daily": "🧠 デイリークイズ — LARIK",
+  "meta.daily_desc": "毎日新しい問題、続ける連続記録、シェアできるスコア。アプリなし、登録なし。",
+  "meta.daily_short": "デイリー"
 }

@@ -517,5 +517,12 @@
   "group.rec.abLedge": "O mais fundo no Abismo (plataforma)",
   "group.rec.abBest": "Maior depósito no Abismo",
   "err.group_missing": "Essa turma não existe",
-  "err.store_down": "Armazenamento indisponível"
+  "err.store_down": "Armazenamento indisponível",
+  "meta.title": "LARIK — Jogos para festa no celular, sem app",
+  "meta.app_name": "LARIK — Jogos de festa",
+  "meta.room": "🎉 Entre na sala {code} — LARIK",
+  "meta.room_desc": "Toque para entrar no jogo: sem app e sem cadastro. Seu celular é o controle.",
+  "meta.daily": "🧠 Trivia do dia — LARIK",
+  "meta.daily_desc": "Perguntas novas todo dia, uma sequência para manter e um resultado para compartilhar. Sem app, sem cadastro.",
+  "meta.daily_short": "Do dia"
 }

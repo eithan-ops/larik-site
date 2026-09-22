@@ -111,5 +111,9 @@
   "show.gate.light": "🚀 Acender o show!",
   "show.gate.youreIn": "Você está dentro!",
   "show.gate.startsSoon": "O show começa daqui a pouco —",
-  "show.gate.startsSoon2": "brilho no máximo e segure bem alto 🔆"
+  "show.gate.startsSoon2": "brilho no máximo e segure bem alto 🔆",
+  "show.meta.title": "LARIK SHOW — Show de luzes com os celulares da plateia, sem app",
+  "show.meta.desc": "Cada celular da plateia vira um ponto de luz sincronizado: ondas, corações, pulsos no ritmo. Sem app, sem cadastro, sem pulseiras de LED: a plateia escaneia um QR e brilha junto com o DJ.",
+  "show.meta.room": "🕯️ Entre no show {code} — LARIK SHOW",
+  "show.meta.room_desc": "Seu celular vira um ponto de luz no show: escaneie e brilhe. Sem app, sem cadastro."
 }
