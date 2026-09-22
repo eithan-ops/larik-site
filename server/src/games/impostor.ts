@@ -7,16 +7,16 @@
  */
 import type { GameCtx, GameInstance } from "../engine";
 import type { ImpostorClientMsg, GameClientMsg } from "../../../shared/protocol";
-import { IMPOSTOR_PAIRS } from "../decks";
+import { contentFor } from "../content";
 
 // מאגר מילים שטוח — כל המילים מהזוגות, בלי כפילויות
-const WORDS = [...new Set(IMPOSTOR_PAIRS.flat())];
 
 export function createImpostor(ctx: GameCtx): GameInstance {
   let round = 0;
   let word = "";
   let impostor = "";
   let exposed = false;
+  const WORDS = [...new Set(contentFor(ctx.lang).impostorPairs.flat())]; // לפי שפת החדר
   const usedWords = new Set<string>();
   let over = false;
 

@@ -266,10 +266,10 @@ const http = createServer((req, res) => {
     const day = (url.searchParams.get("d") || "").match(/^\d{4}-\d{2}-\d{2}$/)
       ? url.searchParams.get("d")!
       : new Date().toISOString().slice(0, 10);
-    const bank = getTriviaBank();
+    const bank = getTriviaBank(url.searchParams.get("l") || "he");
     bank.load().then(() => {
       res.writeHead(200, { "Content-Type": "application/json; charset=utf-8", "Access-Control-Allow-Origin": "*" });
-      res.end(JSON.stringify({ date: day, questions: bank.daily(day, 10), bankSize: bank.size() }));
+      res.end(JSON.stringify({ date: day, lang: bank.lang, questions: bank.daily(day, 10), bankSize: bank.size() }));
     });
     return;
   }
@@ -278,7 +278,7 @@ const http = createServer((req, res) => {
     if (url.searchParams.get("k") !== STATS_KEY) { res.writeHead(403); res.end("no"); return; }
     const n = Math.min(50, Math.max(1, Number(url.searchParams.get("n")) || 20));
     const cat = (url.searchParams.get("cat") || "weird") as "israel" | "world" | "science" | "weird";
-    getTriviaBank().grow(n, cat, askModel)
+    getTriviaBank(url.searchParams.get("l") || "he").grow(n, cat, askModel)
       .then((r) => {
         res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
         res.end(JSON.stringify(r));
@@ -296,7 +296,7 @@ const http = createServer((req, res) => {
    || url.pathname.startsWith("/api/trivia/approve")
    || url.pathname.startsWith("/api/trivia/drop")) {
     if (url.searchParams.get("k") !== STATS_KEY) { res.writeHead(403); res.end("no"); return; }
-    const bank = getTriviaBank();
+    const bank = getTriviaBank(url.searchParams.get("l") || "he");
     const pids = (url.searchParams.get("pids") || "").split(",").map((x) => x.trim()).filter(Boolean);
     const action =
       url.pathname.endsWith("/approve") ? bank.approve(pids)
@@ -318,7 +318,7 @@ const http = createServer((req, res) => {
   if (url.pathname === "/api/trivia/retire") {
     if (url.searchParams.get("k") !== STATS_KEY) { res.writeHead(403); res.end("no"); return; }
     const ids = (url.searchParams.get("ids") || "").split(",").map(Number).filter(Number.isInteger);
-    getTriviaBank().retire(ids)
+    getTriviaBank(url.searchParams.get("l") || "he").retire(ids)
       .then((r) => {
         res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
         res.end(JSON.stringify(r));
@@ -330,12 +330,12 @@ const http = createServer((req, res) => {
   if (url.pathname === "/api/ai-deck") {
     const topic = url.searchParams.get("topic") || "";
     const ip = String(req.headers["x-forwarded-for"] || req.socket.remoteAddress || "?").split(",")[0].trim();
-    generateAiDeck(topic, ip)
+    generateAiDeck(topic, ip, url.searchParams.get("l") || "he")
       .then(({ status, body }) => {
         res.writeHead(status, { "Content-Type": "application/json; charset=utf-8", "Access-Control-Allow-Origin": "*" });
         res.end(JSON.stringify(body));
       })
-      .catch(() => { res.writeHead(500, { "Content-Type": "application/json" }); res.end(JSON.stringify({ error: "שגיאה פנימית" })); });
+      .catch(() => { res.writeHead(500, { "Content-Type": "application/json" }); res.end(JSON.stringify({ error: "deck.err.internal" })); });
     return;
   }
   // הלקוח שואל אם הפיצ'ר מופעל (יש מפתח בסביבה) — כדי להציג/להסתיר את האופציה
@@ -418,7 +418,7 @@ wss.on("connection", (ws, req) => {
   ws.on("message", (raw) => {
     let msg: ClientMsg;
     try { msg = JSON.parse(String(raw)); } catch { return; }
-    if (msg.t === "join") room.join(playerId, msg.name, msg.emoji, msg.gpid);
+    if (msg.t === "join") room.join(playerId, msg.name, msg.emoji, msg.gpid, msg.seen, msg.lang);
     else room.onMessage(playerId, msg);
   });
 

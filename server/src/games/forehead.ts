@@ -11,7 +11,7 @@ const TURN_MS = 45_000;
 const VOTE_MS = 12_000;
 
 export function createForehead(ctx: GameCtx): GameInstance {
-  const chosen = resolveDeck((ctx.config ?? {}) as DeckConfig);
+  const chosen = resolveDeck((ctx.config ?? {}) as DeckConfig, ctx.lang);
   const deck = [...chosen.cards].sort(() => Math.random() - 0.5);
 
   const players = ctx.connectedPlayers().map((p) => p.id);

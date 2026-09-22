@@ -136,7 +136,7 @@ export interface RoomSnapshot {
 /* ---- לקוח → שרת ---- */
 export type ClientMsg =
   /** `seen` = סט ביטים ב-base64 של שאלות שהמכשיר כבר ראה (ראו server/src/bitset.ts) */
-  | { t: "join"; name: string; emoji: string; rejoinId?: string; gpid?: string; seen?: string }
+  | { t: "join"; name: string; emoji: string; rejoinId?: string; gpid?: string; seen?: string; lang?: string } // lang = שפת הטלפון; שפת המארח קובעת את תוכן החדר (חפיסות, טריוויה)
   | { t: "save_group"; name: string }   // מארח בלבד: הפיכת הערב הזה לחבורה שנשמרת
   | { t: "rename_group"; name: string } // מארח בלבד
   | { t: "arm" } // הטלפון חומש (אודיו+חיישנים)

@@ -12,7 +12,8 @@
  * ⚠️ מזהה שאלה הוא **המיקום שלה במערך**. לכן: מותר רק להוסיף בסוף.
  * מחיקה או שינוי סדר יהפכו את זיכרון ה"נראה" של כל השחקנים לשקר.
  */
-import { TRIVIA, type TriviaQ } from "./decks";
+import { triviaSeed, type TriviaQ } from "./decks";
+import { asLang, LANG_NAMES, type Lang } from "../../shared/i18n";
 import { getStore, type Store } from "./store";
 
 export interface BankQ extends TriviaQ { id: number }
@@ -37,13 +38,35 @@ interface GrownBank { questions: TriviaQ[]; disabled?: number[]; pending?: Pendi
  */
 export interface PendingQ extends TriviaQ { pid: string }
 
-const BANK_KEY = "trivia:bank";
+/** מפתח האחסון לפי שפה — עברית שומרת על המפתח הישן, כדי שהמאגר שכבר גדל יישאר */
+const bankKey = (lang: Lang) => (lang === "he" ? "trivia:bank" : `trivia:bank:${lang}`);
 const CATS: TriviaQ["cat"][] = ["israel", "world", "science", "weird"];
 
 /** נרמול להשוואת כפילויות — סימני פיסוק ורווחים לא הופכים שאלה לחדשה */
 function norm(q: string): string {
-  return q.replace(/[^֐-׿a-zA-Z0-9]/g, "").toLowerCase();
+  return q.replace(/[^\p{L}\p{N}]/gu, "").toLowerCase();
 }
+
+/** הכתב של כל שפה — שאלה שאין בה אף אות מהכתב הזה היא "לא בשפה" (ולטינית: מספיק אותיות) */
+const SCRIPT: Record<Lang, RegExp> = {
+  he: /[\u0590-\u05FF]/, ar: /[\u0600-\u06FF]/, ko: /[\uAC00-\uD7AF]/, ja: /[\u3040-\u30FF\u4E00-\u9FFF]/,
+  en: /[a-zA-Z]/, es: /[a-zA-Z]/, pt: /[a-zA-Z]/,
+};
+/** תווים מותרים בשאלה/תשובה: הכתב של השפה + לטינית + ספרות + פיסוק; שום כתב זר */
+const ALLOWED: Record<Lang, RegExp> = {
+  he: /^[\u0590-\u05FFa-zA-Z0-9\s.,;:!?'"()\-–—״׳%/+&]+$/,
+  ar: /^[\u0600-\u06FFa-zA-Z0-9\s.,;:!?'"()\-–—%/+&؟،]+$/,
+  ko: /^[\uAC00-\uD7AF\u3130-\u318Fa-zA-Z0-9\s.,;:!?'"()\-–—%/+&·]+$/,
+  ja: /^[\u3040-\u30FF\u4E00-\u9FFF\uFF01-\uFF5Ea-zA-Z0-9\s.,;:!?'"()\-–—%/+&・ー、。「」]+$/,
+  en: /^[a-zA-Z0-9\s.,;:!?'"()\-–—%/+&]+$/,
+  es: /^[a-zA-ZáéíóúüñÁÉÍÓÚÜÑ0-9\s.,;:!?'"()\-–—%/+&¿¡]+$/,
+  pt: /^[a-zA-ZáàâãéêíóôõúüçÁÀÂÃÉÊÍÓÔÕÚÜÇ0-9\s.,;:!?'"()\-–—%/+&]+$/,
+};
+/** "מקומי" — מה הקטגוריה israel אומרת בכל שפה (למפעל השאלות) */
+const LOCAL_REGION: Record<Lang, string> = {
+  he: "ישראל", en: "the USA and the UK (and the English-speaking world)", es: "Spain and Latin America (the Spanish-speaking world)",
+  pt: "Brazil (and Portugal)", ko: "Korea", ja: "Japan", ar: "the Arab world (the Gulf, Egypt, the Levant and North Africa)",
+};
 
 /**
  * הקלישאות שמודל חוזר אליהן כשלא עוצרים אותו. אלה לא שאלות שגויות —
@@ -79,9 +102,11 @@ export class TriviaBank {
   private disabled = new Set<number>();
   private pending: PendingQ[] = [];
   private loaded = false;
+  readonly lang: Lang;
 
-  constructor(store?: Store) {
+  constructor(store?: Store, lang: Lang = "he") {
     this.store = store;
+    this.lang = lang;
   }
 
   /** נטען פעם אחת; נכשל בשקט — המאגר הסטטי לבדו עדיין משחק */
@@ -89,7 +114,7 @@ export class TriviaBank {
     if (this.loaded || !this.store) { this.loaded = true; return; }
     this.loaded = true;
     try {
-      const b = await this.store.get<GrownBank>(BANK_KEY);
+      const b = await this.store.get<GrownBank>(bankKey(this.lang));
       if (b?.questions?.length) this.grown = b.questions;
       if (b?.disabled?.length) this.disabled = new Set(b.disabled);
       if (b?.pending?.length) this.pending = b.pending;
@@ -98,10 +123,10 @@ export class TriviaBank {
 
   /** כל השאלות עם מזהים. הסדר קבוע: זרע ואז מה שנוצר, לפי סדר היצירה. */
   all(): BankQ[] {
-    return [...TRIVIA, ...this.grown].map((q, id) => ({ ...q, id }));
+    return [...triviaSeed(this.lang), ...this.grown].map((q, id) => ({ ...q, id }));
   }
 
-  size(): number { return TRIVIA.length + this.grown.length; }
+  size(): number { return triviaSeed(this.lang).length + this.grown.length; }
 
   /**
    * בוחר שאלות מהמאגר.
@@ -148,7 +173,7 @@ export class TriviaBank {
     const seen = new Set([...this.all(), ...this.pending].map((q) => norm(q.q)));
     const sample = this.all().filter((q) => q.cat === cat).slice(-6).map((q) => q.q);
 
-    const prompt = [
+    const prompt = this.lang !== "he" ? growPromptEn(this.lang, n, cat, sample) : [
       `כתוב ${n} שאלות טריוויה בעברית בקטגוריה "${catName(cat)}".`,
       "",
       "המבחן היחיד שקובע אם שאלה טובה: **מישהו סביב השולחן אומר 'מה?! באמת?'**",
@@ -241,7 +266,7 @@ export class TriviaBank {
     ask: (prompt: string, maxTokens?: number) => Promise<string>
   ): Promise<Set<number>> {
     const list = qs.map((q, i) => `${i}. ${q.q} -> התשובה המסומנת: "${q.options[q.correct]}"`).join("\n");
-    const prompt = [
+    const prompt = this.lang !== "he" ? verifyPromptEn(this.lang, list) : [
       "לפניך שאלות טריוויה בעברית עם התשובה שסומנה כנכונה.",
       "פסול שאלה אם מתקיים אחד מאלה:",
       "1. התשובה המסומנת שגויה עובדתית, או שיש יותר מתשובה נכונה אחת.",
@@ -285,7 +310,7 @@ export class TriviaBank {
   private async save(): Promise<void> {
     if (!this.store) return;
     try {
-      await this.store.put<GrownBank>(BANK_KEY, {
+      await this.store.put<GrownBank>(bankKey(this.lang), {
         questions: this.grown, disabled: [...this.disabled], pending: this.pending, updatedAt: Date.now(),
       });
     } catch { /* לא נשמר — השינוי יחיה עד הריסטארט הבא */ }
@@ -350,19 +375,19 @@ export class TriviaBank {
     const text = q.q.trim();
     if (text.length < 8) return "קצרה מדי";
     // "באיזו שנה התרחשה הכայית..." — תו בטמילית שנכנס לתוך מילה עברית
-    if (!/^[\u0590-\u05FFa-zA-Z0-9\s.,;:!?'"()\-–—״׳%/+&]+$/.test(text)) return "תווים זרים";
+    if (!ALLOWED[this.lang].test(text)) return "תווים זרים";
     // "...אך הקשר מתבטא גם בשם של חברה ממשלתית? נשאל אחרת: מהי הנקודה הנמוכה?"
     if ((text.match(/\?/g) ?? []).length > 1) return "שתי שאלות באחת";
     if (text.length > 110) return "ארוכה מדי";
     if (/\(רמז|רמז:/.test(text)) return "מכילה רמז";
-    if (!/[\u0590-\u05FF]/.test(text)) return "לא בעברית";
+    if (!SCRIPT[this.lang].test(text)) return "לא בשפת המאגר";
 
     if (!Array.isArray(q.options) || q.options.length !== 4) return "לא 4 תשובות";
     const opts = q.options.map((o) => String(o ?? "").trim());
     if (opts.some((o) => !o)) return "תשובה ריקה";
     // הבדיקה הזאת הייתה על השאלה בלבד, ו"פלמינגو" עם ואו ערבית עברה כתשובה.
     // תו זר בתשובה נראה תקין למי שסורק מהר, ונשאר במאגר לנצח.
-    if (opts.some((o) => !/^[\u0590-\u05FFa-zA-Z0-9\s.,;:!?'"()\-–—״׳%/+&]+$/.test(o))) return "תווים זרים בתשובה";
+    if (opts.some((o) => !ALLOWED[this.lang].test(o))) return "תווים זרים בתשובה";
     if (new Set(opts).size !== 4) return "תשובות כפולות";
     if (!Number.isInteger(q.correct) || q.correct < 0 || q.correct > 3) return "אינדקס לא חוקי";
 
@@ -371,7 +396,7 @@ export class TriviaBank {
     if (answer.length >= 3 && norm(text).includes(answer)) return "התשובה מופיעה בשאלה";
 
     // שאלת ספר לימוד — נכונה, תקינה, ומשעממת. תופסת מקום של שאלה טובה.
-    if (BORING.some((re) => re.test(text))) return "שאלת ספר לימוד";
+    if (this.lang === "he" && BORING.some((re) => re.test(text))) return "שאלת ספר לימוד";
 
     // התשובה הארוכה בהרבה מהשאר היא רמז מובהק, גם כשהיא נכונה
     const others = opts.filter((_, i) => i !== q.correct).map((o) => o.length);
@@ -384,24 +409,85 @@ export class TriviaBank {
 
 /* ---------- מופע יחיד ---------- */
 
-let bank: TriviaBank | null = null;
+const banks = new Map<Lang, TriviaBank>();
 
 /**
  * המאגר של השרת. נטען פעם אחת מהאחסון; עד שהטעינה חוזרת עובדים על הזרע.
  * ברירת המחדל היא האחסון האמיתי — בלעדיה המאגר "עובד" אבל שום שאלה
  * שנוצרה לא נשמרת ולא נטענת, וזה נראה בדיוק כמו מפעל תקין שמייצר לחלל.
  */
-export function getTriviaBank(store: Store = getStore()): TriviaBank {
+export function getTriviaBank(lang?: string, store: Store = getStore()): TriviaBank {
+  const l = asLang(lang) ?? "he";
+  let bank = banks.get(l);
   if (!bank) {
-    bank = new TriviaBank(store);
+    bank = new TriviaBank(store, l);
+    banks.set(l, bank);
     void bank.load();
   }
   return bank;
 }
 
 /** לבדיקות: מאגר נקי בלי לגעת במופע הגלובלי */
-export function makeTriviaBank(store?: Store): TriviaBank {
-  return new TriviaBank(store);
+export function makeTriviaBank(store?: Store, lang: Lang = "he"): TriviaBank {
+  return new TriviaBank(store, lang);
+}
+
+/* ---------- מפעל השאלות בשפות האחרות — הנחיות באנגלית, תוכן בשפת המאגר ---------- */
+function growPromptEn(lang: Lang, n: number, cat: TriviaQ["cat"], sample: string[]): string {
+  const name = LANG_NAMES[lang];
+  const catDesc = cat === "israel" ? `local knowledge about ${LOCAL_REGION[lang]} — places, food, culture, everyday life`
+    : cat === "science" ? "science and nature" : cat === "weird" ? "amazing and weird facts" : "world and general knowledge";
+  return [
+    `Write ${n} trivia questions in ${name} in the category "${catDesc}".`,
+    "",
+    "The only test of a good question: someone at the table says 'What?! Really?'",
+    "We are not building a school exam. We are building a moment someone will retell.",
+    "",
+    "Question types we want:",
+    "- a fact that clashes with intuition ('which country has more pyramids than Egypt?')",
+    "- surprising chronology ('which came first?')",
+    "- a surprising origin of something everyday — a name, a product, a phrase, a custom",
+    "- funny extremes: the shortest, the heaviest, the strangest that ever happened",
+    "- things everyone sees every day and nobody asked why they are like that",
+    "",
+    "Strictly forbidden — textbook questions: capitals, currencies, continents, oceans, 'who was the first to…', 'in what year was… founded', anything learned in 4th grade.",
+    "If a fact does not surprise you — leave it out. 5 excellent questions beat 20 mediocre ones.",
+    "",
+    "Formatting rules:",
+    "- exactly one short question per item — up to 15 words, one question mark.",
+    `- exactly 4 answers per question, all in ${name}; the wrong ones must sound plausible and interesting.`,
+    "- the correct answer must not appear in the question text.",
+    "- no hints, no explanatory parentheses, no rephrasing.",
+    "- the four answers should be similar in length.",
+    `- ${name} only — no words from other scripts.`,
+    "- no events from the last year and no answers that change over time.",
+    "- **Make sure the fact is true.** If unsure — leave the question out.",
+    "",
+    "Do not repeat these questions:",
+    ...sample.map((q) => `- ${q}`),
+    "",
+    'Return JSON only: {"questions":[{"q":"...","options":["a","b","c","d"],"correct":0}]}',
+  ].join("\n");
+}
+
+function verifyPromptEn(lang: Lang, list: string): string {
+  return [
+    `Below are trivia questions in ${LANG_NAMES[lang]} with the answer marked as correct.`,
+    "Reject a question if any of these holds:",
+    "1. The marked answer is factually wrong, or more than one answer is correct.",
+    "2. The wording is confusing or ambiguous.",
+    "3. **The question is boring** — basic textbook knowledge with no surprise. The test: would someone at a table say 'What?! Really?' on hearing the answer.",
+    "",
+    "Be especially suspicious of two things that are easy to invent:",
+    "- **origin claims** ('originally invented for', 'created so that'). If you don't know for sure it is documented — reject; a good-sounding origin story is usually made up.",
+    "- **technical terms**: make sure the term in the answer really is what the question describes.",
+    "",
+    "Reject only when you are fairly sure there is a problem — a human reads everything that passes anyway, and there is no point throwing away a good question just because you don't remember the fact with full certainty.",
+    "",
+    list,
+    "",
+    'Return JSON only: {"reject":[question numbers to reject]}',
+  ].join("\n");
 }
 
 /**

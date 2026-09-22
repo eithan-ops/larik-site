@@ -25,7 +25,7 @@ const errors = [];
 // תוכן החפיסות/הטריוויה עדיין בעברית (שלב נפרד) — מנקים את המילים האלה מהטקסט לפני הבדיקה
 const CONTENT = [...new Set([readFileSync(new URL("../server/src/decks.ts", import.meta.url), "utf8"), readFileSync(new URL("../server/src/triviaBank.ts", import.meta.url), "utf8")]
   .flatMap((src) => [...src.matchAll(/"((?:[^"\\\n]|\\.)*[\u0590-\u05FF](?:[^"\\\n]|\\.)*)"/g)].map((m) => m[1].replace(/\\"/g, '"'))))].sort((a, b) => b.length - a.length);
-const stripContent = (s) => { for (const w of CONTENT) if (s.includes(w)) s = s.split(w).join("·"); return s; };
+const stripContent = (s) => { if (process.env.STRICT) return s; for (const w of CONTENT) if (s.includes(w)) s = s.split(w).join("·"); return s; };
 const txt = (p) => p.evaluate(() => { const clone = document.body.cloneNode(true); for (const el of clone.querySelectorAll("input")) el.remove(); return clone.innerText; }).then(stripContent);
 const bad = (s) => (LANG !== "he" && s.match(/.{0,30}[֐-׿].{0,30}/)?.[0]) || s.match(new RegExp(`.{0,20}\\b(${GAME}|games|awards)\\..{0,30}`))?.[0];
 const ok = (s) => !HEB.test(s) && !KEY.test(s);

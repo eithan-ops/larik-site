@@ -15,6 +15,7 @@ import { useEffect, useState } from "react";
 import { navigate } from "../App";
 import { Sfx, vibrate } from "../lib/audio";
 import { markSeen } from "../lib/seen";
+import { currentLang } from "../lib/locale";
 import { track } from "../lib/analytics";
 import { loadStreak, saveStreak, todayISO, type Streak } from "../lib/daily";
 
@@ -36,7 +37,7 @@ export default function Daily() {
 
   useEffect(() => {
     track("daily_open");
-    fetch(`/api/daily-trivia?d=${today}`)
+    fetch(`/api/daily-trivia?d=${today}&l=${currentLang()}`)
       .then((r) => r.json())
       .then((b: { questions: Q[] }) => {
         setQs(b.questions);
