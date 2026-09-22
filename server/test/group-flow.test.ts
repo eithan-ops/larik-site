@@ -119,7 +119,7 @@ await test("שיא נשמר בחבורה בין ערבים", async () => {
   await playGame(room);
   room.onMessage("p1", { t: "save_group", name: "החבורה" });
   await settle();
-  const rec = snap("p1").group!.records.find((r) => r.label.includes("מהירה"));
+  const rec = snap("p1").group!.records.find((r) => JSON.stringify(r.label).includes("group.rec.fastest"));
   assert.ok(rec, "שיא האצבע המהירה לא נשמר");
   assert.equal(rec!.value, 404);
 });

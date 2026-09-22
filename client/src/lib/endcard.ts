@@ -12,6 +12,7 @@
  * עברית מרונדרת נכון כי הדפדפן עושה את ה-bidi, בניגוד לרינדור בצד שרת.
  */
 import QRCode from "qrcode";
+import { t, isRtlLang } from "./locale";
 
 const W = 1080;
 const H = 1920;
@@ -159,8 +160,8 @@ function band(ctx: CanvasRenderingContext2D, text: string, cy: number, bg: strin
  * "הרביעייה מהמילואים · ערב 7" הוא משהו שמראים לחברים; "חדר KFRT" הוא לא.
  */
 function groupLine(d: EndCardData): string {
-  if (d.groupName) return `${d.groupName} · ערב ${Math.max(1, d.groupEvening ?? 1)}`;
-  return `חדר ${d.roomCode} · ערב #${Math.max(1, d.gamesPlayed)}`;
+  if (d.groupName) return t("card.group_evening", { group: d.groupName, n: Math.max(1, d.groupEvening ?? 1) });
+  return t("card.room_evening", { code: d.roomCode, n: Math.max(1, d.gamesPlayed) });
 }
 
 async function qrImage(url: string, dark: string, light: string): Promise<HTMLCanvasElement> {
@@ -186,7 +187,7 @@ async function footer(ctx: CanvasRenderingContext2D, d: EndCardData, onDark: boo
   ctx.fillText("larik.ai", W - 92, y + 62);
   ctx.font = `700 34px ${BODY}`;
   ctx.fillStyle = onDark ? "rgba(242,233,216,.75)" : "rgba(23,19,16,.65)";
-  ctx.fillText("סרקו והצטרפו לערב", W - 92, y + 112);
+  ctx.fillText(t("card.scan_join"), W - 92, y + 112);
   ctx.fillText(groupLine(d), W - 92, y + 160);
   ctx.textAlign = "center";
 }
@@ -203,7 +204,7 @@ async function drawPlayer(ctx: CanvasRenderingContext2D, d: EndCardData) {
   ctx.textAlign = "center";
   ctx.fillStyle = RED;
   ctx.font = `700 34px ${BODY}`;
-  ctx.fillText("· כרטיס שחקן ·", W / 2, 178);
+  ctx.fillText(t("card.player_card"), W / 2, 178);
 
   // אווטר במעגל דיו על צהוב — הדבר הראשון שהעין תופסת
   const cx = W / 2, cy = 400, r = 150;
@@ -233,9 +234,9 @@ async function drawPlayer(ctx: CanvasRenderingContext2D, d: EndCardData) {
 
   // שלוש קופסאות סטטיסטיקה — המספרים הם מה שמשווים עליהם
   const stats: [string, string][] = [
-    [String(d.points), "נקודות"],
-    [`${d.place}/${d.totalPlayers}`, "מקום"],
-    [String(Math.max(1, d.gamesPlayed)), "משחקים"],
+    [String(d.points), t("card.points")],
+    [`${d.place}/${d.totalPlayers}`, t("card.place")],
+    [String(Math.max(1, d.gamesPlayed)), t("card.games")],
   ];
   const bw = 268, gap = 26, top = 1150;
   const x0 = (W - (bw * 3 + gap * 2)) / 2;
@@ -255,7 +256,7 @@ async function drawPlayer(ctx: CanvasRenderingContext2D, d: EndCardData) {
   ctx.fillText("LARIK", W / 2, 1470);
   ctx.fillStyle = "rgba(23,19,16,.6)";
   ctx.font = `700 32px ${BODY}`;
-  ctx.fillText("ערב משחקים שלם בטלפון", W / 2, 1520);
+  ctx.fillText(t("card.tagline"), W / 2, 1520);
 
   await footer(ctx, d, false);
 }
@@ -268,7 +269,7 @@ async function drawWanted(ctx: CanvasRenderingContext2D, d: EndCardData) {
   ctx.textAlign = "center";
   ctx.fillStyle = INK;
   ctx.font = `400 130px ${DISPLAY}`;
-  ctx.fillText("מבוקש", W / 2, 220);
+  ctx.fillText(t("card.wanted"), W / 2, 220);
 
   ctx.strokeStyle = INK;
   ctx.lineWidth = 8;
@@ -305,18 +306,18 @@ async function drawWanted(ctx: CanvasRenderingContext2D, d: EndCardData) {
   ctx.beginPath(); ctx.arc(0, 0, 100, 0, Math.PI * 2); ctx.stroke();
   ctx.fillStyle = RED;
   ctx.font = `400 52px ${DISPLAY}`;
-  ctx.fillText("אשם!", 0, 20);
+  ctx.fillText(t("card.guilty"), 0, 20);
   ctx.restore();
 
   ctx.fillStyle = INK;
   ctx.textAlign = "right";
   ctx.font = `700 40px ${BODY}`;
-  ctx.fillText("נראה לאחרונה בערב משחקים", W - 140, 1440);
+  ctx.fillText(t("card.last_seen"), W - 140, 1440);
   ctx.font = `400 56px ${DISPLAY}`;
   ctx.fillText("LARIK", W - 140, 1512);
   ctx.font = `700 32px ${BODY}`;
   ctx.fillStyle = "rgba(23,19,16,.6)";
-  ctx.fillText("הפרס: עוד סיבוב", W - 140, 1562);
+  ctx.fillText(t("card.reward"), W - 140, 1562);
   ctx.textAlign = "center";
 
   await footer(ctx, d, false);
@@ -337,7 +338,7 @@ async function drawPoster(ctx: CanvasRenderingContext2D, d: EndCardData) {
   ctx.textAlign = "center";
   ctx.fillStyle = RED;
   ctx.font = `700 38px ${BODY}`;
-  ctx.fillText("החבורה מציגה", W / 2, 190);
+  ctx.fillText(t("card.presents"), W / 2, 190);
 
   ctx.fillStyle = CREAM;
   const titlePx = fitFont(ctx, d.award.title, W - 200, 116, DISPLAY);
@@ -348,7 +349,7 @@ async function drawPoster(ctx: CanvasRenderingContext2D, d: EndCardData) {
 
   ctx.fillStyle = YELLOW;
   ctx.font = `700 36px ${BODY}`;
-  ctx.fillText("בכיכובו של", W / 2, 1010);
+  ctx.fillText(t("card.starring"), W / 2, 1010);
   ctx.fillStyle = CREAM;
   const namePx = fitFont(ctx, d.name, W - 300, 92, DISPLAY);
   ctx.font = `400 ${namePx}px ${DISPLAY}`;
@@ -359,11 +360,11 @@ async function drawPoster(ctx: CanvasRenderingContext2D, d: EndCardData) {
     wrapCenter(ctx, `"${d.award.headline}"`, W / 2, 1200, W - 260, 42, BODY, "700");
   }
 
-  band(ctx, `🏆 ערב #${Math.max(1, d.groupEvening ?? d.gamesPlayed)} · ${d.points} נק'`, 1400, BLUE, CREAM, 48, 1.5);
+  band(ctx, t("card.evening_pts", { n: Math.max(1, d.groupEvening ?? d.gamesPlayed), pts: d.points }), 1400, BLUE, CREAM, 48, 1.5);
 
   ctx.fillStyle = "rgba(242,233,216,.55)";
   ctx.font = `700 30px ${BODY}`;
-  ctx.fillText("בקולנוע שבסלון · בלי הורדה · בלי הרשמה", W / 2, 1520);
+  ctx.fillText(t("card.cinema_tagline"), W / 2, 1520);
 
   await footer(ctx, d, true);
 }
@@ -376,7 +377,7 @@ async function drawNews(ctx: CanvasRenderingContext2D, d: EndCardData) {
   ctx.textAlign = "center";
   ctx.fillStyle = INK;
   ctx.font = `400 92px ${DISPLAY}`;
-  ctx.fillText("הידיעות של הערב", W / 2, 170);
+  ctx.fillText(t("card.news_title"), W / 2, 170);
 
   ctx.lineWidth = 9;
   ctx.strokeStyle = INK;
@@ -386,7 +387,7 @@ async function drawNews(ctx: CanvasRenderingContext2D, d: EndCardData) {
 
   ctx.fillStyle = "rgba(23,19,16,.6)";
   ctx.font = `700 30px ${BODY}`;
-  ctx.fillText(`גיליון #${Math.max(1, d.groupEvening ?? d.gamesPlayed)} · מהדורת ${d.groupName ?? `חדר ${d.roomCode}`} · המחיר: חינם`, W / 2, 278);
+  ctx.fillText(t("card.news_issue", { n: Math.max(1, d.groupEvening ?? d.gamesPlayed), edition: d.groupName ?? t("card.room", { code: d.roomCode }) }), W / 2, 278);
 
   // הכותרת הראשית היא ה"סיפור" של התואר — זה מה שמצחיק בשיתוף
   ctx.fillStyle = INK;
@@ -406,7 +407,7 @@ async function drawNews(ctx: CanvasRenderingContext2D, d: EndCardData) {
 
   ctx.fillStyle = "rgba(23,19,16,.65)";
   ctx.font = `700 32px ${BODY}`;
-  ctx.fillText(d.award.detail ?? `${d.points} נקודות · מקום ${d.place} מתוך ${d.totalPlayers}`, W / 2, py + ph + 60);
+  ctx.fillText(d.award.detail ?? t("card.pts_place", { pts: d.points, place: d.place, of: d.totalPlayers }), W / 2, py + ph + 60);
 
   // שתי עמודות "טקסט" — רק מרקם, אף אחד לא אמור לקרוא אותן
   const colTop = py + ph + 100;
@@ -431,7 +432,7 @@ export async function drawEndCard(data: EndCardData): Promise<HTMLCanvasElement>
   canvas.width = W;
   canvas.height = H;
   const ctx = canvas.getContext("2d")!;
-  ctx.direction = "rtl";
+  ctx.direction = isRtlLang() ? "rtl" : "ltr";
   ctx.textAlign = "center";
 
   // בלי זה הפונטים עדיין לא נטענו והכרטיס יוצא ב-Arial
@@ -452,7 +453,7 @@ export async function shareEndCard(data: EndCardData): Promise<"shared" | "downl
   const blob = await new Promise<Blob | null>((res) => canvas.toBlob(res, "image/png"));
   if (!blob) return "failed";
   const file = new File([blob], "larik-card.png", { type: "image/png" });
-  const text = `${data.award.emoji} ${data.award.title} — ככה נגמר לי הערב בלאריק. larik.ai`;
+  const text = t("card.share_text", { emoji: data.award.emoji, title: data.award.title });
 
   const nav = navigator as Navigator & { canShare?: (d: { files: File[] }) => boolean };
   if (nav.share && nav.canShare?.({ files: [file] })) {

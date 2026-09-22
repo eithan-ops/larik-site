@@ -3,7 +3,8 @@ import { useState } from "react";
 import { navigate } from "./ShowApp";
 import { createRoom } from "../lib/connection";
 import { track } from "../lib/analytics";
-import { t, BRAND, getLang, setLang, showPrefix } from "../lib/i18n";
+import { t, BRAND, showPrefix } from "../lib/i18n";
+import LangSwitch from "../components/LangSwitch";
 
 export default function ShowLanding() {
   const [busy, setBusy] = useState(false);
@@ -26,10 +27,7 @@ export default function ShowLanding() {
 
   return (
     <main style={{ justifyContent: "center", gap: 8 }}>
-      <button className="chip sc-chipbtn" style={{ position: "fixed", top: 14, insetInlineEnd: 14, zIndex: 5 }}
-        onClick={() => setLang(getLang() === "he" ? "en" : "he")}>
-        🌐 {getLang() === "he" ? "English" : "עברית"}
-      </button>
+      <LangSwitch />
 
       <div className="hero">
         <div className="hero-emojis" aria-hidden>

@@ -229,7 +229,7 @@ export default function Ceremony({ room, me, isHost, onSaveGroup, onBackToLobby 
           ))}
           {group.records[0] && (
             <p className="sub" style={{ marginTop: 6, fontSize: 12 }}>
-              {group.records[0].label}: <b>{group.records[0].name}</b>
+              {lt(group.records[0].label)}: <b>{group.records[0].name}</b>
             </p>
           )}
           <p className="sub" style={{ marginTop: 4, fontSize: 11.5 }}>

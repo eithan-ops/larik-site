@@ -2,6 +2,7 @@
  * סורק QR בתוך האפליקציה — מצלמה אחורית + BarcodeDetector (מובנה בדפדפן),
  * עם נפילה חכמה ל-jsQR בדפדפנים בלי תמיכה (ספריה קטנה, נטענת רק בצורך).
  */
+import { t } from "../lib/locale";
 import { useEffect, useRef, useState } from "react";
 
 export default function QRScanner({ onScan, onClose }: {
@@ -64,7 +65,7 @@ export default function QRScanner({ onScan, onClose }: {
         };
         tick();
       } catch {
-        setErr("אין גישה למצלמה 😕 אפשר לסרוק עם אפליקציית המצלמה הרגילה של הטלפון, או להקליד את קוד החדר.");
+        setErr(t("qr.no_camera"));
       }
     }
     start();
@@ -83,9 +84,9 @@ export default function QRScanner({ onScan, onClose }: {
       <div className="scan-frame" />
       <div className="scan-bottom">
         <p className="sub" style={{ textAlign: "center" }}>
-          {err || "כוונו למסך של המארח 📷"}
+          {err || t("qr.aim")}
         </p>
-        <button className="btn ghost" style={{ marginTop: 10 }} onClick={onClose}>סגור ✕</button>
+        <button className="btn ghost" style={{ marginTop: 10 }} onClick={onClose}>{t("qr.close")}</button>
       </div>
     </div>
   );

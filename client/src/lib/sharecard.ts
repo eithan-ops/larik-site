@@ -4,6 +4,8 @@
  * מצויר ב-canvas (אפס תלויות), משותף עם navigator.share; בלי תמיכה — הורדה.
  */
 
+import { t, isRtlLang } from "./locale";
+
 export interface BoardRow { name: string; emoji: string; score: number }
 
 export interface ShareCardData {
@@ -30,7 +32,7 @@ export function drawEveningBoard(data: ShareCardData): HTMLCanvasElement {
   canvas.width = W;
   canvas.height = H;
   const ctx = canvas.getContext("2d")!;
-  ctx.direction = "rtl";
+  ctx.direction = isRtlLang() ? "rtl" : "ltr";
   ctx.textAlign = "center";
 
   /* רקע — סגול-לילה עם כתמי ניאון (השפה של האפליקציה) */
@@ -61,7 +63,7 @@ export function drawEveningBoard(data: ShareCardData): HTMLCanvasElement {
 
   ctx.fillStyle = "#9d94c4";
   ctx.font = "700 40px Rubik, Arial, sans-serif";
-  ctx.fillText("🌙 לוח הערב", W / 2, 225);
+  ctx.fillText(t("board.title"), W / 2, 225);
   ctx.font = "600 32px Rubik, Arial, sans-serif";
   ctx.fillText(data.title, W / 2, 278);
 
@@ -99,20 +101,20 @@ export function drawEveningBoard(data: ShareCardData): HTMLCanvasElement {
   if (data.clownName) {
     ctx.font = "700 38px Rubik, Arial, sans-serif";
     ctx.fillStyle = "#ff8a8a";
-    ctx.fillText(`🤡 הליצן של הערב: ${data.clownName}`, W / 2, footY);
+    ctx.fillText(t("board.clown", { name: data.clownName }), W / 2, footY);
     footY += 60;
   }
 
   /* קריאה לפעולה */
   ctx.font = "700 34px Rubik, Arial, sans-serif";
   ctx.fillStyle = "#f6f4ff";
-  ctx.fillText("גם אתם רוצים ערב כזה?", W / 2, H - 130);
+  ctx.fillText(t("board.want_too"), W / 2, H - 130);
   ctx.font = "900 44px Rubik, Arial, sans-serif";
   ctx.fillStyle = "#34e89e";
   ctx.fillText("larik.ai", W / 2, H - 72);
   ctx.font = "600 28px Rubik, Arial, sans-serif";
   ctx.fillStyle = "#9d94c4";
-  ctx.fillText("בלי הורדה · בלי הרשמה · הטלפון הוא המשחק", W / 2, H - 28);
+  ctx.fillText(t("board.tagline"), W / 2, H - 28);
 
   return canvas;
 }
@@ -127,7 +129,7 @@ export async function shareEveningBoard(data: ShareCardData): Promise<"shared" |
   const nav = navigator as Navigator & { canShare?: (d: { files: File[] }) => boolean };
   if (nav.share && nav.canShare?.({ files: [file] })) {
     try {
-      await nav.share({ files: [file], title: "LARIK", text: "🎮 ככה נראה הערב שלנו בלאריק — larik.ai" });
+      await nav.share({ files: [file], title: "LARIK", text: t("board.share_text") });
       return "shared";
     } catch { /* המשתמש ביטל — לא מפילים להורדה */ return "failed"; }
   }

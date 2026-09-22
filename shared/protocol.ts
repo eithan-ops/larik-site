@@ -81,9 +81,9 @@ export interface Award {
 
 /* ---- החבורה שלנו ---- */
 
-/** שיא שנשבר בחבורה — "האצבע הכי מהירה בחבורה: 0.38" */
+/** שיא שנשבר בחבורה — "האצבע הכי מהירה בחבורה: 0.38". label: מפתח group.rec.<k> (שיאים ישנים — מחרוזת בעברית) */
 export interface GroupRecord {
-  label: string;
+  label: LText;
   pid: string;
   name: string;
   value: number;
@@ -357,40 +357,6 @@ export type ShowServerMsg =
   | { a: "sh_dim"; v: number; at: number } // cue — עוצמה ראשית לכל הקהל
   | { a: "sh_count"; total: number }; // כמה טלפונים מחוברים (לקונסולה)
 
-/* ---- הכור ☢️ — קו-אופ תפקידים: האכילו את הליבה, אל תגיעו להתכה ---- */
-export type ReactorRole = "feeder" | "loader" | "fixer";
-export type ReactorQuality = "perfect" | "good" | "weak";
-export interface ReactorCard { id: string; name: string; emoji: string; desc: string }
-export interface ReactorStats { fed: number; perfect: number; fixed: number; lost: number }
-
-export type ReactorClientMsg =
-  | { a: "rx_feed"; orbId: number }                 // מזין: שגר אורב לצינור
-  | { a: "rx_inject"; atServer: number }            // טוען: הזרקה — האיכות לפי פאזת הטבעת בזמן-שרת
-  | { a: "rx_fixed"; station: string }              // מתקן: סיים לתקן את התחנה
-  | { a: "rx_gold_tap" }                            // אורב הזהב: נגעתי בחלון
-  | { a: "rx_pick"; cardId: string }                // דראפט: בחרתי קלף
-  | { a: "rx_again" }                               // מארח: עוד ריצה (מיידי, בלי לובי)
-  | { a: "rx_finish" };                             // מארח: סיום → טקס
-
-export type ReactorServerMsg =
-  | { a: "rx_wave"; wave: number; roles: Record<string, ReactorRole>; hp: number; waveMs: number; ringMs: number; ringEpoch: number; pf: number; gf: number } // cue — פתיחת גל מסונכרנת; pf/gf = חלקי חלון מושלם/טוב בטבעת
-  | { a: "rx_orb"; orbId: number; feeder: string; expireAt: number; }                    // cue — אורב נולד אצל מזין
-  | { a: "rx_sent"; orbId: number; feeder: string; arriveAt: number }                    // cue — האורב בדרך לליבה
-  | { a: "rx_injected"; orbId: number; by: string; quality: ReactorQuality; gain: number; hp: number; queue: number }
-  | { a: "rx_lost"; orbId: number; where: string; hp: number }                           // where = pid של מזין או "loader"
-  | { a: "rx_queue"; queue: number }
-  | { a: "rx_jam"; station: string }                                                     // תקלה אצל מזין
-  | { a: "rx_unjam"; station: string; by: string }
-  | { a: "rx_hp"; hp: number }
-  | { a: "rx_gold"; leadMs: number; windowMs: number; need: number }                     // cue — אורב הזהב: ספירה של leadMs ואז חלון משותף
-  | { a: "rx_gold_res"; success: boolean; count: number; need: number; hp: number }
-  | { a: "rx_wave_clear"; wave: number; hp: number }
-  | { a: "rx_draft"; cards: ReactorCard[]; until: number }                               // אישי — 3 קלפים לבחירה
-  | { a: "rx_picked"; pid: string; name: string; emoji: string }                         // מי בחר מה (לכולם)
-  | { a: "rx_meltdown"; wave: number }                                                   // cue — ההתכה המסונכרנת אצל כולם
-  | { a: "rx_run_over"; wave: number; bestWave: number; nearMiss?: string; mvp?: string; stats: Record<string, ReactorStats> }
-  | { a: "rx_state"; wave: number; roles: Record<string, ReactorRole>; hp: number; ringMs: number; ringEpoch: number; pf: number; gf: number; queue: number; jams: string[]; phase: "wave" | "draft" | "runover" }; // rejoin / שינוי תפקידים באמצע
-
 /* ---- החומה 🏰 — הגנת נחיל קו-אופ עם תפקידים ----
  * העולם: רוחב 0-1000, גובה 0-1600. הנחיל נכנס מלמעלה (y שלילי) וצועד מטה.
  * החומה ב-y=1250. רצועת החלוץ 950-1240. מסלול אויב דטרמיניסטי:
@@ -566,10 +532,10 @@ export type AbyssServerMsg =
 
 export type GameClientMsg = ForeheadClientMsg | PodsClientMsg | BombsClientMsg
   | ColorRulesClientMsg | SimonClientMsg | DeathTouchClientMsg | DemonsClientMsg | AliasClientMsg | TriviaClientMsg
-  | WhoMostClientMsg | ShowClientMsg | ImpostorClientMsg | UndercoverClientMsg | ReactorClientMsg | WallClientMsg | HofrimClientMsg | ThievesClientMsg | AbyssClientMsg;
+  | WhoMostClientMsg | ShowClientMsg | ImpostorClientMsg | UndercoverClientMsg | WallClientMsg | HofrimClientMsg | ThievesClientMsg | AbyssClientMsg;
 export type GameServerMsg = ForeheadServerMsg | PodsServerMsg | BombsServerMsg
   | ColorRulesServerMsg | SimonServerMsg | DeathTouchServerMsg | DemonsServerMsg | AliasServerMsg | TriviaServerMsg
-  | WhoMostServerMsg | ShowServerMsg | ImpostorServerMsg | UndercoverServerMsg | ReactorServerMsg | WallServerMsg | HofrimServerMsg | ThievesServerMsg | AbyssServerMsg;
+  | WhoMostServerMsg | ShowServerMsg | ImpostorServerMsg | UndercoverServerMsg | WallServerMsg | HofrimServerMsg | ThievesServerMsg | AbyssServerMsg;
 
 /* ---- קטלוג ---- */
 export interface GameMeta {

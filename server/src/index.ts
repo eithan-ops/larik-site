@@ -182,9 +182,9 @@ const http = createServer((req, res) => {
     groups.get(gid)
       .then((g) => {
         res.writeHead(g ? 200 : 404, { "Content-Type": "application/json; charset=utf-8", "Access-Control-Allow-Origin": "*" });
-        res.end(JSON.stringify(g ? groups.summarize(g) : { error: "לא נמצאה חבורה כזו" }));
+        res.end(JSON.stringify(g ? groups.summarize(g) : { error: "err.group_missing" }));
       })
-      .catch(() => { res.writeHead(503); res.end(JSON.stringify({ error: "האחסון לא זמין" })); });
+      .catch(() => { res.writeHead(503); res.end(JSON.stringify({ error: "err.store_down" })); });
     return;
   }
   /**

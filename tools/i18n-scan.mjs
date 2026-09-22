@@ -77,6 +77,11 @@ const MIGRATED = [
   "client/src/games/simon.tsx", "server/src/games/simon.ts",
   "client/src/games/demons.tsx", "server/src/games/demons.ts",
   "client/src/games/trivia.tsx", "server/src/games/trivia.ts",
+  // שלב K — אפליקציית המופע (show.json), כרטיסי השיתוף, היומית, סורק ה-QR, שיאי החבורה
+  "client/src/lib/i18n.ts", "client/src/show/ShowLanding.tsx", "client/src/show/ShowRoom.tsx", "client/src/show/ShowApp.tsx",
+  "client/src/games/show.tsx", "client/src/components/ShowGate.tsx",
+  "client/src/lib/endcard.ts", "client/src/lib/sharecard.ts", "client/src/components/Daily.tsx", "client/src/components/QRScanner.tsx",
+  "server/src/groups.ts",
 ];
 
 function walk(dir, out = []) {
