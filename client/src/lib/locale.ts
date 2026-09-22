@@ -142,8 +142,8 @@ function format(s: string, p: Params): string {
     for (const b of branches.matchAll(/(\w+)\s*\{([^{}]*)\}/g)) map[b[1]] = b[2];
     return (map[`=${n}`] ?? map[cat] ?? map.other ?? "").replace(/#/g, String(n));
   });
-  // 2. השמה פשוטה — {name}
-  return s.replace(/\{(\w+)\}/g, (m, k: string) => (p[k] === undefined ? m : String(p[k])));
+  // 2. השמה פשוטה — {name}; מספר מקבל מפרידי אלפים לפי השפה (1,840)
+  return s.replace(/\{(\w+)\}/g, (m, k: string) => { const v = p[k]; return v === undefined ? m : typeof v === "number" ? fmtNum(v) : String(v); });
 }
 
 /** תווית של אפשרות בלובי (configOptions): games.<id>.opt.<key> / games.<id>.opt.<key>.<v>, עם נפילה לעברית שבקטלוג */

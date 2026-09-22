@@ -452,23 +452,24 @@ export function abBotX(w: AbWorld, depth: number, tauMs: number, x: number, look
 }
 
 /* ---------- דראפט ---------- */
-export interface AbyssCardDef { id: string; ic: string; t: string; d: string }
+/** קלף דראפט — הטקסט בלקוח: abyss.card.<id> / abyss.card.<id>.d */
+export interface AbyssCardDef { id: string; ic: string }
 export const AB_CARDS: AbyssCardDef[] = [
-  { id: "shield",  ic: "🛡️", t: "מגן",       d: "מתחילים כל צניחה עם מגן שסופג פגיעה אחת" },
-  { id: "magnet",  ic: "🧲", t: "מגנט",      d: "גבישים נמשכים אליך מרחוק" },
-  { id: "greed",   ic: "💎", t: "חמדנות",    d: "כל גביש שווה 25% יותר" },
-  { id: "feather", ic: "🪶", t: "נוצה",      d: "שליטה צידית מהירה ב-15%" },
-  { id: "scout",   ic: "🔭", t: "צופה",      d: "רואים רחוק יותר למטה" },
-  { id: "patron",  ic: "🤝", t: "פטרון",     d: "בונוס עזרה כפול: 20% ממה שהחבר בנקאי" },
-  { id: "hunter",  ic: "🏹", t: "צייד",      d: "בונוס מלכודת כפול: 30% ממה שהקורבן הפסיד" },
-  { id: "haste",   ic: "⏱️", t: "יד מהירה",  d: "קולדאון זריקה 6 שניות במקום 10" },
+  { id: "shield", ic: "🛡️" },
+  { id: "magnet", ic: "🧲" },
+  { id: "greed", ic: "💎" },
+  { id: "feather", ic: "🪶" },
+  { id: "scout", ic: "🔭" },
+  { id: "patron", ic: "🤝" },
+  { id: "hunter", ic: "🏹" },
+  { id: "haste", ic: "⏱️" },
   /* ---- ההרחבה (3.9): כלכלה, הגנה חברתית ומטא — מגוון אמיתי בין צניחות ---- */
-  { id: "interest",  ic: "🏦", t: "ריבית",       d: "‎+8% על כל בנקאות (נערם!)" },
-  { id: "trapguard", ic: "🧤", t: "כפפת אבן",    d: "המלכודת הראשונה בכל צניחה נתפסת ביד — ושווה 15 גבישים" },
-  { id: "gemcut",    ic: "🌟", t: "מלטש",        d: "אבני חן שוות 50% יותר (נערם!)" },
-  { id: "hawk",      ic: "👁️", t: "עין הנץ",     d: "כמעט-פגיעה מזכה ב-3 גבישים — מרוויחים מלהתחכך" },
-  { id: "giver",     ic: "🫂", t: "נדיב",        d: "כשאתה בונק — העני בחבורה מקבל 10% מתנה" },
-  { id: "joker",     ic: "🃏", t: "ג'וקר",       d: "מעכשיו הדראפט מציע לך 4 קלפים במקום 3" },
+  { id: "interest", ic: "🏦" },
+  { id: "trapguard", ic: "🧤" },
+  { id: "gemcut", ic: "🌟" },
+  { id: "hawk", ic: "👁️" },
+  { id: "giver", ic: "🫂" },
+  { id: "joker", ic: "🃏" },
 ];
 /** קלפים שמותר לקחת שוב (נערמים) */
 export const AB_STACKABLE = new Set(["greed", "magnet", "interest", "gemcut"]);

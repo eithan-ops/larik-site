@@ -13,6 +13,7 @@ import type { UndercoverServerMsg, UcPhase, UcDeclare, UcScoreRow } from "../../
 import type { GameViewProps } from "./registry";
 import { Sfx, vibrate } from "../lib/audio";
 import { UC_ART, type UcArtKey } from "./ucAssets";
+import { t } from "../lib/locale";
 
 /** איור מהמניפסט, עם נפילה חזרה לאימוג'י אם הקובץ לא נטען — המשחק אף פעם לא נשבר בגלל נכס */
 function Art({ k, size, alt, fallback }: { k: UcArtKey; size: number; alt: string; fallback: string }) {
@@ -29,16 +30,9 @@ type Reveal = {
   ejected: string | null; tie: boolean; declares: UcDeclare[];
 };
 
-const WHY: Record<UcScoreRow["why"], { t: string; e: string }> = {
-  declared: { t: "הכריז שהוא המתחזה — וניחש נכון!", e: "🥸" },
-  safe:     { t: "מתחזה ששרד", e: "😈" },
-  saved:    { t: "נתפס — אבל ניחש את המילה", e: "🪄" },
-  caught:   { t: "נתפס", e: "🎯" },
-  bluff:    { t: "הכריז וטעה במילה", e: "💨" },
-  hit:      { t: "הצביע נכון", e: "✅" },
-  miss:     { t: "הצביע לא נכון", e: "❌" },
-  fooled:   { t: "היה בטוח שהוא המתחזה 😅", e: "🤡" },
-};
+/** אימוג'י לכל תוצאה; הטקסט — undercover.why.<why> */
+const WHY_E: Record<UcScoreRow["why"], string> = { declared: "🥸", safe: "😈", saved: "🪄", caught: "🎯", bluff: "💨", hit: "✅", miss: "❌", fooled: "🤡" };
+const whyText = (w: UcScoreRow["why"]) => t(`undercover.why.${w}`);
 /** לכל תוצאה האיור שלה. "bluff" (מתחזה שהכריז וטעה) נשאר על האימוג'י —
  *  זו התוצאה היחידה שאין לה תמונה, והיא גם הנדירה ביותר. */
 const ART_FOR: Partial<Record<UcScoreRow["why"], UcArtKey>> = {
@@ -170,18 +164,18 @@ export default function UndercoverView({ room, me, conn, hub }: GameViewProps) {
         borderColor: holding ? "var(--gold)" : undefined,
       }}
     >
-      {!role ? <p className="sub">מחלק מילים…</p> : holding ? (
+      {!role ? <p className="sub">{t("undercover.dealing")}</p> : holding ? (
         <>
-          <div className="sub" style={{ fontSize: 11.5 }}>המילה שלך</div>
+          <div className="sub" style={{ fontSize: 11.5 }}>{t("undercover.your_word")}</div>
           <b style={{ fontSize: small ? 26 : 36, color: "var(--gold)", lineHeight: 1.2 }}>{role.word}</b>
         </>
       ) : (
         <>
           <div style={{ display: "flex", justifyContent: "center" }}>
-            <Art k="card" size={small ? 34 : 58} alt="קלף סודי" fallback="👁️" />
+            <Art k="card" size={small ? 34 : 58} alt={t("undercover.secret_card")} fallback="👁️" />
           </div>
-          <b style={{ fontSize: small ? 13 : 16 }}>החזק כדי לראות</b>
-          {!small && <p className="sub" style={{ fontSize: 11 }}>בסתר! שאף אחד לא יציץ</p>}
+          <b style={{ fontSize: small ? 13 : 16 }}>{t("undercover.hold_to_see")}</b>
+          {!small && <p className="sub" style={{ fontSize: 11 }}>{t("undercover.secret_hint")}</p>}
         </>
       )}
     </div>
@@ -191,30 +185,30 @@ export default function UndercoverView({ room, me, conn, hub }: GameViewProps) {
   const renderDeclareChip = () => {
     if (!role?.declareOn) return null;
     if (declared) {
-      return <span className="chip" style={{ borderColor: "var(--gold)", color: "var(--gold)" }}>🥸 הכרזת. נראה בחשיפה…</span>;
+      return <span className="chip" style={{ borderColor: "var(--gold)", color: "var(--gold)" }}>{t("undercover.declared_chip")}</span>;
     }
     if (!declareOpen) {
       return (
         <button className="btn ghost" style={{ fontSize: 13, padding: "9px 14px", maxWidth: 260 }}
           onPointerDown={() => { setDeclareOpen(true); vibrate(20); }}>
-          🥸 רגע… אני המתחזה?
+          {t("undercover.declare_btn")}
         </button>
       );
     }
     return (
       <div className="card" style={{ width: "100%", maxWidth: 340, padding: 14, display: "grid", gap: 8 }}>
-        <b style={{ fontSize: 14 }}>אז מה מילת הרוב?</b>
+        <b style={{ fontSize: 14 }}>{t("undercover.declare_q")}</b>
         <p className="sub" style={{ fontSize: 11.5, lineHeight: 1.6 }}>
-          סודי לגמרי — אף אחד לא רואה. צדקת: <b style={{ color: "var(--gold)" }}>+5</b>. טעית: 0 לסיבוב.
+          {t("undercover.declare_hint")} <b style={{ color: "var(--gold)" }}>+5</b>. {t("undercover.declare_hint2")}
         </p>
         <input className="input" value={declareText} maxLength={40} autoFocus
-          placeholder="המילה שכולם קיבלו…" onChange={(e) => setDeclareText(e.target.value)} />
+          placeholder={t("undercover.declare_ph")} onChange={(e) => setDeclareText(e.target.value)} />
         <div style={{ display: "flex", gap: 8 }}>
           <button className="btn gold" style={{ flex: 2 }} disabled={!declareText.trim()}
             onPointerDown={() => conn.sendGame({ a: "uc_declare", guess: declareText })}>
-            🔒 נועל
+            {t("undercover.lock")}
           </button>
-          <button className="btn ghost" style={{ flex: 1 }} onPointerDown={() => setDeclareOpen(false)}>ביטול</button>
+          <button className="btn ghost" style={{ flex: 1 }} onPointerDown={() => setDeclareOpen(false)}>{t("undercover.cancel")}</button>
         </div>
       </div>
     );
@@ -245,9 +239,9 @@ export default function UndercoverView({ room, me, conn, hub }: GameViewProps) {
 
   const head = (
     <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "center" }}>
-      {role && <span className="chip" style={{ fontSize: 12 }}>סיבוב {role.round}</span>}
+      {role && <span className="chip" style={{ fontSize: 12 }}>{t("undercover.round_n", { n: role.round })}</span>}
       {role && <span className="chip" style={{ fontSize: 12 }}>
-        🥸 {role.impostors === 1 ? "מתחזה אחד בחדר" : `${role.impostors} מתחזים בחדר`}
+        🥸 {t("undercover.impostors_n", { n: role.impostors })}
       </span>}
       {renderTimer()}
     </div>
@@ -261,18 +255,18 @@ export default function UndercoverView({ room, me, conn, hub }: GameViewProps) {
         <div style={{ fontSize: 40 }}>🥸</div>
         {renderCard()}
         <p className="sub" style={{ textAlign: "center", fontSize: 12.5, maxWidth: 320, lineHeight: 1.7 }}>
-          לכולם יש מילה — אבל לאחד מכם היא <b>אחרת</b>.<br />
-          גם הוא לא יודע שזה הוא. תגלו לפי הרמזים.
+          {t("undercover.deal_hint1")}<br />
+          {t("undercover.deal_hint2")}
         </p>
         {renderOrderStrip()}
         {iAmReady
-          ? <span className="chip">מוכנים {readyN.n}/{readyN.of} ⏳</span>
+          ? <span className="chip">{t("undercover.ready_n", { n: readyN.n, of: readyN.of })}</span>
           : <button className="mega-cta" style={{ maxWidth: 340, width: "100%" }}
               onPointerDown={() => { setIAmReady(true); conn.sendGame({ a: "uc_ready" }); Sfx.tick(); vibrate(25); }}>
-              קראתי ✓
+              {t("undercover.read_it")}
             </button>}
         {isHost && <button className="btn ghost" style={{ maxWidth: 200, fontSize: 13 }}
-          onPointerDown={() => conn.sendGame({ a: "uc_skip" })}>מתחילים בלי לחכות ▶</button>}
+          onPointerDown={() => conn.sendGame({ a: "uc_skip" })}>{t("undercover.start_now")}</button>}
       </main>
     );
   }
@@ -289,28 +283,28 @@ export default function UndercoverView({ room, me, conn, hub }: GameViewProps) {
         {mine ? (
           <>
             <div style={{ fontSize: 46 }} className="popin">🎤</div>
-            <div className="big" style={{ fontSize: 26, color: "var(--gold)" }}>התור שלך!</div>
+            <div className="big" style={{ fontSize: 26, color: "var(--gold)" }}>{t("undercover.your_turn")}</div>
             <p className="sub" style={{ textAlign: "center", fontSize: 13, maxWidth: 300, lineHeight: 1.7 }}>
-              תגיד בקול <b>מילה אחת</b> שקשורה למילה שלך.<br />לא ברור מדי, לא מעורפל מדי.
+              {t("undercover.clue_hint1")}<br />{t("undercover.clue_hint2")}
             </p>
             {renderCard(true)}
             <button className="mega-cta" style={{ maxWidth: 340, width: "100%" }}
               onPointerDown={() => { conn.sendGame({ a: "uc_said", idx: (turnIdx?.i ?? 1) - 1 }); Sfx.tick(); vibrate(30); }}>
-              אמרתי ✓
+              {t("undercover.said_it")}
             </button>
           </>
         ) : (
           <>
             <div style={{ fontSize: 40 }}>{emojiOf(turn ?? "")}</div>
-            <div className="big" style={{ fontSize: 22 }}>{nameOf(turn ?? "")} אומר רמז 🎤</div>
-            {turnIdx && <span className="chip" style={{ fontSize: 12 }}>{turnIdx.i} מתוך {turnIdx.of}</span>}
+            <div className="big" style={{ fontSize: 22 }}>{t("undercover.x_says_clue", { name: nameOf(turn ?? "") })}</div>
+            {turnIdx && <span className="chip" style={{ fontSize: 12 }}>{t("undercover.i_of", { i: turnIdx.i, of: turnIdx.of })}</span>}
             {renderCard(true)}
           </>
         )}
         {renderOrderStrip()}
         {renderDeclareChip()}
         {isHost && !mine && <button className="btn ghost" style={{ maxWidth: 180, fontSize: 12.5 }}
-          onPointerDown={() => conn.sendGame({ a: "uc_said", idx: (turnIdx?.i ?? 1) - 1 })}>דלג לתור הבא ⏭</button>}
+          onPointerDown={() => conn.sendGame({ a: "uc_said", idx: (turnIdx?.i ?? 1) - 1 })}>{t("undercover.skip_turn")}</button>}
       </main>
     );
   }
@@ -321,15 +315,15 @@ export default function UndercoverView({ room, me, conn, hub }: GameViewProps) {
       <main className="fullscreen" style={{ justifyContent: "center", gap: 14, padding: "52px 18px 20px" }}>
         {head}
         <div style={{ fontSize: 46 }}>🗣️</div>
-        <div className="big" style={{ fontSize: 24 }}>מתווכחים!</div>
+        <div className="big" style={{ fontSize: 24 }}>{t("undercover.talk")}</div>
         <p className="sub" style={{ textAlign: "center", fontSize: 13, maxWidth: 320, lineHeight: 1.7 }}>
-          מי נשמע לכם חשוד? מי אמר משהו כללי מדי?<br />
-          <b>שימו לב</b> — גם אתם אולי המתחזה.
+          {t("undercover.talk_hint1")}<br />
+          <b>{t("undercover.talk_hint2")}</b>
         </p>
         {renderCard(true)}
         {renderDeclareChip()}
         {isHost && <button className="mega-cta" style={{ maxWidth: 340, width: "100%" }}
-          onPointerDown={() => conn.sendGame({ a: "uc_skip" })}>🗳️ להצבעה</button>}
+          onPointerDown={() => conn.sendGame({ a: "uc_skip" })}>{t("undercover.to_vote")}</button>}
       </main>
     );
   }
@@ -340,8 +334,8 @@ export default function UndercoverView({ room, me, conn, hub }: GameViewProps) {
     return (
       <main className="fullscreen" style={{ justifyContent: "flex-start", gap: 12, padding: "52px 16px 20px" }}>
         {head}
-        <div className="big" style={{ fontSize: 24 }}>🗳️ מי המתחזה?</div>
-        <span className="chip" style={{ fontSize: 12.5 }}>הצביעו {votedN.n}/{votedN.of}</span>
+        <div className="big" style={{ fontSize: 24 }}>{t("undercover.who_impostor")}</div>
+        <span className="chip" style={{ fontSize: 12.5 }}>{t("undercover.voted_n", { n: votedN.n, of: votedN.of })}</span>
         <div className="players-grid" style={{ maxWidth: 380 }}>
           {alive.filter((p) => p.id !== me).map((p) => {
             const sel = (locked ? myVote : pick) === p.id;
@@ -363,7 +357,7 @@ export default function UndercoverView({ room, me, conn, hub }: GameViewProps) {
         {renderCard(true)}
         {locked ? (
           <span className="chip" style={{ borderColor: "var(--gold)", color: "var(--gold)" }}>
-            🔒 הצבעת ל{emojiOf(myVote!)} {nameOf(myVote!)} — מחכים לשאר
+            {t("undercover.you_voted", { name: `${emojiOf(myVote!)} ${nameOf(myVote!)}` })}
           </span>
         ) : (
           <button className="mega-cta" style={{ maxWidth: 340, width: "100%" }} disabled={!pick}
@@ -373,11 +367,11 @@ export default function UndercoverView({ room, me, conn, hub }: GameViewProps) {
               conn.sendGame({ a: "uc_vote", target: pick });
               Sfx.pop(); vibrate([40, 40, 40]);
             }}>
-            🔒 נועל הצבעה
+            {t("undercover.lock_vote")}
           </button>
         )}
         {isHost && !locked && <button className="btn ghost" style={{ maxWidth: 180, fontSize: 12.5 }}
-          onPointerDown={() => conn.sendGame({ a: "uc_skip" })}>סוגר הצבעה ⏭</button>}
+          onPointerDown={() => conn.sendGame({ a: "uc_skip" })}>{t("undercover.close_vote")}</button>}
       </main>
     );
   }
@@ -393,17 +387,17 @@ export default function UndercoverView({ room, me, conn, hub }: GameViewProps) {
           : undefined,
       }}>
         <div style={{ fontSize: 40 }} className={step === 0 ? "pulse" : "popin"}>🥸</div>
-        {step === 0 && <div className="big" style={{ fontSize: 22 }}>החשיפה…</div>}
+        {step === 0 && <div className="big" style={{ fontSize: 22 }}>{t("undercover.reveal")}</div>}
 
         {step >= 1 && (
           <div className="card popin" style={{ width: "100%", maxWidth: 340, textAlign: "center", padding: "14px 12px" }}>
-            <div className="sub" style={{ fontSize: 11.5 }}>מילת הרוב</div>
+            <div className="sub" style={{ fontSize: 11.5 }}>{t("undercover.majority_word")}</div>
             <b style={{ fontSize: 30, color: "var(--gold)" }}>{reveal.majorityWord}</b>
           </div>
         )}
         {step >= 2 && (
           <div className="card popin" style={{ width: "100%", maxWidth: 340, textAlign: "center", padding: "14px 12px" }}>
-            <div className="sub" style={{ fontSize: 11.5 }}>ומילת המתחזה הייתה…</div>
+            <div className="sub" style={{ fontSize: 11.5 }}>{t("undercover.impostor_word_was")}</div>
             <b style={{ fontSize: 30, color: "#ff8a8a" }}>{reveal.impostorWord}</b>
           </div>
         )}
@@ -412,13 +406,13 @@ export default function UndercoverView({ room, me, conn, hub }: GameViewProps) {
           <>
             <div className="big popin" style={{ fontSize: 21 }}>
               {reveal.impostors.length === 1
-                ? <>המתחזה: {emojiOf(reveal.impostors[0])} {nameOf(reveal.impostors[0])}</>
-                : <>המתחזים: {reveal.impostors.map((p) => `${emojiOf(p)} ${nameOf(p)}`).join(" · ")}</>}
+                ? <>{t("undercover.the_impostor", { name: `${emojiOf(reveal.impostors[0])} ${nameOf(reveal.impostors[0])}` })}</>
+                : <>{t("undercover.the_impostors", { names: reveal.impostors.map((p) => `${emojiOf(p)} ${nameOf(p)}`).join(" · ") })}</>}
             </div>
             {iAmImpostor && (() => {
               const myDeclare = reveal.declares.find((d) => d.pid === me);
               const art: UcArtKey = myDeclare?.ok ? "genius" : reveal.ejected === me ? "caught" : "safe";
-              const txt = myDeclare?.ok ? "הבנת לבד — וניחשת! 🥸" : reveal.ejected === me ? "זה היית אתה — ונתפסת 🫣" : "זה היית אתה… ושרדת 😈";
+              const txt = myDeclare?.ok ? t("undercover.me_genius") : reveal.ejected === me ? t("undercover.me_caught") : t("undercover.me_safe");
               return (
                 <div className="popin" style={{ display: "grid", justifyItems: "center", gap: 4 }}>
                   <Art k={art} size={116} alt={txt} fallback={art === "caught" ? "🫣" : art === "safe" ? "😈" : "💡"} />
@@ -441,7 +435,7 @@ export default function UndercoverView({ room, me, conn, hub }: GameViewProps) {
                     <span style={{ fontSize: 24 }}>{imp ? "🥸" : p.emoji}</span>
                     <span style={{ fontSize: 12 }}>{p.name}</span>
                     <span className="sub" style={{ fontSize: 10.5 }}>
-                      {n > 0 ? `${n} קולות` : "—"}{votedFor ? ` · →${emojiOf(votedFor)}` : ""}
+                      {n > 0 ? t("undercover.votes_n", { n }) : "—"}{votedFor ? ` · →${emojiOf(votedFor)}` : ""}
                     </span>
                   </div>
                 );
@@ -449,18 +443,18 @@ export default function UndercoverView({ room, me, conn, hub }: GameViewProps) {
             </div>
 
             {reveal.tie
-              ? <span className="chip">🤝 תיקו בהצבעה — אף אחד לא הודח</span>
+              ? <span className="chip">{t("undercover.tie")}</span>
               : reveal.ejected
                 ? <span className="chip" style={{ fontSize: 13 }}>
-                    הכי הרבה קולות: {emojiOf(reveal.ejected)} {nameOf(reveal.ejected)}
-                    {reveal.impostors.includes(reveal.ejected) ? " — תפסתם! 🎯" : " — טעיתם 😬"}
+                    {t("undercover.most_votes", { name: `${emojiOf(reveal.ejected)} ${nameOf(reveal.ejected)}` })}
+                    {reveal.impostors.includes(reveal.ejected) ? t("undercover.got_him") : t("undercover.wrong_one")}
                   </span>
                 : null}
 
             {reveal.declares.map((d) => (
               <span key={d.pid} className="chip" style={{ fontSize: 12.5, borderColor: d.ok ? "var(--gold)" : undefined }}>
-                {d.ok ? "🥸" : d.wasImpostor ? "💨" : "🤡"} {emojiOf(d.pid)} {nameOf(d.pid)} הכריז "{d.guess}"
-                {d.ok ? " — בול! " : d.wasImpostor ? " — היה מתחזה, אבל פספס" : " — ולא היה המתחזה 😅"}
+                {d.ok ? "🥸" : d.wasImpostor ? "💨" : "🤡"} {t("undercover.x_declared", { name: `${emojiOf(d.pid)} ${nameOf(d.pid)}`, guess: d.guess })}
+                {d.ok ? t("undercover.decl_ok") : d.wasImpostor ? t("undercover.decl_missed") : t("undercover.decl_fooled")}
               </span>
             ))}
           </>
@@ -470,22 +464,22 @@ export default function UndercoverView({ room, me, conn, hub }: GameViewProps) {
         {phase === "guess" && guess && !guessed && (
           iGuess ? (
             <div className="card" style={{ width: "100%", maxWidth: 340, padding: 14, display: "grid", gap: 8 }}>
-              <b style={{ fontSize: 15 }}>נתפסת! 🫣 ניחוש אחד להציל את הסיבוב:</b>
-              <p className="sub" style={{ fontSize: 11.5 }}>מה הייתה מילת הרוב? ⏱️ {left}</p>
+              <b style={{ fontSize: 15 }}>{t("undercover.caught_guess")}</b>
+              <p className="sub" style={{ fontSize: 11.5 }}>{t("undercover.what_majority")} ⏱️ {left}</p>
               <input className="input" value={guessText} maxLength={40} autoFocus
-                placeholder="המילה של כולם…" onChange={(e) => setGuessText(e.target.value)} />
+                placeholder={t("undercover.guess_ph")} onChange={(e) => setGuessText(e.target.value)} />
               <button className="btn gold" disabled={!guessText.trim()}
-                onPointerDown={() => conn.sendGame({ a: "uc_guess", guess: guessText })}>🎲 זו המילה!</button>
+                onPointerDown={() => conn.sendGame({ a: "uc_guess", guess: guessText })}>{t("undercover.thats_it")}</button>
             </div>
           ) : (
             <span className="chip pulse" style={{ fontSize: 13 }}>
-              🥸 {nameOf(guess.pid)} מנחש את מילת הרוב… ⏱️ {left}
+              {t("undercover.x_guessing", { name: nameOf(guess.pid) })} ⏱️ {left}
             </span>
           )
         )}
         {guessed && (
           <span className="chip popin" style={{ fontSize: 13, borderColor: guessed.ok ? "var(--gold)" : "#ff8a8a" }}>
-            {guessed.ok ? "🪄" : "💨"} {nameOf(guessed.pid)} ניחש "{guessed.guess}" — {guessed.ok ? "נכון! ברח ברגע האחרון" : "לא נכון"}
+            {guessed.ok ? "🪄" : "💨"} {t("undercover.x_guessed", { name: nameOf(guessed.pid), guess: guessed.guess })} — {guessed.ok ? t("undercover.guess_right") : t("undercover.guess_wrong")}
           </span>
         )}
       </main>
@@ -500,13 +494,13 @@ export default function UndercoverView({ room, me, conn, hub }: GameViewProps) {
     return (
       <main className="fullscreen" style={{ justifyContent: "flex-start", gap: 12, padding: "48px 16px 20px" }}>
         <div style={{ fontSize: 36 }}>🏅</div>
-        <div className="big" style={{ fontSize: 22 }}>סיבוב {reveal?.round ?? role?.round} — הניקוד</div>
+        <div className="big" style={{ fontSize: 22 }}>{t("undercover.round_scores", { n: reveal?.round ?? role?.round ?? 1 })}</div>
         {myRow && (
           <div className="card popin" style={{ width: "100%", maxWidth: 340, textAlign: "center", padding: "12px 14px", display: "grid", justifyItems: "center", gap: 2 }}>
             {ART_FOR[myRow.why]
-              ? <Art k={ART_FOR[myRow.why]!} size={92} alt={WHY[myRow.why].t} fallback={WHY[myRow.why].e} />
-              : <div style={{ fontSize: 26 }}>{WHY[myRow.why].e}</div>}
-            <b style={{ fontSize: 16 }}>{WHY[myRow.why].t}</b>
+              ? <Art k={ART_FOR[myRow.why]!} size={92} alt={whyText(myRow.why)} fallback={WHY_E[myRow.why]} />
+              : <div style={{ fontSize: 26 }}>{WHY_E[myRow.why]}</div>}
+            <b style={{ fontSize: 16 }}>{whyText(myRow.why)}</b>
             <div style={{ fontSize: 30, color: myRow.delta > 0 ? "var(--gold)" : "var(--muted)", fontWeight: 700 }}>
               {myRow.delta > 0 ? `+${myRow.delta}` : "0"}
             </div>
@@ -523,28 +517,28 @@ export default function UndercoverView({ room, me, conn, hub }: GameViewProps) {
                 <span style={{ fontSize: 13, width: 18, opacity: 0.6 }}>{i + 1}</span>
                 <span style={{ fontSize: 20 }}>{p.emoji}</span>
                 <b style={{ fontSize: 14, flex: 1 }}>{p.name}</b>
-                {row && <span className="sub" style={{ fontSize: 11.5 }}>{WHY[row.why].e} {row.delta > 0 ? `+${row.delta}` : ""}</span>}
-                <b style={{ fontSize: 18, color: "var(--gold)", minWidth: 26, textAlign: "left" }}>{totals[p.id] ?? 0}</b>
+                {row && <span className="sub" style={{ fontSize: 11.5 }}>{WHY_E[row.why]} {row.delta > 0 ? `+${row.delta}` : ""}</span>}
+                <b style={{ fontSize: 18, color: "var(--gold)", minWidth: 26, textAlign: "end" }}>{totals[p.id] ?? 0}</b>
               </div>
             );
           })}
         </div>
         {need && (
           <span className="chip" style={{ borderColor: "#ff8a8a", color: "#ff8a8a" }}>
-            צריך לפחות {need.need} שחקנים — יש {need.have}
+            {t("undercover.need_players", { need: need.need, have: need.have })}
           </span>
         )}
         {isHost ? (
           <div style={{ display: "flex", gap: 8, width: "100%", maxWidth: 340, marginTop: 4 }}>
             <button className="btn gold" style={{ flex: 2 }} onPointerDown={() => conn.sendGame({ a: "uc_next" })}>
-              🔄 סיבוב חדש
+              {t("undercover.new_round")}
             </button>
             <button className="btn ghost" style={{ flex: 1 }} onPointerDown={() => conn.sendGame({ a: "uc_end" })}>
-              🏁 סיימנו
+              {t("undercover.finish")}
             </button>
           </div>
         ) : (
-          <span className="chip">מחכים למארח… ⏳</span>
+          <span className="chip">{t("undercover.wait_host")}</span>
         )}
       </main>
     );
@@ -553,7 +547,7 @@ export default function UndercoverView({ room, me, conn, hub }: GameViewProps) {
   return (
     <main className="fullscreen" style={{ justifyContent: "center", gap: 12 }}>
       <div style={{ fontSize: 40 }} className="pulse">🥸</div>
-      <p className="sub">מתכוננים…</p>
+      <p className="sub">{t("undercover.preparing")}</p>
     </main>
   );
 }

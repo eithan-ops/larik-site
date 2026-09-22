@@ -49,7 +49,7 @@ export function createWhoMost(ctx: GameCtx): GameInstance {
     const ranked = ctx.players().map((p) => p.id).sort((a, b) => (total[b] ?? 0) - (total[a] ?? 0));
     const top = total[ranked[0]] ?? 0;
     const winnerIds = top > 0 ? ranked.filter((p) => (total[p] ?? 0) === top) : [];
-    ctx.end({ title: "מי הכי? 🫵 כוכב הערב!", winnerId: winnerIds[0], winnerIds, scores: total });
+    ctx.end({ title: { k: "whomost.end.title" }, winnerId: winnerIds[0], winnerIds, scores: total });
   }
 
   return {

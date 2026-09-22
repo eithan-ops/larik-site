@@ -302,7 +302,7 @@ export function createAbyss(ctx: GameCtx): GameInstance {
   /* ---------- דראפט ---------- */
   const cardMsg = (id: string): AbyssCard => {
     const c = AB_CARDS.find((x) => x.id === id)!;
-    return { id: c.id, ic: c.ic, t: c.t, d: c.d };
+    return { id: c.id, ic: c.ic };
   };
   function offer(pid: string): string[] {
     const owned = perks[pid] ?? [];
@@ -354,7 +354,7 @@ export function createAbyss(ctx: GameCtx): GameInstance {
       };
     }
     ctx.end({
-      title: winner ? `🕳️ התהום — ${nameOf(winner[0])} העלה ${winner[1].toLocaleString("he-IL")} גבישים` : "🕳️ התהום",
+      title: winner ? { k: "abyss.end.title", p: { name: nameOf(winner[0]), n: winner[1] } } : { k: "abyss.end.title0" },
       winnerId: winner?.[0],
       loserId: zeros.length === 1 ? zeros[0][0] : undefined,
       scores: Object.fromEntries(order),

@@ -9,6 +9,9 @@ import { useEffect, useRef, useState } from "react";
 import type { HofrimServerMsg, HofrimCard } from "../../../shared/protocol";
 import type { GameViewProps } from "./registry";
 import { unlockIosAudio } from "../lib/unmute";
+import { t, fmtNum } from "../lib/locale";
+const cn = (id: string) => t(`hofrim.card.${id}`);
+const cdesc = (id: string) => t(`hofrim.card.${id}.d`);
 import {
   HF_COLS as COLS, HF_ROWS as ROWS, HF_AIR as AIR, HF_VEIN as VEIN, HF_WALL as WALL, HF_LIFT as LIFT,
   HF_HARDNESS as HARDNESS, hfGenerate, hfIdx as idx,
@@ -185,7 +188,7 @@ export default function HofrimView({ room, me, conn, hub }: GameViewProps) {
         case "hf_mhit": {
           const m = g.mons.get(d.id); if (!m) break;
           m.flash = 0.09; m.hp = d.hp;
-          if (d.res) pop(g, m.x, m.y, "🛡️ חסין!", "#8E9BA8", 15);
+          if (d.res) pop(g, m.x, m.y, t("hofrim.immune"), "#8E9BA8", 15);
           else { g.stop = Math.max(g.stop, 0.04); g.shake = Math.max(g.shake, 4); play("hit", 0.3); }
           break;
         }
@@ -222,8 +225,8 @@ export default function HofrimView({ room, me, conn, hub }: GameViewProps) {
           if (d.pid === me) { setHud((h) => ({ ...h, hp: d.hp, maxhp: d.max })); g.shake = 12; g.flash = 0.16; g.flashCol = "#E5484D"; g.stop = 0.07; }
           break;
         case "hf_down":
-          if (d.pid === me) { g.me.dead = true; setToast("💀 נפלת — קמים בעוד רגע"); }
-          else { const o = g.others.get(d.pid); if (o) o.down = 1; setToast(`💀 ${g.players.find((x) => x.id === d.pid)?.name ?? "חבר"} נפל!`); }
+          if (d.pid === me) { g.me.dead = true; setToast(t("hofrim.you_fell")); }
+          else { const o = g.others.get(d.pid); if (o) o.down = 1; setToast(t("hofrim.x_fell", { name: g.players.find((x) => x.id === d.pid)?.name ?? t("hofrim.friend") })); }
           break;
         case "hf_up":
           if (d.pid === me) { g.me.dead = false; g.me.c = g.liftC; g.me.r = 3; g.me.x = g.liftC; g.me.y = 3; g.me.mv = false; setHud((h) => ({ ...h, hp: d.hp })); }
@@ -248,23 +251,23 @@ export default function HofrimView({ room, me, conn, hub }: GameViewProps) {
         case "hf_shift":
           g.target = d.target;
           setHud((h) => ({ ...h, shift: d.n, target: d.target, of: d.of }));
-          setBanner({ ic: "⛏️", t: `משמרת ${d.n}`, s: `${d.target.toLocaleString()} זהב · ${d.secs} שניות` });
+          setBanner({ ic: "⛏️", t: t("hofrim.shift_n", { n: d.n }), s: t("hofrim.shift_goal", { gold: d.target, s: d.secs }) });
           setTimeout(() => setBanner(null), 2200);
           break;
-        case "hf_quota": setToast("🎉 עמדנו במכסה!"); g.flash = 0.25; g.flashCol = "#F2C14E"; g.stop = Math.max(g.stop, 0.09); g.shake = Math.max(g.shake, 8); play("levelup", 0.6); break;
+        case "hf_quota": setToast(t("hofrim.quota_met")); g.flash = 0.25; g.flashCol = "#F2C14E"; g.stop = Math.max(g.stop, 0.09); g.shake = Math.max(g.shake, 8); play("levelup", 0.6); break;
         case "hf_shiftend":
-          setBanner(d.ok ? { ic: "✅", t: "המשמרת הושלמה", s: `${d.banked.toLocaleString()} מתוך ${d.target.toLocaleString()}` }
-            : d.partial ? { ic: "😬", t: "כמעט", s: `${d.banked.toLocaleString()} מתוך ${d.target.toLocaleString()} — בחירת נחמה` }
-            : { ic: "❌", t: "לא עמדנו במכסה", s: `החמצה ${d.misses} מתוך 3` });
+          setBanner(d.ok ? { ic: "✅", t: t("hofrim.shift_done"), s: t("hofrim.n_of", { n: d.banked, of: d.target }) }
+            : d.partial ? { ic: "😬", t: t("hofrim.almost"), s: t("hofrim.n_of_consolation", { n: d.banked, of: d.target }) }
+            : { ic: "❌", t: t("hofrim.quota_missed"), s: t("hofrim.miss_n_of_3", { n: d.misses }) });
           setTimeout(() => setBanner(null), 2600);
           break;
         case "hf_draft": setDraft(d.cards); break;
         case "hf_took":
           if (d.pid === me) {
             setDraft(null);
-            setBanner({ ic: d.card.ic, t: d.card.t, s: d.card.d.replace(/<[^>]+>/g, "") });
+            setBanner({ ic: d.card.ic, t: cn(d.card.id), s: cdesc(d.card.id) });
             g.flash = 0.22; g.flashCol = "#FFD152"; play("levelup", 0.55);
-            setTimeout(() => { setBanner(null); setToast("⌛ ממתינים לשאר החברים…"); }, 1600);
+            setTimeout(() => { setBanner(null); setToast(t("hofrim.wait_others")); }, 1600);
           }
           break;
         case "hf_called": {
@@ -272,7 +275,7 @@ export default function HofrimView({ room, me, conn, hub }: GameViewProps) {
           if (d.pid !== me) {
             const col = PCOL[(g.players.findIndex((x) => x.id === d.pid) + 1) % PCOL.length];
             g.ping = { x: d.x, y: d.y, col, t: 6 };                     // המיקום שהשרת שולח — סוף סוף בשימוש
-            setToast(`📣 ${p?.name ?? "חבר"} קורא לך!`); tone(660, 0.13, "square", 0.24);
+            setToast(t("hofrim.x_calls", { name: p?.name ?? t("hofrim.friend") })); tone(660, 0.13, "square", 0.24);
           }
           break;
         }
@@ -583,13 +586,13 @@ export default function HofrimView({ room, me, conn, hub }: GameViewProps) {
             ctx2.beginPath(); ctx2.arc(X + TS / 2, Y + TS / 2, TS * 0.4, 0, 6.283); ctx2.stroke();
             ctx2.strokeStyle = hard ? "#FF9A3C" : "#46E0C0"; ctx2.lineWidth = 4;
             ctx2.beginPath(); ctx2.arc(X + TS / 2, Y + TS / 2, TS * 0.4, -1.57, -1.57 + 6.283 * Math.min(1, g.prog[i])); ctx2.stroke();
-            const label = `קושי ${h} · כוחך ${g.stats.pow}`;
+            const label = t("hofrim.dig_label", { h, pow: g.stats.pow });
             ctx2.font = "800 12px Assistant, sans-serif"; ctx2.textAlign = "center";
             const w = ctx2.measureText(label).width + 12;
             ctx2.fillStyle = hard ? "rgba(120,52,10,.92)" : "rgba(10,40,36,.9)";
             ctx2.fillRect(X + TS / 2 - w / 2, Y - 24, w, 19);
             ctx2.fillStyle = hard ? "#FFD9A8" : "#BFF5EA"; ctx2.fillText(label, X + TS / 2, Y - 10);
-            if (hard) { ctx2.fillStyle = `rgba(255,154,60,${0.55 + 0.45 * Math.sin(ts / 160)})`; ctx2.fillText("📣 קרא לחבר", X + TS / 2, Y + TS + 18); }
+            if (hard) { ctx2.fillStyle = `rgba(255,154,60,${0.55 + 0.45 * Math.sin(ts / 160)})`; ctx2.fillText(t("hofrim.call_friend"), X + TS / 2, Y + TS + 18); }
           }
         }
       }
@@ -683,16 +686,16 @@ export default function HofrimView({ room, me, conn, hub }: GameViewProps) {
       {/* מד הצוות — מספר מוחלט, בלי דירוג */}
       <div className="hf-quota">
         <div className="hf-qbar"><div className="hf-qfill" style={{ width: pct + "%" }} /></div>
-        <b>{nearly ? `עוד ${(hud.target - hud.banked).toLocaleString()}` : <span dir="ltr">{`${hud.banked.toLocaleString()} / ${hud.target.toLocaleString()}`}</span>}</b>
-        <span>משמרת {hud.shift}/{hud.of} · {Math.floor(hud.left / 60)}:{String(hud.left % 60).padStart(2, "0")}</span>
+        <b>{nearly ? t("hofrim.n_more", { n: hud.target - hud.banked }) : <span dir="ltr">{`${fmtNum(hud.banked)} / ${fmtNum(hud.target)}`}</span>}</b>
+        <span>{t("hofrim.shift_of", { n: hud.shift, of: hud.of })} · {Math.floor(hud.left / 60)}:{String(hud.left % 60).padStart(2, "0")}</span>
       </div>
 
       <div className="hf-team">
-        {teams.map((t) => (
-          <div key={t.pid} className={"hf-tp" + (t.pid === me ? " me" : "")}>
-            <span className="e">{t.emoji}</span>
-            <b>{t.gold.toLocaleString()}</b>
-            <span className="b">{t.build.slice(-3).join("")}</span>
+        {teams.map((tm) => (
+          <div key={tm.pid} className={"hf-tp" + (tm.pid === me ? " me" : "")}>
+            <span className="e">{tm.emoji}</span>
+            <b>{fmtNum(tm.gold)}</b>
+            <span className="b">{tm.build.slice(-3).join("")}</span>
           </div>
         ))}
       </div>
@@ -717,11 +720,11 @@ export default function HofrimView({ room, me, conn, hub }: GameViewProps) {
       {draft && (
         <div className="hf-draft">
           <div className="card">
-            <h2>רמה {hud.level} — במה משדרגים?</h2>
+            <h2>{t("hofrim.level_upgrade", { n: hud.level })}</h2>
             {draft.map((c) => (
               <button key={c.id} className="hf-pick" onClick={() => conn.sendGame({ a: "hf_pick", card: c.id })}>
                 <span className="ic">{c.ic}</span>
-                <span className="tx"><b>{c.t}{c.wow && <i className="new">חדש!</i>}</b><span>{c.d}</span></span>
+                <span className="tx"><b>{cn(c.id)}{c.wow && <i className="new">{t("hofrim.new")}</i>}</b><span>{cdesc(c.id)}</span></span>
               </button>
             ))}
           </div>

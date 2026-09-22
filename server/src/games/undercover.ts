@@ -33,8 +33,8 @@ const SCORES_GAP = 4_200; // כמה החשיפה "נושמת" לפני לוח ה
 /* ---------- השוואת ניחוש סלחנית (עברית) ---------- */
 function norm(s: string): string {
   return (s ?? "")
-    .replace(/[֑-ׇ]/g, "")          // ניקוד וטעמים
-    .replace(/["'`״׳.,!?()\-–—]/g, "")
+    .replace(/[\u0591-\u05C7]/g, "")          // ניקוד וטעמים
+    .replace(/["'`\u05F4\u05F3.,!?()\-–—]/g, "")
     .replace(/\s+/g, " ")
     .trim()
     .toLowerCase();
@@ -59,7 +59,7 @@ export function sameWord(guess: string, target: string): boolean {
   if (g === t) return true;
   const gs = g.replace(/ /g, ""), ts = t.replace(/ /g, "");
   if (gs === ts) return true;
-  const strip = (x: string) => x.replace(/^[הוב]/, "");
+  const strip = (x: string) => x.replace(/^[\u05D4\u05D5\u05D1]/, ""); // ה/ו/ב בתחילת מילה
   if (strip(gs) === strip(ts)) return true;
   return ts.length >= 5 && lev(gs, ts) <= 1;
 }
@@ -319,7 +319,7 @@ export function createUndercover(ctx: GameCtx): GameInstance {
     const losers = ranked.filter((p) => totals[p] === bottom);
     const loser = losers.length === 1 && !winnerIds.includes(losers[0]) ? losers[0] : undefined;
     ctx.end({
-      title: `המתחזה למתקדמים 🥸 · ${round} סיבובים`,
+      title: { k: "undercover.end.title", p: { n: round } },
       winnerId: winnerIds[0], winnerIds, loserId: loser,
       scores: Object.fromEntries(here.map((p) => [p, totals[p]])),
     });

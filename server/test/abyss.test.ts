@@ -144,7 +144,7 @@ async function roomA() {
   await until(() => ev("a", "ab_draft").length > 0, CFG.resultsMs + 500);
   check("דראפט נפתח לשלושת המחוברים (d מנותק)", ev("a", "ab_draft").length === 1 && ev("b", "ab_draft").length === 1 && ev("c", "ab_draft").length === 1 && (last("a", "ab_draftopen") as any)?.ids.length === 3);
   const cards = (last("a", "ab_draft") as any).cards;
-  check("3 קלפים עם טקסט", cards.length === 3 && cards.every((c: any) => c.id && c.t && c.d));
+  check("3 קלפים (מזהה + אייקון; הטקסט בלקוח)", cards.length === 3 && cards.every((c: any) => c.id && c.ic && !c.t));
   room.onMessage("a", { t: "game", d: { a: "ab_pick", card: cards[0].id } as any });
   await sleep(40);
   check("ab_took + ab_perks על הבחירה", (last("a", "ab_took") as any)?.pid === "a" && (last("a", "ab_perks") as any)?.perks[0] === cards[0].id);
@@ -184,7 +184,7 @@ async function roomA() {
   const cer = snap.ceremony!;
   check("ניקוד הטקס = totals, המנצח = c", !!cer && cer.scores?.c === res2.totals.c && cer.winnerId === "c", JSON.stringify(cer?.scores));
   check("תארים לכל השחקנים", !!cer?.awards && Object.keys(cer.awards).length === 4);
-  check("הכותרת מזכירה את התהום", JSON.stringify(cer?.title ?? "").includes("התהום"));
+  check("הכותרת היא מפתח תרגום של התהום", JSON.stringify(cer?.title ?? "").includes("abyss.end.title"));
 }
 
 async function roomB() {
