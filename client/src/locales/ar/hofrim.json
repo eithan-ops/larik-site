@@ -55,7 +55,7 @@
   "hofrim.card.double.d": "ربع الخلايا تعطي غنيمة مرتين",
   "hofrim.card.share": "مشاركة",
   "hofrim.card.share.d": "10% من كل إيداع لك تُحسب أيضاً لأقرب صديق",
-  "hofrim.end.won": "⛏️ المنجم فُتح — {n} ذهب",
+  "hofrim.end.won": "⛏️ المنجم صار لنا — {n} ذهب",
   "hofrim.end.lost": "💥 المنجم انهار",
   "hofrim.immune": "🛡️ محصّن!",
   "hofrim.you_fell": "💀 سقطت — تنهض بعد لحظة",

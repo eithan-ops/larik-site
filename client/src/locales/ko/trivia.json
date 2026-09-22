@@ -6,5 +6,5 @@
   "trivia.wrong": "오답",
   "trivia.me": "(나)",
   "trivia.locked": "확정! 모두 기다리는 중... ({n})",
-  "trivia.tap_hint": "답을 터치해요 — 빠를수록 = 점수 더 많이!"
+  "trivia.tap_hint": "답을 터치해요 — 빠를수록 점수가 더 높아요!"
 }

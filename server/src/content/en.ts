@@ -19,6 +19,7 @@ export const en: LangContent = {
       "Oprah Winfrey", "Gordon Ramsay", "David Attenborough", "MrBeast", "Kim Kardashian", "Elon Musk", "Bill Gates", "Steve Jobs", "Walt Disney", "Albert Einstein",
       "Abraham Lincoln", "Winston Churchill", "Queen Elizabeth II", "King Charles", "Prince William", "David Beckham", "Harry Kane", "Lionel Messi", "LeBron James", "Michael Jordan",
       "Serena Williams", "Simone Biles", "Tom Brady", "Usain Bolt",
+      "Cristiano Ronaldo", "Olivia Rodrigo", "Jack Black", "Margot Robbie", "Keanu Reeves", "Snoop Dogg",
     ],
   },
   food: {
@@ -33,7 +34,7 @@ export const en: LangContent = {
     cards: [
       "SpongeBob", "Patrick Star", "Peppa Pig", "Bluey", "Homer Simpson", "Bart Simpson", "Elsa (Frozen)", "Olaf", "Shrek", "Donkey (Shrek)",
       "Pikachu", "Mario", "Luigi", "Sonic the Hedgehog", "Mickey Mouse", "Bugs Bunny", "Scooby-Doo", "Buzz Lightyear", "Woody (Toy Story)", "Simba",
-      "Moana", "Winnie the Pooh", "Minions", "Gru", "Tom (Tom and Jerry)", "Jerry", "Batman", "Spider-Man", "Superman", "Paddington Bear",
+      "Moana", "Winnie the Pooh", "Minions", "Gru", "Tom (Tom and Jerry)", "Jerry (Tom and Jerry)", "Batman", "Spider-Man", "Superman", "Paddington Bear",
       "Wallace and Gromit", "Garfield", "Lightning McQueen", "Stitch", "Bob the Builder", "Dora the Explorer",
     ],
   },
@@ -41,8 +42,8 @@ export const en: LangContent = {
   impostorPairs: [
   ["Pizza", "Burger"], ["Cat", "Dog"], ["Beach", "Pool"], ["Coffee", "Tea"], ["Plane", "Train"],
   ["Wedding", "Prom"], ["Football", "Basketball"], ["Guitar", "Piano"], ["Sun", "Moon"], ["Netflix", "YouTube"],
-  ["Christmas", "Halloween"], ["New York", "London"], ["Thanksgiving", "Easter"], ["Uber", "Taxi"], ["Target", "Walmart"],
-  ["Tube", "Bus"], ["Ice cream", "Popsicle"], ["Shower", "Bath"], ["Doctor", "Nurse"], ["School", "Summer camp"],
+  ["Christmas", "Halloween"], ["New York", "London"], ["Thanksgiving", "Easter"], ["Uber", "Taxi"], ["Supermarket", "Mall"],
+  ["Subway", "Bus"], ["Ice cream", "Popsicle"], ["Shower", "Bath"], ["Doctor", "Nurse"], ["School", "Summer camp"],
   ["Mom", "Grandma"], ["TV", "Cinema"], ["Couch", "Bed"], ["Winter", "Fall"], ["Wine", "Beer"],
   ["Cake", "Cookies"], ["Desert", "Forest"], ["Bike", "Scooter"], ["Sushi", "Tacos"], ["Cucumber", "Zucchini"],
   ["Sneakers", "Flip-flops"], ["Glasses", "Contact lenses"], ["Book", "Newspaper"], ["Restaurant", "Coffee shop"], ["Rain", "Snow"],
@@ -245,6 +246,10 @@ export const en: LangContent = {
   { q: "Which city has the Golden Gate Bridge?", options: ["Seattle", "San Francisco", "Los Angeles", "San Diego"], correct: 1, cat: "israel" },
   { q: "In the UK, what is a 'lorry'?", options: ["A truck", "A bus", "A train", "A tractor"], correct: 0, cat: "israel" },
   { q: "What sport is played at Wimbledon?", options: ["Golf", "Cricket", "Tennis", "Rugby"], correct: 2, cat: "israel" },
+  { q: "How many states does the USA have?", options: ["48", "51", "50", "52"], correct: 2, cat: "israel" },
+  { q: "What is the British flag commonly called?", options: ["The Union Jack", "The Red Ensign", "The Royal Standard", "The Saltire"], correct: 0, cat: "israel" },
+  { q: "Which UK city were the Beatles from?", options: ["Manchester", "Liverpool", "Birmingham", "Leeds"], correct: 1, cat: "israel" },
+  { q: "In which city is the White House?", options: ["New York", "Philadelphia", "Washington, D.C.", "Boston"], correct: 2, cat: "israel" },
   /* world */
   { q: "What is the capital of Australia?", options: ["Sydney", "Melbourne", "Perth", "Canberra"], correct: 3, cat: "world" },
   { q: "Which country has more pyramids than Egypt?", options: ["Sudan", "Mexico", "Peru", "Iraq"], correct: 0, cat: "world" },

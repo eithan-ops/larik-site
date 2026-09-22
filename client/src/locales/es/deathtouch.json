@@ -1,6 +1,6 @@
 {
   "deathtouch.civilians_won": "¡Los civiles atraparon a todos los asesinos! 🎉",
-  "deathtouch.killers_won": "Los asesinos se adueñaron del cuarto... 🔪",
+  "deathtouch.killers_won": "Los asesinos se adueñaron de la sala... 🔪",
   "deathtouch.end.title": "El Toque de la Muerte 🔪",
   "deathtouch.was_killer": "¡era un asesino! 🎯",
   "deathtouch.was_civilian": "era un civil inocente... 😬",
@@ -14,7 +14,7 @@
   "deathtouch.innocent": "inocente 😬",
   "deathtouch.dealing_roles": "Repartiendo roles...",
   "deathtouch.hint_killer": "En la ventana de caza — estira la mano y toca la pantalla de una víctima. ¡Que no te atrapen!",
-  "deathtouch.hint_civilian": "En la ventana de caza — deja el teléfono, manos arriba, y cuídate.",
+  "deathtouch.hint_civilian": "En la ventana de caza — teléfono sobre la mesa, manos arriba, y cuida tu pantalla.",
   "deathtouch.starting": "El juego empieza en un momento...",
   "deathtouch.you_dead": "Te asesinaron",
   "deathtouch.poker_face": "Mantén cara de póker... deja que los vivos lo resuelvan.",
@@ -25,5 +25,5 @@
   "deathtouch.phone_down": "Deja el teléfono sobre la mesa. Alguien anda suelto... ({s})",
   "deathtouch.who_killer": "¿Quién es el asesino? 🔍",
   "deathtouch.vote_suspect": "Voten al sospechoso ({s}s)",
-  "deathtouch.you_voted": "Votaste a {name} ✓"
+  "deathtouch.you_voted": "Votaste por {name} ✓"
 }

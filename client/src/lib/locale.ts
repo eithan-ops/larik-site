@@ -137,12 +137,12 @@ export function fmtNum(n: number): string {
 }
 
 function format(s: string, p: Params): string {
-  // 1. ריבוי — {n, plural, one {...} other {...}}
-  s = s.replace(/\{(\w+),\s*plural,\s*((?:\w+\s*\{[^{}]*\}\s*)+)\}/g, (_m, name: string, branches: string) => {
+  // 1. ריבוי — {n, plural, one {...} =2 {...} other {...}} (=N = מספר מדויק, גובר על הקטגוריה)
+  s = s.replace(/\{(\w+),\s*plural,\s*((?:(?:=\d+|\w+)\s*\{[^{}]*\}\s*)+)\}/g, (_m, name: string, branches: string) => {
     const n = Number(p[name] ?? 0);
     const cat = rules ? rules.select(n) : n === 1 ? "one" : "other";
     const map: Record<string, string> = {};
-    for (const b of branches.matchAll(/(\w+)\s*\{([^{}]*)\}/g)) map[b[1]] = b[2];
+    for (const b of branches.matchAll(/(=\d+|\w+)\s*\{([^{}]*)\}/g)) map[b[1]] = b[2];
     return (map[`=${n}`] ?? map[cat] ?? map.other ?? "").replace(/#/g, String(n));
   });
   // 2. השמה פשוטה — {name}; מספר מקבל מפרידי אלפים לפי השפה (1,840)

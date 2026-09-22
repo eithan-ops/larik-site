@@ -2,7 +2,7 @@
   "wall.evo.burn": "竜の舌",
   "wall.evo.frost": "氷河期",
   "wall.evo.chain": "嵐の怒り",
-  "wall.evo.poison": "沼の吐息",
+  "wall.evo.poison": "沼の息",
   "wall.evo.blast": "審判の日",
   "wall.evo.pierce": "永遠の槍",
   "wall.evo.multi": "星の雨",
@@ -50,12 +50,12 @@
   "wall.card.radius": "クラスター弾",
   "wall.card.radius.d": "爆発範囲‎+25%",
   "wall.card.heatc": "スーパー冷却",
-  "wall.card.heatc.d": "熱容量‎+30%",
-  "wall.card.tracer": "曳光弾",
+  "wall.card.heatc.d": "熱ゲージの容量‎+30%",
+  "wall.card.tracer": "トレーサー弾",
   "wall.card.tracer.d": "撃ち続けるほどダメージが上がる",
   "wall.card.payload": "重量爆弾",
   "wall.card.payload.d": "爆弾ダメージ‎+30%",
-  "wall.card.salvo": "オーバードーズ",
+  "wall.card.salvo": "てんこ盛り",
   "wall.card.salvo.d": "1回の投下で爆弾‎+1",
   "wall.card.blastr": "ワイドブラスト",
   "wall.card.blastr.d": "爆発の範囲‎+25%",
@@ -120,6 +120,6 @@
   "wall.fell_at_wave": "🏰 城壁が落ちたのはウェーブ",
   "wall.best_tonight": "🏆 今夜のベスト：ウェーブ{n}",
   "wall.again": "🔁 もう一回！（今度は守り切る）",
-  "wall.finish": "🏁 おしまい — 表彰式へ",
-  "wall.host_decides": "ホストが決める：もう一戦か、表彰式か… 👀"
+  "wall.finish": "🏁 おしまい — セレモニーへ",
+  "wall.host_decides": "ホストが決める：もう一戦か、セレモニーか… 👀"
 }

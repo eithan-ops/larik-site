@@ -5,6 +5,6 @@
   "trivia.no_answer": "Sem resposta",
   "trivia.wrong": "Errou",
   "trivia.me": "(eu)",
-  "trivia.locked": "Travado! Esperando todo mundo... ({n})",
+  "trivia.locked": "Confirmado! Esperando todo mundo... ({n})",
   "trivia.tap_hint": "Toque numa resposta — mais rápido = mais pontos!"
 }

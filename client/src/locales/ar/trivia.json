@@ -2,9 +2,9 @@
   "trivia.end.title": "تريفيا 🧠",
   "trivia.preparing": "نستعد... الجميع يجيبون في الوقت نفسه!",
   "trivia.answered_n": "أجابوا {n}",
-  "trivia.no_answer": "لم تجب",
+  "trivia.no_answer": "بلا إجابة",
   "trivia.wrong": "خطأ",
   "trivia.me": "(أنا)",
-  "trivia.locked": "تم التثبيت! ننتظر الجميع... ({n})",
+  "trivia.locked": "تم التأكيد! ننتظر الجميع... ({n})",
   "trivia.tap_hint": "المس إجابة — أسرع = نقاط أكثر!"
 }

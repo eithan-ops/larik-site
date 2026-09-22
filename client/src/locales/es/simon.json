@@ -1,7 +1,7 @@
 {
   "simon.end.won": "Simón Repartido 🟩 ¡Llegaron a {n}!",
   "simon.end.chain": "Simón Repartido 🟩 Una cadena de {n}",
-  "simon.preparing": "Preparándose...",
+  "simon.preparing": "Preparando...",
   "simon.watch": "Miren la secuencia... 👀",
   "simon.repeat": "¡Ahora repítanla! Toca cuando sea tu turno 👆",
   "simon.oops": "¡Ups! Era el turno de {name}. Empezamos de nuevo...",

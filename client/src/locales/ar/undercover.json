@@ -21,7 +21,7 @@
   "undercover.lock": "🔒 تثبيت",
   "undercover.cancel": "إلغاء",
   "undercover.round_n": "الجولة {n}",
-  "undercover.impostors_n": "{n, plural, one {مُنتحِل واحد في الغرفة} other {# منتحلين في الغرفة}}",
+  "undercover.impostors_n": "{n, plural, one {مُنتحِل واحد في الغرفة} two {مُنتحِلان في الغرفة} other {# مُنتحِلين في الغرفة}}",
   "undercover.deal_hint1": "الجميع لديهم كلمة — لكن واحداً منكم كلمته مختلفة.",
   "undercover.deal_hint2": "وحتى هو لا يعرف أنه هو. اكتشفوه من التلميحات.",
   "undercover.ready_n": "جاهزون {n}/{of} ⏳",
@@ -40,7 +40,7 @@
   "undercover.to_vote": "🗳️ إلى التصويت",
   "undercover.who_impostor": "🗳️ مَن المُنتحِل؟",
   "undercover.voted_n": "صوّتوا {n}/{of}",
-  "undercover.you_voted": "🔒 صوّتّ لـ{name} — ننتظر البقية",
+  "undercover.you_voted": "🔒 تصويتك: {name} — ننتظر البقية",
   "undercover.lock_vote": "🔒 تثبيت التصويت",
   "undercover.close_vote": "إغلاق التصويت ⏭",
   "undercover.reveal": "الكشف…",
@@ -49,9 +49,9 @@
   "undercover.the_impostor": "المُنتحِل: {name}",
   "undercover.the_impostors": "المنتحلون: {names}",
   "undercover.me_genius": "فهمتها وحدك — وخمّنت صح! 🥸",
-  "undercover.me_caught": "كان أنت — وأُمسكت 🫣",
-  "undercover.me_safe": "كان أنت… ونجوت 😈",
-  "undercover.votes_n": "{n, plural, one {صوت واحد} other {# أصوات}}",
+  "undercover.me_caught": "كنتَ أنت — وأُمسكت 🫣",
+  "undercover.me_safe": "كنتَ أنت… ونجوت 😈",
+  "undercover.votes_n": "{n, plural, one {صوت واحد} two {صوتان} other {# أصوات}}",
   "undercover.tie": "🤝 تعادل في التصويت — لم يخرج أحد",
   "undercover.most_votes": "أكثر الأصوات: {name}",
   "undercover.got_him": " — أمسكتموه! 🎯",
@@ -74,5 +74,5 @@
   "undercover.finish": "🏁 انتهينا",
   "undercover.wait_host": "ننتظر المضيف… ⏳",
   "undercover.preparing": "نستعد…",
-  "undercover.end.title": "المُنتحِل: للمحترفين 🥸 · {n, plural, one {جولة واحدة} other {# جولات}}"
+  "undercover.end.title": "المُنتحِل: للمحترفين 🥸 · {n, plural, one {جولة واحدة} two {جولتان} other {# جولات}}"
 }
