@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import type { ForeheadServerMsg } from "../../../shared/protocol";
 import type { GameViewProps } from "./registry";
 import { Sfx, vibrate } from "../lib/audio";
+import { t, lt } from "../lib/locale";
 import { watchForehead } from "../lib/sensors";
 
 type Phase = "deal" | "placing" | "playing" | "voting" | "done";
@@ -37,7 +38,7 @@ export default function ForeheadView({ room, me, conn, hub }: GameViewProps) {
   useEffect(() => hub.subscribe((d) => {
     const m = d as ForeheadServerMsg;
     switch (m.a) {
-      case "fh_deal": setCard(m.card); setDeckName(m.deckName); setPhase("placing"); return;
+      case "fh_deal": setCard(m.card); setDeckName(lt(m.deckName)); setPhase("placing"); return;
       case "fh_wait_placed": setPlacedCount(m.placed.length); setTotal(m.total); return;
       case "fh_begin": setPhase("playing"); Sfx.goBeep(); vibrate(120); return;
       case "fh_turn":
@@ -52,17 +53,17 @@ export default function ForeheadView({ room, me, conn, hub }: GameViewProps) {
       case "fh_saved":
         setSaved((s) => [...s, m.pid]);
         setVoteReq(null);
-        if (m.pid === me) { setPhase("playing"); Sfx.fanfare(); vibrate([80, 50, 80]); flashMsg(`צדקת! ${m.card} 🎉`, "#34e89e"); }
-        else { Sfx.pop(); flashMsg(`${nameOf(m.pid)} ניצל! (${m.card})`, "#8ff5cc"); }
+        if (m.pid === me) { setPhase("playing"); Sfx.fanfare(); vibrate([80, 50, 80]); flashMsg(t("forehead.you_right", { card: m.card }), "#34e89e"); }
+        else { Sfx.pop(); flashMsg(t("forehead.x_saved", { name: nameOf(m.pid), card: m.card }), "#8ff5cc"); }
         return;
       case "fh_wrong":
         setVoteReq(null);
-        if (m.pid === me) { Sfx.sadTrombone(); vibrate(300); flashMsg("לא נכון 😬", "#ff8a8a"); }
-        else flashMsg(`${nameOf(m.pid)} טעה 😅`, "#ff8a8a");
+        if (m.pid === me) { Sfx.sadTrombone(); vibrate(300); flashMsg(t("forehead.wrong"), "#ff8a8a"); }
+        else flashMsg(t("forehead.x_wrong", { name: nameOf(m.pid) }), "#ff8a8a");
         return;
       case "fh_cheater":
         Sfx.alarm(); vibrate([100, 50, 100, 50, 100]);
-        flashMsg(m.pid === me ? "נתפסת מציץ! 🐀" : `רמאי! ${nameOf(m.pid)} הציץ! 🐀`, "#ff4d4d", 3000);
+        flashMsg(m.pid === me ? t("forehead.you_peeked") : t("forehead.x_peeked", { name: nameOf(m.pid) }), "#ff4d4d", 3000);
         return;
     }
   }), [hub, me]);
@@ -123,12 +124,12 @@ export default function ForeheadView({ room, me, conn, hub }: GameViewProps) {
     return (
       <main className="fullscreen">
         {timerChip}
-        <p className="sub">{nameOf(voteReq.pid)} מנחש! הקלף שלו:</p>
+        <p className="sub">{t("forehead.x_guesses", { name: nameOf(voteReq.pid) })}</p>
         <div className="big" style={{ margin: "10px 0 26px", color: "var(--gold)" }}>{voteReq.card}</div>
-        <p className="sub" style={{ marginBottom: 14 }}>הוא צדק?</p>
+        <p className="sub" style={{ marginBottom: 14 }}>{t("forehead.was_right")}</p>
         <div style={{ display: "flex", gap: 12, width: "100%", maxWidth: 340 }}>
-          <button className="btn" onClick={() => { setVoted(true); conn.sendGame({ a: "fh_vote", ok: true }); }}>✓ צדק</button>
-          <button className="btn danger" onClick={() => { setVoted(true); conn.sendGame({ a: "fh_vote", ok: false }); }}>✗ טעה</button>
+          <button className="btn" onClick={() => { setVoted(true); conn.sendGame({ a: "fh_vote", ok: true }); }}>{t("forehead.vote_right")}</button>
+          <button className="btn danger" onClick={() => { setVoted(true); conn.sendGame({ a: "fh_vote", ok: false }); }}>{t("forehead.vote_wrong")}</button>
         </div>
       </main>
     );
@@ -139,7 +140,7 @@ export default function ForeheadView({ room, me, conn, hub }: GameViewProps) {
       <main className="fullscreen">
         {timerChip}
         <div className="pulse" style={{ fontSize: 70 }}>⚖️</div>
-        <p className="sub" style={{ marginTop: 10 }}>{voted ? "הצבעת. מחכים לשאר..." : "מנחשים... החברים שופטים"}</p>
+        <p className="sub" style={{ marginTop: 10 }}>{voted ? t("forehead.voted_wait") : t("forehead.judging")}</p>
       </main>
     );
   }
@@ -154,13 +155,13 @@ export default function ForeheadView({ room, me, conn, hub }: GameViewProps) {
         ) : (
           <>
             <div style={{ fontSize: 60 }}>🤳</div>
-            <h1 style={{ margin: "12px 0 4px" }}>שים אותי על המצח!</h1>
-            <p className="sub">מסך כלפי החברים. בלי להציץ!</p>
-            <p className="sub" style={{ marginTop: 18 }}>חפיסה: {deckName} · {placedCount}/{total} מוכנים</p>
+            <h1 style={{ margin: "12px 0 4px" }}>{t("forehead.put_me")}</h1>
+            <p className="sub">{t("forehead.face_out")}</p>
+            <p className="sub" style={{ marginTop: 18 }}>{t("forehead.deck_ready", { deck: deckName, n: placedCount, of: total })}</p>
             {!sensorOk.current && (
               <button className="btn ghost" style={{ marginTop: 20, maxWidth: 260 }}
                 onClick={() => { setOnForehead(true); conn.sendGame({ a: "fh_placed" }); }}>
-                אני על המצח (ידני)
+                {t("forehead.manual")}
               </button>
             )}
           </>
@@ -174,8 +175,8 @@ export default function ForeheadView({ room, me, conn, hub }: GameViewProps) {
     return (
       <main className="fullscreen" style={{ background: "radial-gradient(circle at 50% 20%, #1d4030, #0c0817)" }}>
         <div style={{ fontSize: 60 }}>😎</div>
-        <div className="big" style={{ color: "var(--money)" }}>ניצלת!</div>
-        <p className="sub" style={{ marginTop: 8 }}>עכשיו תיהנה לראות את השאר מתייבשים.<br />תורו של {nameOf(turnPid)}.</p>
+        <div className="big" style={{ color: "var(--money)" }}>{t("forehead.you_saved")}</div>
+        <p className="sub" style={{ marginTop: 8 }}>{t("forehead.enjoy")}<br />{t("forehead.turn_of", { name: nameOf(turnPid) })}</p>
       </main>
     );
   }
@@ -191,18 +192,18 @@ export default function ForeheadView({ room, me, conn, hub }: GameViewProps) {
         <div className="huge" style={{ transform: "rotate(180deg)", fontSize: "min(18vw,90px)" }}>{card}</div>
       ) : myTurn ? (
         <>
-          <div className="big" style={{ color: "var(--money)" }}>התור שלך! 🎯</div>
-          <p className="sub" style={{ margin: "10px 0 20px" }}>שאל שאלת כן/לא בקול רם.<br />יודע מי אתה?</p>
+          <div className="big" style={{ color: "var(--money)" }}>{t("forehead.your_turn")}</div>
+          <p className="sub" style={{ margin: "10px 0 20px" }}>{t("forehead.ask_yn")}<br />{t("forehead.know_who")}</p>
           <button className="btn gold" style={{ maxWidth: 300 }} onClick={() => conn.sendGame({ a: "fh_guess" })}>
-            🎤 אני מנחש!
+            {t("forehead.i_guess")}
           </button>
-          <p className="sub" style={{ marginTop: 14, fontSize: 11 }}>החזר את הטלפון למצח אחרי!</p>
+          <p className="sub" style={{ marginTop: 14, fontSize: 11 }}>{t("forehead.back_to_forehead")}</p>
         </>
       ) : (
         <>
           <div style={{ fontSize: 46 }}>🤫</div>
-          <p className="sub" style={{ marginTop: 10 }}>תורו של <b>{nameOf(turnPid)}</b> — עזרו לו בתשובות!</p>
-          <p className="sub" style={{ marginTop: 6, fontSize: 11 }}>הטלפון שלך על המצח? יופי. בלי להציץ 🐀</p>
+          <p className="sub" style={{ marginTop: 10 }}>{t("forehead.help_x", { name: nameOf(turnPid) })}</p>
+          <p className="sub" style={{ marginTop: 6, fontSize: 11 }}>{t("forehead.no_peek")}</p>
         </>
       )}
     </main>

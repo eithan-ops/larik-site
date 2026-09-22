@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import type { DeathTouchServerMsg } from "../../../shared/protocol";
 import type { GameViewProps } from "./registry";
 import { Sfx, vibrate } from "../lib/audio";
+import { t, lt } from "../lib/locale";
 
 type Phase = "role" | "hunt" | "accuse" | "reveal" | "dead";
 
@@ -33,7 +34,7 @@ export default function DeathTouchView({ room, me, conn, hub }: GameViewProps) {
     switch (m.a) {
       case "dt_role":
         setRole(m.role);
-        setMsg(m.role === "killer" ? `אתה רוצח 🔪 (מתוך ${m.killers})` : "אתה אזרח תמים 😇");
+        setMsg(m.role === "killer" ? t("deathtouch.you_killer", { n: m.killers ?? 1 }) : t("deathtouch.you_civilian"));
         return;
       case "dt_phase":
         setUntil(m.until);
@@ -48,14 +49,14 @@ export default function DeathTouchView({ room, me, conn, hub }: GameViewProps) {
         setDead((ds) => [...ds, m.pid]);
         Sfx.boom();
         if (m.pid === me) { vibrate(600); setPhase("dead"); }
-        showToast(`💀 ${nameOf(m.pid)} נרצח!`);
+        showToast(t("deathtouch.x_killed", { name: nameOf(m.pid) }));
         return;
       case "dt_accuse": setAlive(m.alive); setPhase("accuse"); setUntil(m.until); return;
       case "dt_alive": setAlive(m.alive); return;
-      case "dt_voted": setMsg(`הצביעו ${m.count}/${m.total}`); return;
+      case "dt_voted": setMsg(t("deathtouch.voted_n", { n: m.count, of: m.total })); return;
       case "dt_result":
         Sfx.ding();
-        showToast(m.suspect ? `${nameOf(m.suspect)} הודח — ${m.wasKiller ? "רוצח! 🎯" : "תמים 😬"}` : m.msg);
+        showToast(m.suspect ? t("deathtouch.x_ejected", { name: nameOf(m.suspect), what: m.wasKiller ? t("deathtouch.killer_bang") : t("deathtouch.innocent") }) : lt(m.msg));
         return;
     }
   }), [hub, me, iAmDead]);
@@ -86,11 +87,11 @@ export default function DeathTouchView({ room, me, conn, hub }: GameViewProps) {
     return (
       <main className="fullscreen" style={{ background: role === "killer" ? "#1a0d0d" : "var(--bg)" }}>
         <div style={{ fontSize: 80 }}>{role === "killer" ? "🔪" : role === "civilian" ? "😇" : "🎭"}</div>
-        <div className="big" style={{ marginTop: 10, color: role === "killer" ? "#ff6b6b" : "#8ff5cc" }}>{msg || "מחלק תפקידים..."}</div>
+        <div className="big" style={{ marginTop: 10, color: role === "killer" ? "#ff6b6b" : "#8ff5cc" }}>{msg || t("deathtouch.dealing_roles")}</div>
         <p className="sub" style={{ marginTop: 14, textAlign: "center", padding: "0 24px" }}>
-          {role === "killer" ? "בחלון הציד — הושט יד וגע במסך של קורבן. שלא יתפסו אותך!" : "בחלון הציד — הנח את הטלפון, ידיים למעלה, ותשמור על עצמך."}
+          {role === "killer" ? t("deathtouch.hint_killer") : t("deathtouch.hint_civilian")}
         </p>
-        <p className="sub" style={{ marginTop: 20, fontSize: 12 }}>המשחק מתחיל עוד רגע...</p>
+        <p className="sub" style={{ marginTop: 20, fontSize: 12 }}>{t("deathtouch.starting")}</p>
       </main>
     );
   }
@@ -100,9 +101,9 @@ export default function DeathTouchView({ room, me, conn, hub }: GameViewProps) {
       <main className="fullscreen" style={{ background: "#140000" }}>
         {toast && <div className="toast" style={{ background: "#ff4d4d", color: "#fff" }}>{toast}</div>}
         <div style={{ fontSize: 70 }}>👻</div>
-        <div className="big" style={{ color: "#ff8a8a" }}>נרצחת</div>
-        <p className="sub" style={{ marginTop: 10 }}>תשמור על פוקר פייס... תן לחיים לפתור את זה.</p>
-        <p className="sub" style={{ marginTop: 8 }}>חיים: {alive.map(nameOf).join(", ")}</p>
+        <div className="big" style={{ color: "#ff8a8a" }}>{t("deathtouch.you_dead")}</div>
+        <p className="sub" style={{ marginTop: 10 }}>{t("deathtouch.poker_face")}</p>
+        <p className="sub" style={{ marginTop: 8 }}>{t("deathtouch.alive_list", { names: alive.map(nameOf).join(", ") })}</p>
       </main>
     );
   }
@@ -116,15 +117,15 @@ export default function DeathTouchView({ room, me, conn, hub }: GameViewProps) {
         {amHunting ? (
           <>
             <div style={{ fontSize: 74 }} className="shake">🔪</div>
-            <div className="big" style={{ color: "#ff6b6b" }}>לך תיגע במישהו!</div>
-            <p className="sub" style={{ marginTop: 10 }}>הושט יד לטלפון של קורבן — עכשיו!</p>
+            <div className="big" style={{ color: "#ff6b6b" }}>{t("deathtouch.go_touch")}</div>
+            <p className="sub" style={{ marginTop: 10 }}>{t("deathtouch.reach_now")}</p>
           </>
         ) : (
           <>
             <div style={{ fontSize: 74 }} className="pulse">🖐️</div>
-            <div className="big">ידיים למעלה!</div>
+            <div className="big">{t("deathtouch.hands_up")}</div>
             <p className="sub" style={{ marginTop: 10, textAlign: "center", padding: "0 24px" }}>
-              הנח את הטלפון על השולחן. מישהו מסתובב... ({secs})
+              {t("deathtouch.phone_down", { s: secs })}
             </p>
           </>
         )}
@@ -135,8 +136,8 @@ export default function DeathTouchView({ room, me, conn, hub }: GameViewProps) {
   return (
     <main style={{ minHeight: "100dvh", padding: 18 }}>
       {toast && <div className="toast" style={{ background: "#ff4d4d", color: "#fff" }}>{toast}</div>}
-      <h1 className="brand" style={{ textAlign: "center" }}>מי הרוצח? 🔍</h1>
-      <p className="sub" style={{ textAlign: "center", marginBottom: 6 }}>הצביעו על החשוד ({secs}s)</p>
+      <h1 className="brand" style={{ textAlign: "center" }}>{t("deathtouch.who_killer")}</h1>
+      <p className="sub" style={{ textAlign: "center", marginBottom: 6 }}>{t("deathtouch.vote_suspect", { s: secs })}</p>
       <p className="sub" style={{ textAlign: "center", marginBottom: 14 }}>{msg}</p>
       <div className="players-grid">
         {alive.filter((p) => p !== me).map((pid) => (
@@ -148,7 +149,7 @@ export default function DeathTouchView({ room, me, conn, hub }: GameViewProps) {
           </button>
         ))}
       </div>
-      {voted && <p className="sub" style={{ textAlign: "center", marginTop: 16 }}>הצבעת על {nameOf(voted)} ✓</p>}
+      {voted && <p className="sub" style={{ textAlign: "center", marginTop: 16 }}>{t("deathtouch.you_voted", { name: nameOf(voted) })}</p>}
     </main>
   );
 }

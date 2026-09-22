@@ -166,7 +166,7 @@ export type ForeheadClientMsg =
   | { a: "fh_peek" }; // הג'ירו תפס הצצה
 
 export type ForeheadServerMsg =
-  | { a: "fh_deal"; card: string; deckName: string } // אישי
+  | { a: "fh_deal"; card: string; deckName: LText } // אישי
   | { a: "fh_wait_placed"; placed: string[]; total: number }
   | { a: "fh_begin" } // cue
   | { a: "fh_turn"; pid: string; until: number }
@@ -214,7 +214,7 @@ export type ColorRulesClientMsg =
 
 export type ColorRulesServerMsg =
   | { a: "cr_begin"; lives: number }
-  | { a: "cr_flash"; roundId: number; color: string; label: string; mustTap: boolean; at: number; until: number } // cue
+  | { a: "cr_flash"; roundId: number; color: string; label: LText; mustTap: boolean; at: number; until: number } // cue — label = colorrules.rule.<id>
   | { a: "cr_resolve"; roundId: number; out: string[]; alive: string[] }
   | { a: "cr_lives"; pid: string; lives: number };
 
@@ -243,7 +243,7 @@ export type DeathTouchServerMsg =
   | { a: "dt_killed"; pid: string } // cue — נדלק אדום אצל כולם
   | { a: "dt_accuse"; alive: string[]; until: number }
   | { a: "dt_voted"; count: number; total: number }
-  | { a: "dt_result"; suspect?: string; wasKiller?: boolean; msg: string }
+  | { a: "dt_result"; suspect?: string; wasKiller?: boolean; msg: LText }
   | { a: "dt_alive"; alive: string[] };
 
 // השדים הקטנים
@@ -263,7 +263,7 @@ export type AliasClientMsg =
   | { a: "al_skip" };
 
 export type AliasServerMsg =
-  | { a: "al_turn"; pid: string; deckName: string; until: number }
+  | { a: "al_turn"; pid: string; deckName: LText; until: number }
   | { a: "al_word"; word: string } // אישי למתאר
   | { a: "al_scored"; pid: string; total: number }
   | { a: "al_skipped"; pid: string }

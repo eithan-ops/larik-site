@@ -3,7 +3,7 @@
  */
 import type { GameCtx, GameInstance } from "../engine";
 import type { AliasClientMsg, GameClientMsg } from "../../../shared/protocol";
-import { resolveDeck, type DeckConfig } from "../decks";
+import { resolveDeck, deckLabel, type DeckConfig } from "../decks";
 
 const TURN_MS = 45_000;
 const ROUNDS_PER_PLAYER = 2;
@@ -33,7 +33,7 @@ export function createAlias(ctx: GameCtx): GameInstance {
     describer = order[turnIdx];
     turnsPlayed += 1;
     turnUntil = ctx.now() + TURN_MS;
-    ctx.broadcast({ a: "al_turn", pid: describer, deckName: chosen.name, until: turnUntil });
+    ctx.broadcast({ a: "al_turn", pid: describer, deckName: deckLabel("alias", chosen), until: turnUntil });
     nextWord();
     turnTimer = ctx.timer(TURN_MS, () => { ctx.broadcast({ a: "al_turnend", pid: describer, got: 0 }); ctx.timer(2500, nextTurn); });
   }
@@ -47,7 +47,7 @@ export function createAlias(ctx: GameCtx): GameInstance {
     const low = scores[ranked[ranked.length - 1]] ?? 0;
     const lowIds = ranked.filter((p) => (scores[p] ?? 0) === low);
     const loser = lowIds.length === 1 && low < top ? lowIds[0] : undefined;
-    ctx.end({ title: "על הלשון 👅", winnerId: winnerIds[0], winnerIds, loserId: loser, scores: { ...scores } });
+    ctx.end({ title: { k: "alias.end.title" }, winnerId: winnerIds[0], winnerIds, loserId: loser, scores: { ...scores } });
   }
 
   return {
@@ -60,7 +60,7 @@ export function createAlias(ctx: GameCtx): GameInstance {
     },
     onRejoin(pid: string) {
       if (over || !describer) return;
-      ctx.sendTo(pid, { a: "al_turn", pid: describer, deckName: chosen.name, until: turnUntil });
+      ctx.sendTo(pid, { a: "al_turn", pid: describer, deckName: deckLabel("alias", chosen), until: turnUntil });
       if (pid === describer && currentWord) ctx.sendTo(pid, { a: "al_word", word: currentWord });
     },
     onLeave(pid: string) { if (pid === describer) nextTurn(); },

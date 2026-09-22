@@ -1,0 +1,17 @@
+{
+  "colorrules.rule.green": "💚 Tap! and yell \"banana\"",
+  "colorrules.rule.blue": "💙 Tap! and stand up",
+  "colorrules.rule.yellow": "💛 Tap! and clap",
+  "colorrules.rule.pink": "💗 Tap! and switch seats",
+  "colorrules.rule.purple": "💜 Tap! and point up",
+  "colorrules.rule.white_freeze": "🤍 Freeze! Don't touch!",
+  "colorrules.rule.white_quiet": "🤍 Quiet! Hands up!",
+  "colorrules.end.title": "Color Rules 🎨",
+  "colorrules.preparing": "Getting ready...",
+  "colorrules.watch": "Eyes on the screen!",
+  "colorrules.out_list": "Out: {names}",
+  "colorrules.nice": "Nice! Moving on...",
+  "colorrules.you_out": "You're out!",
+  "colorrules.stay_watch": "Stick around and watch — who survives last?",
+  "colorrules.how": "Color = tap the screen and do the command. White 🤍 = don't touch! A mistake costs a heart."
+}

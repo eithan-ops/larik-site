@@ -1,0 +1,12 @@
+{
+  "simon.end.won": "سايمون المُوزَّع 🟩 وصلتم إلى {n}!",
+  "simon.end.chain": "سايمون المُوزَّع 🟩 سلسلة من {n}",
+  "simon.preparing": "نستعد...",
+  "simon.watch": "شاهدوا التتابع... 👀",
+  "simon.repeat": "الآن أعيدوه! المس عندما يأتي دورك 👆",
+  "simon.oops": "أوبس! كان دور {name}. نبدأ من جديد...",
+  "simon.watch_short": "شاهدوا",
+  "simon.repeat_short": "أعيدوا!",
+  "simon.title": "سايمون",
+  "simon.progress": "طول التتابع: {len} · أُعيد: {done}"
+}

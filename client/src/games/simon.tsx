@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import type { SimonServerMsg } from "../../../shared/protocol";
 import type { GameViewProps } from "./registry";
 import { Sfx, vibrate } from "../lib/audio";
+import { t } from "../lib/locale";
 
 export default function SimonView({ room, me, conn, hub }: GameViewProps) {
   const [myColor, setMyColor] = useState("#34e89e");
@@ -13,7 +14,7 @@ export default function SimonView({ room, me, conn, hub }: GameViewProps) {
   const [lit, setLit] = useState(false);
   const [round, setRound] = useState(0);
   const [progress, setProgress] = useState(0);
-  const [msg, setMsg] = useState("מתכוננים...");
+  const [msg, setMsg] = useState(() => t("simon.preparing"));
   const litTimer = useRef<number | undefined>(undefined);
   const phaseRef = useRef(phase);
   phaseRef.current = phase;
@@ -24,7 +25,7 @@ export default function SimonView({ room, me, conn, hub }: GameViewProps) {
     const m = d as SimonServerMsg;
     switch (m.a) {
       case "sm_setup": setMyColor(m.colors[me] ?? "#34e89e"); setLives(m.lives); return;
-      case "sm_watch": setPhase("watch"); setRound(m.round); setProgress(0); setMsg("צפו ברצף... 👀"); return;
+      case "sm_watch": setPhase("watch"); setRound(m.round); setProgress(0); setMsg(t("simon.watch")); return;
       case "sm_light":
         if (m.pid === me) {
           setLit(true); Sfx.goBeep(); vibrate(60);
@@ -32,14 +33,14 @@ export default function SimonView({ room, me, conn, hub }: GameViewProps) {
           litTimer.current = window.setTimeout(() => setLit(false), 420);
         } else { Sfx.tick(); }
         return;
-      case "sm_input": setPhase("input"); setMsg("עכשיו שחזרו! גע כשזה תורך 👆"); return;
+      case "sm_input": setPhase("input"); setMsg(t("simon.repeat")); return;
       case "sm_progress":
         setProgress(m.index);
         if (m.pid === me) { Sfx.pop(); vibrate(30); }
         return;
       case "sm_wrong":
         setLives(m.lives); Sfx.sadTrombone(); vibrate(300);
-        setMsg(`אופס! היה תור של ${nameOf(m.expected)}. מתחילים שוב...`);
+        setMsg(t("simon.oops", { name: nameOf(m.expected) }));
         setPhase("idle");
         return;
     }
@@ -63,10 +64,10 @@ export default function SimonView({ room, me, conn, hub }: GameViewProps) {
       </div>
       <div style={{ fontSize: 54 }} className={active ? "pulse" : ""}>{active ? "👆" : "🟩"}</div>
       <div className="big" style={{ marginTop: 10, color: lit ? "#0c0817" : "#fff" }}>
-        {phase === "watch" ? "צפו" : phase === "input" ? "שחזרו!" : "סימון"}
+        {phase === "watch" ? t("simon.watch_short") : phase === "input" ? t("simon.repeat_short") : t("simon.title")}
       </div>
       <p className="sub" style={{ marginTop: 10, color: lit ? "#0c0817" : undefined, textAlign: "center", padding: "0 20px" }}>{msg}</p>
-      {round > 0 && <p className="sub" style={{ marginTop: 8, color: lit ? "#0c0817" : undefined }}>אורך רצף: {round} · שוחזרו: {progress}</p>}
+      {round > 0 && <p className="sub" style={{ marginTop: 8, color: lit ? "#0c0817" : undefined }}>{t("simon.progress", { len: round, done: progress })}</p>}
     </main>
   );
 }

@@ -1,0 +1,12 @@
+{
+  "simon.end.won": "Scattered Simon 🟩 You reached {n}!",
+  "simon.end.chain": "Scattered Simon 🟩 A chain of {n}",
+  "simon.preparing": "Getting ready...",
+  "simon.watch": "Watch the sequence... 👀",
+  "simon.repeat": "Now repeat it! Tap when it's your turn 👆",
+  "simon.oops": "Oops! It was {name}'s turn. Starting over...",
+  "simon.watch_short": "Watch",
+  "simon.repeat_short": "Repeat!",
+  "simon.title": "Simon",
+  "simon.progress": "Sequence length: {len} · repeated: {done}"
+}

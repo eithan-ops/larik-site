@@ -1,0 +1,17 @@
+{
+  "colorrules.rule.green": "💚 Toque! e grite \"banana\"",
+  "colorrules.rule.blue": "💙 Toque! e levante",
+  "colorrules.rule.yellow": "💛 Toque! e bata palma",
+  "colorrules.rule.pink": "💗 Toque! e troque de lugar",
+  "colorrules.rule.purple": "💜 Toque! e aponte pra cima",
+  "colorrules.rule.white_freeze": "🤍 Congela! Não toque!",
+  "colorrules.rule.white_quiet": "🤍 Silêncio! Mãos pra cima!",
+  "colorrules.end.title": "Regras da Cor 🎨",
+  "colorrules.preparing": "Preparando...",
+  "colorrules.watch": "Olho na tela!",
+  "colorrules.out_list": "Eliminados: {names}",
+  "colorrules.nice": "Boa! Seguindo...",
+  "colorrules.you_out": "Você está fora!",
+  "colorrules.stay_watch": "Fique assistindo — quem sobrevive por último?",
+  "colorrules.how": "Cor = toque na tela e faça o comando. Branco 🤍 = não toque! Errar custa um coração."
+}

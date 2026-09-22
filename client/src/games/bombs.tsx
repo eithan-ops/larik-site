@@ -8,6 +8,7 @@ import { useEffect, useRef, useState } from "react";
 import type { BombsServerMsg, BombType } from "../../../shared/protocol";
 import type { GameViewProps } from "./registry";
 import { Sfx, vibrate } from "../lib/audio";
+import { t } from "../lib/locale";
 
 interface BombV {
   id: number;
@@ -26,12 +27,7 @@ const SPRITE: Record<BombType, string> = {
   duo: "/bombs/duo.png",
 };
 const FALLBACK: Record<BombType, string> = { classic: "💣", sticky: "🟣", chain: "⛓️", duo: "🤝" };
-const TYPE_HINT: Record<BombType, string> = {
-  classic: "העף אותה למישהו! 👇",
-  sticky: "דביקה! שפשף אותה חזק כדי לשחרר 🧽",
-  chain: "זהירות — מתפצלת בהעברה! ⛓️",
-  duo: "תאומה! שניכם מחזיקים בו-זמנית 🤝",
-};
+const typeHint = (k: BombType) => t(`bombs.hint.${k}`);
 const RUB_TARGET = 900; // פיקסלים של שפשוף
 
 export default function BombsView({ room, me, conn, hub }: GameViewProps) {
@@ -74,7 +70,7 @@ export default function BombsView({ room, me, conn, hub }: GameViewProps) {
       }
       case "bm_pass":
         setBombs((bs) => bs.map((b) => (b.id === m.bombId ? { ...b, holder: m.to } : b)));
-        if (m.to === me) { Sfx.goBeep(); vibrate([70, 40, 70]); showToast(`💣 ${nameOf(m.from)} העיף אליך!`); }
+        if (m.to === me) { Sfx.goBeep(); vibrate([70, 40, 70]); showToast(t("bombs.x_threw", { name: nameOf(m.from) })); }
         else if (m.from === me) Sfx.pop();
         return;
       case "bm_unstuck":
@@ -93,7 +89,7 @@ export default function BombsView({ room, me, conn, hub }: GameViewProps) {
         window.setTimeout(() => setFlash(""), 500);
         Sfx.fanfare();
         if (m.by.includes(me)) vibrate([40, 30, 40, 30, 120]);
-        showToast(`✨ ${m.by.map(nameOf).join(" + ")} נטרלו תאומה!`);
+        showToast(t("bombs.defused_duo", { names: m.by.map(nameOf).join(" + ") }));
         return;
       case "bm_explode":
         setBombs((bs) => bs.filter((b) => b.id !== m.bombId));
@@ -101,7 +97,7 @@ export default function BombsView({ room, me, conn, hub }: GameViewProps) {
         window.setTimeout(() => setFlash(""), 700);
         Sfx.boom();
         vibrate(m.holder === me ? 600 : 250);
-        showToast(`💥 התפוצצה אצל ${nameOf(m.holder)}!`);
+        showToast(t("bombs.exploded_at", { name: nameOf(m.holder) }));
         return;
       case "bm_lives":
         setLives(m.lives);
@@ -175,18 +171,18 @@ export default function BombsView({ room, me, conn, hub }: GameViewProps) {
         <span style={{ fontSize: 20, letterSpacing: 2 }}>
           {Array.from({ length: 3 }, (_, i) => (i < lives ? "❤️" : "🖤")).join("")}
         </span>
-        <span className="chip">💣 {bombs.length} באוויר</span>
+        <span className="chip">{t("bombs.in_air", { n: bombs.length })}</span>
       </div>
 
-      {!started && <div className="big pulse" style={{ textAlign: "center", marginTop: 60 }}>💣 מטר הפצצות מתחיל...</div>}
+      {!started && <div className="big pulse" style={{ textAlign: "center", marginTop: 60 }}>{t("bombs.starting")}</div>}
 
       {/* הפצצות שלי */}
       <div className="bomb-zone">
         {mine.length === 0 && started && (
           <div style={{ textAlign: "center", opacity: 0.75 }}>
             <div style={{ fontSize: 54 }} className="pulse">😮‍💨</div>
-            <p className="sub">אצלך נקי... בינתיים.</p>
-            <p className="sub" style={{ fontSize: 12 }}>תסתכל מי עמוס וצעק לו לזרוק אליך!</p>
+            <p className="sub">{t("bombs.clear")}</p>
+            <p className="sub" style={{ fontSize: 12 }}>{t("bombs.clear_hint")}</p>
           </div>
         )}
 
@@ -225,7 +221,7 @@ export default function BombsView({ room, me, conn, hub }: GameViewProps) {
                   onPointerDown={(e) => { e.stopPropagation(); conn.sendGame({ a: "bm_hold", bombId: b.id, down: true }); }}
                   onPointerUp={() => conn.sendGame({ a: "bm_hold", bombId: b.id, down: false })}
                   onPointerLeave={() => { if (iHold) conn.sendGame({ a: "bm_hold", bombId: b.id, down: false }); }}>
-                  {iHold && partnerHolds ? "מנטרלים... 🤝" : iHold ? `חכה ל${nameOf(partnerId ?? "")}...` : "החזק לנטרול! 🤝"}
+                  {iHold && partnerHolds ? t("bombs.defusing") : iHold ? t("bombs.wait_for", { name: nameOf(partnerId ?? "") }) : t("bombs.hold_defuse")}
                   <span className="duo-dots">
                     <i className={iHold ? "on" : ""} />
                     <i className={partnerHolds ? "on" : ""} />
@@ -233,7 +229,7 @@ export default function BombsView({ room, me, conn, hub }: GameViewProps) {
                 </button>
               ) : (
                 <p className="sub" style={{ fontSize: 12, textAlign: "center", marginTop: 6 }}>
-                  {b.stuck ? TYPE_HINT.sticky : selected === b.id ? "עכשיו בחר למי להעיף! 👇" : TYPE_HINT[b.type]}
+                  {b.stuck ? typeHint("sticky") : selected === b.id ? t("bombs.pick_target") : typeHint(b.type)}
                 </p>
               )}
             </div>
@@ -257,7 +253,7 @@ export default function BombsView({ room, me, conn, hub }: GameViewProps) {
         })}
       </div>
       <p className="sub" style={{ textAlign: "center", fontSize: 11, opacity: 0.7, paddingBottom: 6 }}>
-        {selected != null ? "בחר חבר להעיף אליו 🎯" : "גע בפצצה שלך ואז בחבר — והכי חשוב: דברו!"}
+        {selected != null ? t("bombs.pick_friend") : t("bombs.how")}
       </p>
       <span style={{ display: "none" }}>{emojiOf(me)}</span>
     </main>

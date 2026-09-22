@@ -1,0 +1,19 @@
+{
+  "impostor.exposed_you": "들켰어요!",
+  "impostor.the_impostor": "임포스터: {name}",
+  "impostor.word_was": "단어는 바로:",
+  "impostor.new_round": "🔄 새 라운드",
+  "impostor.round_n": "라운드 {n}",
+  "impostor.dealing": "역할 나누는 중...",
+  "impostor.you_impostor": "내가 임포스터!",
+  "impostor.no_word1": "나한테는 단어가 없어요. 다른 사람들 힌트를 잘 듣고 —",
+  "impostor.no_word2": "그럴듯한 힌트를 지어내요. 행운을 빌어요 😏",
+  "impostor.secret_word": "비밀 단어:",
+  "impostor.hold_to_see": "꾹 누르면 카드가 보여요",
+  "impostor.secret_hint": "몰래! 아무도 못 보게",
+  "impostor.how1": "자기 차례에 비밀 단어와 관련된 단어를 소리 내서 말해요.",
+  "impostor.how2": "누가 수상해요? 따져보고 소리 내서 투표해요! 🗣️",
+  "impostor.how3": "결정했으면 — 방장이 공개해요.",
+  "impostor.expose": "🎭 임포스터 공개",
+  "impostor.new": "🔄 새로"
+}

@@ -1,0 +1,17 @@
+{
+  "colorrules.rule.green": "💚 터치! 그리고 \"바나나\" 외치기",
+  "colorrules.rule.blue": "💙 터치! 그리고 일어서기",
+  "colorrules.rule.yellow": "💛 터치! 그리고 박수",
+  "colorrules.rule.pink": "💗 터치! 그리고 자리 바꾸기",
+  "colorrules.rule.purple": "💜 터치! 그리고 위를 가리키기",
+  "colorrules.rule.white_freeze": "🤍 얼음! 건드리지 마요!",
+  "colorrules.rule.white_quiet": "🤍 조용! 손 들어요!",
+  "colorrules.end.title": "색깔의 규칙 🎨",
+  "colorrules.preparing": "준비 중...",
+  "colorrules.watch": "화면을 잘 봐요!",
+  "colorrules.out_list": "탈락: {names}",
+  "colorrules.nice": "좋아요! 계속 가요...",
+  "colorrules.you_out": "탈락했어요!",
+  "colorrules.stay_watch": "남아서 구경해요 — 마지막까지 누가 살아남을까요?",
+  "colorrules.how": "색깔 = 화면을 터치하고 명령대로 해요. 흰색 🤍 = 건드리지 마요! 실수하면 하트 하나 잃어요."
+}

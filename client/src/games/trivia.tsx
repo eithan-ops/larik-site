@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import type { TriviaServerMsg } from "../../../shared/protocol";
 import type { GameViewProps } from "./registry";
 import { Sfx, vibrate } from "../lib/audio";
+import { t } from "../lib/locale";
 import { markSeen } from "../lib/seen";
 
 interface Q { qId: number; q: string; options: string[]; index: number; total: number; at: number; until: number }
@@ -60,8 +61,8 @@ export default function TriviaView({ room, me, conn, hub }: GameViewProps) {
     return (
       <main className="fullscreen">
         <div style={{ fontSize: 56 }} className="pulse">🧠</div>
-        <div className="big" style={{ marginTop: 8 }}>טריוויה</div>
-        <p className="sub" style={{ marginTop: 8 }}>מתכוננים... כולם עונים בו-זמנית!</p>
+        <div className="big" style={{ marginTop: 8 }}>{t("games.trivia.name")}</div>
+        <p className="sub" style={{ marginTop: 8 }}>{t("trivia.preparing")}</p>
       </main>
     );
   }
@@ -75,7 +76,7 @@ export default function TriviaView({ room, me, conn, hub }: GameViewProps) {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingLeft: 96 }}>
         <span className="chip">{q.index + 1}/{q.total}</span>
         {!reveal ? <span className="chip" style={{ color: secs <= 4 ? "#ff8a8a" : undefined }}>⏱️ {secs}s</span>
-          : <span className="chip">ענו {answered}</span>}
+          : <span className="chip">{t("trivia.answered_n", { n: answered })}</span>}
       </div>
       <div className="card" style={{ marginTop: 14, textAlign: "center", padding: "22px 16px" }}>
         <div style={{ fontSize: 20, fontWeight: 800, lineHeight: 1.4 }}>{q.q}</div>
@@ -104,20 +105,20 @@ export default function TriviaView({ room, me, conn, hub }: GameViewProps) {
         <div style={{ textAlign: "center", marginTop: 14 }}>
           {chosen === reveal.correct
             ? <div className="big popin" style={{ color: "var(--money)", fontSize: 26 }}>+{gained} 🎉</div>
-            : <div className="big" style={{ color: "#ff8a8a", fontSize: 22 }}>{chosen === null ? "לא ענית" : "טעות"} 😬</div>}
+            : <div className="big" style={{ color: "#ff8a8a", fontSize: 22 }}>{chosen === null ? t("trivia.no_answer") : t("trivia.wrong")} 😬</div>}
           <div className="card" style={{ marginTop: 12, maxWidth: 300, margin: "12px auto 0", padding: 10 }}>
             {Object.entries(scores).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([pid, s], idx) => (
               <div key={pid} style={{ display: "flex", justifyContent: "space-between", fontSize: 14, padding: "3px 4px" }}>
-                <span>{idx === 0 ? "👑 " : ""}{nameOf(pid)}{pid === me ? " (אני)" : ""}</span>
+                <span>{idx === 0 ? "👑 " : ""}{nameOf(pid)}{pid === me ? ` ${t("trivia.me")}` : ""}</span>
                 <b style={{ color: "var(--money)" }}>{s}</b>
               </div>
             ))}
           </div>
         </div>
       ) : chosen !== null ? (
-        <p className="sub" style={{ textAlign: "center", marginTop: 16 }}>ננעל! מחכים לכולם... ({answered})</p>
+        <p className="sub" style={{ textAlign: "center", marginTop: 16 }}>{t("trivia.locked", { n: answered })}</p>
       ) : (
-        <p className="sub" style={{ textAlign: "center", marginTop: 16 }}>גע בתשובה — מהר יותר = יותר נקודות!</p>
+        <p className="sub" style={{ textAlign: "center", marginTop: 16 }}>{t("trivia.tap_hint")}</p>
       )}
     </main>
   );

@@ -116,7 +116,7 @@ export function createBombs(ctx: GameCtx): GameInstance {
     const scores: Record<string, number> = {};
     for (const p of ps) scores[p] = score(p);
     ctx.end({
-      title: `מטר הפצצות 💣 שרדתם ${survivedS} שניות`,
+      title: { k: "bombs.end.title", p: { s: survivedS } },
       winnerId: winner,
       loserId: loser !== winner ? loser : undefined,
       scores,

@@ -1,0 +1,19 @@
+{
+  "impostor.exposed_you": "נחשפת!",
+  "impostor.the_impostor": "המתחזה: {name}",
+  "impostor.word_was": "המילה הייתה:",
+  "impostor.new_round": "🔄 סיבוב חדש",
+  "impostor.round_n": "סיבוב {n}",
+  "impostor.dealing": "מחלק תפקידים...",
+  "impostor.you_impostor": "אתה המתחזה!",
+  "impostor.no_word1": "אין לך מילה. הקשב לרמזים של האחרים —",
+  "impostor.no_word2": "ותמציא רמז שיישמע שייך. בהצלחה 😏",
+  "impostor.secret_word": "המילה הסודית:",
+  "impostor.hold_to_see": "החזק כדי לראות את הקלף",
+  "impostor.secret_hint": "בסתר! שאף אחד לא יציץ",
+  "impostor.how1": "בתורכם אמרו בקול מילה שקשורה למילה הסודית.",
+  "impostor.how2": "חשדתם במישהו? תתווכחו והצביעו בקול! 🗣️",
+  "impostor.how3": "כשהחלטתם — המארח חושף.",
+  "impostor.expose": "🎭 חשוף את המתחזה",
+  "impostor.new": "🔄 חדש"
+}

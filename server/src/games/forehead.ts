@@ -5,7 +5,7 @@
  */
 import type { GameCtx, GameInstance } from "../engine";
 import type { ForeheadClientMsg, GameClientMsg } from "../../../shared/protocol";
-import { resolveDeck, type DeckConfig } from "../decks";
+import { resolveDeck, deckLabel, type DeckConfig } from "../decks";
 
 const TURN_MS = 45_000;
 const VOTE_MS = 12_000;
@@ -31,7 +31,7 @@ export function createForehead(ctx: GameCtx): GameInstance {
   function dealCards() {
     players.forEach((pid, i) => {
       cards.set(pid, deck[i % deck.length]);
-      ctx.sendTo(pid, { a: "fh_deal", card: deck[i % deck.length], deckName: chosen.name });
+      ctx.sendTo(pid, { a: "fh_deal", card: deck[i % deck.length], deckName: deckLabel("forehead", chosen) });
     });
   }
 
@@ -97,7 +97,7 @@ export function createForehead(ctx: GameCtx): GameInstance {
     const facts: Record<string, { guessed?: number; peeks?: number }> = {};
     for (const pid of saved) facts[pid] = { guessed: 1 };
     for (const [pid, n] of peeks) facts[pid] = { ...(facts[pid] ?? {}), peeks: n };
-    ctx.end({ title: "על המצח 🤳", winnerId: winner, loserId: loser, scores, facts });
+    ctx.end({ title: { k: "forehead.end.title" }, winnerId: winner, loserId: loser, scores, facts });
   }
 
   return {
@@ -149,7 +149,7 @@ export function createForehead(ctx: GameCtx): GameInstance {
     onRejoin(pid: string) {
       const card = cards.get(pid);
       if (!card) return;
-      ctx.sendTo(pid, { a: "fh_deal", card, deckName: chosen.name });
+      ctx.sendTo(pid, { a: "fh_deal", card, deckName: deckLabel("forehead", chosen) });
       // משחזרים את מי שכבר ניצל
       for (const s of saved) ctx.sendTo(pid, { a: "fh_saved", pid: s, rank: 0, card: cards.get(s) ?? "" });
       if (stage === "placing") {

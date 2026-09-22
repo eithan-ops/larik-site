@@ -1,0 +1,12 @@
+{
+  "simon.end.won": "Simon Espalhado 🟩 Vocês chegaram a {n}!",
+  "simon.end.chain": "Simon Espalhado 🟩 Sequência de {n}",
+  "simon.preparing": "Preparando...",
+  "simon.watch": "Observem a sequência... 👀",
+  "simon.repeat": "Agora repitam! Toque na sua vez 👆",
+  "simon.oops": "Ops! Era a vez de {name}. Começando de novo...",
+  "simon.watch_short": "Observem",
+  "simon.repeat_short": "Repitam!",
+  "simon.title": "Simon",
+  "simon.progress": "Tamanho da sequência: {len} · repetidos: {done}"
+}

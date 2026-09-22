@@ -1,0 +1,19 @@
+{
+  "impostor.exposed_you": "バレた！",
+  "impostor.the_impostor": "インポスター：{name}",
+  "impostor.word_was": "言葉はこれ：",
+  "impostor.new_round": "🔄 新しいラウンド",
+  "impostor.round_n": "ラウンド {n}",
+  "impostor.dealing": "役を配ってる...",
+  "impostor.you_impostor": "きみがインポスター！",
+  "impostor.no_word1": "きみに言葉はない。みんなのヒントを聞いて —",
+  "impostor.no_word2": "それっぽいヒントをでっちあげよう。がんばって 😏",
+  "impostor.secret_word": "秘密の言葉：",
+  "impostor.hold_to_see": "長押しでカードを見る",
+  "impostor.secret_hint": "こっそり！だれにも見せないで",
+  "impostor.how1": "自分の番に、秘密の言葉に関係する言葉を声に出して言おう。",
+  "impostor.how2": "怪しい人がいる？言い合って、声に出して投票！ 🗣️",
+  "impostor.how3": "決まったら — ホストが正体を明かす。",
+  "impostor.expose": "🎭 インポスターを暴く",
+  "impostor.new": "🔄 新しく"
+}

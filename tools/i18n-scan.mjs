@@ -67,6 +67,16 @@ const MIGRATED = [
   "server/src/games/whomost.ts",
   "client/src/games/hofrim.tsx",
   "server/src/games/hofrim.ts",
+  // שלב I — המשחקים הקטנים (מילות החפיסה ב-decks.ts — שלב נפרד)
+  "client/src/games/forehead.tsx", "server/src/games/forehead.ts",
+  "client/src/games/deathtouch.tsx", "server/src/games/deathtouch.ts",
+  "client/src/games/impostor.tsx", "server/src/games/impostor.ts",
+  "client/src/games/bombs.tsx", "server/src/games/bombs.ts",
+  "client/src/games/colorrules.tsx", "server/src/games/colorrules.ts",
+  "client/src/games/alias.tsx", "server/src/games/alias.ts",
+  "client/src/games/simon.tsx", "server/src/games/simon.ts",
+  "client/src/games/demons.tsx", "server/src/games/demons.ts",
+  "client/src/games/trivia.tsx", "server/src/games/trivia.ts",
 ];
 
 function walk(dir, out = []) {
