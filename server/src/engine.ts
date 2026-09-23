@@ -27,6 +27,13 @@ export interface GameEndResult {
   loserId?: string;
   scores?: Record<string, number>;
   /**
+   * נקודות ללוח הערב לפי המשחק (במקום הכלל 3 למנצח / 1 לכולם / 0 לליצן) — מי שלא ברשימה לא מקבל כלום
+   * ולא מופיע בלוח (ספורט פודים: המאמן והפודים-בלבד אינם מתחרים).
+   */
+  points?: Record<string, number>;
+  /** false = סיום שלא נספר כמשחק (הכרזת אלוף הערב) — לא מקדם את מונה המשחקים */
+  countsAsGame?: boolean;
+  /**
    * עובדות ייעודיות למנוע התארים — אופציונלי לגמרי.
    * המשחק מדווח מה קרה ("זמן התגובה הכי טוב היה 410ms"), לא מה זה אומר.
    * העובדות הבסיסיות (ניצחונות, ליצן, נקודות) נצברות אוטומטית ולא צריך לדווח אותן.
@@ -64,6 +71,8 @@ export interface GameCtx {
   /** שפת החדר — שפת המארח (ברירת מחדל he); קובעת חפיסות, זוגות מילים וטריוויה */
   lang: string;
   config: unknown;
+  /** זיכרון של החדר שחי בין משחקים (טורניר הערב של ספורט-פודים, צבעי ספורטאים) — נמחק עם החדר */
+  memo: Record<string, unknown>;
 }
 
 export interface GameInstance {
@@ -110,6 +119,7 @@ export class Room {
   private winStreak: Record<string, number> = {};         // רצף ניצחונות רץ (לא נשמר בעובדות)
   private wonGameIds: Record<string, Set<string>> = {};   // באילו משחקים שונים ניצח
   private gamesPlayed = 0;
+  private memo: Record<string, unknown> = {};   // זיכרון בין משחקים (GameCtx.memo)
   private timers = new Set<NodeJS.Timeout>();
   private gamePids: string[] = []; // משתתפי המשחק הרץ — ננעל ברגע ההתחלה
   private runToken = 0;          // עולה בכל התחלת משחק — "עוד פעם" הוא ריצה חדשה
@@ -366,6 +376,7 @@ export class Room {
       },
       end: (result) => this.endGame(result),
       get lang() { return room.roomLang(); },
+      memo: this.memo,
       seenUnion: () => {
         const out = new Set<number>();
         const ids = this.gamePids.length ? this.gamePids : [...this.players.keys()];
@@ -386,10 +397,11 @@ export class Room {
   private endGame(result: GameEndResult) {
     const winners = result.winnerIds?.length ? result.winnerIds : result.winnerId ? [result.winnerId] : [];
     const endedGameId = this.gameId ?? "game";
-    this.gamesPlayed += 1;
-    // ניקוד ערב: כל מנצח (גם בתיקו) +3, כולם חוץ מהליצן +1
+    if (result.countsAsGame !== false) this.gamesPlayed += 1;
+    // ניקוד ערב: כל מנצח (גם בתיקו) +3, כולם חוץ מהליצן +1 — אלא אם המשחק הביא נקודות משלו (ספורט פודים)
     for (const p of this.players.values()) {
       const base = this.eveningScores[p.id] ?? 0;
+      if (result.points) { if (result.points[p.id] !== undefined) this.eveningScores[p.id] = base + result.points[p.id]; continue; }
       const gain = winners.includes(p.id) ? 3 : p.id === result.loserId ? 0 : 1;
       this.eveningScores[p.id] = base + gain;
     }

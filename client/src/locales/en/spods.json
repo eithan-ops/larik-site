@@ -174,5 +174,21 @@
   "pods.fell": "Out: {names}",
   "pods.end.king": "Pods ⚡ King of Speed",
   "pods.end.survival": "Pods 💀 Survival",
-  "spods.s.end_title": "{ic} {name}"
+  "spods.s.end_title": "{ic} {name}",
+  "spods.tourn.title": "🏆 Tonight's tournament",
+  "spods.tourn.hint": "Points add up across games: 🥇 3 · 🥈 2 · 🥉 1. At the end — the champion of the night.",
+  "spods.tourn.empty": "The table fills up after the first game",
+  "spods.tourn.played": "{n, plural, one {1 game} other {# games}}",
+  "spods.tourn.pts": "{n} pts",
+  "spods.tourn.champion_btn": "🏆 Crown the champion of the night",
+  "spods.tourn.reset": "🔄 New tournament",
+  "spods.tourn.reset_confirm": "Clear the table? Yes, new tournament",
+  "spods.tourn.balance": "⚖️ Balance teams by the table",
+  "spods.tourn.rank": "Place {n} · {pts} pts",
+  "spods.best_new": "🌟 New personal best!",
+  "spods.best": "Personal best: {v}",
+  "spods.s.champion_title": "🏆 Champion of the night — after {n, plural, one {1 game} other {# games}}",
+  "spods.s.champion_sub": "Champion of the night!",
+  "spods.s.champion_say": "Champion of the night: {names}!",
+  "spods.s.tourn_reset": "New tournament started"
 }

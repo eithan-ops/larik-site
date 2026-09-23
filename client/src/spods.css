@@ -53,3 +53,12 @@
 .opt.tiny{padding:5px 9px; font-size:12px;}
 .sp-sel{background:#231F1A; color:#FFF3DC; border:1.5px solid rgba(255,255,255,.2); border-radius:10px; padding:5px 6px; font-family:inherit; font-size:12px; font-weight:700;}
 .sp-podn{font-family:var(--font-display,"Suez One",serif); font-size:20px; color:#FFC531; width:26px; text-align:center;}
+
+/* 🏆 טורניר הערב */
+.sp-tourn .sp-row.focus { background: rgba(255, 210, 31, 0.12); }
+.sp-tournline { display: flex; gap: 4px; flex-wrap: wrap; justify-content: center; }
+.sp-champ { animation: sp-champ 0.9s ease-in-out infinite alternate; }
+.sp-champ .sp-ic { font-size: 96px; animation: sp-champ-pop 0.6s cubic-bezier(.2,1.6,.4,1) both; }
+@keyframes sp-champ { from { filter: brightness(0.75); } to { filter: brightness(1.15); } }
+@keyframes sp-champ-pop { from { transform: scale(0.2) rotate(-20deg); } to { transform: none; } }
+@media (prefers-reduced-motion: reduce) { .sp-champ, .sp-champ .sp-ic { animation: none; } }

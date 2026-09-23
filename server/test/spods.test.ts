@@ -123,7 +123,7 @@ async function run(game: SpGame) {
   check("sp_over עם ניקוד לכולם", !!ov && Object.keys(ov.scores).length === 4, JSON.stringify(ov));
   const cer = await waitFor(() => lastRoom(COACH)?.room?.phase === "ceremony", 3000);
   const c = lastRoom(COACH)?.room?.ceremony;
-  check("טקס: כותרת ומנצח מבין הספורטאים", cer && !!c && c.title.includes(def.name) && (!c.winnerId || P.includes(c.winnerId)), JSON.stringify({ t: c?.title, w: c?.winnerId }));
+  check("טקס: כותרת (מפתח + שם המשחק) ומנצח מבין הספורטאים", cer && !!c && c.title?.k === "spods.s.end_title" && JSON.stringify(c.title).includes(`games.sp_${game}.name`) && (!c.winnerId || P.includes(c.winnerId)), JSON.stringify({ t: c?.title, w: c?.winnerId }));
   const fs = state(COACH)!;
   const anyHits = fs.aths.some((a) => a.hits > 0);
   check("לפחות ספורטאי אחד עם נגיעות", anyHits, JSON.stringify(fs.aths.map((a) => [a.pid, a.hits, a.miss, a.med])));
@@ -151,11 +151,83 @@ async function stopAndSkip() {
   check("עצירה מובילה לטקס", cer);
 }
 
+/** 🏆 טורניר הערב: שני משחקים באותו חדר → טבלה מצטברת, הצבעים נשמרים בין המשחקים, הכרזת אלוף → cue לפודים + טקס */
+async function tournament() {
+  console.log("\n— 🏆 טורניר הערב —");
+  const { transport, ev, state, lastRoom, listeners } = makeTransport();
+  const factories = Object.fromEntries(SP_GAME_IDS.map((g) => [`sp_${g}`, (ctx: any) => createSpods(ctx, g)]));
+  const room = new Room("SPR3", transport, factories);
+  const COACH = "coach"; const P = ["a", "b", "c"];
+  room.join(COACH, "מאמן", "👑"); P.forEach((p) => room.join(p, p, "🏃"));
+  const g = (pid: string, d: any) => room.onMessage(pid, { t: "game", d });
+  attachBots(room, listeners, P, (l) => (l.fade ? l.fade : l.pod === "a" ? 400 : l.pod === "b" ? 700 : 1000));
+  const play = async (game: SpGame) => {
+    room.onMessage(COACH, { t: "select_game", gameId: `sp_${game}`, config: {} });
+    room.onMessage(COACH, { t: "start_game" });
+    await sleep(30);
+    return state(COACH)!;
+  };
+  // משחק 1: מרוץ הצבעים — a הכי מהיר
+  let s = await play("colors");
+  check("לפני המשחק הראשון: טבלה ריקה", !!s.tourn && s.tourn.rows.length === 0 && s.tourn.games.length === 0);
+  const colors1 = Object.fromEntries(s.aths.map((a) => [a.pid, a.c]));
+  g(COACH, { a: "sp_hand", pid: "c", ms: 1000 });
+  g(COACH, { a: "sp_ctl", op: "start" });
+  await waitFor(() => state(COACH)?.phase === "over", 45000);
+  s = state(COACH)!;
+  check("אחרי משחק 1: שורה לכל ספורטאי, 🥇=3", s.tourn!.games.length === 1 && s.tourn!.rows.length === 3 && s.tourn!.rows[0].pts === 3, JSON.stringify(s.tourn!.rows));
+  console.log("  לוח משחק 1:", JSON.stringify(s.aths.map((a) => [a.pid, a.score, a.hits, a.miss])));
+  // (הבוט מגיב לפי הטלפון, לא לפי הצבע — הסבבים מתחלקים לפי הערבוב; בודקים את הכלל, לא מי ניצח)
+  const byScore = [...s.aths].sort((x, y) => y.score - x.score);
+  check("המוביל בטבלה = הניקוד הגבוה; שוויון בניקוד = אותן נקודות", s.tourn!.rows[0].pid === byScore[0].pid && s.aths.every((a, _, all) => all.every((b) => a.score !== b.score || s.tourn!.rows.find((r) => r.pid === a.pid)!.pts === s.tourn!.rows.find((r) => r.pid === b.pid)!.pts)), JSON.stringify(s.tourn!.rows.map((r) => [r.pid, r.pts])));
+  const ov = ev(COACH, "sp_over").at(-1);
+  const lead1 = s.tourn!.rows[0].pid;
+  check("sp_over נושא tpts", !!ov?.tpts && ov.tpts[lead1] === 3);
+  await waitFor(() => lastRoom(COACH)?.room?.phase === "ceremony", 3000);
+  let c = lastRoom(COACH)?.room?.ceremony;
+  check("לוח הערב = נקודות הטורניר (המאמן לא בלוח)", !!c && c.eveningScores[lead1] === 3 && c.eveningScores[COACH] === undefined, JSON.stringify(c?.eveningScores));
+  // משחק 2: כוכב הזריזות — אותם צבעים, ההנדיקפ נשמר
+  room.onMessage(COACH, { t: "back_to_lobby" });
+  s = await play("star");
+  check("משחק 2: הטבלה נשארה", s.tourn!.games.length === 1 && s.tourn!.rows.length === 3);
+  check("הצבעים וההנדיקפ נשמרו בין המשחקים", s.aths.every((a) => a.c === colors1[a.pid]) && s.aths.find((a) => a.pid === "c")!.hand === 1000, JSON.stringify(s.aths.map((a) => [a.pid, a.c, a.hand])));
+  g(COACH, { a: "sp_ctl", op: "start" });
+  await waitFor(() => state(COACH)?.phase === "over", 60000);
+  s = state(COACH)!;
+  check("אחרי משחק 2: שני משחקים בטבלה, נקודות מצטברות", s.tourn!.games.length === 2 && s.tourn!.rows.reduce((t, r) => t + r.pts, 0) >= 6 && s.tourn!.rows[0].played === 2, JSON.stringify(s.tourn!.rows));
+  await waitFor(() => lastRoom(COACH)?.room?.phase === "ceremony", 3000);
+  // הכרזת אלוף — מהשלט, לפני שמתחילים משחק שלישי
+  room.onMessage(COACH, { t: "back_to_lobby" });
+  s = await play("duel");
+  const leader = s.tourn!.rows[0];
+  g("a", { a: "sp_ctl", op: "champion" });
+  check("שחקן לא יכול להכריז", state(COACH)!.phase === "setup");
+  g(COACH, { a: "sp_ctl", op: "champion" });
+  s = state(COACH)!;
+  check("הכרזה → over, האלוף בבאנר", s.phase === "over" && s.tourn!.champion?.[0] === leader.pid && String(s.banner).includes("🏆"), JSON.stringify([s.phase, s.banner]));
+  const cue = await waitFor(() => ev("b", "sp_champion").length > 0, 3000);
+  check("cue sp_champion הגיע לפודים", cue && ev("b", "sp_champion")[0].pids[0] === leader.pid);
+  const cer = await waitFor(() => lastRoom(COACH)?.room?.phase === "ceremony", 8000);
+  c = lastRoom(COACH)?.room?.ceremony;
+  check("טקס אלוף הערב: כותרת, מנצח, הלוח לא השתנה", cer && c?.title?.k === "spods.s.champion_title" && c.winnerId === leader.pid && c.eveningScores[leader.pid] === leader.pts, JSON.stringify({ t: c?.title, w: c?.winnerId, e: c?.eveningScores }));
+  check("מונה המשחקים לא קפץ בהכרזה", c?.gamesPlayed === 2, String(c?.gamesPlayed));
+  room.onMessage(COACH, { t: "back_to_lobby" });
+  s = await play("colors");
+  check("אחרי ההכרזה: טורניר חדש (טבלה ריקה), הצבעים נשארו", s.tourn!.games.length === 0 && s.aths.every((a) => a.c === colors1[a.pid]));
+  // איפוס ידני + איזון קבוצות
+  room.onMessage(COACH, { t: "back_to_lobby" });
+  s = await play("relay");
+  g(COACH, { a: "sp_ctl", op: "team_auto" });
+  s = state(COACH)!;
+  check("איזון קבוצות: שתי קבוצות", new Set(s.aths.map((a) => a.team)).size === 2, JSON.stringify(s.aths.map((a) => [a.pid, a.team])));
+}
+
 (async () => {
   const arg = process.argv[2] || "all";
-  const list: SpGame[] = arg === "all" ? SP_GAME_IDS : [arg as SpGame];
+  const list: SpGame[] = arg === "all" ? SP_GAME_IDS : arg === "tourn" ? [] : [arg as SpGame];
   for (const game of list) await run(game);
   if (arg === "all" || arg === "star") await stopAndSkip();
+  if (arg === "all" || arg === "tourn") await tournament();
   console.log(failed ? `\n✗ ${failed} בדיקות נכשלו` : "\n✓ הכול עבר");
   process.exit(failed ? 1 : 0);
 })();

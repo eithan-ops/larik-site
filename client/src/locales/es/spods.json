@@ -174,5 +174,21 @@
   "pods.fell": "Fuera: {names}",
   "pods.end.king": "Pods ⚡ Rey de la Velocidad",
   "pods.end.survival": "Pods 💀 Supervivencia",
-  "spods.s.end_title": "{ic} {name}"
+  "spods.s.end_title": "{ic} {name}",
+  "spods.tourn.title": "🏆 Torneo de la noche",
+  "spods.tourn.hint": "Los puntos se suman entre juegos: 🥇 3 · 🥈 2 · 🥉 1. Al final, el campeón de la noche.",
+  "spods.tourn.empty": "La tabla se llena después del primer juego",
+  "spods.tourn.played": "{n, plural, one {1 juego} other {# juegos}}",
+  "spods.tourn.pts": "{n} pts",
+  "spods.tourn.champion_btn": "🏆 Coronar al campeón de la noche",
+  "spods.tourn.reset": "🔄 Torneo nuevo",
+  "spods.tourn.reset_confirm": "¿Borrar la tabla? Sí, torneo nuevo",
+  "spods.tourn.balance": "⚖️ Equilibrar equipos según la tabla",
+  "spods.tourn.rank": "Puesto {n} · {pts} pts",
+  "spods.best_new": "🌟 ¡Nuevo récord personal!",
+  "spods.best": "Récord personal: {v}",
+  "spods.s.champion_title": "🏆 Campeón de la noche — tras {n, plural, one {1 juego} other {# juegos}}",
+  "spods.s.champion_sub": "¡Campeón de la noche!",
+  "spods.s.champion_say": "Campeón de la noche: ¡{names}!",
+  "spods.s.tourn_reset": "Empezó un torneo nuevo"
 }

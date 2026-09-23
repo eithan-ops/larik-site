@@ -9,13 +9,25 @@ import type { GameViewProps } from "./registry";
 import { Sfx, vibrate } from "../lib/audio";
 import { SP_DEFS, SP_HAND_STEPS, spColor, spGameOf, spFmtScore } from "../../../shared/spods";
 const fmtScore = (g: SpGame, v: number) => SP_DEFS[g].unit === "lvl" ? t("spods.level_n", { n: v }) : spFmtScore(g, v);
-import type { SpState, SpLight, SpodsServerMsg, SpodsClientMsg, SpGame } from "../../../shared/spods";
+import type { SpState, SpLight, SpodsServerMsg, SpodsClientMsg, SpGame, SpTourn } from "../../../shared/spods";
 import "../spods.css";
 import { t, lt, optText, currentLang } from "../lib/locale";
 
 const TTS_LANG: Record<string, string> = { he: "he-IL", en: "en-US", es: "es-ES", pt: "pt-BR", ko: "ko-KR", ja: "ja-JP", ar: "ar-SA" };
 
 declare global { interface Window { __spDbg?: unknown; __spAuto?: boolean } }
+
+/* ---- שיא אישי לכל משחק — על הטלפון של הספורטאי (הפוד שלו), נשאר לערב הבא ---- */
+const bestKey = (g: SpGame) => `larik-sp-best:${g}`;
+function readBest(g: SpGame): number | null { try { const v = localStorage.getItem(bestKey(g)); return v ? Number(v) : null; } catch { return null; } }
+/** מחזיר true אם זה שיא חדש (ושומר) */
+function noteBest(g: SpGame, v: number): boolean {
+  if (!v) return false;
+  const prev = readBest(g);
+  const better = prev === null || (SP_DEFS[g].lowerIsBetter ? v < prev : v > prev);
+  if (better) { try { localStorage.setItem(bestKey(g), String(v)); } catch { /* מצב פרטי */ } }
+  return better && prev !== null;
+}
 
 /* ---- קריין: דיבור בעברית אם יש קול במכשיר, אחרת שקט (הצלילים עושים את העבודה) ---- */
 function speak(text: string) {
@@ -40,6 +52,8 @@ export default function SpodsView({ room, me, conn, hub }: GameViewProps) {
   const [fb, setFb] = useState<{ txt: string; good?: boolean } | null>(null);
   const [flash, setFlash] = useState(false);
   const [toast, setToast] = useState("");
+  const [champ, setChamp] = useState<string[] | null>(null);
+  const [best, setBest] = useState<number | null>(() => readBest(game));
   const [, setTick] = useState(0);
   const lightRef = useRef<SpLight | null>(null);
   lightRef.current = light;
@@ -87,7 +101,16 @@ export default function SpodsView({ room, me, conn, hub }: GameViewProps) {
       case "sp_flash":
         if (d.pod === me) { setFlash(true); Sfx.ding(); vibrate(200); setTimeout(() => setFlash(false), 700); }
         return;
-      case "sp_over":
+      case "sp_over": {
+        // שיא אישי — על הפוד שלי בלבד
+        const v = d.scores[me];
+        if (!isCoach && v !== undefined && noteBest(game, v)) { setBest(v); setFb({ txt: t("spods.best_new"), good: true }); setTimeout(() => setFb(null), 4000); Sfx.fanfare(); }
+        return;
+      }
+      case "sp_champion":
+        // cue: כל הפודים בצבע האלוף, ביחד
+        setChamp(d.pids); setLight(null);
+        Sfx.fanfare(); vibrate([120, 80, 120, 80, 300]);
         return;
     }
   }), [hub, me, isCoach, conn]);
@@ -122,6 +145,17 @@ export default function SpodsView({ room, me, conn, hub }: GameViewProps) {
   const col = myAth ? spColor(myAth.c) : null;
   const secsLeft = s.until ? Math.max(0, Math.ceil((s.until - conn.serverNow()) / 1000)) : 0;
 
+  if (champ) {
+    const ca = s.aths.find((a) => champ.includes(a.pid));
+    const cc = ca ? spColor(ca.c) : spColor(-1);
+    return (
+      <main className="sp-pod sp-lit sp-champ" style={{ background: cc.hex, color: cc.ink }}>
+        <div className="sp-ic">🏆</div>
+        <div className="sp-txt">{champ.map(nameOf).join(" + ")}</div>
+        <div className="sp-sub">{t("spods.s.champion_sub")}</div>
+      </main>
+    );
+  }
   if (light) {
     const c = spColor(light.c);
     // דעיכה (בדיוק בזמן): בהירות יורדת מ-1 ל-0 לאורך fade; פייק = עצירה של שנייה
@@ -166,6 +200,7 @@ export default function SpodsView({ room, me, conn, hub }: GameViewProps) {
       <div className="sp-banner">{lt(s.banner)}{s.phase === "count" && secsLeft > 0 ? ` · ${secsLeft}` : ""}</div>
       {s.phase === "setup" && <div className="sp-hint">{t("spods.place_me")}</div>}
       {s.phase === "over" && <div className="sp-hint">{t("spods.game_over")}</div>}
+      {myAth && (s.phase === "setup" || s.phase === "over") && <TournLine tourn={s.tourn} me={me} best={best} game={game} />}
       {myAth && s.phase !== "setup" && <div className="sp-score">{t(`spods.score.${game}`)}: <b>{fmtScore(game, myAth.score)}</b>{myAth.extra ? ` · ${lt(myAth.extra)}` : ""}</div>}
     </main>
   );
@@ -228,10 +263,14 @@ function Coach({ s, def, send, nameOf, toast, serverNow }: {
         </div>
       )}
 
+      {/* 🏆 טורניר הערב — מצטבר בין המשחקים */}
+      {(setup || s.phase === "over") && <TournCard tourn={s.tourn} nameOf={nameOf} setup={setup} onChampion={() => { Sfx.fanfare(); vibrate(80); send({ a: "sp_ctl", op: "champion" }); }} onReset={() => send({ a: "sp_ctl", op: "reset_tourn" })} />}
+
       {/* ספורטאים */}
       <div className="card sp-card">
         <b>{t("spods.athletes")} {nAth ? `(${nAth})` : ""}</b>
         {!setup && <span className="sub" style={{ marginInlineEnd: 8, fontSize: 12 }}>{t(`spods.score.${game}`)}</span>}
+        {setup && def.id === "relay" && nAth >= 2 && <button className="opt tiny" style={{ marginInlineStart: 8 }} onClick={() => send({ a: "sp_ctl", op: "team_auto" })}>{t("spods.tourn.balance")}</button>}
         {ranked.length === 0 && <p className="sub">{t("spods.no_aths")}</p>}
         {ranked.map((a, i) => {
           const c = spColor(a.c);
@@ -289,6 +328,57 @@ function Coach({ s, def, send, nameOf, toast, serverNow }: {
         {t("spods.ends_alone")}
       </p>
     </main>
+  );
+}
+
+/** טבלת הטורניר על השלט: מקום, צבע, שם, נקודות, כמה משחקים; כפתורי אלוף/איפוס רק לפני שמתחילים */
+function TournCard({ tourn, nameOf, setup, onChampion, onReset }: { tourn?: SpTourn; nameOf: (pid: string) => string; setup: boolean; onChampion: () => void; onReset: () => void }) {
+  const rows = tourn?.rows ?? [];
+  const games = tourn?.games ?? [];
+  const [confirm, setConfirm] = useState(false);
+  return (
+    <div className="card sp-card sp-tourn">
+      <b>{t("spods.tourn.title")}</b>
+      {games.length > 0 && <span className="sub" style={{ marginInlineStart: 8, fontSize: 12 }}>{t("spods.tourn.played", { n: games.length })} · {games.map((g) => SP_DEFS[g.game].icon).join(" ")}</span>}
+      {rows.length === 0 ? (
+        <p className="sub" style={{ marginTop: 4 }}>{t("spods.tourn.empty")}<br /><span style={{ fontSize: 12 }}>{t("spods.tourn.hint")}</span></p>
+      ) : (
+        <>
+          {rows.map((r, i) => (
+            <div key={r.pid} className={"sp-row" + (i === 0 ? " focus" : "")}>
+              <b className="sp-rank">{i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : i + 1}</b>
+              <span className="sp-name">{nameOf(r.pid)}</span>
+              <span className="sp-rowctl">
+                <span className="sp-extra">{r.wins ? `🏅×${r.wins} · ` : ""}{t("spods.tourn.played", { n: r.played })}</span>
+                <b className="sp-scorev">{t("spods.tourn.pts", { n: r.pts })}</b>
+              </span>
+            </div>
+          ))}
+          {setup && (
+            <div className="sp-ctl" style={{ marginTop: 8 }}>
+              <button className="btn gold" onClick={onChampion}>{t("spods.tourn.champion_btn")}</button>
+              {confirm
+                ? <button className="btn ghost danger" onClick={() => { setConfirm(false); onReset(); }}>{t("spods.tourn.reset_confirm")}</button>
+                : <button className="btn ghost" onClick={() => setConfirm(true)}>{t("spods.tourn.reset")}</button>}
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+/** שורת הטורניר והשיא האישי על הפוד של הספורטאי */
+function TournLine({ tourn, me, best, game }: { tourn?: SpTourn; me: string; best: number | null; game: SpGame }) {
+  const i = (tourn?.rows ?? []).findIndex((r) => r.pid === me);
+  const r = i >= 0 ? tourn!.rows[i] : null;
+  if (!r && best === null) return null;
+  return (
+    <div className="sp-hint sp-tournline">
+      {r && <span>🏆 {t("spods.tourn.rank", { n: i + 1, pts: r.pts })}</span>}
+      {r && best !== null && <span> · </span>}
+      {best !== null && <span>{t("spods.best", { v: fmtScore(game, best) })}</span>}
+    </div>
   );
 }
 

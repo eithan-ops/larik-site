@@ -174,5 +174,21 @@
   "pods.fell": "נפלו: {names}",
   "pods.end.king": "פודים ⚡ מלך המהירות",
   "pods.end.survival": "פודים 💀 הישרדות",
-  "spods.s.end_title": "{ic} {name}"
+  "spods.s.end_title": "{ic} {name}",
+  "spods.tourn.title": "🏆 טורניר הערב",
+  "spods.tourn.hint": "הניקוד מצטבר בין המשחקים: 🥇 3 · 🥈 2 · 🥉 1. בסוף — אלוף הערב.",
+  "spods.tourn.empty": "הטבלה מתמלאת אחרי המשחק הראשון",
+  "spods.tourn.played": "{n, plural, one {משחק אחד} other {# משחקים}}",
+  "spods.tourn.pts": "{n} נק'",
+  "spods.tourn.champion_btn": "🏆 להכריז על אלוף הערב",
+  "spods.tourn.reset": "🔄 טורניר חדש",
+  "spods.tourn.reset_confirm": "למחוק את הטבלה? כן, טורניר חדש",
+  "spods.tourn.balance": "⚖️ אזן קבוצות לפי הטבלה",
+  "spods.tourn.rank": "מקום {n} · {pts} נק'",
+  "spods.best_new": "🌟 שיא אישי חדש!",
+  "spods.best": "שיא אישי: {v}",
+  "spods.s.champion_title": "🏆 אלוף הערב — אחרי {n, plural, one {משחק אחד} other {# משחקים}}",
+  "spods.s.champion_sub": "אלוף הערב!",
+  "spods.s.champion_say": "אלוף הערב: {names}!",
+  "spods.s.tourn_reset": "התחלנו טורניר חדש"
 }
