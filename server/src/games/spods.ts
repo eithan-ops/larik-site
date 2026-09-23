@@ -10,12 +10,12 @@
 import type { GameCtx, GameInstance } from "../engine";
 import type { GameClientMsg, GameServerMsg, LText } from "../../../shared/protocol";
 import {
-  SP_DEFS, SP_COLORS, SP_KITS, SP_KIT_IDS, SP_POSES, SP_HAND_STEPS, SP_TOURN_PTS, spConfig, spMedian, spRoundRobin, spTournPoints, spTournTable, spBalanceTeams,
+  SP_DEFS, SP_COLORS, SP_KITS, SP_KIT_IDS, SP_KIT_CUSTOM, SP_POSES, SP_HAND_STEPS, SP_TOURN_PTS, SP_BALL_WINDOW, spConfig, spMedian, spRoundRobin, spTournPoints, spTournTable, spBalanceTeams, spCleanKit,
 } from "../../../shared/spods";
-import type { SpGame, SpCfg, SpPhase, SpAth, SpState, SpLight, SpodsClientMsg, SpodsServerMsg, SpMove, SpSayKind, SpCtlOp, SpTourn, SpTournGame } from "../../../shared/spods";
+import type { SpGame, SpCfg, SpPhase, SpAth, SpState, SpLight, SpodsClientMsg, SpodsServerMsg, SpMove, SpSayKind, SpCtlOp, SpTourn, SpTournGame, SpCustomMove } from "../../../shared/spods";
 
-/** מה שחי בחדר בין משחקי ספורט-פודים (GameCtx.memo): הטורניר, וצבע/הנדיקפ/קבוצה של כל ספורטאי */
-interface SpMemo { spTourn?: SpTournGame[]; spRoster?: Record<string, { c: number; hand: number; team: number }> }
+/** מה שחי בחדר בין משחקי ספורט-פודים (GameCtx.memo): הטורניר, צבע/הנדיקפ/קבוצה של כל ספורטאי, והאימון שה-AI בנה */
+interface SpMemo { spTourn?: SpTournGame[]; spRoster?: Record<string, { c: number; hand: number; team: number }>; spKit?: SpCustomMove[] }
 
 const FAST = !!process.env.SP_FAST;
 const T = {
@@ -43,6 +43,12 @@ export function createSpods(ctx: GameCtx, game: SpGame): GameInstance {
   const tournGames = (memo.spTourn ??= []);
   let champion: string[] | undefined;
   const tourn = (): SpTourn => ({ games: tournGames, rows: spTournTable(tournGames), champion });
+  let customKit: SpCustomMove[] | undefined = memo.spKit?.length ? memo.spKit : undefined;
+  if (cfg.kit === SP_KIT_CUSTOM && !customKit) cfg.kit = 0;
+  // מודיפיירים: ⚽ כדור = חלון ארוך יותר · ↔️ יד אקראית · 🔢 מספר לצעוק
+  const ballOn = () => cfg.ball === 1;
+  const lr = (): "L" | "R" | undefined => (cfg.hand === 1 ? (Math.random() < 0.5 ? "L" : "R") : undefined);
+  const shout = (): number | undefined => (cfg.shout === 1 ? 1 + Math.floor(Math.random() * 9) : undefined);
 
   const parts = ctx.participants();
   const host = parts.find((p) => p.isHost)?.id ?? parts[0]?.id ?? "";
@@ -98,7 +104,7 @@ export function createSpods(ctx: GameCtx, game: SpGame): GameInstance {
   const podsFree = () => pods().filter((pid) => ![...lights.values()].some((r) => r.l.pod === pid));
   const rnd = <X,>(arr: X[]): X => arr[Math.floor(Math.random() * arr.length)];
   const shuffle = <X,>(arr: X[]): X[] => { const s = [...arr]; for (let i = s.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [s[i], s[j]] = [s[j], s[i]]; } return s; };
-  const win = (a?: Ath) => (cfg.window ?? 6000) + (a?.hand ?? 0);
+  const win = (a?: Ath) => Math.round(((cfg.window ?? 6000) + (a?.hand ?? 0)) * (ballOn() ? SP_BALL_WINDOW : 1));
 
   function later(ms: number, fn: () => void) {
     const tk = token;
@@ -113,7 +119,7 @@ export function createSpods(ctx: GameCtx, game: SpGame): GameInstance {
     return {
       game, phase, cfg, aths: athList().map(pub),
       pods: pods(), roles, round, of, until, banner, sub, focus, level: level || undefined,
-      tourn: tourn(),
+      tourn: tourn(), customKit,
     };
   }
   const push = () => bc({ a: "sp_state", s: state() });
@@ -128,7 +134,7 @@ export function createSpods(ctx: GameCtx, game: SpGame): GameInstance {
     const delay = Math.max(T.lead, o.delay ?? T.lead);
     const at = now() + delay;
     const w = Math.round((o.window ?? 0) * WF);
-    const l: SpLight = { id, pod: o.pod, c: o.c, pid: o.pid, txt: o.txt, ic: o.ic, sub: o.sub, at, until: w ? at + w : 0, fade: o.fade, fakeAt: o.fakeAt, zones: o.zones, home: o.home };
+    const l: SpLight = { id, pod: o.pod, c: o.c, pid: o.pid, txt: o.txt, ic: o.ic, sub: o.sub, at, until: w ? at + w : 0, fade: o.fade, fakeAt: o.fakeAt, zones: o.zones, home: o.home, lr: o.lr, ball: o.ball, shout: o.shout, dir: o.dir };
     const rec: LightRec = { l, onHit, onMiss };
     lights.set(id, rec);
     const realAt = ctx.cue(delay, { a: "sp_light", l } as unknown as GameServerMsg);
@@ -164,6 +170,14 @@ export function createSpods(ctx: GameCtx, game: SpGame): GameInstance {
     if (!a) return;
     lights.delete(m.id);
     if (r.timer) clearTimeout(r.timer);
+    // ↔️ ימין/שמאל: הפוד מחולק לשני צדדים (zone 0 = שמאל, 1 = ימין) — הצד הלא-נכון = פספוס
+    if (l.lr && m.zone !== undefined && (m.zone === 0 ? "L" : "R") !== l.lr) {
+      bc({ a: "sp_off", id: m.id, why: "miss" });
+      bc({ a: "sp_miss", id: m.id, pid: a.pid, pod: from });
+      to(a.pid, { a: "sp_say", t: S("wrong_hand"), k: "gentle" });
+      r.onMiss(a, l);
+      return;
+    }
     bc({ a: "sp_off", id: m.id, why: "hit" });
     r.onHit(a, rt, l);
   }
@@ -287,7 +301,7 @@ export function createSpods(ctx: GameCtx, game: SpGame): GameInstance {
       pending = list.length;
       roundBest = null;
       ctx.cue(delay, { a: "sp_go", at: 0 } as unknown as GameServerMsg);
-      list.forEach((a, i) => light({ pod: podsShuf[i], c: a.c, pid: a.pid, txt: nameOf(a.pid), window: win(a), delay }, onHit, onMiss));
+      list.forEach((a, i) => light({ pod: podsShuf[i], c: a.c, pid: a.pid, txt: nameOf(a.pid), window: win(a), delay, lr: lr(), ball: ballOn() || undefined }, onHit, onMiss));
       until = now() + delay + win() + 500;
       resumeFn = () => { pending = 0; nextRound(); };
     }
@@ -349,7 +363,7 @@ export function createSpods(ctx: GameCtx, game: SpGame): GameInstance {
       let left = targets.length;
       targets.forEach((pid, i) => {
         const a = aths.get(pid)!;
-        light({ pod: ps[i], c: a.c, pid, txt: nameOf(pid), window: win(a), delay },
+        light({ pod: ps[i], c: a.c, pid, txt: nameOf(pid), window: win(a), delay, lr: lr() },
           (x, rt) => { record(x, rt); hitsIn[x.pid]++; x.score = x.tourn; x.extra = S("touches_n", { n: hitsIn[x.pid] }); bc({ a: "sp_hit", id: 0, pid: x.pid, pod: "", ms: rt, good: true }); push(); if (--left === 0) later(200, fireNext); },
           () => { if (--left === 0) later(200, fireNext); });
       });
@@ -392,14 +406,20 @@ export function createSpods(ctx: GameCtx, game: SpGame): GameInstance {
       resumeFn = () => { turnEnd = now() + 10000; until = turnEnd; phase = "run"; push(); fireOut(); };
       fireOut();
     }
+    let lastOuter = -1;
     function fireOut() {
       if (now() >= turnEnd) return endTurn();
       const ps = pods();
       if (!ps.length) return finish({});
       const home = ps[0];
       const outer = ps.length > 1 ? ps.slice(1) : ps;
-      const pod = rnd(outer);
-      light({ pod, c: cur!.c, pid: cur!.pid, txt: nameOf(cur!.pid), window: 12000 + cur!.hand, delay: T.lead + 200 + Math.random() * 600 },
+      // 🔁 סביב העולם: הפוד הבא הוא השכן לפי החץ (↻ = האינדקס הבא במעגל, ↺ = הקודם)
+      let dir: 1 | -1 | undefined;
+      let pod: string;
+      if (cfg.world === 1 && outer.length > 1) { dir = Math.random() < 0.5 ? 1 : -1; lastOuter = lastOuter < 0 ? Math.floor(Math.random() * outer.length) : (lastOuter + dir + outer.length) % outer.length; pod = outer[lastOuter]; }
+      else pod = rnd(outer);
+      const sh = shout();
+      light({ pod, c: cur!.c, pid: cur!.pid, txt: sh !== undefined ? String(sh) : nameOf(cur!.pid), shout: sh, ball: ballOn() || undefined, dir, ic: dir ? (dir > 0 ? "↻" : "↺") : undefined, window: Math.round((12000 + cur!.hand) * (ballOn() ? SP_BALL_WINDOW : 1)), delay: T.lead + 200 + Math.random() * 600 },
         (a, rt) => { record(a, rt); a.score++; a.extra = `${a.score} ⭐`; bc({ a: "sp_hit", id: 0, pid: a.pid, pod, ms: rt, good: true }); push(); fireHome(home); },
         () => fireOut());
     }
@@ -510,7 +530,8 @@ export function createSpods(ctx: GameCtx, game: SpGame): GameInstance {
       round = n + 1; of = 0;
       setBanner(S("survive"), S("survivors", { n: list.length, sec: (w / 1000).toFixed(1) }));
       push();
-      light({ pod: rnd(ps), c: a.c, pid: a.pid, txt: nameOf(a.pid), window: w + a.hand, delay },
+      const sh = shout();
+      light({ pod: rnd(ps), c: a.c, pid: a.pid, txt: sh !== undefined ? String(sh) : nameOf(a.pid), shout: sh, ball: ballOn() || undefined, window: Math.round((w + a.hand) * (ballOn() ? SP_BALL_WINDOW : 1)), delay },
         (x, rt) => { record(x, rt); x.score++; x.extra = `${x.score}`; bc({ a: "sp_hit", id: 0, pid: x.pid, pod: "", ms: rt, good: true }); n++; w = Math.max(1500, Math.round(w * 0.93)); push(); later(FAST ? 150 : 700, fire); },
         (x) => { if (x) { x.out = true; outOrder.push(x.pid); x.extra = "💀"; say(S("x_fell", { name: nameOf(x.pid) }), "out"); } n++; push(); later(FAST ? 300 : 1500, fire); });
       resumeFn = fire;
@@ -577,10 +598,14 @@ export function createSpods(ctx: GameCtx, game: SpGame): GameInstance {
   /* ---------- 8. תחנות אש ---------- */
   function progStations(): Program {
     let endAt = 0;
-    const kit = SP_KITS[SP_KIT_IDS[cfg.kit] ?? "warm"].moves;
+    // ✨ אימון שלנו: התרגילים שה-AI בנה (טקסט חופשי בשפת החדר), אחרת אחת משלוש הערכות הקבועות
+    const custom = cfg.kit === SP_KIT_CUSTOM && customKit?.length ? customKit : null;
+    const kit: SpMove[] = custom ? custom.map((m, i) => ({ ic: m.ic, id: `custom${i}`, sub: !!m.sub })) : SP_KITS[SP_KIT_IDS[cfg.kit] ?? "warm"].moves;
+    const moveTxt = (mv: SpMove): LText => (custom ? custom[Number(mv.id.slice(6))].txt : { k: `spods.move.${mv.id}` });
+    const moveSub = (mv: SpMove, a: Ath): LText => (custom ? (custom[Number(mv.id.slice(6))].sub ?? nameOf(a.pid)) : mv.sub ? { k: `spods.move.${mv.id}.sub` } : nameOf(a.pid));
     const seq = new Map<string, SpMove[]>();
     function start() {
-      between(S("stations"), T.between, () => countdown(S("moves_mins", { n: kit.length, m: cfg.mins }), go, S("each_by_pod")), S("kit_x", { kit: { k: `spods.kit.${SP_KIT_IDS[cfg.kit] ?? "warm"}` } }));
+      between(S("stations"), T.between, () => countdown(S("moves_mins", { n: kit.length, m: cfg.mins }), go, S("each_by_pod")), S("kit_x", { kit: custom ? { k: "spods.kit.custom" } : { k: `spods.kit.${SP_KIT_IDS[cfg.kit] ?? "warm"}` } }));
     }
     function go() {
       endAt = now() + cfg.mins * 60000 * (FAST ? 0.03 : 1);
@@ -599,7 +624,7 @@ export function createSpods(ctx: GameCtx, game: SpGame): GameInstance {
       a.stationIdx++;
       const pod = rnd(free);
       a.lastPod = pod;
-      light({ pod, c: a.c, pid: a.pid, txt: { k: `spods.move.${mv.id}` }, ic: mv.ic, sub: mv.sub ? { k: `spods.move.${mv.id}.sub` } : nameOf(a.pid), window: 60000 + a.hand },
+      light({ pod, c: a.c, pid: a.pid, txt: moveTxt(mv), ic: mv.ic, sub: moveSub(mv, a), window: 60000 + a.hand },
         (x, rt) => { record(x, rt); x.score++; x.extra = `${x.score} 🔥`; bc({ a: "sp_hit", id: 0, pid: x.pid, pod, ms: rt, good: true }); push(); later(800, () => fireFor(x)); },
         (x) => { if (x) later(300, () => fireFor(x)); });
     }
@@ -726,7 +751,15 @@ export function createSpods(ctx: GameCtx, game: SpGame): GameInstance {
       if (pid !== host) return; // כל השאר — רק המאמן
       switch (m.a) {
         case "sp_ctl": return ctl(m.op);
-        case "sp_cfg": if (phase === "setup" && def.settings.some((s) => s.key === m.key && s.values.some((v) => v.v === m.v))) { cfg[m.key] = m.v; push(); } return;
+        case "sp_cfg": if (phase === "setup" && def.settings.some((s) => s.key === m.key && s.values.some((v) => v.v === m.v)) && !(m.key === "kit" && m.v === SP_KIT_CUSTOM && !customKit)) { cfg[m.key] = m.v; push(); } return;
+        case "sp_kit": {
+          // ✨ ערכה מותאמת (מבונה ה-AI, אחרי אימות) — נשמרת לכל הערב ונבחרת מיד
+          if (phase !== "setup" || game !== "stations") return;
+          const moves = spCleanKit(m.moves);
+          if (moves.length < 3) return;
+          customKit = moves; memo.spKit = moves; cfg.kit = SP_KIT_CUSTOM; push();
+          return;
+        }
         case "sp_role": if (phase === "setup" && m.pid !== host && podOrder.includes(m.pid)) { roles[m.pid] = m.role; syncAths(); push(); } return;
         case "sp_hand": { const a = aths.get(m.pid); if (a && SP_HAND_STEPS.includes(m.ms)) { a.hand = m.ms; saveRoster(); push(); } return; }
         case "sp_judge": { const a = aths.get(m.pid); if (a && phase !== "setup" && phase !== "over" && (m.d === 1 || m.d === -1)) { a.score = Math.max(0, a.score + m.d); if (game === "duel") a.tourn = a.score; if (game === "colors") a.wins = a.score; push(); } return; }

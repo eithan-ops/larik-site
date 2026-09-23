@@ -10,6 +10,7 @@
  */
 
 import { LANG_NAMES, asLang, type Lang } from "../../shared/i18n";
+import { spCleanKit, SP_KIT_MAX, type SpCustomMove } from "../../shared/spods";
 
 const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash-lite";
 const GROQ_MODEL = process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
@@ -170,4 +171,48 @@ export async function generateAiDeck(rawTopic: string, ip: string, lang = "he"):
   if (cache.size >= CACHE_MAX) cache.delete(cache.keys().next().value!);
   cache.set(cacheKey, cards);
   return { status: 200, body: { name: topic, cards } };
+}
+
+/* ---------- ✨ בונה האימון של ספורט-פודים (תחנות אש) ---------- */
+/**
+ * המאמן כותב טקסט חופשי ("אימון 5 דקות ל-3 ילדים בני 7–10 בחצר") ומקבל 6–10 תרגילים לפודים:
+ * שם קצר + הנחיה של שורה, בשפת החדר. אותו מטמון/הגבלת קצב/ספקים של החפיסה האישית — אין צורך במפתח נוסף.
+ * השגיאות הן מפתחות deck.err.* (הלקוח מתרגם).
+ */
+export interface SpKitResult { status: number; body: { moves: SpCustomMove[] } | { error: string } }
+const kitCache = new Map<string, SpCustomMove[]>();
+
+function buildKitPrompt(topic: string, lang: string): string {
+  const name = lang === "he" ? "Hebrew" : LANG_NAMES[(asLang(lang) ?? "en") as Lang];
+  return [
+    `You are a kids' fitness coach. Phones are placed around a yard as light-up "pods"; each pod lights up with an exercise, the kid does it, touches the pod, and runs to the next one.`,
+    `The coach asked for: "${topic}".`,
+    `Create 8 exercise stations in ${name} that fit the request (age, duration, place, equipment). Bodyweight only unless the request names equipment. Safe, fun, doable on grass or a floor, no jumping from heights.`,
+    `Each station: "ic" = one emoji, "txt" = the exercise in 2-5 words with a count or seconds (e.g. "10 squats", "Plank 20 s"), "sub" = one short coaching cue (max 8 words).`,
+    `Return ONLY a JSON array of objects {"ic","txt","sub"}, no other text.`,
+  ].join("\n");
+}
+function parseKit(raw: string): SpCustomMove[] {
+  const m = raw.match(/\[[\s\S]*\]/);
+  if (!m) return [];
+  try { return spCleanKit(JSON.parse(m[0])); } catch { return []; }
+}
+export async function generateSpKit(rawTopic: string, ip: string, lang = "he"): Promise<SpKitResult> {
+  const topic = rawTopic.trim().replace(/\s+/g, " ").slice(0, 120);
+  if (topic.length < 3) return { status: 400, body: { error: "deck.err.short" } };
+  if (!aiDeckAvailable()) return { status: 503, body: { error: "deck.err.off" } };
+  const key = `${lang}:${topic.toLowerCase()}`;
+  const cached = kitCache.get(key);
+  if (cached) return { status: 200, body: { moves: cached } };
+  if (!rateOk(ip)) return { status: 429, body: { error: "deck.err.rate" } };
+  const prompt = buildKitPrompt(topic, lang);
+  let moves: SpCustomMove[] = [];
+  for (const provider of [askGemini, askGroq]) {
+    try { moves = parseKit(await provider(prompt, 900)); if (moves.length >= 4) break; } catch { /* הספק הבא */ }
+  }
+  if (moves.length < 4) return { status: 502, body: { error: "deck.err.confused" } };
+  moves = moves.slice(0, SP_KIT_MAX);
+  if (kitCache.size >= CACHE_MAX) kitCache.delete(kitCache.keys().next().value!);
+  kitCache.set(key, moves);
+  return { status: 200, body: { moves } };
 }
