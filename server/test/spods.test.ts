@@ -222,12 +222,92 @@ async function tournament() {
   check("איזון קבוצות: שתי קבוצות", new Set(s.aths.map((a) => a.team)).size === 2, JSON.stringify(s.aths.map((a) => [a.pid, a.team])));
 }
 
+/** מודיפיירים + ✨ אימון שלנו: ↔️ יד (צד לא-נכון = פספוס), ⚽ חלון ×1.6, 🔢 מספר, 🔁 שכן לפי החץ, sp_kit → תחנות עם טקסט חופשי */
+async function modifiers() {
+  console.log("\n— מודיפיירים + בונה האימון —");
+  const { transport, ev, state, listeners } = makeTransport();
+  const factories = Object.fromEntries(SP_GAME_IDS.map((g) => [`sp_${g}`, (ctx: any) => createSpods(ctx, g)]));
+  const room = new Room("SPR4", transport, factories);
+  const COACH = "coach"; const P = ["a", "b", "c"];
+  room.join(COACH, "מאמן", "👑"); P.forEach((p) => room.join(p, p, "🏃"));
+  const g = (pid: string, d: any) => room.onMessage(pid, { t: "game", d });
+  const play = async (game: SpGame) => { room.onMessage(COACH, { t: "select_game", gameId: `sp_${game}`, config: {} }); room.onMessage(COACH, { t: "start_game" }); await sleep(30); return state(COACH)!; };
+  // האורות של המשחק הנוכחי בלבד (תיבת הדואר מצטברת בין המשחקים)
+  let mark: Record<string, number> = {};
+  const markLights = () => { mark = Object.fromEntries(P.map((pid) => [pid, ev(pid, "sp_light").length])); };
+  const lightsOf = (pid: string) => ev(pid, "sp_light").slice(mark[pid] ?? 0).map((m: any) => m.l as SpLight);
+  const allLights = () => { const seen = new Set<number>(); return P.flatMap(lightsOf).filter((l) => !seen.has(l.id) && seen.add(l.id)).sort((x, y) => x.at - y.at); }; // ה-cue מגיע לכל הטלפונים — פעם אחת לכל אור
+
+  // ↔️ יד: כל נגיעה בצד הלא-נכון
+  let s = await play("colors");
+  check("colors מציע ⚽ ו-↔️ (shared)", s.cfg.ball === 0 && s.cfg.hand === 0 && SP_DEFS.colors.settings.some((x) => x.key === "hand" && x.shared));
+  g(COACH, { a: "sp_cfg", key: "hand", v: 1 }); g(COACH, { a: "sp_cfg", key: "rounds", v: 4 });
+  markLights();
+  listeners.push((pid, m: any) => {
+    if (m.t !== "cue" || m.d?.a !== "sp_light" || !P.includes(pid)) return;
+    const l: SpLight = m.d.l; if (l.pod !== pid) return;
+    const wrong = l.pid === "a"; // האור של a (בכל טלפון שהוא) — תמיד בצד הלא-נכון
+    const zone = l.lr ? ((l.lr === "L") !== wrong ? 0 : 1) : undefined;
+    setTimeout(() => g(pid, { a: "sp_tap", id: l.id, at: m.at + 500, zone }), Math.max(0, m.at + 500 - Date.now()));
+  });
+  g(COACH, { a: "sp_ctl", op: "start" });
+  await waitFor(() => state(COACH)?.phase === "over", 40000);
+  const ls = allLights();
+  check("כל האורות עם lr", ls.length > 0 && ls.every((l) => l.lr === "L" || l.lr === "R"), String(ls.length));
+  check("a (צד לא-נכון) — פספוסים בלבד, b — נגיעות", ev(COACH, "sp_miss").filter((x: any) => x.pid === "a").length >= 3 && state(COACH)!.aths.find((x) => x.pid === "b")!.hits >= 3, JSON.stringify(state(COACH)!.aths.map((x) => [x.pid, x.hits, x.miss])));
+  check("a קיבל 'יד לא נכונה'", ev("a", "sp_say").some((x: any) => x.t?.k === "spods.s.wrong_hand"));
+  await sleep(FAST_END());
+  room.onMessage(COACH, { t: "back_to_lobby" });
+
+  // ⚽ + 🔢 + 🔁 בכוכב
+  listeners.length = 0;
+  attachBots(room, listeners, P, () => 500);
+  s = await play("star");
+  g(COACH, { a: "sp_cfg", key: "ball", v: 1 }); g(COACH, { a: "sp_cfg", key: "shout", v: 1 }); g(COACH, { a: "sp_cfg", key: "world", v: 1 }); g(COACH, { a: "sp_cfg", key: "secs", v: 20 });
+  markLights();
+  g(COACH, { a: "sp_ctl", op: "start" });
+  await waitFor(() => state(COACH)?.phase === "over", 60000);
+  const outer = allLights().filter((l) => !l.home);
+  check("⚽ חלון ×1.6 (12s → ~19.2s×WF)", outer.length > 0 && outer.every((l) => l.until - l.at >= 12000 * 1.6 * 0.3 - 50), outer[0] ? String(outer[0].until - outer[0].at) : "");
+  check("🔢 מספר 1–9 בכל אור + shout", outer.every((l) => l.shout! >= 1 && l.shout! <= 9 && l.txt === String(l.shout)));
+  check("🔁 חץ בכל אור", outer.every((l) => l.dir === 1 || l.dir === -1) && outer.every((l) => l.ic === "↻" || l.ic === "↺"));
+  // שכנות: פודים חיצוניים = pods().slice(1); כל אור הבא במרחק 1 (מעגלי) מהקודם
+  const podsList = state(COACH)!.pods; const ring = podsList.slice(1);
+  let adjacent = 0, total = 0;
+  for (let i = 1; i < outer.length; i++) { const a = ring.indexOf(outer[i - 1].pod), b = ring.indexOf(outer[i].pod); if (a < 0 || b < 0) continue; total++; if ((a + outer[i].dir! + ring.length) % ring.length === b) adjacent++; }
+  check("🔁 הפוד הבא הוא השכן לפי החץ", total > 0 && adjacent === total, `${adjacent}/${total} · ` + outer.map((l) => `${ring.indexOf(l.pod)}${l.dir! > 0 ? "+" : "-"}`).join(" "));
+  await sleep(FAST_END());
+  room.onMessage(COACH, { t: "back_to_lobby" });
+
+  // ✨ אימון שלנו
+  s = await play("stations");
+  g(COACH, { a: "sp_cfg", key: "kit", v: 3 });
+  check("kit=3 לא נבחר בלי ערכה", state(COACH)!.cfg.kit !== 3);
+  g("a", { a: "sp_kit", moves: [{ ic: "🐸", txt: "5 frog jumps" }, { ic: "🧘", txt: "Plank 20 s" }, { ic: "🏃", txt: "Run in place" }] });
+  check("שחקן לא יכול לשלוח ערכה", !state(COACH)!.customKit);
+  g(COACH, { a: "sp_kit", moves: [{ ic: "🐸", txt: "5 frog jumps", sub: "knees soft" }, { ic: "🧘", txt: "Plank 20 s" }, { ic: "🏃", txt: "Run in place 10 s" }, { ic: "🦘🦘🦘", txt: "  10   jumps  ", sub: "x".repeat(100) }, { txt: "" }] });
+  s = state(COACH)!;
+  check("sp_kit מהמאמן: נוקה, נשמר, נבחר (kit=3)", s.customKit?.length === 4 && s.cfg.kit === 3 && s.customKit[3].txt === "10 jumps" && s.customKit[3].sub!.length === 60 && [...s.customKit[3].ic].length === 2, JSON.stringify(s.customKit));
+  g(COACH, { a: "sp_cfg", key: "mins", v: 3 });
+  markLights();
+  g(COACH, { a: "sp_ctl", op: "start" });
+  await waitFor(() => state(COACH)?.phase === "over", 60000);
+  const st = allLights();
+  check("אורות התחנות עם טקסט חופשי מהערכה", st.length > 0 && st.every((l) => typeof l.txt === "string" && ["5 frog jumps", "Plank 20 s", "Run in place 10 s", "10 jumps"].includes(l.txt)), JSON.stringify(st.slice(0, 3).map((l) => l.txt)));
+  await sleep(FAST_END());
+  room.onMessage(COACH, { t: "back_to_lobby" });
+  s = await play("stations");
+  check("הערכה חיה כל הערב (memo) ונבחרת שוב", s.customKit?.length === 4, String(s.customKit?.length));
+}
+const FAST_END = () => 900;
+
 (async () => {
   const arg = process.argv[2] || "all";
-  const list: SpGame[] = arg === "all" ? SP_GAME_IDS : arg === "tourn" ? [] : [arg as SpGame];
+  const list: SpGame[] = arg === "all" ? SP_GAME_IDS : ["tourn", "mods"].includes(arg) ? [] : [arg as SpGame];
   for (const game of list) await run(game);
   if (arg === "all" || arg === "star") await stopAndSkip();
   if (arg === "all" || arg === "tourn") await tournament();
+  if (arg === "all" || arg === "mods") await modifiers();
   console.log(failed ? `\n✗ ${failed} בדיקות נכשלו` : "\n✓ הכול עבר");
   process.exit(failed ? 1 : 0);
 })();

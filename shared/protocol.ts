@@ -562,7 +562,8 @@ const SPODS_CATALOG: GameMeta[] = SP_GAME_IDS.map((g) => {
     id: `sp_${g}`, name: d.name, icon: d.icon, tagline: d.tagline,
     howTo: `${d.howTo} 📱 הטלפון של המארח הוא השלט של המאמן — הוא לא פוד. ${d.setup}`,
     minPlayers: 2, maxPlayers: 9, category: SPODS_CATEGORY,
-    configOptions: d.settings.map((s) => ({ key: s.key, label: s.label, values: s.values.map((v) => ({ v: String(v.v), label: v.label })) })),
+    // הלובי מציג רק את ההגדרות הבסיסיות; המודיפיירים (⚽ ↔️ 🔢 🔁) ו-✨ אימון שלנו חיים בשלט של המאמן בלבד
+    configOptions: d.settings.filter((s) => !s.shared).map((s) => ({ key: s.key, label: s.label, values: s.values.filter((v) => !(s.key === "kit" && v.v === 3)).map((v) => ({ v: String(v.v), label: v.label })) })),
   };
 });
 

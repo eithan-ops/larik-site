@@ -36,7 +36,17 @@ export const SP_SHARED = { hex: "#FFF3DC", ink: "#0C0906" }; // אור משות�
 export const spColor = (c: number): SpColor => (c >= 0 && c < SP_COLORS.length ? SP_COLORS[c] : SP_SHARED);
 
 /* ---------- הגדרות שהמאמן מכוונן ---------- */
-export interface SpSetting { key: string; label: string; values: { v: number; label: string }[] }
+export interface SpSetting {
+  key: string; label: string; values: { v: number; label: string }[];
+  /** מודיפייר משותף לכמה משחקים — התוויות מ-spods.mod.<key> / spods.mod.<key>.<v> (ולא games.sp_*.opt.*) */
+  shared?: boolean;
+}
+/**
+ * המודיפיירים (מהתוכנית, סעיף 2): ⚽ כדור — מגיעים בכדרור, החלון ×1.6 · ↔️ ימין/שמאל — הפוד מראה איזו יד, נגיעה בצד הלא-נכון = פספוס ·
+ * 🔢 תגיד בקול — הפוד מראה מספר שצועקים · 🔁 סביב העולם — הפוד הבא הוא השכן לפי החץ (כוכב). כולם כבויים כברירת מחדל.
+ */
+const MOD = (key: "ball" | "hand" | "shout" | "world"): SpSetting => ({ key, label: key, shared: true, values: [{ v: 0, label: "בלי" }, { v: 1, label: "עם" }] });
+export const SP_BALL_WINDOW = 1.6;
 export type SpCfg = Record<string, number>;
 
 /* ---------- תרגילים ותנוחות ---------- */
@@ -57,6 +67,27 @@ export const SP_KITS: Record<string, { moves: SpMove[] }> = {
   ] },
 };
 export const SP_KIT_IDS = ["warm", "power", "fun"];
+/** ערכה 3 = ✨ אימון שלנו — תרגילים שבונה ה-AI בנה מטקסט חופשי של המאמן (מוצג רק כשיש כזה) */
+export const SP_KIT_CUSTOM = 3;
+export interface SpCustomMove { ic: string; txt: string; sub?: string }
+export const SP_KIT_MAX = 12;
+/** ניקוי/אימות של ערכה מותאמת שהגיעה מהלקוח (או מה-AI) */
+export function spCleanKit(raw: unknown): SpCustomMove[] {
+  if (!Array.isArray(raw)) return [];
+  const out: SpCustomMove[] = [];
+  for (const m of raw) {
+    if (!m || typeof m !== "object") continue;
+    const o = m as Record<string, unknown>;
+    const txt = String(o.txt ?? "").replace(/\s+/g, " ").trim().slice(0, 40);
+    if (txt.length < 2) continue;
+    const icRaw = String(o.ic ?? "").trim();
+    const ic = [...icRaw].slice(0, 2).join("") || "🔥";
+    const sub = String(o.sub ?? "").replace(/\s+/g, " ").trim().slice(0, 60);
+    out.push(sub ? { ic, txt, sub } : { ic, txt });
+    if (out.length >= SP_KIT_MAX) break;
+  }
+  return out;
+}
 export const SP_POSES: SpMove[] = [
   { ic: "🧘", id: "plank" }, { ic: "🏋️", id: "squat" }, { ic: "🦩", id: "oneleg" }, { ic: "🛌", id: "onback" },
   { ic: "🧎", id: "oneknee" }, { ic: "🙌", id: "handsup" },
@@ -93,6 +124,7 @@ export const SP_DEFS: Record<SpGame, SpDef> = {
       { key: "rounds", label: "סבבים", values: [{ v: 6, label: "6" }, { v: 4, label: "4 ⚡" }, { v: 10, label: "10 🔥" }] },
       { key: "window", label: "זמן לנגיעה", values: [{ v: 10000, label: "10 שנ'" }, { v: 6000, label: "6 שנ' ⚡" }, { v: 15000, label: "15 שנ' 🧒" }] },
       { key: "delay", label: "השהיה לפני הגו", values: [{ v: 3000, label: "עד 3 שנ'" }, { v: 1500, label: "עד 1.5 שנ'" }, { v: 5000, label: "עד 5 שנ' 😈" }] },
+      MOD("ball"), MOD("hand"),
     ],
     unit: "n",
   },
@@ -105,6 +137,7 @@ export const SP_DEFS: Record<SpGame, SpDef> = {
     settings: [
       { key: "secs", label: "זמן לדו-קרב", values: [{ v: 45, label: "45 שנ'" }, { v: 30, label: "30 שנ' ⚡" }, { v: 60, label: "60 שנ' 🔥" }] },
       { key: "window", label: "זמן לנגיעה", values: [{ v: 5000, label: "5 שנ'" }, { v: 3000, label: "3 שנ' ⚡" }, { v: 8000, label: "8 שנ' 🧒" }] },
+      MOD("hand"),
     ],
     unit: "n",
   },
@@ -116,6 +149,7 @@ export const SP_DEFS: Record<SpGame, SpDef> = {
     minPods: 2, minAth: 1, maxAth: 8,
     settings: [
       { key: "secs", label: "זמן לתור", values: [{ v: 30, label: "30 שנ'" }, { v: 20, label: "20 שנ' ⚡" }, { v: 45, label: "45 שנ' 🔥" }] },
+      MOD("ball"), MOD("shout"), MOD("world"),
     ],
     unit: "n",
   },
@@ -151,6 +185,7 @@ export const SP_DEFS: Record<SpGame, SpDef> = {
     minPods: 1, minAth: 2, maxAth: 8,
     settings: [
       { key: "window", label: "זמן התחלתי", values: [{ v: 6000, label: "6 שנ'" }, { v: 4000, label: "4 שנ' ⚡" }, { v: 9000, label: "9 שנ' 🧒" }] },
+      MOD("ball"), MOD("shout"),
     ],
     unit: "n",
   },
@@ -173,7 +208,7 @@ export const SP_DEFS: Record<SpGame, SpDef> = {
     minPods: 1, minAth: 1, maxAth: 8,
     settings: [
       { key: "mins", label: "אורך", values: [{ v: 5, label: "5 דק'" }, { v: 3, label: "3 דק' ⚡" }, { v: 8, label: "8 דק' 🔥" }] },
-      { key: "kit", label: "ערכה", values: [{ v: 0, label: "חימום 🦘" }, { v: 1, label: "כוח 💪" }, { v: 2, label: "כיף 🐻" }] },
+      { key: "kit", label: "ערכה", values: [{ v: 0, label: "חימום 🦘" }, { v: 1, label: "כוח 💪" }, { v: 2, label: "כיף 🐻" }, { v: 3, label: "✨ אימון שלנו" }] },
     ],
     unit: "n",
   },
@@ -249,6 +284,8 @@ export interface SpState {
   level?: number;                 // מבחן הביפ
   /** טורניר הערב — מצטבר בין המשחקים בחדר */
   tourn?: SpTourn;
+  /** ✨ אימון שלנו — ערכה שבונה ה-AI בנה (תחנות אש), חיה כל הערב */
+  customKit?: SpCustomMove[];
 }
 
 /* ---------- טורניר הערב 🏆 ---------- */
@@ -304,6 +341,7 @@ export type SpodsClientMsg =
   | { a: "sp_test"; pod: string }
   | { a: "sp_order"; pods: string[] }
   | { a: "sp_team"; pid: string; team: number }
+  | { a: "sp_kit"; moves: SpCustomMove[] }                          // ✨ ערכה מותאמת לתחנות אש (מבונה ה-AI)
   | { a: "sp_tap"; id: number; at: number; zone?: number };
 
 export interface SpLight {
@@ -320,6 +358,11 @@ export interface SpLight {
   fakeAt?: number;           // בדיוק בזמן: מתי הדעיכה נעצרת לשנייה (יחסית ל-at)
   zones?: number[];          // גניבת הסבב: פסי צבע (אינדקסים)
   home?: boolean;            // כוכב: פוד הבית
+  /* מודיפיירים */
+  lr?: "L" | "R";            // ↔️ איזו יד — הפוד מחולק לשני צדדים, הצד הלא-נכון = פספוס
+  ball?: boolean;            // ⚽ מגיעים בכדרור (חלון ארוך יותר)
+  shout?: number;            // 🔢 המספר שצועקים
+  dir?: 1 | -1;              // 🔁 סביב העולם: הפוד הבא הוא השכן לפי החץ
 }
 export type SpodsServerMsg =
   | { a: "sp_state"; s: SpState }

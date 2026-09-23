@@ -12,7 +12,7 @@ import { join, extname, resolve } from "path";
 import { randomUUID } from "crypto";
 import { RoomManager, Transport } from "./engine";
 import { Groups } from "./groups";
-import { generateAiDeck, aiDeckAvailable, askModel } from "./aideck";
+import { generateAiDeck, generateSpKit, aiDeckAvailable, askModel } from "./aideck";
 import { getStore } from "./store";
 import { getTriviaBank } from "./triviaBank";
 import { WallDaily, dailyDate, dailySeed } from "./wallDaily";
@@ -406,6 +406,15 @@ const http = createServer((req, res) => {
         res.writeHead(status, { "Content-Type": "application/json; charset=utf-8", "Access-Control-Allow-Origin": "*" });
         res.end(JSON.stringify(body));
       })
+      .catch(() => { res.writeHead(500, { "Content-Type": "application/json" }); res.end(JSON.stringify({ error: "deck.err.internal" })); });
+    return;
+  }
+  // ✨ בונה האימון של ספורט-פודים — GET /api/sp-kit?topic=...&l=xx → {moves:[{ic,txt,sub}]}
+  if (url.pathname === "/api/sp-kit") {
+    const topic = url.searchParams.get("topic") || "";
+    const ip = String(req.headers["x-forwarded-for"] || req.socket.remoteAddress || "?").split(",")[0].trim();
+    generateSpKit(topic, ip, url.searchParams.get("l") || "he")
+      .then(({ status, body }) => { res.writeHead(status, { "Content-Type": "application/json; charset=utf-8", "Access-Control-Allow-Origin": "*" }); res.end(JSON.stringify(body)); })
       .catch(() => { res.writeHead(500, { "Content-Type": "application/json" }); res.end(JSON.stringify({ error: "deck.err.internal" })); });
     return;
   }

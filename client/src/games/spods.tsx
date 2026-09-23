@@ -7,11 +7,11 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import type { GameViewProps } from "./registry";
 import { Sfx, vibrate } from "../lib/audio";
-import { SP_DEFS, SP_HAND_STEPS, spColor, spGameOf, spFmtScore } from "../../../shared/spods";
+import { SP_DEFS, SP_HAND_STEPS, SP_KIT_CUSTOM, spColor, spGameOf, spFmtScore } from "../../../shared/spods";
 const fmtScore = (g: SpGame, v: number) => SP_DEFS[g].unit === "lvl" ? t("spods.level_n", { n: v }) : spFmtScore(g, v);
-import type { SpState, SpLight, SpodsServerMsg, SpodsClientMsg, SpGame, SpTourn } from "../../../shared/spods";
+import type { SpState, SpLight, SpodsServerMsg, SpodsClientMsg, SpGame, SpTourn, SpCustomMove } from "../../../shared/spods";
 import "../spods.css";
-import { t, lt, optText, currentLang } from "../lib/locale";
+import { t, lt, has, optText, currentLang } from "../lib/locale";
 
 const TTS_LANG: Record<string, string> = { he: "he-IL", en: "en-US", es: "es-ES", pt: "pt-BR", ko: "ko-KR", ja: "ja-JP", ar: "ar-SA" };
 
@@ -179,12 +179,30 @@ export default function SpodsView({ room, me, conn, hub }: GameViewProps) {
         </main>
       );
     }
+    if (light.lr) {
+      // ↔️ ימין/שמאל: שני צדדים, הצד הנכון מואר — נגיעה בצד הלא-נכון = פספוס (השרת מכריע)
+      const side = light.lr;
+      return (
+        <main className="sp-pod sp-lit" style={{ background: c.hex, color: c.ink }}>
+          <div className="sp-zones sp-lr">
+            {(["L", "R"] as const).map((z, i) => (
+              <div key={z} className={"sp-zone" + (z === side ? " sp-lr-on" : " sp-lr-off")} onPointerDown={(e) => { e.preventDefault(); tap(i); }}>
+                <span>{z === side ? (z === "L" ? "👈" : "👉") : ""}</span>
+              </div>
+            ))}
+          </div>
+          <div className="sp-zones-title" style={{ color: c.ink }}>{light.txt ? lt(light.txt) : ""} · {t(side === "L" ? "spods.mod.left" : "spods.mod.right")}</div>
+        </main>
+      );
+    }
     return (
       <main className="sp-pod sp-lit" style={{ background: c.hex, color: c.ink, filter: `brightness(${(0.08 + 0.92 * bright).toFixed(3)})` }} onPointerDown={(e) => { e.preventDefault(); tap(); }}>
-        {light.ic && <div className="sp-ic">{light.ic}</div>}
-        <div className="sp-txt">{light.txt ? lt(light.txt) : t("spods.touch_bang")}</div>
-        {light.sub && <div className="sp-sub">{lt(light.sub)}</div>}
-        {!light.ic && !light.fade && <div className="sp-hand">👆</div>}
+        {(light.ic || light.ball) && <div className="sp-ic">{light.ic ?? "⚽"}</div>}
+        <div className={"sp-txt" + (light.shout ? " sp-shout" : "")}>{light.txt ? lt(light.txt) : t("spods.touch_bang")}</div>
+        {light.shout ? <div className="sp-sub">{t("spods.mod.shout_it")}</div> : light.sub && <div className="sp-sub">{lt(light.sub)}</div>}
+        {light.ball && <div className="sp-sub">{t("spods.mod.dribble")}</div>}
+        {light.dir && <div className="sp-sub">{t(light.dir > 0 ? "spods.mod.cw" : "spods.mod.ccw")}</div>}
+        {!light.ic && !light.fade && !light.ball && <div className="sp-hand">👆</div>}
         {light.home && <div className="sp-sub">{t("spods.touch_home")}</div>}
       </main>
     );
@@ -254,12 +272,17 @@ function Coach({ s, def, send, nameOf, toast, serverNow }: {
           <p className="sub" style={{ fontSize: 12 }}>{t("spods.safety")}</p>
           {def.settings.map((st) => (
             <div key={st.key} style={{ marginTop: 8 }}>
-              <div className="sub" style={{ fontSize: 12.5 }}>{optText(`sp_${game}`, st.key, st.label)}</div>
+              <div className="sub" style={{ fontSize: 12.5 }}>{st.shared ? t(`spods.mod.${st.key}`) : optText(`sp_${game}`, st.key, st.label)}</div>
               <div className="opt-row">
-                {st.values.map((v) => <button key={v.v} className={"opt" + (s.cfg[st.key] === v.v ? " sel" : "")} onClick={() => send({ a: "sp_cfg", key: st.key, v: v.v })}>{optText(`sp_${game}`, st.key, v.label, String(v.v))}</button>)}
+                {st.values
+                  .filter((v) => !(st.key === "kit" && v.v === SP_KIT_CUSTOM && !s.customKit))
+                  .map((v) => <button key={v.v} className={"opt" + (s.cfg[st.key] === v.v ? " sel" : "")} onClick={() => send({ a: "sp_cfg", key: st.key, v: v.v })}>
+                    {st.shared ? (v.v === 0 ? t("spods.mod.off") : t(`spods.mod.${st.key}.${v.v}`)) : st.key === "kit" && v.v === SP_KIT_CUSTOM ? t("spods.kit.custom") : optText(`sp_${game}`, st.key, v.label, String(v.v))}
+                  </button>)}
               </div>
             </div>
           ))}
+          {game === "stations" && <AiKit kit={s.customKit} onKit={(moves) => send({ a: "sp_kit", moves })} />}
         </div>
       )}
 
@@ -328,6 +351,41 @@ function Coach({ s, def, send, nameOf, toast, serverNow }: {
         {t("spods.ends_alone")}
       </p>
     </main>
+  );
+}
+
+/** ✨ בונה האימון: טקסט חופשי → /api/sp-kit → ערכה מותאמת (sp_kit) — מוצג רק אם ה-AI זמין בשרת */
+function AiKit({ kit, onKit }: { kit?: SpCustomMove[]; onKit: (moves: SpCustomMove[]) => void }) {
+  const [avail, setAvail] = useState(false);
+  const [topic, setTopic] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  useEffect(() => { fetch("/api/ai-deck-available").then((r) => r.json()).then((d) => setAvail(!!d.available)).catch(() => setAvail(false)); }, []);
+  if (!avail && !kit) return null;
+  async function build() {
+    if (busy || topic.trim().length < 3) return;
+    setBusy(true); setErr("");
+    try {
+      const res = await fetch(`/api/sp-kit?topic=${encodeURIComponent(topic.trim())}&l=${currentLang()}`);
+      const data = await res.json();
+      if (!res.ok || !Array.isArray(data.moves)) setErr(typeof data.error === "string" && has(data.error) ? t(data.error) : t("spods.ai.err"));
+      else { onKit(data.moves); Sfx.ding(); }
+    } catch { setErr(t("deck.err_net")); }
+    setBusy(false);
+  }
+  return (
+    <div className="sp-ai" style={{ marginTop: 10 }}>
+      <b style={{ fontSize: 14 }}>{t("spods.ai.title")}</b>
+      {avail && <div className="sp-ai-row">
+        <input className="input" value={topic} placeholder={t("spods.ai.ph")} maxLength={120} onChange={(e) => setTopic(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") void build(); }} />
+        <button className="btn gold" disabled={busy || topic.trim().length < 3} onClick={() => void build()}>{busy ? t("spods.ai.building") : t("spods.ai.build")}</button>
+      </div>}
+      {err && <p className="sub" style={{ color: "var(--danger, #ff6b6b)" }}>{err}</p>}
+      {kit && <div className="sp-ai-kit">
+        <div className="sub" style={{ fontSize: 12 }}>{t("spods.ai.ready", { n: kit.length })}</div>
+        {kit.map((m, i) => <div key={i} className="sp-row"><span className="sp-podn">{m.ic}</span><span className="sp-name">{m.txt}{m.sub ? <small className="sub"> · {m.sub}</small> : null}</span></div>)}
+      </div>}
+    </div>
   );
 }
 

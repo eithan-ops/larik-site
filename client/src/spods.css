@@ -62,3 +62,14 @@
 @keyframes sp-champ { from { filter: brightness(0.75); } to { filter: brightness(1.15); } }
 @keyframes sp-champ-pop { from { transform: scale(0.2) rotate(-20deg); } to { transform: none; } }
 @media (prefers-reduced-motion: reduce) { .sp-champ, .sp-champ .sp-ic { animation: none; } }
+
+/* ↔️ ימין/שמאל: שני צדדים על הפוד */
+.sp-lr .sp-zone { font-size: 96px; }
+.sp-lr .sp-lr-on { background: rgba(255, 255, 255, 0.28); outline: 6px solid rgba(255, 255, 255, 0.85); outline-offset: -6px; }
+.sp-lr .sp-lr-off { background: rgba(0, 0, 0, 0.42); }
+/* 🔢 המספר שצועקים */
+.sp-shout { font-size: 44vmin; line-height: 1; }
+/* ✨ בונה האימון */
+.sp-ai-row { display: flex; gap: 8px; margin-top: 6px; }
+.sp-ai-row .input { flex: 1; min-width: 0; }
+.sp-ai-kit { margin-top: 6px; }
