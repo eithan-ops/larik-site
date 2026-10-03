@@ -512,32 +512,93 @@ const http = createServer((req, res) => {
 /* ---------- WebSocket ---------- */
 const wss = new WebSocketServer({ server: http, path: "/ws" });
 
+/**
+ * פעימת לב: כל 25ש' שולחים ping (פריים פרוטוקול — הדפדפן עונה לבד, בלי קוד בלקוח).
+ * סוקט שלא ענה עד הפעימה הבאה = מת (וויי-פיי שנפל, טלפון שנכנס לחדר בלי קליטה) → terminate.
+ * בלי זה סוקט מת נשאר "מחובר" דקות ארוכות עד שה-TCP של מערכת ההפעלה מוותר: המשחק מחכה
+ * לשחקן רפאים, וכשה-close המאוחר סוף-סוף מגיע הוא נוחת על שחקן שכבר חזר (ראו isCurrent למטה).
+ * בונוס: תעבורה קבועה מונעת מפרוקסי בדרך (Render, רשתות סלולר) לסגור חיבור "שקט".
+ */
+const HEARTBEAT_MS = 25_000;
+const alive = new WeakMap<WebSocket, boolean>();
+setInterval(() => {
+  for (const ws of wss.clients) {
+    if (alive.get(ws) === false) { ws.terminate(); continue; }
+    alive.set(ws, false);
+    try { ws.ping(); } catch { /* נסגר בינתיים */ }
+  }
+}, HEARTBEAT_MS);
+
 wss.on("connection", (ws, req) => {
+  alive.set(ws, true);
+  ws.on("pong", () => alive.set(ws, true));
   const url = new URL(req.url || "", "http://x");
-  const code = (url.searchParams.get("room") || "").toUpperCase();
-  const rejoinId = url.searchParams.get("pid") || "";
-  const room = manager.get(code);
+  const code = (url.searchParams.get("room") || "").toUpperCase().replace(/[^A-Z]/g, "").slice(0, 10);
+  let rejoinId = (url.searchParams.get("pid") || "").replace(/[^A-Za-z0-9-]/g, "").slice(0, 36);
+  const gpid = (url.searchParams.get("gpid") || "").slice(0, 64);
+  const wasHost = url.searchParams.get("h") === "1";
+  let room = manager.get(code);
+  if (!room && rejoinId && code.length >= 3) {
+    // החדר לא קיים אבל מישהו שהיה בו חוזר (pid) = השרת עלה מחדש (deploy / Render free שנרדם
+    // או אותחל) ומחק את החדרים מהזיכרון. במקום "החדר נסגר" לכולם — מקימים אותו מחדש באותו קוד.
+    // המשחק שרץ אבד, אבל כולם חוזרים לאותו לובי עם אותם שמות ואפשר להמשיך את הערב.
+    room = manager.createRoom(code);
+    room.revived = true;
+    console.log(`[ws] revived room ${code} after restart`);
+  }
   if (!room) {
     ws.send(JSON.stringify({ t: "error", msg: { k: "err.room_gone" } }));
     ws.close();
     return;
   }
+  // pid שהחדר לא מכיר (טאב חדש מהקישור) — אם המכשיר הזה כבר יושב בחדר כמנותק, מחזירים אותו לכיסא שלו
+  if (!rejoinId || !room.hasPlayer(rejoinId)) {
+    const byDevice = room.findDisconnectedByGpid(gpid);
+    if (byDevice) rejoinId = byDevice;
+  }
   const playerId = rejoinId || randomUUID().slice(0, 8);
+  // אותו שחקן כבר מחזיק סוקט (ישן/זומבי) — סוגרים אותו עכשיו, כדי שלא יישאר "חצי מחובר"
+  const prev = sockets.get(playerId);
   sockets.set(playerId, ws);
+  // קוד 4001 = "הוחלפת" — טאב שני של אותו מכשיר לא מתחבר בחזרה אוטומטית (אחרת שני טאבים היו
+  // מעיפים זה את זה בלולאה), רק כשחוזרים אליו. סוקט זומבי לא יקבל את ה-close → terminate אחרי 2ש'.
+  if (prev && prev !== ws) {
+    try { prev.close(4001, "replaced"); } catch { /* כבר מת */ }
+    setTimeout(() => { try { prev.terminate(); } catch { /* כבר נסגר */ } }, 2000);
+  }
   statConcurrent(sockets.size);
+  const r = room;
 
   ws.on("message", (raw) => {
+    alive.set(ws, true);
     let msg: ClientMsg;
     try { msg = JSON.parse(String(raw)); } catch { return; }
-    if (msg.t === "join") room.join(playerId, msg.name, msg.emoji, msg.gpid, msg.seen, msg.lang);
-    else room.onMessage(playerId, msg);
+    try {
+      if (msg.t === "join") {
+        r.join(playerId, msg.name, msg.emoji, msg.gpid, msg.seen, msg.lang);
+        if (wasHost) r.claimHostIfRevived(playerId);
+      } else r.onMessage(playerId, msg);
+    } catch (e) {
+      // באג במשחק אחד לא מפיל את כל השרת (וכל החדרים האחרים איתו)
+      console.error(`[ws] room ${r.code} msg ${msg?.t} failed:`, e);
+    }
   });
 
+  ws.on("error", () => { /* close יגיע אחריו */ });
+
   ws.on("close", () => {
-    if (sockets.get(playerId) === ws) sockets.delete(playerId);
-    room.disconnect(playerId);
+    // הבאג המרכזי: טלפון שחזר מהר פותח סוקט חדש, ורק אחר כך ה-close של הסוקט הישן מגיע.
+    // קודם קראנו ל-disconnect בכל מקרה — והשחקן שכבר חזר סומן מנותק (ובמשחקים מסוימים הוצא מהם).
+    // עכשיו: רק הסוקט העדכני של השחקן מנתק אותו.
+    if (sockets.get(playerId) !== ws) return;
+    sockets.delete(playerId);
+    try { r.disconnect(playerId); } catch (e) { console.error(`[ws] disconnect failed:`, e); }
   });
 });
+
+// רשת ביטחון אחרונה: חריגה שלא נתפסה (טיימר של משחק) לא מפילה את התהליך — נפילה = כל החדרים נמחקים
+process.on("uncaughtException", (e) => console.error("[uncaught]", e));
+process.on("unhandledRejection", (e) => console.error("[unhandled]", e));
 
 http.listen(PORT, () => {
   console.log(`⚡ LARIK Games server on http://localhost:${PORT}`);

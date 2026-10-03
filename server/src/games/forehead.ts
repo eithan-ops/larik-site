@@ -162,8 +162,9 @@ export function createForehead(ctx: GameCtx): GameInstance {
       }
     },
 
-    onLeave(pid: string) {
-      placed.delete(pid);
+    onLeave(pid: string, permanent?: boolean) {
+      // ניתוק רגעי לא מוחק את "הנחתי על המצח" — אחרת מי שחזר נאלץ להניח שוב והשלב נתקע
+      if (permanent) placed.delete(pid);
       if (stage === "placing") {
         ctx.broadcast({ a: "fh_wait_placed", placed: [...placed], total: players.length });
       } else if (stage === "playing" && order[turnIdx] === pid) {

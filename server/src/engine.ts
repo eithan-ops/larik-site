@@ -253,6 +253,37 @@ export class Room {
 
   get isEmpty() { return ![...this.players.values()].some((p) => p.connected); }
 
+  /** האם המזהה מוכר לחדר (שחקן שהיה כאן ואולי מנותק כרגע) */
+  hasPlayer(pid: string) { return this.players.has(pid); }
+
+  /**
+   * שחקן מנותק שהמכשיר שלו (gpid — מזהה יציב ב-localStorage) כבר בחדר.
+   * המצב שזה פותר: הטאב נסגר/נהרג ברקע או שנפתח מחדש מהקישור בוואטסאפ → אין לו את ה-pid
+   * הישן, והוא היה נכנס כשחקן חדש — ובאמצע משחק כצופה שלא יכול לחזור לשחק.
+   * רק שחקן *מנותק* — כדי ששני טאבים פתוחים באותו טלפון לא "יגנבו" זה את זה.
+   */
+  findDisconnectedByGpid(gpid: string): string | undefined {
+    if (!gpid) return undefined;
+    for (const p of this.players.values()) if (p.gpid === gpid && !p.connected) return p.id;
+    return undefined;
+  }
+
+  /** החדר נולד מחדש אחרי שהשרת עלה מחדש — הראשון שחוזר עם "הייתי המארח" מקבל את הכתר */
+  claimHostIfRevived(pid: string) {
+    if (!this.revived || this.revivedHostClaimed) return;
+    const p = this.players.get(pid);
+    if (!p) return;
+    this.revivedHostClaimed = true;
+    if (p.isHost) return;
+    const cur = this.players.get(this.hostId);
+    if (cur) cur.isHost = false;
+    this.hostId = pid; p.isHost = true;
+    this.broadcastRoom();
+  }
+  /** true רק בחדר שנוצר מחדש אחרי ריסטרט ועוד לא הוכרע בו מי המארח */
+  revived = false;
+  private revivedHostClaimed = false;
+
   /* ---------- הודעות ---------- */
 
   onMessage(pid: string, msg: ClientMsg) {
@@ -547,6 +578,7 @@ export class Room {
 /* ---------- ניהול חדרים ---------- */
 
 const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ"; // בלי I/O מבלבלים
+const ROOM_EMPTY_TTL_MS = 20 * 60_000;
 
 export class RoomManager {
   rooms = new Map<string, Room>();
@@ -586,7 +618,8 @@ export class RoomManager {
       if (!room.isEmpty) { this.emptySince.delete(code); continue; }
       const since = this.emptySince.get(code);
       if (since === undefined) { this.emptySince.set(code, now); continue; }
-      if (now - since > 5 * 60_000) { this.rooms.delete(code); this.emptySince.delete(code); }
+      // 20 דקות (היה 5): ערב אמיתי כולל הפסקת אוכל שבה כל הטלפונים נעולים — החדר לא אמור למות בה
+      if (now - since > ROOM_EMPTY_TTL_MS) { this.rooms.delete(code); this.emptySince.delete(code); }
     }
   }
 }
