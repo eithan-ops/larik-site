@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react"
 import { navigate } from "../App";
 import type { RoomSnapshot } from "../../../shared/protocol";
 import { CATALOG, SPODS_CATEGORY } from "../../../shared/protocol";
-import { Connection, defaultServerUrl } from "../lib/connection";
+import { Connection, defaultServerUrl, savedPid } from "../lib/connection";
 import { unlockAudio, Sfx, vibrate } from "../lib/audio";
 import { armPhone } from "../lib/sensors";
 import { track, trackOnce, entrySource, bumpGamesTotal } from "../lib/analytics";
@@ -27,7 +27,7 @@ type Stage = "name" | "arm" | "in";
 
 export default function Room({ code }: { code: string }) {
   // חוזר לחדר מוכר (reload)? מדלגים על מסך הכינוי — נשאר רק "חמש" (חובה בשביל האודיו)
-  const isRejoin = !!sessionStorage.getItem(`larik-pid-${code}`) && !!localStorage.getItem("larik-name");
+  const isRejoin = !!savedPid(code) && !!localStorage.getItem("larik-name");
   const [stage, setStage] = useState<Stage>(isRejoin ? "arm" : "name");
   const [name, setName] = useState(localStorage.getItem("larik-name") || "");
   const [emoji] = useState(autoEmoji());

@@ -6,7 +6,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { navigate } from "./ShowApp";
 import type { RoomSnapshot } from "../../../shared/protocol";
-import { Connection, defaultServerUrl } from "../lib/connection";
+import { Connection, defaultServerUrl, savedPid } from "../lib/connection";
 import { unlockAudio, Sfx, vibrate } from "../lib/audio";
 import { GameHub } from "../lib/gamehub";
 import { track } from "../lib/analytics";
@@ -27,7 +27,7 @@ function autoEmoji(): string {
 }
 
 export default function ShowRoom({ code }: { code: string }) {
-  const isRejoin = !!sessionStorage.getItem(`larik-pid-${code}`) && !!localStorage.getItem("larik-name");
+  const isRejoin = !!savedPid(code) && !!localStorage.getItem("larik-name");
   const [stage, setStage] = useState<Stage>(isRejoin ? "arm" : "name");
   const [name, setName] = useState(localStorage.getItem("larik-name") || "");
   const [emoji] = useState(autoEmoji());

@@ -6,6 +6,8 @@ import type { SimonClientMsg, GameClientMsg } from "../../../shared/protocol";
 
 const COLORS = ["#34e89e", "#b26bff", "#ff4d9d", "#ffce3c", "#5c8aff", "#2dd4bf", "#ff9d5c", "#f4f6ff"];
 const LIVES = 3;
+/** כמה זמן מחכים לטלפון שהתנתק לרגע לפני שמוציאים אותו מהרצף */
+const LEAVE_GRACE_MS = 20_000;
 
 export function createSimon(ctx: GameCtx): GameInstance {
   let players = ctx.connectedPlayers().map((p) => p.id);
@@ -17,6 +19,7 @@ export function createSimon(ctx: GameCtx): GameInstance {
   let inputIdx = 0;
   let phase: "watch" | "input" | "idle" = "idle";
   let over = false;
+  const graceTimers = new Map<string, NodeJS.Timeout>();
 
   function nextRound() {
     if (over) return;
@@ -64,21 +67,34 @@ export function createSimon(ctx: GameCtx): GameInstance {
       }
     },
     onRejoin(pid: string) {
+      const g = graceTimers.get(pid);
+      if (g) { clearTimeout(g); graceTimers.delete(pid); }
       if (over || !players.includes(pid)) return;
       ctx.sendTo(pid, { a: "sm_setup", colors: { ...colorOf }, lives });
       if (phase === "input") ctx.sendTo(pid, { a: "sm_input", round });
       else ctx.sendTo(pid, { a: "sm_watch", round });
     },
-    onLeave(pid: string) {
+    onLeave(pid: string, permanent?: boolean) {
       if (over || !players.includes(pid)) return;
-      players = players.filter((p) => p !== pid);
-      if (players.length < 2) return finish(false); // אין קבוצה — מסיימים בכבוד
-      const before = seq.length;
-      seq = seq.filter((p) => p !== pid); // הצעדים שלו יוצאים מהרצף — אי אפשר לגעת בטלפון שנעלם
-      if (seq.length === 0) { phase = "idle"; ctx.timer(1500, nextRound); return; }
-      // אם הרצף השתנה או שאנחנו באמצע קלט — מראים את הרצף המעודכן מחדש
-      if (seq.length !== before || phase === "input") { phase = "idle"; ctx.timer(1500, () => replay(700)); }
+      // ניתוק רגעי (מסך ננעל, וויי-פיי קפץ) — קודם השחקן הוצא מיד ולתמיד, ולא יכול היה לחזור.
+      // עכשיו: 20ש' חסד. חזר — ממשיך כרגיל. לא חזר — מוצא כמו בעזיבה (אחרת הרצף תקוע על טלפון שנעלם).
+      if (!permanent) {
+        if (!graceTimers.has(pid)) graceTimers.set(pid, ctx.timer(LEAVE_GRACE_MS, () => { graceTimers.delete(pid); removePlayer(pid); }));
+        return;
+      }
+      removePlayer(pid);
     },
-    dispose() { over = true; },
+    dispose() { over = true; for (const h of graceTimers.values()) clearTimeout(h); },
   };
+
+  function removePlayer(pid: string) {
+    if (over || !players.includes(pid)) return;
+    players = players.filter((p) => p !== pid);
+    if (players.length < 2) return finish(false); // אין קבוצה — מסיימים בכבוד
+    const before = seq.length;
+    seq = seq.filter((p) => p !== pid); // הצעדים שלו יוצאים מהרצף — אי אפשר לגעת בטלפון שנעלם
+    if (seq.length === 0) { phase = "idle"; ctx.timer(1500, nextRound); return; }
+    // אם הרצף השתנה או שאנחנו באמצע קלט — מראים את הרצף המעודכן מחדש
+    if (seq.length !== before || phase === "input") { phase = "idle"; ctx.timer(1500, () => replay(700)); }
+  }
 }

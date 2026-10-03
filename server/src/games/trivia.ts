@@ -91,6 +91,15 @@ export function createTrivia(ctx: GameCtx): GameInstance {
       ctx.broadcast({ a: "tv_answered", count: answers.size, total: ctx.connectedPlayers().length });
       if (answers.size >= ctx.connectedPlayers().length) reveal(current.id);
     },
+    /** חזר אחרי ניתוק — בלי זה המסך שלו נשאר ריק עד השאלה הבאה (ולפעמים עד הסוף) */
+    onRejoin(pid: string) {
+      if (over) return;
+      ctx.sendTo(pid, { a: "tv_begin", total: qs.length });
+      if (current && !answers.has(pid) && current.deadline - ctx.now() > 1500) {
+        const q = qs[qIdx];
+        ctx.cue(0, { a: "tv_q", qId: current.id, bankId: q.id, q: q.q, options: q.options, index: qIdx, total: qs.length, at: 0, until: 0 } as never, [pid]);
+      }
+    },
     dispose() { over = true; },
   };
 }
