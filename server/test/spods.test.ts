@@ -1,3 +1,4 @@
+process.env.LARIK_ALLOW_HIDDEN = "1"; // הבדיקה מכסה גם משחקים שהוסתרו מהמדף (17.10)
 /**
  * ספורט פודים 🏃 — פלייטסט שרת עם מאמן + 4 פודים-ספורטאים (בוטים נוגעים).
  * מריצים: SP_FAST=1 npx tsx test/spods.test.ts [colors|duel|...|all]

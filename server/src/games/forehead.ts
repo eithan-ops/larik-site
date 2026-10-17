@@ -77,6 +77,7 @@ export function createForehead(ctx: GameCtx): GameInstance {
     const pid = voterPid;
     if (correct) {
       saved.add(pid);
+      ctx.roundDone(); // שחקן ניחש את הקלף שלו
       rank += 1;
       ctx.broadcast({ a: "fh_saved", pid, rank, card: cards.get(pid)! });
       const active = activePlayers();

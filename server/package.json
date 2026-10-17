@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "start": "tsx src/index.ts",
-    "test": "tsx test/flow.test.ts"
+    "test": "tsx test/flow.test.ts && tsx test/shelf-oct17.test.ts"
   },
   "dependencies": {
     "geoip-country": "^5.0.202609120131",
