@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { navigate } from "../App";
 import type { RoomSnapshot } from "../../../shared/protocol";
-import { CATALOG, SPODS_CATEGORY } from "../../../shared/protocol";
+import { CATALOG, SPODS_CATEGORY, isListed, HIDDEN_GAME_IDS } from "../../../shared/protocol";
 import { Connection, defaultServerUrl, savedPid } from "../lib/connection";
 import { unlockAudio, Sfx, vibrate } from "../lib/audio";
 import { armPhone } from "../lib/sensors";
@@ -122,6 +122,11 @@ export default function Room({ code }: { code: string }) {
         if (g.inGame) { track("game_ended", params); bumpGamesTotal(); }
         // אירוע-חדר יחיד (רק המארח) — זה ה-Key Event ל-Google Ads: "חדר שסיים משחק"
         if (role === "host") track("room_completed", params);
+      } else if (g.inGame && room.phase === "lobby" && (room.gameRounds ?? 0) > 0) {
+        // משחקי סבבים בלי סוף מובנה (המתחזה ודומיו): המארח חזר ללובי אחרי סבב שלם לפחות = סיום, לא נטישה
+        const params = { game_id: g.gameId, role, players: g.players, duration_s, game_no: gameNo + 1, result: "played", end: "host_return", rounds: room.gameRounds ?? 0 };
+        track("game_ended", params); bumpGamesTotal();
+        if (role === "host") track("room_completed", params);
       } else if (g.inGame) {
         track("game_aborted", { game_id: g.gameId, role, players: g.players, duration_s });
       }
@@ -150,8 +155,9 @@ export default function Room({ code }: { code: string }) {
     prevConnected.current = n;
   }, [room, phase]);
 
-  // Wake Lock — שהמסך לא יכבה באמצע משחק או מופע (קריטי כשהטלפון הוא פיקסל)
-  const needWake = phase === "game" || (phase === "lobby" && room?.gameId === "show");
+  // Wake Lock — שהמסך לא יכבה כל זמן שהשחקן בחדר: לובי, משחק וטקס.
+  // (עד 17.10 רק במשחק — וכמעט חצי מהניתוקים קרו בלובי, כשטלפון שחיכה נרדם.)
+  const needWake = phase === "lobby" || phase === "game" || phase === "ceremony";
   useEffect(() => {
     if (!needWake) return;
     let lock: { release?: () => Promise<void> } | undefined;
@@ -422,15 +428,20 @@ function ShareRow({ code }: { code: string }) {
 }
 
 /* קטגוריות הקטלוג — המופע חי בעולם משלו (larik.ai/show) */
-const CATEGORIES: { icon: string; key: string; ids: string[] }[] = [
-  { icon: "🎉", key: "lobby.cat_party", ids: ["whomost", "impostor", "undercover", "alias", "forehead"] },
+const CATEGORIES: { icon: string; key: string; ids: string[] }[] = ([
+  { icon: "🎉", key: "lobby.cat_party", ids: ["impostor", "whomost", "undercover", "forehead", "alias"] },
   { icon: "⚡", key: "lobby.cat_action", ids: ["metro", "tanks", "floors", "thieves", "abyss", "colorrules", "pods", "demons"] },
   { icon: "🤝", key: "lobby.cat_coop", ids: ["wall", "hofrim", "bombs", "simon"] },
   { icon: "🧠", key: "lobby.cat_brain", ids: ["trivia", "deathtouch"] },
   { icon: "🏃", key: "games.spods.category", ids: CATALOG.filter((g) => g.category === SPODS_CATEGORY).map((g) => g.id) },
-];
+] as { icon: string; key: string; ids: string[] }[])
+  // משחקים מוסתרים לא מופיעים בקטלוג המארח; קטגוריה שהתרוקנה יורדת
+  .map((c) => ({ ...c, ids: c.ids.filter((id) => !HIDDEN_GAME_IDS.has(id)) }))
+  .filter((c) => c.ids.length > 0);
 /* סדר ההמלצה של "המנחה" — הכי חברתיים קודם */
-const RECO_ORDER = ["impostor", "undercover", "whomost", "alias", "metro", "tanks", "floors", "wall", "hofrim", "thieves", "abyss", "bombs", "colorrules", "trivia", "forehead", "demons", "simon", "pods", "deathtouch"];
+/* עודכן 16.10 לפי נתוני שימוש: קודם המשחקים שהכי משחקים ומסיימים */
+const RECO_ORDER = ["impostor", "whomost", "undercover", "trivia", "bombs", "forehead", "alias", "metro", "tanks", "floors", "wall", "thieves", "abyss", "colorrules", "pods"]
+  .filter((id) => !HIDDEN_GAME_IDS.has(id));
 
 function HostCatalog({ room, onSelect, onStart }: {
   room: RoomSnapshot;
@@ -465,7 +476,7 @@ function HostCatalog({ room, onSelect, onStart }: {
   const shown = sel ?? reco; // הפאנל הגדול: המשחק הנבחר, או ההמלצה
 
   function surprise() {
-    const pool = suitable.length ? suitable : CATALOG.filter((g) => g.id !== "show" && !g.external);
+    const pool = suitable.length ? suitable : CATALOG.filter((g) => isListed(g) && g.id !== "show" && !g.external);
     const pick = pool[Math.floor(Math.random() * pool.length)];
     onSelect(pick.id, config);
   }

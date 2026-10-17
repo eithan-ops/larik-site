@@ -301,6 +301,7 @@ export function createUndercover(ctx: GameCtx): GameInstance {
     if (Object.keys(facts).length) ctx.reportFacts(facts);
     lastRows = rows;
     phase = "scores";
+    ctx.roundDone(); // סבב שלם עם ניקוד
     ctx.broadcast({ a: "uc_scores", round, rows, totals: { ...totals } });
     ctx.broadcast({ a: "uc_phase", phase: "scores" });
   }

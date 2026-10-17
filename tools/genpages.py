@@ -214,9 +214,12 @@ for g in GAMES:
     (OUT / f"{g['id']}.html").write_text(page(g["id"], g["title"], g["desc"], body, can), encoding="utf-8")
 
 # ---- עמוד hub: כל המשחקים ----
+# משחקים שהוסתרו מהמדף (17.10, כמו HIDDEN_GAME_IDS ב-shared/protocol.ts): העמוד שלהם נשאר עם noindex, אבל לא ב-hub
+HIDDEN = {"simon", "deathtouch", "demons"}
+LISTED = [g for g in GAMES if g["id"] not in HIDDEN]
 cards = "\n".join(
     f'<a class="gamecard" href="/games/{g["id"]}"><span class="gi">{g["icon"]}</span><b>{g["name"]}</b><span class="gd">{g["desc"].split("׃")[0].split(":")[0][:90]}</span><span class="gp">👥 {g["players"]} · ⏱️ {g["minutes"]} דק׳</span></a>'
-    for g in GAMES)
+    for g in LISTED)
 hub_css = """<style>
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;margin-top:20px}
 .gamecard{display:flex;flex-direction:column;gap:6px;background:var(--card);border:1px solid #2a2440;border-radius:16px;padding:16px;color:var(--text)}
@@ -225,7 +228,7 @@ hub_css = """<style>
 </style>"""
 hub_body = f"""{HEADER}
 <h1>משחקי חברה לטלפון — בלי אפליקציה</h1>
-<p class="tag">{len(GAMES)} משחקים לחבורה שנמצאת באותו חדר: המארח פותח חדר, כולם סורקים QR מהטלפון — ותוך 30 שניות משחקים. בלי הורדות, בלי הרשמה, בעברית ובחינם. מ"מי הכי?" ועד טריוויה, ממשחקי רפלקסים ועד משחק הרוצח.</p>
+<p class="tag">{len(LISTED)} משחקים לחבורה שנמצאת באותו חדר: המארח פותח חדר, כולם סורקים QR מהטלפון — ותוך 30 שניות משחקים. בלי הורדות, בלי הרשמה, בעברית ובחינם. מ"מי הכי?" ועד טריוויה, ממשחקי רפלקסים ועד המתחזה.</p>
 {hub_css}
 <div class="grid">{cards}</div>
 <div class="ctabox"><p>ערב חברים מתחיל בסריקה אחת.</p><a class="cta" href="/">פתחו חדר עכשיו — בחינם ›</a></div>
@@ -236,7 +239,7 @@ hub_body = f"""{HEADER}
 </div></section>
 {FOOTER}
 <script type="application/ld+json">{json.dumps({"@context":"https://schema.org","@type":"CollectionPage","name":"משחקי חברה לטלפון — LARIK","url":BASE+"/games","inLanguage":"he"}, ensure_ascii=False)}</script>"""
-(OUT / "index.html").write_text(page("games", f"משחקי חברה לטלפון בלי אפליקציה — {len(GAMES)} משחקים בחינם | LARIK",
+(OUT / "index.html").write_text(page("games", f"משחקי חברה לטלפון בלי אפליקציה — {len(LISTED)} משחקים בחינם | LARIK",
     "כל משחקי החברה של LARIK: מי הכי, המתחזה, על המצח, על הלשון, טריוויה ועוד — סורקים QR ומשחקים. בלי אפליקציה, בלי הרשמה, בעברית ובחינם.",
     hub_body, f"{BASE}/games"), encoding="utf-8")
 

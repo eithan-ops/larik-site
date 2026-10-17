@@ -28,6 +28,7 @@ export function createAlias(ctx: GameCtx): GameInstance {
   function nextTurn() {
     if (over) return;
     clearTimeout(turnTimer!);
+    if (turnsPlayed > 0) ctx.roundDone(); // תור של מתאר הושלם
     if (turnsPlayed >= order.length * ROUNDS_PER_PLAYER) return finish();
     turnIdx = (turnIdx + 1) % order.length;
     describer = order[turnIdx];

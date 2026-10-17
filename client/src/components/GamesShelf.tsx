@@ -2,7 +2,7 @@ import { useState, type CSSProperties } from "react";
 import { navigate } from "../App";
 import { createRoom } from "../lib/connection";
 import { track } from "../lib/analytics";
-import { CATALOG, SPODS_CATEGORY } from "../../../shared/protocol";
+import { CATALOG, SPODS_CATEGORY, isListed } from "../../../shared/protocol";
 import { GAME_COLORS } from "../games/registry";
 import { t, gameText } from "../lib/locale";
 
@@ -43,7 +43,7 @@ export default function GamesShelf() {
       <p className="sub shelf-sub">{t("shelf.tap_hint")}</p>
 
       <div className="shelf-grid">
-        {CATALOG.filter((g) => g.category !== SPODS_CATEGORY).map((g) => renderPoster(g))}
+        {CATALOG.filter((g) => isListed(g) && g.category !== SPODS_CATEGORY).map((g) => renderPoster(g))}
       </div>
 
       <div className="shelf-head" style={{ marginTop: 18 }}>
@@ -51,7 +51,7 @@ export default function GamesShelf() {
       </div>
       <p className="sub shelf-sub">{t("shelf.spods_sub")}</p>
       <div className="shelf-grid">
-        {CATALOG.filter((g) => g.category === SPODS_CATEGORY).map((g) => renderPoster(g))}
+        {CATALOG.filter((g) => isListed(g) && g.category === SPODS_CATEGORY).map((g) => renderPoster(g))}
       </div>
       <ShelfFooter host={host} busy={busy} />
     </main>

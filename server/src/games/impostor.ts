@@ -61,6 +61,7 @@ export function createImpostor(ctx: GameCtx): GameInstance {
       if (m.a === "im_expose") {
         if (!isHost(pid) || exposed) return;
         exposed = true;
+        ctx.roundDone(); // סבב שלם: המתחזה נחשף
         // חשיפה מסונכרנת — כל המסכים מתהפכים יחד
         ctx.cue(600, { a: "im_exposed", impostorPid: impostor, word, round } as never);
       } else if (m.a === "im_next") {

@@ -131,6 +131,9 @@ export interface RoomSnapshot {
   gotIt?: string[];
   /** החבורה שהחדר משויך אליה (אם יש) — מוצג כבר בלובי: "הרביעייה · ערב #7" */
   group?: GroupSummary;
+  /** כמה סבבים הושלמו במשחק האחרון (ctx.roundDone). נשמר גם אחרי חזרה ללובי —
+   *  כך האנליטיקה יודעת שמארח שחזר ללובי אחרי סבב שלם "סיים" ולא "נטש". */
+  gameRounds?: number;
 }
 
 /* ---- לקוח → שרת ---- */
@@ -552,14 +555,21 @@ export interface GameMeta {
   external?: string;
   /** קטגוריה במדף ובקטלוג המארח (משחקים בלי קטגוריה משויכים לפי הרשימה הישנה ב-Room) */
   category?: string;
+  /** מוסתר מהמדף ומקטלוג המארח, והשרת לא מאפשר לבחור בו. הקוד והרישום נשארים — מחזירים בהסרת הדגל. */
+  hidden?: boolean;
 }
+
+/** משחקים שהוסתרו מהמדף (החלטת איתן, 16.10.2026 — לפי נתוני שימוש). להחזרה: להוציא מהרשימה. */
+export const HIDDEN_GAME_IDS: ReadonlySet<string> = new Set(["hofrim", "simon", "sp_duel", "deathtouch", "demons"]);
+/** האם המשחק מוצג למשתמשים (מדף, קטלוג מארח, "הפתיעו אותי") */
+export const isListed = (g: { id: string; hidden?: boolean }): boolean => !g.hidden && !HIDDEN_GAME_IDS.has(g.id);
 
 /** קטגוריית "ספורט פודים" 🏃 — עשרה משחקים על מנוע אחד (shared/spods.ts); המארח = השלט, השאר = פודים */
 export const SPODS_CATEGORY = "ספורט פודים";
 const SPODS_CATALOG: GameMeta[] = SP_GAME_IDS.map((g) => {
   const d = SP_DEFS[g];
   return {
-    id: `sp_${g}`, name: d.name, icon: d.icon, tagline: d.tagline,
+    id: `sp_${g}`, name: d.name, icon: d.icon, tagline: d.tagline, hidden: HIDDEN_GAME_IDS.has(`sp_${g}`),
     howTo: `${d.howTo} 📱 הטלפון של המארח הוא השלט של המאמן — הוא לא פוד. ${d.setup}`,
     minPlayers: 2, maxPlayers: 9, category: SPODS_CATEGORY,
     // הלובי מציג רק את ההגדרות הבסיסיות; המודיפיירים (⚽ ↔️ 🔢 🔁) ו-✨ אימון שלנו חיים בשלט של המאמן בלבד
@@ -568,21 +578,22 @@ const SPODS_CATALOG: GameMeta[] = SP_GAME_IDS.map((g) => {
 });
 
 export const CATALOG: GameMeta[] = [
-  {
-    id: "whomost",
-    name: "מי הכי?",
-    icon: "🫵",
-    tagline: "המארח שואל. מי הכי מתאים? הטלפון של הנבחר נדלק.",
-    howTo: "המארח כותב שאלות \"מי הכי...\" וכולם מצביעים בסתר מי הכי מתאים. אחר כך מניחים את הטלפונים על השולחן — והטלפון של הנבחר נדלק בזהב. בסוף: כוכב הערב.",
-    minPlayers: 3,
-    maxPlayers: 15,
-  },
+  // סדר המדף לפי נתוני שימוש (GA, 30 יום עד 16.10): המשחקים שהכי משחקים ומסיימים — קודם
   {
     id: "impostor",
     name: "המתחזה",
     icon: "🎭",
     tagline: "לכולם אותה מילה. לאחד — אין. מצאו אותו.",
     howTo: "כולם מקבלים מילה סודית — חוץ מאחד שמגלה שהוא המתחזה. בתורכם אמרו בקול מילה שקשורה למילה הסודית. תתווכחו, תצביעו בקול — וכשתחליטו, המארח חושף.",
+    minPlayers: 3,
+    maxPlayers: 15,
+  },
+  {
+    id: "whomost",
+    name: "מי הכי?",
+    icon: "🫵",
+    tagline: "המארח שואל. מי הכי מתאים? הטלפון של הנבחר נדלק.",
+    howTo: "המארח כותב שאלות \"מי הכי...\" וכולם מצביעים בסתר מי הכי מתאים. אחר כך מניחים את הטלפונים על השולחן — והטלפון של הנבחר נדלק בזהב. בסוף: כוכב הערב.",
     minPlayers: 3,
     maxPlayers: 15,
   },
@@ -597,67 +608,6 @@ export const CATALOG: GameMeta[] = [
     configOptions: [
       { key: "level", label: "מרחק המילים", values: [{ v: "normal", label: "רגיל 🙂" }, { v: "hard", label: "קרובות 🔥" }] },
       { key: "declare", label: "הכרזה עצמית", values: [{ v: "off", label: "בלי — רק הצבעה" }, { v: "on", label: "מופעלת 🥸" }] },
-    ],
-  },
-  {
-    id: "colorrules",
-    name: "חוקי הצבע",
-    icon: "🎨",
-    tagline: "המסך מצווה. אתה מציית — או יוצא.",
-    howTo: "המסך מתמלא בצבע + פקודה: גע! צעק! קום! ⚡ צבע לבן = אל תיגע בכלל. טעות או היסוס עולים לב. 3 לבבות ואתה בחוץ — האחרון ששורד מנצח.",
-    minPlayers: 2,
-    maxPlayers: 12,
-    configOptions: [
-      { key: "speed", label: "קצב", values: [{ v: "normal", label: "רגיל 🙂" }, { v: "fast", label: "מהיר 🔥" }] },
-    ],
-  },
-  {
-    id: "simon",
-    name: "סימון מבוזר",
-    icon: "🟩",
-    tagline: "הטלפונים נדלקים בתור. תזכרו — ביחד.",
-    howTo: "הטלפונים נדלקים ברצף הולך ומתארך. זכרו את הסדר ושחזרו אותו ביחד — כל אחד נוגע במסך שלו בדיוק כשהתור שלו ברצף. אתם קבוצה: 3 חיים לכולם.",
-    minPlayers: 2,
-    maxPlayers: 8,
-  },
-  {
-    id: "deathtouch",
-    name: "נגיעת המוות",
-    icon: "🔪",
-    tagline: "רוצח מסתובב. שמרו על הטלפון.",
-    howTo: "לאחד מכם תפקיד סודי: רוצח 🔪 בחלון הציד — טלפונים על השולחן, ידיים למעלה, והרוצח מנסה לגעת במסך של קורבן בלי להיתפס. אחר כך: סבב האשמות והצבעה.",
-    minPlayers: 4,
-    maxPlayers: 12,
-  },
-  {
-    id: "demons",
-    name: "השדים הקטנים",
-    icon: "👹",
-    tagline: "צברו נקודות. שגרו שד למסך של חבר.",
-    howTo: "אספו נקודות בנגיעה בכוכבים שצצים על המסך. כשהמד מתמלא — שגרו שד 👹 למסך של יריב: הוא יסתיר לו את הכוכבים לכמה שניות. הכי הרבה נקודות בדקה מנצח.",
-    minPlayers: 2,
-    maxPlayers: 10,
-  },
-  {
-    id: "alias",
-    name: "על הלשון",
-    icon: "👅",
-    tagline: "תאר בלי להגיד את המילה.",
-    howTo: "בתורך: על המסך מופיעה מילה — תאר אותה בקול בלי להגיד אותה (ולא באנגלית!). החברים צועקים ניחושים. ניחשו? לחץ ✓ וקבל את הבאה. כמה תספיקו ב-45 שניות?",
-    minPlayers: 3,
-    maxPlayers: 12,
-    configOptions: [
-      {
-        key: "deck",
-        label: "חפיסה",
-        values: [
-          { v: "animals", label: "חיות 🐨" },
-          { v: "celebs", label: "מפורסמים 🌟" },
-          { v: "food", label: "אוכל 🍕" },
-          { v: "cartoons", label: "מצוירים 🦸" },
-          { v: "custom", label: "✨ חפיסה שלנו" },
-        ],
-      },
     ],
   },
   {
@@ -701,25 +651,6 @@ export const CATALOG: GameMeta[] = [
     ],
   },
   {
-    id: "wall",
-    name: "החומה",
-    icon: "🏰",
-    tagline: "הנחיל מגיע בחושך. כל תפקיד מחזיק את הקו.",
-    howTo: "בחרו תפקיד: 🚁 הליקופטר (גרור לטוס בכל השדה — מטיל פצצות לבד, התחמק מאש נגד-מטוסים) · 🏹 קשת (גע והחזק על המטרה — יורה לבד) · 💣 תותחן (כוון ושגר פגז) · 🔫 מקלען (החזק וגרור — מרסס על כל השדה). הרגו את הנחיל לפני שהוא שובר את החומה. כל הריגה = XP ושדרוגים אישיים, וכל גל מביא עוד דחיפות בו-זמנית — לגלים המאוחרים מגיעים רק עם הרבה שחקנים!",
-    minPlayers: 2,
-    maxPlayers: 10,
-    configOptions: [
-      {
-        key: "difficulty",
-        label: "קושי",
-        values: [
-          { v: "normal", label: "רגיל 🙂" },
-          { v: "brutal", label: "אכזרי 🔥" },
-        ],
-      },
-    ],
-  },
-  {
     id: "forehead",
     name: "על המצח",
     icon: "🤳",
@@ -737,6 +668,89 @@ export const CATALOG: GameMeta[] = [
           { v: "food", label: "אוכל 🍕" },
           { v: "cartoons", label: "מצוירים 🦸" },
           { v: "custom", label: "✨ חפיסה שלנו" },
+        ],
+      },
+    ],
+  },
+  {
+    id: "colorrules",
+    name: "חוקי הצבע",
+    icon: "🎨",
+    tagline: "המסך מצווה. אתה מציית — או יוצא.",
+    howTo: "המסך מתמלא בצבע + פקודה: גע! צעק! קום! ⚡ צבע לבן = אל תיגע בכלל. טעות או היסוס עולים לב. 3 לבבות ואתה בחוץ — האחרון ששורד מנצח.",
+    minPlayers: 2,
+    maxPlayers: 12,
+    configOptions: [
+      { key: "speed", label: "קצב", values: [{ v: "normal", label: "רגיל 🙂" }, { v: "fast", label: "מהיר 🔥" }] },
+    ],
+  },
+  {
+    id: "simon",
+    hidden: true,
+    name: "סימון מבוזר",
+    icon: "🟩",
+    tagline: "הטלפונים נדלקים בתור. תזכרו — ביחד.",
+    howTo: "הטלפונים נדלקים ברצף הולך ומתארך. זכרו את הסדר ושחזרו אותו ביחד — כל אחד נוגע במסך שלו בדיוק כשהתור שלו ברצף. אתם קבוצה: 3 חיים לכולם.",
+    minPlayers: 2,
+    maxPlayers: 8,
+  },
+  {
+    id: "deathtouch",
+    hidden: true,
+    name: "נגיעת המוות",
+    icon: "🔪",
+    tagline: "רוצח מסתובב. שמרו על הטלפון.",
+    howTo: "לאחד מכם תפקיד סודי: רוצח 🔪 בחלון הציד — טלפונים על השולחן, ידיים למעלה, והרוצח מנסה לגעת במסך של קורבן בלי להיתפס. אחר כך: סבב האשמות והצבעה.",
+    minPlayers: 4,
+    maxPlayers: 12,
+  },
+  {
+    id: "demons",
+    hidden: true,
+    name: "השדים הקטנים",
+    icon: "👹",
+    tagline: "צברו נקודות. שגרו שד למסך של חבר.",
+    howTo: "אספו נקודות בנגיעה בכוכבים שצצים על המסך. כשהמד מתמלא — שגרו שד 👹 למסך של יריב: הוא יסתיר לו את הכוכבים לכמה שניות. הכי הרבה נקודות בדקה מנצח.",
+    minPlayers: 2,
+    maxPlayers: 10,
+  },
+  {
+    id: "alias",
+    name: "על הלשון",
+    icon: "👅",
+    tagline: "תאר בלי להגיד את המילה.",
+    howTo: "בתורך: על המסך מופיעה מילה — תאר אותה בקול בלי להגיד אותה (ולא באנגלית!). החברים צועקים ניחושים. ניחשו? לחץ ✓ וקבל את הבאה. כמה תספיקו ב-45 שניות?",
+    minPlayers: 3,
+    maxPlayers: 12,
+    configOptions: [
+      {
+        key: "deck",
+        label: "חפיסה",
+        values: [
+          { v: "animals", label: "חיות 🐨" },
+          { v: "celebs", label: "מפורסמים 🌟" },
+          { v: "food", label: "אוכל 🍕" },
+          { v: "cartoons", label: "מצוירים 🦸" },
+          { v: "custom", label: "✨ חפיסה שלנו" },
+        ],
+      },
+    ],
+  },
+  {
+    id: "wall",
+    name: "החומה",
+    icon: "🏰",
+    tagline: "הנחיל מגיע בחושך. כל תפקיד מחזיק את הקו.",
+    howTo: "בחרו תפקיד: 🚁 הליקופטר (גרור לטוס בכל השדה — מטיל פצצות לבד, התחמק מאש נגד-מטוסים) · 🏹 קשת (גע והחזק על המטרה — יורה לבד) · 💣 תותחן (כוון ושגר פגז) · 🔫 מקלען (החזק וגרור — מרסס על כל השדה). הרגו את הנחיל לפני שהוא שובר את החומה. כל הריגה = XP ושדרוגים אישיים, וכל גל מביא עוד דחיפות בו-זמנית — לגלים המאוחרים מגיעים רק עם הרבה שחקנים!",
+    minPlayers: 2,
+    maxPlayers: 10,
+    configOptions: [
+      {
+        key: "difficulty",
+        label: "קושי",
+        values: [
+          { v: "normal", label: "רגיל 🙂" },
+          { v: "brutal", label: "אכזרי 🔥" },
         ],
       },
     ],
@@ -780,6 +794,7 @@ export const CATALOG: GameMeta[] = [
   },
   {
     id: "hofrim",
+    hidden: true,
     name: "החופרים",
     icon: "⛏️",
     tagline: "חופרים למטה, מפילים שקי זהב על מפלצות, ובונים נשק משוגע.",
@@ -808,7 +823,7 @@ export const CATALOG: GameMeta[] = [
     minPlayers: 1,
     maxPlayers: 8,
     configOptions: [
-      { key: "minutes", label: "אורך", values: [{ v: "8", label: "8 דק' 🔥" }, { v: "5", label: "5 דק' ⚡" }] },
+      { key: "minutes", label: "אורך", values: [{ v: "4", label: "4 דק' ⚡" }, { v: "8", label: "8 דק' 🔥" }] },
     ],
   },
   {

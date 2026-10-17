@@ -8,7 +8,10 @@ import type {
   ClientMsg, ServerMsg, RoomSnapshot, PlayerInfo, GameServerMsg, GameClientMsg, CeremonyInfo,
   PlayerFacts, LText,
 } from "../../shared/protocol";
-import { CATALOG } from "../../shared/protocol";
+import { CATALOG, HIDDEN_GAME_IDS } from "../../shared/protocol";
+
+/** משחק מוסתר חסום לבחירה — חוץ מבבדיקות, שממשיכות לכסות את הקוד שלו (LARIK_ALLOW_HIDDEN=1) */
+const isBlocked = (gameId: string) => HIDDEN_GAME_IDS.has(gameId) && process.env.LARIK_ALLOW_HIDDEN !== "1";
 import { mergeFacts, computeAwards } from "./awards";
 import { Groups } from "./groups";
 import { decodeSeen } from "../../shared/bitset";
@@ -60,6 +63,11 @@ export interface GameCtx {
    * שרץ בסיבובים עד שהמארח יוצא). בלי זה הם לא היו מזינים תארים בכלל.
    */
   reportFacts(facts: Record<string, PlayerFacts>): void;
+  /**
+   * סבב שלם הושלם — למשחקים שרצים בסבבים עד שהמארח חוזר ללובי (המתחזה ודומיו).
+   * משמש למדידה בלבד: חזרה ללובי אחרי סבב שלם נספרת כסיום ולא כנטישה.
+   */
+  roundDone(): void;
   /**
    * רישום ריצה יומית ברגע שהיא נגמרה, בלי לחכות לסיום המשחק.
    * קיים כי בסולו אין מי שילחץ "סיימנו": שחקן שמת וסוגר את הלשונית היה
@@ -122,6 +130,7 @@ export class Room {
   private memo: Record<string, unknown> = {};   // זיכרון בין משחקים (GameCtx.memo)
   private timers = new Set<NodeJS.Timeout>();
   private gamePids: string[] = []; // משתתפי המשחק הרץ — ננעל ברגע ההתחלה
+  private gameRounds = 0; // סבבים שהושלמו במשחק האחרון — מתאפס רק בהתחלת משחק חדש
   private runToken = 0;          // עולה בכל התחלת משחק — "עוד פעם" הוא ריצה חדשה
   private dailySent = "";        // איזו ריצה יומית כבר נרשמה, כדי לא לספור פעמיים
   private gotIt = new Set<string>(); // מי אישר "הבנתי" על המשחק שנבחר
@@ -298,6 +307,8 @@ export class Room {
         return;
       case "select_game": {
         if (pid !== this.hostId || this.phase === "game") return;
+        // משחק שהוסתר מהמדף לא נבחר גם מקישור ישן או מלקוח שלא התעדכן
+        if (isBlocked(msg.gameId)) { this.transport.send(pid, { t: "error", msg: { k: "err.no_game" } }); return; }
         const changed = this.gameId !== msg.gameId;
         this.gameId = msg.gameId;
         this.gameConfig = msg.config;
@@ -333,6 +344,7 @@ export class Room {
         return;
       case "start_game": {
         if (pid !== this.hostId || this.phase === "game" || !this.gameId) return;
+        if (isBlocked(this.gameId)) { this.transport.send(pid, { t: "error", msg: { k: "err.no_game" } }); return; }
         const factory = this.gameFactories[this.gameId];
         if (!factory) { this.transport.send(pid, { t: "error", msg: { k: "err.no_game" } }); return; }
         // אכיפת מינימום שחקנים גם בשרת — לא סומכים רק על הלקוח
@@ -347,6 +359,7 @@ export class Room {
         this.phase = "game";
         this.ceremony = undefined;
         this.gamePids = connected.map((x) => x.id);
+        this.gameRounds = 0;
         this.runToken++;
         this.game = factory(this.makeCtx());
         this.hooks.gameStarted?.(this.gameId);
@@ -386,7 +399,9 @@ export class Room {
 
   private makeCtx(): GameCtx {
     const room = this;
+    const run = this.runToken; // ctx של משחק ישן לא נוגע במונה של המשחק הבא
     return {
+      roundDone: () => { if (run === this.runToken) this.gameRounds += 1; },
       players: () => [...this.players.values()],
       connectedPlayers: () => [...this.players.values()].filter((p) => p.connected),
       participants: () => [...this.players.values()].filter((p) => this.gamePids.includes(p.id)),
@@ -571,6 +586,7 @@ export class Room {
       gamePids: this.phase === "game" ? [...this.gamePids] : undefined,
       gotIt: this.phase === "lobby" && this.gameId ? [...this.gotIt] : undefined,
       group: this.groupSummary,
+      gameRounds: this.gameRounds || undefined,
     };
   }
 }

@@ -176,9 +176,10 @@ function num(v: unknown, def: number, min: number, max = Infinity): number {
 }
 export function flConfig(raw: unknown): FlConfig {
   const r = (raw ?? {}) as Record<string, unknown>;
-  const minutes = num(r.minutes, 8, 1, 12);
+  // ברירת מחדל 4 דק' (17.10): ב-30 יום היו 28 התחלות ו-0 סיומים באורך 8 דק'. 8 נשאר כאפשרות למארח.
+  const minutes = num(r.minutes, 4, 1, 12);
   return {
-    cycles: num(r.cycles, minutes >= 8 ? 6 : 4, 1, 12),
+    cycles: num(r.cycles, minutes >= 8 ? 6 : minutes >= 5 ? 4 : 3, 1, 12),
     runMs: num(r.runMs, 60000, 1500),
     freezeMs: num(r.freezeMs, 3000, 200),
     draftMs: num(r.draftMs, 10000, 500),
