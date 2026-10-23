@@ -223,7 +223,7 @@ input.code { text-transform: uppercase; letter-spacing: .35em; text-align: cente
 @keyframes alertIn { 0% { transform: translateY(-30px) scale(.8); opacity: 0; } 10% { transform: none; opacity: 1; } 80% { opacity: 1; } 100% { opacity: 0; } }
 
 /* ---------- end poster ---------- */
-#end { overflow-y: auto; touch-action: pan-y; }
+#end { overflow-y: auto; touch-action: pan-y; justify-content: flex-start; } /* flex-start + .poster margin-top:auto: sits at the bottom when it fits, scrolls from the top when it doesn't (short phones) */
 #end .poster { width: 100%; max-width: 440px; margin-top: auto; background: linear-gradient(180deg, rgba(10,18,40,.55), rgba(10,18,40,.97) 40%); border-radius: 24px; padding: 18px; display: flex; flex-direction: column; gap: 12px; border: 1px solid rgba(140,170,255,.2); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
 .bigstat { font-family: var(--font-display); font-weight: 900; font-size: 54px; line-height: 1; color: var(--gold); text-align: center; margin: 0; }
 .bigstat small { display: block; font-size: 15px; color: var(--muted); font-weight: 600; margin-top: 6px; font-family: var(--font-body); }
