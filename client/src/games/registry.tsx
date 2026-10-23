@@ -41,6 +41,7 @@ export const GAME_COLORS: Record<string, string> = {
   demons: "#A78BFA",      // סגול בהיר
   alias: "#FF7A29",       // כתום
   trivia: "#4D86FF",      // כחול
+  conquer: "#38F0C8",     // טורקיז — לכבוש את העולם
   bombs: "#F2A007",       // ענבר
   forehead: "#0FA3A3",    // טורקיז
   pods: "#A855F7",        // ענבים
