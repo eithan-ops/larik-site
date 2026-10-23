@@ -14,7 +14,7 @@ import { t, gameText } from "../lib/locale";
 /** משחקים שיש להם פוסטר מצויר ב-public/stickers — לשאר מציגים אייקון ענק על צבע החתימה */
 const POSTER_IDS = new Set([
   "whomost", "wall", "alias", "bombs", "forehead", "deathtouch",
-  "demons", "trivia", "colorrules", "impostor", "undercover", "simon", "hofrim", "thieves", "abyss", "tanks", "metro",
+  "demons", "trivia", "conquer", "colorrules", "impostor", "undercover", "simon", "hofrim", "thieves", "abyss", "tanks", "metro",
   "sp_colors", "sp_duel", "sp_star", "sp_beep", "sp_steal", "sp_survive", "sp_relay", "sp_stations", "sp_statue", "sp_pacer",
 ]);
 

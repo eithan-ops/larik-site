@@ -1,0 +1,1367 @@
+[
+{
+"id": "c_tq_claim1",
+"he": "[excited] הטורקיז כובש את",
+"en": "[excited] Turquoise takes"
+},
+{
+"id": "c_tq_claim2",
+"he": "[excited] הטורקיז לוקח את",
+"en": "[excited] Turquoise conquers"
+},
+{
+"id": "c_tq_claim3",
+"he": "[excited] והטורקיז מרחיב את האימפריה!",
+"en": "[excited] And Turquoise expands the empire!"
+},
+{
+"id": "c_tq_big",
+"he": "[shouting] וואו! הטורקיז כובש את",
+"en": "[shouting] Wow! Turquoise takes"
+},
+{
+"id": "c_tq_steal",
+"he": "[shouting] דרמה! הטורקיז גונב את",
+"en": "[shouting] Drama! Turquoise steals"
+},
+{
+"id": "c_tq_from",
+"he": "[excited] מהטורקיז!",
+"en": "[excited] from Turquoise!"
+},
+{
+"id": "c_tq_attack",
+"he": "[excited] הטורקיז תוקף את",
+"en": "[excited] Turquoise is attacking"
+},
+{
+"id": "c_tq_defend",
+"he": "[excited] הטורקיז מחזיק את",
+"en": "[excited] Turquoise holds"
+},
+{
+"id": "c_tq_streak",
+"he": "[shouting] הטורקיז ברצף! אי אפשר לעצור אותו!",
+"en": "[shouting] Turquoise is on fire! Unstoppable!"
+},
+{
+"id": "c_tq_lead",
+"he": "[excited] הטורקיז עולה להובלה!",
+"en": "[excited] Turquoise takes the lead!"
+},
+{
+"id": "c_tq_win",
+"he": "[shouting] זהו! נגמר! הטורקיז שולט בעולם!",
+"en": "[shouting] That's it! Turquoise rules the world!"
+},
+{
+"id": "c_pk_claim1",
+"he": "[excited] הוורוד כובש את",
+"en": "[excited] Pink takes"
+},
+{
+"id": "c_pk_claim2",
+"he": "[excited] הוורוד לוקח את",
+"en": "[excited] Pink conquers"
+},
+{
+"id": "c_pk_claim3",
+"he": "[excited] והוורוד מרחיב את האימפריה!",
+"en": "[excited] And Pink expands the empire!"
+},
+{
+"id": "c_pk_big",
+"he": "[shouting] וואו! הוורוד כובש את",
+"en": "[shouting] Wow! Pink takes"
+},
+{
+"id": "c_pk_steal",
+"he": "[shouting] דרמה! הוורוד גונב את",
+"en": "[shouting] Drama! Pink steals"
+},
+{
+"id": "c_pk_from",
+"he": "[excited] מהוורוד!",
+"en": "[excited] from Pink!"
+},
+{
+"id": "c_pk_attack",
+"he": "[excited] הוורוד תוקף את",
+"en": "[excited] Pink is attacking"
+},
+{
+"id": "c_pk_defend",
+"he": "[excited] הוורוד מחזיק את",
+"en": "[excited] Pink holds"
+},
+{
+"id": "c_pk_streak",
+"he": "[shouting] הוורוד ברצף! אי אפשר לעצור אותו!",
+"en": "[shouting] Pink is on fire! Unstoppable!"
+},
+{
+"id": "c_pk_lead",
+"he": "[excited] הוורוד עולה להובלה!",
+"en": "[excited] Pink takes the lead!"
+},
+{
+"id": "c_pk_win",
+"he": "[shouting] זהו! נגמר! הוורוד שולט בעולם!",
+"en": "[shouting] That's it! Pink rules the world!"
+},
+{
+"id": "c_or_claim1",
+"he": "[excited] הכתום כובש את",
+"en": "[excited] Orange takes"
+},
+{
+"id": "c_or_claim2",
+"he": "[excited] הכתום לוקח את",
+"en": "[excited] Orange conquers"
+},
+{
+"id": "c_or_claim3",
+"he": "[excited] והכתום מרחיב את האימפריה!",
+"en": "[excited] And Orange expands the empire!"
+},
+{
+"id": "c_or_big",
+"he": "[shouting] וואו! הכתום כובש את",
+"en": "[shouting] Wow! Orange takes"
+},
+{
+"id": "c_or_steal",
+"he": "[shouting] דרמה! הכתום גונב את",
+"en": "[shouting] Drama! Orange steals"
+},
+{
+"id": "c_or_from",
+"he": "[excited] מהכתום!",
+"en": "[excited] from Orange!"
+},
+{
+"id": "c_or_attack",
+"he": "[excited] הכתום תוקף את",
+"en": "[excited] Orange is attacking"
+},
+{
+"id": "c_or_defend",
+"he": "[excited] הכתום מחזיק את",
+"en": "[excited] Orange holds"
+},
+{
+"id": "c_or_streak",
+"he": "[shouting] הכתום ברצף! אי אפשר לעצור אותו!",
+"en": "[shouting] Orange is on fire! Unstoppable!"
+},
+{
+"id": "c_or_lead",
+"he": "[excited] הכתום עולה להובלה!",
+"en": "[excited] Orange takes the lead!"
+},
+{
+"id": "c_or_win",
+"he": "[shouting] זהו! נגמר! הכתום שולט בעולם!",
+"en": "[shouting] That's it! Orange rules the world!"
+},
+{
+"id": "c_pu_claim1",
+"he": "[excited] הסגול כובש את",
+"en": "[excited] Purple takes"
+},
+{
+"id": "c_pu_claim2",
+"he": "[excited] הסגול לוקח את",
+"en": "[excited] Purple conquers"
+},
+{
+"id": "c_pu_claim3",
+"he": "[excited] והסגול מרחיב את האימפריה!",
+"en": "[excited] And Purple expands the empire!"
+},
+{
+"id": "c_pu_big",
+"he": "[shouting] וואו! הסגול כובש את",
+"en": "[shouting] Wow! Purple takes"
+},
+{
+"id": "c_pu_steal",
+"he": "[shouting] דרמה! הסגול גונב את",
+"en": "[shouting] Drama! Purple steals"
+},
+{
+"id": "c_pu_from",
+"he": "[excited] מהסגול!",
+"en": "[excited] from Purple!"
+},
+{
+"id": "c_pu_attack",
+"he": "[excited] הסגול תוקף את",
+"en": "[excited] Purple is attacking"
+},
+{
+"id": "c_pu_defend",
+"he": "[excited] הסגול מחזיק את",
+"en": "[excited] Purple holds"
+},
+{
+"id": "c_pu_streak",
+"he": "[shouting] הסגול ברצף! אי אפשר לעצור אותו!",
+"en": "[shouting] Purple is on fire! Unstoppable!"
+},
+{
+"id": "c_pu_lead",
+"he": "[excited] הסגול עולה להובלה!",
+"en": "[excited] Purple takes the lead!"
+},
+{
+"id": "c_pu_win",
+"he": "[shouting] זהו! נגמר! הסגול שולט בעולם!",
+"en": "[shouting] That's it! Purple rules the world!"
+},
+{
+"id": "c_sk_claim1",
+"he": "[excited] התכלת כובש את",
+"en": "[excited] Sky Blue takes"
+},
+{
+"id": "c_sk_claim2",
+"he": "[excited] התכלת לוקח את",
+"en": "[excited] Sky Blue conquers"
+},
+{
+"id": "c_sk_claim3",
+"he": "[excited] והתכלת מרחיב את האימפריה!",
+"en": "[excited] And Sky Blue expands the empire!"
+},
+{
+"id": "c_sk_big",
+"he": "[shouting] וואו! התכלת כובש את",
+"en": "[shouting] Wow! Sky Blue takes"
+},
+{
+"id": "c_sk_steal",
+"he": "[shouting] דרמה! התכלת גונב את",
+"en": "[shouting] Drama! Sky Blue steals"
+},
+{
+"id": "c_sk_from",
+"he": "[excited] מהתכלת!",
+"en": "[excited] from Sky Blue!"
+},
+{
+"id": "c_sk_attack",
+"he": "[excited] התכלת תוקף את",
+"en": "[excited] Sky Blue is attacking"
+},
+{
+"id": "c_sk_defend",
+"he": "[excited] התכלת מחזיק את",
+"en": "[excited] Sky Blue holds"
+},
+{
+"id": "c_sk_streak",
+"he": "[shouting] התכלת ברצף! אי אפשר לעצור אותו!",
+"en": "[shouting] Sky Blue is on fire! Unstoppable!"
+},
+{
+"id": "c_sk_lead",
+"he": "[excited] התכלת עולה להובלה!",
+"en": "[excited] Sky Blue takes the lead!"
+},
+{
+"id": "c_sk_win",
+"he": "[shouting] זהו! נגמר! התכלת שולט בעולם!",
+"en": "[shouting] That's it! Sky Blue rules the world!"
+},
+{
+"id": "c_gr_claim1",
+"he": "[excited] הירוק כובש את",
+"en": "[excited] Green takes"
+},
+{
+"id": "c_gr_claim2",
+"he": "[excited] הירוק לוקח את",
+"en": "[excited] Green conquers"
+},
+{
+"id": "c_gr_claim3",
+"he": "[excited] והירוק מרחיב את האימפריה!",
+"en": "[excited] And Green expands the empire!"
+},
+{
+"id": "c_gr_big",
+"he": "[shouting] וואו! הירוק כובש את",
+"en": "[shouting] Wow! Green takes"
+},
+{
+"id": "c_gr_steal",
+"he": "[shouting] דרמה! הירוק גונב את",
+"en": "[shouting] Drama! Green steals"
+},
+{
+"id": "c_gr_from",
+"he": "[excited] מהירוק!",
+"en": "[excited] from Green!"
+},
+{
+"id": "c_gr_attack",
+"he": "[excited] הירוק תוקף את",
+"en": "[excited] Green is attacking"
+},
+{
+"id": "c_gr_defend",
+"he": "[excited] הירוק מחזיק את",
+"en": "[excited] Green holds"
+},
+{
+"id": "c_gr_streak",
+"he": "[shouting] הירוק ברצף! אי אפשר לעצור אותו!",
+"en": "[shouting] Green is on fire! Unstoppable!"
+},
+{
+"id": "c_gr_lead",
+"he": "[excited] הירוק עולה להובלה!",
+"en": "[excited] Green takes the lead!"
+},
+{
+"id": "c_gr_win",
+"he": "[shouting] זהו! נגמר! הירוק שולט בעולם!",
+"en": "[shouting] That's it! Green rules the world!"
+},
+{
+"id": "t_bang",
+"he": "[excited] !",
+"en": "[excited] !"
+},
+{
+"id": "t_move",
+"he": "[shouting] איזה מהלך!",
+"en": "[shouting] What a move!"
+},
+{
+"id": "t_giant",
+"he": "[shouting] מדינה ענקית!",
+"en": "[shouting] A giant!"
+},
+{
+"id": "t_def",
+"he": "[excited] ההתקפה נהדפה!",
+"en": "[excited] Attack repelled!"
+},
+{
+"id": "t_atk",
+"he": "[excited] איזה לחץ!",
+"en": "[excited] What pressure!"
+},
+{
+"id": "g_start1",
+"he": "[excited] המשחק מתחיל! מי יכבוש את העולם?",
+"en": "[excited] The game is on! Who will conquer the world?"
+},
+{
+"id": "g_start2",
+"he": "[excited] יוצאים לדרך! כל העולם פתוח!",
+"en": "[excited] And we are off! The whole planet is up for grabs!"
+},
+{
+"id": "g_golden",
+"he": "[shouting] דקת הזהב! כל מדינה שווה כפול! עכשיו או לעולם לא!",
+"en": "[shouting] Golden minute! Every country counts double! Now or never!"
+},
+{
+"id": "g_ten",
+"he": "[excited] עשר שניות לסיום!",
+"en": "[excited] Ten seconds left!"
+},
+{
+"id": "g_five",
+"he": "[shouting] חמש… ארבע… שלוש… שתיים… אחת!",
+"en": "[shouting] Five… four… three… two… one!"
+},
+{
+"id": "g_tense",
+"he": "[excited] איזה מתח! זה צמוד!",
+"en": "[excited] So tense! Neck and neck!"
+},
+{
+"id": "k_ZW",
+"he": "[excited] זימבבואה!",
+"en": "[excited] Zimbabwe!"
+},
+{
+"id": "k_ZM",
+"he": "[excited] זמביה!",
+"en": "[excited] Zambia!"
+},
+{
+"id": "k_YE",
+"he": "[excited] תימן!",
+"en": "[excited] Yemen!"
+},
+{
+"id": "k_VN",
+"he": "[excited] וייטנאם!",
+"en": "[excited] Vietnam!"
+},
+{
+"id": "k_VE",
+"he": "[excited] ונצואלה!",
+"en": "[excited] Venezuela!"
+},
+{
+"id": "k_VA",
+"he": "[excited] הוותיקן!",
+"en": "[excited] Vatican City!"
+},
+{
+"id": "k_VU",
+"he": "[excited] ונואטו!",
+"en": "[excited] Vanuatu!"
+},
+{
+"id": "k_UZ",
+"he": "[excited] אוזבקיסטן!",
+"en": "[excited] Uzbekistan!"
+},
+{
+"id": "k_UY",
+"he": "[excited] אורוגוואי!",
+"en": "[excited] Uruguay!"
+},
+{
+"id": "k_FM",
+"he": "[excited] מיקרונזיה!",
+"en": "[excited] Micronesia!"
+},
+{
+"id": "k_MH",
+"he": "[excited] איי מרשל!",
+"en": "[excited] Marshall Islands!"
+},
+{
+"id": "k_US",
+"he": "[excited] ארצות הברית!",
+"en": "[excited] United States!"
+},
+{
+"id": "k_GB",
+"he": "[excited] בריטניה!",
+"en": "[excited] United Kingdom!"
+},
+{
+"id": "k_AE",
+"he": "[excited] איחוד האמירויות!",
+"en": "[excited] United Arab Emirates!"
+},
+{
+"id": "k_UA",
+"he": "[excited] אוקראינה!",
+"en": "[excited] Ukraine!"
+},
+{
+"id": "k_UG",
+"he": "[excited] אוגנדה!",
+"en": "[excited] Uganda!"
+},
+{
+"id": "k_TM",
+"he": "[excited] טורקמניסטן!",
+"en": "[excited] Turkmenistan!"
+},
+{
+"id": "k_TR",
+"he": "[excited] טורקיה!",
+"en": "[excited] Türkiye!"
+},
+{
+"id": "k_TN",
+"he": "[excited] טוניסיה!",
+"en": "[excited] Tunisia!"
+},
+{
+"id": "k_TT",
+"he": "[excited] טרינידד וטובגו!",
+"en": "[excited] Trinidad and Tobago!"
+},
+{
+"id": "k_TO",
+"he": "[excited] טונגה!",
+"en": "[excited] Tonga!"
+},
+{
+"id": "k_TG",
+"he": "[excited] טוגו!",
+"en": "[excited] Togo!"
+},
+{
+"id": "k_TL",
+"he": "[excited] מזרח טימור!",
+"en": "[excited] Timor-Leste!"
+},
+{
+"id": "k_TH",
+"he": "[excited] תאילנד!",
+"en": "[excited] Thailand!"
+},
+{
+"id": "k_TZ",
+"he": "[excited] טנזניה!",
+"en": "[excited] Tanzania!"
+},
+{
+"id": "k_TJ",
+"he": "[excited] טג׳יקיסטן!",
+"en": "[excited] Tajikistan!"
+},
+{
+"id": "k_TW",
+"he": "[excited] טייוואן!",
+"en": "[excited] Taiwan!"
+},
+{
+"id": "k_SY",
+"he": "[excited] סוריה!",
+"en": "[excited] Syria!"
+},
+{
+"id": "k_CH",
+"he": "[excited] שווייץ!",
+"en": "[excited] Switzerland!"
+},
+{
+"id": "k_SE",
+"he": "[excited] שוודיה!",
+"en": "[excited] Sweden!"
+},
+{
+"id": "k_SZ",
+"he": "[excited] אסוואטיני!",
+"en": "[excited] Eswatini!"
+},
+{
+"id": "k_SR",
+"he": "[excited] סורינם!",
+"en": "[excited] Suriname!"
+},
+{
+"id": "k_SS",
+"he": "[excited] דרום סודן!",
+"en": "[excited] South Sudan!"
+},
+{
+"id": "k_SD",
+"he": "[excited] סודן!",
+"en": "[excited] Sudan!"
+},
+{
+"id": "k_LK",
+"he": "[excited] סרי לנקה!",
+"en": "[excited] Sri Lanka!"
+},
+{
+"id": "k_ES",
+"he": "[excited] ספרד!",
+"en": "[excited] Spain!"
+},
+{
+"id": "k_KR",
+"he": "[excited] דרום קוריאה!",
+"en": "[excited] South Korea!"
+},
+{
+"id": "k_ZA",
+"he": "[excited] דרום אפריקה!",
+"en": "[excited] South Africa!"
+},
+{
+"id": "k_SO",
+"he": "[excited] סומליה!",
+"en": "[excited] Somalia!"
+},
+{
+"id": "k_SB",
+"he": "[excited] איי שלמה!",
+"en": "[excited] Solomon Islands!"
+},
+{
+"id": "k_SK",
+"he": "[excited] סלובקיה!",
+"en": "[excited] Slovakia!"
+},
+{
+"id": "k_SI",
+"he": "[excited] סלובניה!",
+"en": "[excited] Slovenia!"
+},
+{
+"id": "k_SG",
+"he": "[excited] סינגפור!",
+"en": "[excited] Singapore!"
+},
+{
+"id": "k_SL",
+"he": "[excited] סיירה לאונה!",
+"en": "[excited] Sierra Leone!"
+},
+{
+"id": "k_SC",
+"he": "[excited] איי סיישל!",
+"en": "[excited] Seychelles!"
+},
+{
+"id": "k_RS",
+"he": "[excited] סרביה!",
+"en": "[excited] Serbia!"
+},
+{
+"id": "k_SN",
+"he": "[excited] סנגל!",
+"en": "[excited] Senegal!"
+},
+{
+"id": "k_SA",
+"he": "[excited] ערב הסעודית!",
+"en": "[excited] Saudi Arabia!"
+},
+{
+"id": "k_ST",
+"he": "[excited] סאו טומה ופרינסיפה!",
+"en": "[excited] São Tomé and Príncipe!"
+},
+{
+"id": "k_SM",
+"he": "[excited] סן מרינו!",
+"en": "[excited] San Marino!"
+},
+{
+"id": "k_WS",
+"he": "[excited] סמואה!",
+"en": "[excited] Samoa!"
+},
+{
+"id": "k_VC",
+"he": "[excited] סנט וינסנט והגרנדינים!",
+"en": "[excited] Saint Vincent and the Grenadines!"
+},
+{
+"id": "k_LC",
+"he": "[excited] סנט לוסיה!",
+"en": "[excited] Saint Lucia!"
+},
+{
+"id": "k_KN",
+"he": "[excited] סנט קיטס ונוויס!",
+"en": "[excited] Saint Kitts and Nevis!"
+},
+{
+"id": "k_RW",
+"he": "[excited] רואנדה!",
+"en": "[excited] Rwanda!"
+},
+{
+"id": "k_RU",
+"he": "[excited] רוסיה!",
+"en": "[excited] Russia!"
+},
+{
+"id": "k_RO",
+"he": "[excited] רומניה!",
+"en": "[excited] Romania!"
+},
+{
+"id": "k_QA",
+"he": "[excited] קטאר!",
+"en": "[excited] Qatar!"
+},
+{
+"id": "k_PT",
+"he": "[excited] פורטוגל!",
+"en": "[excited] Portugal!"
+},
+{
+"id": "k_PL",
+"he": "[excited] פולין!",
+"en": "[excited] Poland!"
+},
+{
+"id": "k_PH",
+"he": "[excited] הפיליפינים!",
+"en": "[excited] Philippines!"
+},
+{
+"id": "k_PE",
+"he": "[excited] פרו!",
+"en": "[excited] Peru!"
+},
+{
+"id": "k_PY",
+"he": "[excited] פרגוואי!",
+"en": "[excited] Paraguay!"
+},
+{
+"id": "k_PG",
+"he": "[excited] פפואה גינאה החדשה!",
+"en": "[excited] Papua New Guinea!"
+},
+{
+"id": "k_PA",
+"he": "[excited] פנמה!",
+"en": "[excited] Panama!"
+},
+{
+"id": "k_PW",
+"he": "[excited] פלאו!",
+"en": "[excited] Palau!"
+},
+{
+"id": "k_PK",
+"he": "[excited] פקיסטן!",
+"en": "[excited] Pakistan!"
+},
+{
+"id": "k_OM",
+"he": "[excited] עומאן!",
+"en": "[excited] Oman!"
+},
+{
+"id": "k_NO",
+"he": "[excited] נורווגיה!",
+"en": "[excited] Norway!"
+},
+{
+"id": "k_KP",
+"he": "[excited] צפון קוריאה!",
+"en": "[excited] North Korea!"
+},
+{
+"id": "k_NG",
+"he": "[excited] ניגריה!",
+"en": "[excited] Nigeria!"
+},
+{
+"id": "k_NE",
+"he": "[excited] ניז׳ר!",
+"en": "[excited] Niger!"
+},
+{
+"id": "k_NI",
+"he": "[excited] ניקרגואה!",
+"en": "[excited] Nicaragua!"
+},
+{
+"id": "k_NZ",
+"he": "[excited] ניו זילנד!",
+"en": "[excited] New Zealand!"
+},
+{
+"id": "k_NL",
+"he": "[excited] הולנד!",
+"en": "[excited] Netherlands!"
+},
+{
+"id": "k_NP",
+"he": "[excited] נפאל!",
+"en": "[excited] Nepal!"
+},
+{
+"id": "k_NR",
+"he": "[excited] נאורו!",
+"en": "[excited] Nauru!"
+},
+{
+"id": "k_NA",
+"he": "[excited] נמיביה!",
+"en": "[excited] Namibia!"
+},
+{
+"id": "k_MZ",
+"he": "[excited] מוזמביק!",
+"en": "[excited] Mozambique!"
+},
+{
+"id": "k_MA",
+"he": "[excited] מרוקו!",
+"en": "[excited] Morocco!"
+},
+{
+"id": "k_ME",
+"he": "[excited] מונטנגרו!",
+"en": "[excited] Montenegro!"
+},
+{
+"id": "k_MN",
+"he": "[excited] מונגוליה!",
+"en": "[excited] Mongolia!"
+},
+{
+"id": "k_MD",
+"he": "[excited] מולדובה!",
+"en": "[excited] Moldova!"
+},
+{
+"id": "k_MC",
+"he": "[excited] מונקו!",
+"en": "[excited] Monaco!"
+},
+{
+"id": "k_MX",
+"he": "[excited] מקסיקו!",
+"en": "[excited] Mexico!"
+},
+{
+"id": "k_MU",
+"he": "[excited] מאוריציוס!",
+"en": "[excited] Mauritius!"
+},
+{
+"id": "k_MR",
+"he": "[excited] מאוריטניה!",
+"en": "[excited] Mauritania!"
+},
+{
+"id": "k_MT",
+"he": "[excited] מלטה!",
+"en": "[excited] Malta!"
+},
+{
+"id": "k_ML",
+"he": "[excited] מאלי!",
+"en": "[excited] Mali!"
+},
+{
+"id": "k_MV",
+"he": "[excited] האיים המלדיביים!",
+"en": "[excited] Maldives!"
+},
+{
+"id": "k_MY",
+"he": "[excited] מלזיה!",
+"en": "[excited] Malaysia!"
+},
+{
+"id": "k_MW",
+"he": "[excited] מלאווי!",
+"en": "[excited] Malawi!"
+},
+{
+"id": "k_MG",
+"he": "[excited] מדגסקר!",
+"en": "[excited] Madagascar!"
+},
+{
+"id": "k_MK",
+"he": "[excited] מקדוניה הצפונית!",
+"en": "[excited] North Macedonia!"
+},
+{
+"id": "k_LU",
+"he": "[excited] לוקסמבורג!",
+"en": "[excited] Luxembourg!"
+},
+{
+"id": "k_LT",
+"he": "[excited] ליטא!",
+"en": "[excited] Lithuania!"
+},
+{
+"id": "k_LI",
+"he": "[excited] ליכטנשטיין!",
+"en": "[excited] Liechtenstein!"
+},
+{
+"id": "k_LY",
+"he": "[excited] לוב!",
+"en": "[excited] Libya!"
+},
+{
+"id": "k_LR",
+"he": "[excited] ליבריה!",
+"en": "[excited] Liberia!"
+},
+{
+"id": "k_LS",
+"he": "[excited] לסוטו!",
+"en": "[excited] Lesotho!"
+},
+{
+"id": "k_LB",
+"he": "[excited] לבנון!",
+"en": "[excited] Lebanon!"
+},
+{
+"id": "k_LV",
+"he": "[excited] לטביה!",
+"en": "[excited] Latvia!"
+},
+{
+"id": "k_LA",
+"he": "[excited] לאוס!",
+"en": "[excited] Laos!"
+},
+{
+"id": "k_KG",
+"he": "[excited] קירגיזסטן!",
+"en": "[excited] Kyrgyzstan!"
+},
+{
+"id": "k_KW",
+"he": "[excited] כווית!",
+"en": "[excited] Kuwait!"
+},
+{
+"id": "k_XK",
+"he": "[excited] קוסובו!",
+"en": "[excited] Kosovo!"
+},
+{
+"id": "k_KI",
+"he": "[excited] קיריבאטי!",
+"en": "[excited] Kiribati!"
+},
+{
+"id": "k_KE",
+"he": "[excited] קניה!",
+"en": "[excited] Kenya!"
+},
+{
+"id": "k_KZ",
+"he": "[excited] קזחסטן!",
+"en": "[excited] Kazakhstan!"
+},
+{
+"id": "k_JO",
+"he": "[excited] ירדן!",
+"en": "[excited] Jordan!"
+},
+{
+"id": "k_JP",
+"he": "[excited] יפן!",
+"en": "[excited] Japan!"
+},
+{
+"id": "k_JM",
+"he": "[excited] ג׳מייקה!",
+"en": "[excited] Jamaica!"
+},
+{
+"id": "k_IT",
+"he": "[excited] איטליה!",
+"en": "[excited] Italy!"
+},
+{
+"id": "k_IL",
+"he": "[excited] ישראל!",
+"en": "[excited] Israel!"
+},
+{
+"id": "k_IE",
+"he": "[excited] אירלנד!",
+"en": "[excited] Ireland!"
+},
+{
+"id": "k_IQ",
+"he": "[excited] עיראק!",
+"en": "[excited] Iraq!"
+},
+{
+"id": "k_IR",
+"he": "[excited] איראן!",
+"en": "[excited] Iran!"
+},
+{
+"id": "k_ID",
+"he": "[excited] אינדונזיה!",
+"en": "[excited] Indonesia!"
+},
+{
+"id": "k_IN",
+"he": "[excited] הודו!",
+"en": "[excited] India!"
+},
+{
+"id": "k_IS",
+"he": "[excited] איסלנד!",
+"en": "[excited] Iceland!"
+},
+{
+"id": "k_HU",
+"he": "[excited] הונגריה!",
+"en": "[excited] Hungary!"
+},
+{
+"id": "k_HN",
+"he": "[excited] הונדורס!",
+"en": "[excited] Honduras!"
+},
+{
+"id": "k_HT",
+"he": "[excited] האיטי!",
+"en": "[excited] Haiti!"
+},
+{
+"id": "k_GY",
+"he": "[excited] גיאנה!",
+"en": "[excited] Guyana!"
+},
+{
+"id": "k_GW",
+"he": "[excited] גינאה ביסאו!",
+"en": "[excited] Guinea-Bissau!"
+},
+{
+"id": "k_GN",
+"he": "[excited] גינאה!",
+"en": "[excited] Guinea!"
+},
+{
+"id": "k_GT",
+"he": "[excited] גואטמלה!",
+"en": "[excited] Guatemala!"
+},
+{
+"id": "k_GD",
+"he": "[excited] גרנדה!",
+"en": "[excited] Grenada!"
+},
+{
+"id": "k_GR",
+"he": "[excited] יוון!",
+"en": "[excited] Greece!"
+},
+{
+"id": "k_GH",
+"he": "[excited] גאנה!",
+"en": "[excited] Ghana!"
+},
+{
+"id": "k_DE",
+"he": "[excited] גרמניה!",
+"en": "[excited] Germany!"
+},
+{
+"id": "k_GE",
+"he": "[excited] גאורגיה!",
+"en": "[excited] Georgia!"
+},
+{
+"id": "k_GM",
+"he": "[excited] גמביה!",
+"en": "[excited] Gambia!"
+},
+{
+"id": "k_GA",
+"he": "[excited] גבון!",
+"en": "[excited] Gabon!"
+},
+{
+"id": "k_FR",
+"he": "[excited] צרפת!",
+"en": "[excited] France!"
+},
+{
+"id": "k_FI",
+"he": "[excited] פינלנד!",
+"en": "[excited] Finland!"
+},
+{
+"id": "k_FJ",
+"he": "[excited] פיג׳י!",
+"en": "[excited] Fiji!"
+},
+{
+"id": "k_ET",
+"he": "[excited] אתיופיה!",
+"en": "[excited] Ethiopia!"
+},
+{
+"id": "k_EE",
+"he": "[excited] אסטוניה!",
+"en": "[excited] Estonia!"
+},
+{
+"id": "k_ER",
+"he": "[excited] אריתריאה!",
+"en": "[excited] Eritrea!"
+},
+{
+"id": "k_GQ",
+"he": "[excited] גינאה המשוונית!",
+"en": "[excited] Equatorial Guinea!"
+},
+{
+"id": "k_SV",
+"he": "[excited] אל סלבדור!",
+"en": "[excited] El Salvador!"
+},
+{
+"id": "k_EG",
+"he": "[excited] מצרים!",
+"en": "[excited] Egypt!"
+},
+{
+"id": "k_EC",
+"he": "[excited] אקוודור!",
+"en": "[excited] Ecuador!"
+},
+{
+"id": "k_DO",
+"he": "[excited] הרפובליקה הדומיניקנית!",
+"en": "[excited] Dominican Republic!"
+},
+{
+"id": "k_DM",
+"he": "[excited] דומיניקה!",
+"en": "[excited] Dominica!"
+},
+{
+"id": "k_DJ",
+"he": "[excited] ג׳יבוטי!",
+"en": "[excited] Djibouti!"
+},
+{
+"id": "k_DK",
+"he": "[excited] דנמרק!",
+"en": "[excited] Denmark!"
+},
+{
+"id": "k_CZ",
+"he": "[excited] צ'כיה!",
+"en": "[excited] Czechia!"
+},
+{
+"id": "k_CY",
+"he": "[excited] קפריסין!",
+"en": "[excited] Cyprus!"
+},
+{
+"id": "k_CU",
+"he": "[excited] קובה!",
+"en": "[excited] Cuba!"
+},
+{
+"id": "k_HR",
+"he": "[excited] קרואטיה!",
+"en": "[excited] Croatia!"
+},
+{
+"id": "k_CI",
+"he": "[excited] חוף השנהב!",
+"en": "[excited] Ivory Coast!"
+},
+{
+"id": "k_CR",
+"he": "[excited] קוסטה ריקה!",
+"en": "[excited] Costa Rica!"
+},
+{
+"id": "k_CD",
+"he": "[excited] קונגו (קינשאסה)!",
+"en": "[excited] DR Congo!"
+},
+{
+"id": "k_CG",
+"he": "[excited] קונגו (ברזאויל)!",
+"en": "[excited] Republic of the Congo!"
+},
+{
+"id": "k_KM",
+"he": "[excited] קומורו!",
+"en": "[excited] Comoros!"
+},
+{
+"id": "k_CO",
+"he": "[excited] קולומביה!",
+"en": "[excited] Colombia!"
+},
+{
+"id": "k_CN",
+"he": "[excited] סין!",
+"en": "[excited] China!"
+},
+{
+"id": "k_CL",
+"he": "[excited] צ׳ילה!",
+"en": "[excited] Chile!"
+},
+{
+"id": "k_TD",
+"he": "[excited] צ׳אד!",
+"en": "[excited] Chad!"
+},
+{
+"id": "k_CF",
+"he": "[excited] הרפובליקה המרכז-אפריקאית!",
+"en": "[excited] Central African Republic!"
+},
+{
+"id": "k_CV",
+"he": "[excited] כף ורדה!",
+"en": "[excited] Cape Verde!"
+},
+{
+"id": "k_CA",
+"he": "[excited] קנדה!",
+"en": "[excited] Canada!"
+},
+{
+"id": "k_CM",
+"he": "[excited] קמרון!",
+"en": "[excited] Cameroon!"
+},
+{
+"id": "k_KH",
+"he": "[excited] קמבודיה!",
+"en": "[excited] Cambodia!"
+},
+{
+"id": "k_MM",
+"he": "[excited] מיאנמר!",
+"en": "[excited] Myanmar!"
+},
+{
+"id": "k_BI",
+"he": "[excited] בורונדי!",
+"en": "[excited] Burundi!"
+},
+{
+"id": "k_BF",
+"he": "[excited] בורקינה פאסו!",
+"en": "[excited] Burkina Faso!"
+},
+{
+"id": "k_BG",
+"he": "[excited] בולגריה!",
+"en": "[excited] Bulgaria!"
+},
+{
+"id": "k_BN",
+"he": "[excited] ברוניי!",
+"en": "[excited] Brunei!"
+},
+{
+"id": "k_BR",
+"he": "[excited] ברזיל!",
+"en": "[excited] Brazil!"
+},
+{
+"id": "k_BW",
+"he": "[excited] בוצוואנה!",
+"en": "[excited] Botswana!"
+},
+{
+"id": "k_BA",
+"he": "[excited] בוסניה והרצגובינה!",
+"en": "[excited] Bosnia and Herzegovina!"
+},
+{
+"id": "k_BO",
+"he": "[excited] בוליביה!",
+"en": "[excited] Bolivia!"
+},
+{
+"id": "k_BT",
+"he": "[excited] בהוטן!",
+"en": "[excited] Bhutan!"
+},
+{
+"id": "k_BJ",
+"he": "[excited] בנין!",
+"en": "[excited] Benin!"
+},
+{
+"id": "k_BZ",
+"he": "[excited] בליז!",
+"en": "[excited] Belize!"
+},
+{
+"id": "k_BE",
+"he": "[excited] בלגיה!",
+"en": "[excited] Belgium!"
+},
+{
+"id": "k_BY",
+"he": "[excited] בלארוס!",
+"en": "[excited] Belarus!"
+},
+{
+"id": "k_BB",
+"he": "[excited] ברבדוס!",
+"en": "[excited] Barbados!"
+},
+{
+"id": "k_BD",
+"he": "[excited] בנגלדש!",
+"en": "[excited] Bangladesh!"
+},
+{
+"id": "k_BH",
+"he": "[excited] בחריין!",
+"en": "[excited] Bahrain!"
+},
+{
+"id": "k_BS",
+"he": "[excited] איי בהאמה!",
+"en": "[excited] Bahamas!"
+},
+{
+"id": "k_AZ",
+"he": "[excited] אזרבייג׳ן!",
+"en": "[excited] Azerbaijan!"
+},
+{
+"id": "k_AT",
+"he": "[excited] אוסטריה!",
+"en": "[excited] Austria!"
+},
+{
+"id": "k_AU",
+"he": "[excited] אוסטרליה!",
+"en": "[excited] Australia!"
+},
+{
+"id": "k_AM",
+"he": "[excited] ארמניה!",
+"en": "[excited] Armenia!"
+},
+{
+"id": "k_AR",
+"he": "[excited] ארגנטינה!",
+"en": "[excited] Argentina!"
+},
+{
+"id": "k_AG",
+"he": "[excited] אנטיגואה וברבודה!",
+"en": "[excited] Antigua and Barbuda!"
+},
+{
+"id": "k_AO",
+"he": "[excited] אנגולה!",
+"en": "[excited] Angola!"
+},
+{
+"id": "k_AD",
+"he": "[excited] אנדורה!",
+"en": "[excited] Andorra!"
+},
+{
+"id": "k_DZ",
+"he": "[excited] אלג׳יריה!",
+"en": "[excited] Algeria!"
+},
+{
+"id": "k_AL",
+"he": "[excited] אלבניה!",
+"en": "[excited] Albania!"
+},
+{
+"id": "k_AF",
+"he": "[excited] אפגניסטן!",
+"en": "[excited] Afghanistan!"
+},
+{
+"id": "k_TV",
+"he": "[excited] טובאלו!",
+"en": "[excited] Tuvalu!"
+}
+]
