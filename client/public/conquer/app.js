@@ -68,8 +68,16 @@
     he: { CF: 'מרכז אפריקה', CD: 'קונגו-קינשאסה', CG: 'קונגו-ברזאויל', BA: 'בוסניה', AE: 'האמירויות', US: 'ארה"ב', GB: 'בריטניה', KR: 'דרום קוריאה', KP: 'צפון קוריאה', DO: 'דומיניקנה', SA: 'סעודיה', MK: 'מקדוניה', ZA: 'דרום אפריקה', SS: 'דרום סודאן', KN: 'סנט קיטס', VC: 'סנט וינסנט', AG: 'אנטיגואה', TT: 'טרינידד', ST: 'סאו טומה', PG: 'פפואה', SB: 'איי שלמה', MH: 'איי מרשל', GQ: 'גינאה המשוונית', LK: 'סרי לנקה', NZ: 'ניו זילנד', PS: 'פלסטין' },
     en: { CF: 'C. African Rep.', CD: 'DR Congo', CG: 'Congo', BA: 'Bosnia', AE: 'UAE', US: 'USA', GB: 'UK', KR: 'S. Korea', KP: 'N. Korea', DO: 'Dominican Rep.', SA: 'Saudi Arabia', MK: 'N. Macedonia', KN: 'St Kitts', VC: 'St Vincent', AG: 'Antigua', TT: 'Trinidad', ST: 'São Tomé', PG: 'Papua N.G.', GQ: 'Eq. Guinea' }
   };
+  const DATA_V = '1792786897';
   let lang = 'he';
-  try { lang = localStorage.getItem('cw.lang') || ((navigator.language || '').toLowerCase().startsWith('he') ? 'he' : 'en'); } catch (e) { lang = (navigator.language || '').toLowerCase().startsWith('he') ? 'he' : 'en'; }
+  // language: ?l= in the link (LARIK passes its own) → this game's saved choice → LARIK's saved choice (same origin) → browser → Israel time zone
+  (function () {
+    const he = (x) => x === 'he' ? 'he' : null, en = (x) => x && x !== 'he' ? 'en' : null;
+    const url = new URLSearchParams(location.search).get('l'); let saved = null, larik = null;
+    try { saved = localStorage.getItem('cw.lang'); larik = localStorage.getItem('larik-lang'); } catch (e) { }
+    const tz = (Intl.DateTimeFormat().resolvedOptions().timeZone || '');
+    lang = he(url) || en(url) || he(saved) || en(saved) || he(larik) || en(larik) || ((navigator.language || '').toLowerCase().startsWith('he') || tz === 'Asia/Jerusalem' ? 'he' : 'en');
+  })();
   const t = (k, vars) => { let s = (T[lang][k] != null ? T[lang][k] : T.he[k]) || k; if (typeof s !== 'string') return s; if (vars) for (const v in vars) s = s.split('{' + v + '}').join(vars[v]); return s; };
   const tm = (k, vars) => { let s = T[lang].medals[k] || k; if (vars) for (const v in vars) s = s.split('{' + v + '}').join(vars[v]); return s; };
 
@@ -232,7 +240,7 @@
 
   /* ======================= data ======================= */
   async function loadData() {
-    const [c, b, q] = await Promise.all(['data/countries.json', 'data/borders.json', 'data/questions.json'].map(u => fetch(u).then(r => r.json())));
+    const [c, b, q] = await Promise.all(['data/countries.json', 'data/borders.json', 'data/questions.json'].map(u => u + '?v=' + DATA_V).map(u => fetch(u).then(r => r.json())));
     C = c; byA2 = {}; TOTAL_AREA = 0; for (const x of C) { byA2[x.a2] = x; TOTAL_AREA += x.area; }
     FEATS = b.features.filter(f => byA2[f.properties.a2]);
     QB = {};
@@ -270,7 +278,7 @@
       .globeCurvatureResolution(6)
       .polygonsData(FEATS)
       .polygonCapColor(capColor).polygonSideColor(sideColor).polygonStrokeColor(strokeColor)
-      .polygonAltitude(0.004).polygonsTransitionDuration(0).polygonCapCurvatureResolution(8)
+      .polygonAltitude(0.004).polygonsTransitionDuration(0).polygonCapCurvatureResolution(5)
       .polygonLabel(() => '')
       .onPolygonClick((f) => select(f.properties.a2))
       .onGlobeClick(({ lat, lng }) => magnetic(lat, lng))

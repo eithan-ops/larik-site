@@ -4,7 +4,7 @@ import { createRoom } from "../lib/connection";
 import { track } from "../lib/analytics";
 import { CATALOG, SPODS_CATEGORY, isListed } from "../../../shared/protocol";
 import { GAME_COLORS } from "../games/registry";
-import { t, gameText } from "../lib/locale";
+import { t, gameText, currentLang } from "../lib/locale";
 
 /**
  * מדף המשחקים 🗂️ — כל משחק הוא פוסטר-מדבקה בצבע החתימה שלו.
@@ -91,7 +91,8 @@ export default function GamesShelf() {
                     onClick={(e) => {
                       e.stopPropagation();
                       // משחק שחי כעמוד נפרד (המופע, החופרים) — לא חדר רגיל
-                      if (g.external) { location.href = g.external; return; }
+                      // משחק שחי כעמוד נפרד מקבל את שפת LARIK בקישור (כמו קישור לחדר) — אחרת היה מנחש לפי הדפדפן
+                      if (g.external) { location.href = g.external + (g.external.includes("?") ? "&" : "?") + "l=" + currentLang(); return; }
                       if (g.id === "show") { location.href = "/s"; return; }
                       host();
                     }}>
