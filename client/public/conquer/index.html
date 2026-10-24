@@ -2,7 +2,7 @@
 <html lang="he">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#050a18">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -123,6 +123,11 @@ input.code { text-transform: uppercase; letter-spacing: .35em; text-align: cente
 .av { width: 30px; height: 30px; border-radius: 50%; background: var(--c); color: #061024; font-family: var(--font-display); font-weight: 900; font-size: 15px; display: inline-grid; place-items: center; flex: none; box-shadow: 0 0 0 2px rgba(255,255,255,.2); }
 .av.sm { width: 24px; height: 24px; font-size: 12px; }
 .small { font-size: 13px; color: var(--muted); }
+.legal { text-align: center; margin: 2px 0 0; } .legal a { color: var(--muted); text-decoration: underline; text-underline-offset: 3px; }
+.h2 { font-family: var(--font-display); font-size: 24px; margin: 0 0 6px; text-align: center; }
+.howtoList { margin: 0; padding-inline-start: 22px; display: flex; flex-direction: column; gap: 8px; line-height: 1.45; font-size: 15px; }
+.howtoList li::marker { color: var(--gold); font-weight: 800; }
+#howto .panel { max-height: calc(100dvh - 40px); overflow-y: auto; touch-action: pan-y; }
 .lang { position: absolute; top: calc(10px + var(--safe-t)); inset-inline-end: max(14px, var(--safe-r)); z-index: 25; }
 .larikBack { position: absolute; top: calc(8px + var(--safe-t)); inset-inline-start: max(12px, var(--safe-l)); z-index: 25; opacity: .9; }
 .larikBack img { height: 30px; width: auto; display: block; filter: drop-shadow(0 2px 6px rgba(0,0,0,.5)); }
@@ -311,8 +316,22 @@ input.code { text-transform: uppercase; letter-spacing: .35em; text-align: cente
         <button class="btn" id="joinGo" type="button" style="width:auto" data-t="joinGo">הצטרף</button>
       </div>
       <button class="btn ghost" id="boardBtn" type="button" data-t="board">🏆 טבלת שיאים</button>
+      <div class="row">
+        <button class="btn ghost" id="howtoBtn" type="button" data-t="howto">❓ איך משחקים</button>
+        <button class="btn ghost" id="shareSiteBtn" type="button" data-t="shareSite">📣 שתף</button>
+      </div>
       <p class="small" id="netNote" hidden data-t="offline" style="text-align:center;margin:0">אין חיבור לשרת — משחק סולו בלבד</p>
+      <p class="small legal"><a href="legal.html#terms" data-t="terms">תקנון</a> · <a href="legal.html#privacy" data-t="privacy">פרטיות</a> · <a href="legal.html#accessibility" data-t="access">נגישות</a> · <a href="legal.html#contact" data-t="contact">צור קשר</a></p>
       <p class="small" id="mpNote" hidden data-t="mpNote">משחק עם חברים זמין כאן רק למי שקיבל הזמנה לעמוד הזה (לא בקישור ציבורי).</p>
+    </div>
+  </section>
+
+  <section id="howto" class="screen center" hidden>
+    <div class="panel">
+      <h2 class="h2" data-t="howtoTitle">איך משחקים?</h2>
+      <ol class="howtoList" id="howtoList"></ol>
+      <p class="small" data-t="howtoTip"></p>
+      <button class="btn" id="howtoClose" type="button" data-t="gotIt">הבנתי, יאללה!</button>
     </div>
   </section>
 
@@ -423,9 +442,9 @@ input.code { text-transform: uppercase; letter-spacing: .35em; text-align: cente
 
 <script src="https://cdn.jsdelivr.net/npm/globe.gl@2.46.1/dist/globe.gl.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js"></script>
-<script src="config.js?v=1792786897"></script>
-<script src="online.js?v=1792786897"></script>
-<script src="commentator.js?v=1792786897"></script>
-<script src="app.js?v=1792786897"></script>
+<script src="config.js?v=1792833268"></script>
+<script src="online.js?v=1792833268"></script>
+<script src="commentator.js?v=1792833268"></script>
+<script src="app.js?v=1792833268"></script>
 </body>
 </html>
