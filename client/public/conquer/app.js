@@ -9,6 +9,11 @@
     he: {
       title: 'לכבוש את העולם', tagline: 'ענו נכון — המדינה שלכם. כבשו כמה שיותר מכדור הארץ.',
       namePh: 'השם שלך', solo: '⚡ סולו — 90 שניות', create: '👑 פתח חדר', join: '🔑 הצטרף', joinGo: 'הצטרף',
+      howto: '❓ איך משחקים', shareSite: '📣 שתף', terms: 'תקנון', privacy: 'פרטיות', access: 'נגישות', contact: 'צור קשר', gotIt: 'הבנתי, יאללה!',
+      howtoTitle: 'איך משחקים?',
+      howtoSteps: ['סובבו את הגלובוס ולחצו על מדינה — תקבלו עליה שאלה.', 'עניתם נכון? המדינה נצבעת בצבע שלכם. טעיתם? היא ננעלת לכמה שניות.', 'מדינות גדולות שוות יותר נקודות — אבל השאלות עליהן קשות יותר.', 'יש 90 שניות (סולו) או 3 דקות (חברים). בדקת הזהב בסוף כל מדינה שווה כפול!', 'אספו פאוור-אפים: 50:50, +10 שניות, החלפת שאלה ומגן.', 'מול חברים: אפשר לגנוב מדינה של יריב — שאלה קשה יותר, אבל כולם ישמעו על זה מהפרשן.'],
+      howtoTip: 'טיפ: בחרו מדינת פתיחה ותתפשטו לשכנות — "המשך לשכנה" חוסך זמן.',
+      shareSiteText: 'בואו נראה מי כובש יותר מכדור הארץ 🌍 טריוויה על גלובוס — לבד או מול חברים:',
       mpNote: 'משחק עם חברים עובד כאן רק למי שקיבל הזמנה לעמוד הזה (לא דרך קישור ציבורי).',
       roomCode: 'קוד החדר', shareCode: 'כולם פותחים את אותו עמוד ומכניסים את הקוד', start: '🚀 התחל (3 דקות)',
       waitHost: 'מחכים שהמארח יתחיל…', leave: 'יציאה', countries: 'מדינות', points: 'נק׳', ofEarth: 'מכדור הארץ נכבש',
@@ -37,6 +42,11 @@
     en: {
       title: 'Conquer the World', tagline: 'Answer right — the country is yours. Take as much of Earth as you can.',
       namePh: 'Your name', solo: '⚡ Solo — 90 seconds', create: '👑 Open a room', join: '🔑 Join', joinGo: 'Join',
+      howto: '❓ How to play', shareSite: '📣 Share', terms: 'Terms', privacy: 'Privacy', access: 'Accessibility', contact: 'Contact', gotIt: 'Got it, let\'s go!',
+      howtoTitle: 'How to play',
+      howtoSteps: ['Spin the globe and tap a country — you get a question about it.', 'Answer right and it turns your colour. Wrong? It locks for a few seconds.', 'Big countries are worth more points — but their questions are harder.', '90 seconds solo or 3 minutes with friends. In the golden minute at the end every country counts double!', 'Collect power-ups: 50:50, +10 s, swap question and shield.', 'Against friends you can steal a rival\'s country — a harder question, and the commentator tells everyone.'],
+      howtoTip: 'Tip: pick a starting country and spread to its neighbours — "continue to neighbour" saves time.',
+      shareSiteText: "Let's see who conquers more of Earth 🌍 globe trivia, solo or against friends:",
       mpNote: 'Playing with friends works here only for people invited to this page (not via a public link).',
       roomCode: 'Room code', shareCode: 'Everyone opens this same page and enters the code', start: '🚀 Start (3 minutes)',
       waitHost: 'Waiting for the host to start…', leave: 'Leave', countries: 'countries', points: 'pts', ofEarth: 'of Earth conquered',
@@ -93,6 +103,7 @@
   /* ======================= DOM ======================= */
   const $ = (id) => document.getElementById(id);
   const el = {
+    howto: $('howto'), howtoList: $('howtoList'), howtoBtn: $('howtoBtn'), howtoClose: $('howtoClose'), shareSiteBtn: $('shareSiteBtn'),
     app: $('app'), home: $('home'), lobby: $('lobby'), end: $('end'), hud: $('hud'), hint: $('hint'), sheet: $('sheet'), card: $('card'),
     name: $('name'), colors: $('colors'), soloBtn: $('soloBtn'), createBtn: $('createBtn'), joinBtn: $('joinBtn'),
     joinRow: $('joinRow'), codeIn: $('codeIn'), joinGo: $('joinGo'), mpNote: $('mpNote'), codeBig: $('codeBig'), players: $('players'),
@@ -779,6 +790,8 @@
     el.app.dir = lang === 'he' ? 'rtl' : 'ltr'; el.app.style.setProperty('--dir', el.app.dir); el.langBtn.textContent = lang === 'he' ? 'EN' : 'עב';
     document.querySelectorAll('[data-t]').forEach(n => { n.textContent = t(n.dataset.t); });
     el.name.placeholder = t('namePh'); document.title = t('title'); setMuted(muted);
+    el.howtoList.replaceChildren(...(T[lang].howtoSteps || []).map(x => { const li = document.createElement('li'); li.textContent = x; return li; }));
+    document.querySelectorAll('.legal a').forEach(a => { const h = a.dataset.href || (a.dataset.href = a.getAttribute('href')); a.href = h.replace('#', '?l=' + lang + '#'); });
     for (const a2 in badgeCache) { const nm = badgeCache[a2].querySelector('.nm'); if (nm) nm.textContent = shortOf(byA2[a2]); }
     if (!el.hint.hidden && S.active) el.hint.textContent = t('hint');
   }
@@ -796,6 +809,13 @@
     el.saveBtn.addEventListener('click', savePoster);
     el.againBtn.addEventListener('click', resetToHome);
     el.muteBtn.addEventListener('click', () => { setMuted(!muted); if (!muted) SFX.tap(); });
+    el.howtoBtn.addEventListener('click', () => { track('howto_open', { lang }); SFX.open(); el.home.hidden = true; el.howto.hidden = false; });
+    el.howtoClose.addEventListener('click', () => { SFX.tap(); el.howto.hidden = true; el.home.hidden = false; });
+    el.shareSiteBtn.addEventListener('click', async () => {
+      track('share_site', { lang }); const url = location.origin + location.pathname; const text = t('shareSiteText');
+      try { if (navigator.share) { await navigator.share({ title: t('title'), text, url }); return; } } catch (e) { if (e && e.name === 'AbortError') return; }
+      try { await navigator.clipboard.writeText(text + ' ' + url); toast(t('copied')); } catch (e) { toast(t('noClip')); }
+    });
     el.boardBtn.addEventListener('click', openBoard); el.boardBack.addEventListener('click', () => { el.board.hidden = true; el.home.hidden = false; });
     el.friendAdd.addEventListener('click', addFriendByCode); el.friendIn.addEventListener('keydown', e => { if (e.key === 'Enter') addFriendByCode(); });
     el.inviteBtn.addEventListener('click', shareRoom);

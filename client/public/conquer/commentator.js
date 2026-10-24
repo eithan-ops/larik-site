@@ -13,6 +13,7 @@ window.Commentator = (function () {
     en: { t_bang: '!', t_move: 'What a move!', t_giant: 'A giant!', t_def: 'Attack repelled!', t_atk: 'What pressure!', g_start1: 'The game is on! Who will conquer the world?', g_start2: 'And we are off! The whole planet is up for grabs!', g_golden: 'Golden minute! Every country counts double! Now or never!', g_ten: 'Ten seconds left!', g_five: 'Five… four… three… two… one!', g_tense: 'So tense! Neck and neck!',
       claim1: '{c} takes', claim2: '{c} conquers', claim3: 'And {c} expands the empire!', big: 'Wow! {c} takes', steal: 'Drama! {c} steals', from: 'from {c}!', attack: '{c} is attacking', defend: '{c} holds', streak: '{c} is on fire! Unstoppable!', lead: '{c} takes the lead!', win: "That's it! {c} rules the world!" }
   };
+  const VOICE_V = '1792833268'; // bump when the recordings change (Krümel King set)
   let lang = 'he', enabled = false, queue = [], playing = false, onDuck = null, base = 'voice/', ac = null;
   const bufCache = new Map(); let recordedOk = null; // null = unknown, false = no recordings on the server
   const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
@@ -60,7 +61,7 @@ window.Commentator = (function () {
   }
   async function loadBuf(id) {
     const key = lang + '/' + id; if (bufCache.has(key)) return bufCache.get(key);
-    const p = (async () => { try { const r = await fetch(base + lang + '/' + id + '.mp3', { cache: 'force-cache' }); if (!r.ok) return null; const ab = await r.arrayBuffer(); const a = audio(); if (!a) return null; return await a.decodeAudioData(ab); } catch (e) { return null; } })();
+    const p = (async () => { try { const r = await fetch(base + lang + '/' + id + '.mp3?v=' + VOICE_V, { cache: 'force-cache' }); if (!r.ok) return null; const ab = await r.arrayBuffer(); const a = audio(); if (!a) return null; return await a.decodeAudioData(ab); } catch (e) { return null; } })();
     bufCache.set(key, p); const b = await p; if (!b) bufCache.delete(key); return b;
   }
   async function speakFrags(frags) {
