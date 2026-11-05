@@ -81,7 +81,10 @@ export function setUserProps(props: Params) {
 /** צפייה בדף עם נתיב מנורמל — חדר = ‎/room, לא ‎/r/KFRT */
 export function pageView(path: string) {
   const norm = path.replace(/^\/r\/[A-Za-z]{4}$/, "/room").replace(/^\/s\/r\/[A-Za-z]{4}$/, "/show/room");
-  window.gtag?.("event", "page_view", { page_path: norm, page_location: `${location.origin}${norm}`, page_title: document.title });
+  // פרמטרי utm_* נשארים ב-page_location — מהם GA4 מייחס מקור/קמפיין לסשן (למשל ‎/?utm_source=team מ-‎/team)
+  const utm = [...new URLSearchParams(location.search)].filter(([k]) => k.startsWith("utm_"));
+  const qs = utm.length ? `?${new URLSearchParams(utm)}` : "";
+  window.gtag?.("event", "page_view", { page_path: norm, page_location: `${location.origin}${norm}${qs}`, page_title: document.title });
 }
 
 /** אירוע מותאם — היסטוריה עמידה ב-GA גם כשהשרת ב-Render מתאפס */
